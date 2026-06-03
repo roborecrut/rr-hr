@@ -348,6 +348,7 @@ export type Database = {
           id: string
           landing_slug: string | null
           project_id: string | null
+          public_id: string | null
           ref_source: string | null
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
@@ -364,6 +365,7 @@ export type Database = {
           id?: string
           landing_slug?: string | null
           project_id?: string | null
+          public_id?: string | null
           ref_source?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
@@ -380,6 +382,7 @@ export type Database = {
           id?: string
           landing_slug?: string | null
           project_id?: string | null
+          public_id?: string | null
           ref_source?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
@@ -584,10 +587,11 @@ export type Database = {
           created_at: string
           id: string
           plan: string | null
+          public_id: string | null
           ref_by: string | null
           status: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           bonus_granted?: boolean
@@ -598,10 +602,11 @@ export type Database = {
           created_at?: string
           id?: string
           plan?: string | null
+          public_id?: string | null
           ref_by?: string | null
           status?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           bonus_granted?: boolean
@@ -612,10 +617,11 @@ export type Database = {
           created_at?: string
           id?: string
           plan?: string | null
+          public_id?: string | null
           ref_by?: string | null
           status?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1567,6 +1573,7 @@ export type Database = {
           ref_code: string
         }[]
       }
+      slugify_ru: { Args: { _input: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
