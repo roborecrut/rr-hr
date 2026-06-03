@@ -65,15 +65,16 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-  // 3) Already linked?
+  // 3) Already linked for this intent? (employer & candidate are separate accounts)
   const { data: existingLink } = await admin
     .from("telegram_links")
     .select("user_id")
     .eq("telegram_id", id)
+    .eq("intent", intent)
     .maybeSingle();
 
   let userId = existingLink?.user_id as string | undefined;
-  const email = `tg_${id}@rrhr.local`;
+  const email = `tg_${id}_${intent}@rrhr.local`;
 
   if (!userId) {
     // Create new user (auto-confirmed) with intent in metadata
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
       photo_url: payload.photo_url ?? null,
       auth_date: new Date(authDate * 1000).toISOString(),
       source: "widget",
+      intent,
     });
 
     // Materialize employer row if needed (candidates rows are created when they enter funnel)
