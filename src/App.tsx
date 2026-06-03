@@ -14,6 +14,7 @@ import JobVacancyLanding from "./pages/JobVacancyLanding";
 import CompanyLanding from "./pages/CompanyLanding";
 import NotFoundPage from "./pages/NotFoundPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
+import AuthTelegramDone from "./pages/AuthTelegramDone";
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/job" element={<JobVacancyLanding />} />
         <Route path="/auth" element={<LandingPage />} />
+        <Route path="/auth/telegram/done" element={<AuthTelegramDone />} />
         <Route path="/setup" element={<EmployerPanel />} />
         <Route path="/employer" element={<EmployerPanel />} />
         <Route path="/employer/*" element={<EmployerPanel />} />
