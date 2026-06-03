@@ -11,24 +11,11 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveProfilePathForUser } from "@/lib/links";
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
-async function resolveProfilePath(userId: string): Promise<string> {
-  const { data: emp } = await supabase
-    .from("employers")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (emp?.id) return `/employer${emp.id}/profile`;
-  const { data: cand } = await supabase
-    .from("candidates")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (cand?.id) return `/candidate${cand.id}/profile`;
-  return "/candidate/profile";
-}
+const resolveProfilePath = resolveProfilePathForUser;
 
 export default function TelegramMiniAppBoot() {
   const navigate = useNavigate();

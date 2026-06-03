@@ -8,6 +8,37 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
+import { supabase } from "@/integrations/supabase/client";
+import { buildCandidateUrl } from "@/lib/links";
+
+/** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
+function mapDbProjectToUi(company: any) {
+  return (p: any): JobProject => ({
+    id: p.id,
+    companyName: company?.name || "",
+    companySlug: company?.slug || undefined,
+    employerId: p.employer_id,
+    roleName: p.role_name,
+    salaryTerms: p.salary_terms || undefined,
+    scheduleTerms: p.schedule_terms || undefined,
+    motivationText: p.motivation_text || undefined,
+    customWiki: p.custom_wiki || undefined,
+    checklistQuestions: [],
+    roleplayQuestions: [],
+    vacancyText: p.vacancy_text || undefined,
+    motivationTextDetail: p.motivation_text_detail || undefined,
+    companyText: p.company_text || undefined,
+    onboardingText: p.onboarding_text || undefined,
+    payoutsText: p.payouts_text || undefined,
+    scheduleText: p.schedule_text || undefined,
+    teamText: p.team_text || undefined,
+    systemText: p.system_text || undefined,
+    logoUrl: p.logo_url || company?.logo_url || undefined,
+    missionText: p.mission_text || undefined,
+    // expose slug so URL builders can use it
+    ...({ slug: p.slug } as any),
+  });
+}
 import {
   Briefcase,
   DollarSign,
@@ -44,9 +75,9 @@ import {
 export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
   
-  // Parse companySlug and vacancyId from path segments
+  // Parse companySlug and vacancyId from path segments. Empty when route is "/".
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "ooo-roborekrut-inzhiniring";
+  const companySlug = segments[0] || "";
   const vacancyId = segments[1] || "";
   const subTab = segments[2] || "company";
 
@@ -100,33 +131,34 @@ export default function CompanyLanding() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch companies
-      const compRes = await fetch("/api/companies");
-      let activeCompany = null;
-      if (compRes.ok) {
-        const compList = await compRes.json();
-        const foundComp = compList.find((c: any) => c.slug === companySlug);
-        activeCompany = foundComp || compList[0];
-        setCompany(activeCompany);
+      // 1. Fetch company by slug (or first published if no slug)
+      let compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
+      if (companySlug) compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      const { data: compRows } = await compQuery;
+      const activeCompany = (compRows && compRows[0]) || null;
+      if (activeCompany) {
+        setCompany({ ...activeCompany, slug: activeCompany.slug });
       }
 
-      // 2. Fetch projects (vacancies)
-      const projRes = await fetch("/api/projects");
-      if (projRes.ok) {
-        const projList = await projRes.json();
-        // Filter vacancies by this company name or slug
-        const filtered = projList.filter((p: any) => {
-          return p.companySlug === companySlug || (activeCompany && p.companyName?.toLowerCase() === activeCompany.name?.toLowerCase());
-        });
-        setVacancies(filtered);
+      // 2. Fetch projects (vacancies) for this company
+      if (activeCompany?.id) {
+        const { data: projRows } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("company_id", activeCompany.id)
+          .eq("is_published", true);
+        const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
+        setVacancies(mapped);
 
-        // If vacancyId requested, find it, otherwise take first as active for chatbot
+        // If a vacancyId (slug or uuid) was passed, find it; otherwise pick first
+        let active = mapped[0] || null;
         if (vacancyId) {
-          const foundVac = projList.find((p: any) => p.id === vacancyId);
-          setSelectedVacancy(foundVac || filtered[0] || projList[0]);
-        } else {
-          setSelectedVacancy(filtered[0] || projList[0]);
+          active = mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) || active;
         }
+        setSelectedVacancy(active);
+      } else {
+        setVacancies([]);
+        setSelectedVacancy(null);
       }
     } catch (err) {
       console.error("Error loading company landing details:", err);
@@ -210,7 +242,11 @@ export default function CompanyLanding() {
     const mockEmail = `candidate_${randId}@candidate-pool.ru`;
     const mockTg = method === "telegram" ? `tg_candidate_${randId}` : "";
 
-    const activeProject = selectedVacancy || vacancies[0] || { id: "sales-prod-1", roleName: "Менеджер по продажам", companySlug: "ooo-roborekrut-inzhiniring" };
+    const activeProject = selectedVacancy || vacancies[0];
+    if (!activeProject) {
+      setSubmitting(false);
+      return;
+    }
 
     const payload: any = {
       name: mockName,
@@ -234,14 +270,32 @@ export default function CompanyLanding() {
     }
 
     try {
+      // Try legacy API; on failure, create the candidate directly in Supabase so
+      // the URL we produce is bound to a real candidate row (public_id).
+      let candidateInfo: any = null;
       const res = await fetch("/api/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
+      }).catch(() => null as any);
+      if (res && res.ok) {
+        candidateInfo = await res.json();
+      } else {
+        const { data: created, error } = await supabase
+          .from("candidates")
+          .insert({
+            project_id: activeProject.id,
+            role_name: activeProject.roleName,
+            registered_via: method as any,
+            current_stage: "terms",
+          })
+          .select("id, public_id")
+          .single();
+        if (error || !created) throw error;
+        candidateInfo = { id: created.public_id || created.id, public_id: created.public_id };
+      }
 
-      if (res.ok) {
-        const candidateInfo = await res.json();
+      if (candidateInfo) {
         localStorage.setItem("cand_session_id", candidateInfo.id);
         localStorage.setItem("cand_role", "candidate");
 
@@ -250,9 +304,14 @@ export default function CompanyLanding() {
           setRegistrationSuccess(false);
           setShowApplyModal(false);
           setSubmitting(false);
-          
-          // As requested, always land candidate on /{companySlug}/{id}/candidateXXXXXX/profile
-          navigate(`/${activeProject.companySlug || "ooo-roborekrut-inzhiniring"}/${activeProject.id}/${candidateInfo.id}/profile`);
+          navigate(
+            buildCandidateUrl(
+              { slug: (activeProject as any).companySlug },
+              { slug: (activeProject as any).slug || activeProject.id },
+              { public_id: candidateInfo.public_id || candidateInfo.id },
+              "profile",
+            ),
+          );
         }, 1500);
       } else {
         setSubmitting(false);

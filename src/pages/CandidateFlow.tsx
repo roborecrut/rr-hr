@@ -8,6 +8,7 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 import {
   FileText,
   Upload,
@@ -455,7 +456,7 @@ export default function CandidateFlow() {
   const getDynamicPath = (tabId: string, subTabId?: string, forceProject?: any) => {
     const parts = path.split("/").filter(Boolean);
     const candIndex = parts.findIndex(p => p.startsWith("candidate"));
-    const candidateId = candidate?.id || localStorage.getItem("cand_session_id") || "cand-1";
+    const candidateId = candidate?.id || localStorage.getItem("cand_session_id") || "";
 
     const targetProject = forceProject || project;
     let slug = "";
@@ -465,7 +466,7 @@ export default function CandidateFlow() {
       slug = parts[0];
       vacId = parts[1];
     } else if (targetProject) {
-      slug = targetProject.companySlug || "ooo-roborekrut-inzhiniring";
+      slug = targetProject.companySlug || "";
       vacId = targetProject.id;
     }
 
@@ -596,7 +597,7 @@ export default function CandidateFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: candidate?.id || "cand-1",
+          candidateId: candidate?.id || "",
           userQuestion: userText,
           contextTab: activeTab,
           contextSubTab: activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")
@@ -663,7 +664,7 @@ export default function CandidateFlow() {
       return;
     }
 
-    let activeId = localStorage.getItem("cand_session_id") || "cand-1";
+    let activeId = localStorage.getItem("cand_session_id") || "";
     
     if (candIndex !== -1) {
       activeId = parts[candIndex];
@@ -675,36 +676,91 @@ export default function CandidateFlow() {
 
     try {
       // 1. Fetch available projects
-      const resAllProjs = await fetch("/api/projects");
-      if (resAllProjs.ok) {
-        const projs = await resAllProjs.json();
-        setAllProjects(projs);
+      let projsList: any[] = [];
+      const resAllProjs = await fetch("/api/projects").catch(() => null as any);
+      if (resAllProjs && resAllProjs.ok) {
+        projsList = await resAllProjs.json();
+      } else {
+        // Supabase fallback — pull published projects + parent company name/slug
+        const { data } = await supabase
+          .from("projects")
+          .select("*, companies(name, slug, logo_url)")
+          .eq("is_published", true);
+        projsList = (data || []).map((p: any) => ({
+          id: p.id,
+          companyName: p.companies?.name || "",
+          companySlug: p.companies?.slug || undefined,
+          employerId: p.employer_id,
+          roleName: p.role_name,
+          salaryTerms: p.salary_terms || undefined,
+          scheduleTerms: p.schedule_terms || undefined,
+          motivationText: p.motivation_text || undefined,
+          customWiki: p.custom_wiki || undefined,
+          checklistQuestions: [],
+          roleplayQuestions: [],
+          logoUrl: p.logo_url || p.companies?.logo_url || undefined,
+          slug: p.slug,
+        }));
+      }
+      setAllProjects(projsList);
+
+      // 2. Resolve candidate. Prefer Supabase by public_id, then legacy API.
+      let activeCand: any = null;
+      const pubId = activeId.startsWith("candidate") ? activeId.replace(/^candidate/, "") : activeId;
+      if (pubId) {
+        const { data: cand } = await supabase
+          .from("candidates")
+          .select("*")
+          .eq("public_id", pubId)
+          .maybeSingle();
+        if (cand) {
+          activeCand = {
+            id: `candidate${cand.public_id}`,
+            publicId: cand.public_id,
+            name: cand.resume_name || `Кандидат #${cand.public_id}`,
+            email: "",
+            projectId: cand.project_id,
+            roleName: cand.role_name || "",
+            currentStage: cand.current_stage,
+            registeredVia: cand.registered_via || "telegram",
+          };
+        }
       }
 
-      // 2. Fetch candidates
-      const resCand = await fetch(`/api/candidates`);
-      const candidatesList = await resCand.json();
-      let activeCand = candidatesList.find((c: any) => c.id === activeId);
+      if (!activeCand) {
+        const resCand = await fetch(`/api/candidates`).catch(() => null as any);
+        if (resCand && resCand.ok) {
+          const candidatesList = await resCand.json();
+          activeCand = candidatesList.find((c: any) => c.id === activeId);
+        }
+      }
 
-      // If starts with candidateXXXXXX and doesn't exist, auto-provision it so candidate experiences zero friction
+      // If starts with candidateXXXXXX and doesn't exist, auto-provision a Supabase row
       if (!activeCand && activeId.startsWith("candidate")) {
         const randomNum = activeId.replace("candidate", "");
         const randId = randomNum || Math.floor(100000 + Math.random() * 900000).toString();
-        const createdRes = await fetch(`/api/candidates`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: activeId,
-            name: `Кандидат #${randId}`,
-            email: `candidate_${randId}@candidate-pool.ru`,
-            telegramUsername: "tg_candidate_demo",
-            projectId: parts[1] || "sales-prod-1",
-            roleName: "Менеджер по продажам",
-            registeredVia: "google"
+        const { data: created } = await supabase
+          .from("candidates")
+          .insert({
+            public_id: randId,
+            project_id: parts[1] ? null : null,
+            role_name: "Менеджер по продажам",
+            current_stage: "terms",
+            registered_via: "telegram",
           })
-        });
-        if (createdRes.ok) {
-          activeCand = await createdRes.json();
+          .select("*")
+          .single();
+        if (created) {
+          activeCand = {
+            id: `candidate${created.public_id}`,
+            publicId: created.public_id,
+            name: `Кандидат #${created.public_id}`,
+            email: `candidate_${created.public_id}@candidate-pool.ru`,
+            projectId: created.project_id,
+            roleName: created.role_name,
+            currentStage: created.current_stage,
+            registeredVia: created.registered_via,
+          };
         }
       }
 
@@ -749,11 +805,35 @@ export default function CandidateFlow() {
         }
 
         // Fetch corresponding project details
-        const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "sales-prod-1";
-        const resProj = await fetch(`/api/projects/${activeProjId}`);
-        if (resProj.ok) {
-          const activeProj = await resProj.json();
-          setProject(activeProj);
+        const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
+        if (activeProjId) {
+          const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
+          if (resProj && resProj.ok) {
+            setProject(await resProj.json());
+          } else {
+            // Supabase fallback by id OR slug
+            const isUuid = /^[0-9a-f-]{36}$/i.test(activeProjId);
+            const q = isUuid
+              ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", activeProjId).maybeSingle()
+              : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", activeProjId).maybeSingle();
+            const { data: p } = await q;
+            if (p) {
+              setProject({
+                id: p.id,
+                companyName: p.companies?.name || "",
+                companySlug: p.companies?.slug || undefined,
+                employerId: p.employer_id,
+                roleName: p.role_name,
+                salaryTerms: p.salary_terms || undefined,
+                scheduleTerms: p.schedule_terms || undefined,
+                motivationText: p.motivation_text || undefined,
+                customWiki: p.custom_wiki || undefined,
+                checklistQuestions: [],
+                roleplayQuestions: [],
+                logoUrl: p.logo_url || p.companies?.logo_url || undefined,
+              } as any);
+            }
+          }
         }
       }
     } catch (err) {
@@ -1029,7 +1109,7 @@ export default function CandidateFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: candidate?.id || "cand-1",
+          candidateId: candidate?.id || "",
           answers: [
             { question: targetSit.title || targetSit.desc, answer: userMsgText }
           ]
@@ -1269,7 +1349,7 @@ export default function CandidateFlow() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 w-full">
           {/* Logo & Vacancy info */}
-          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => navigate(`/${candidate?.id || localStorage.getItem("cand_session_id") || "candidate-demo"}/profile`)}>
+          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => { const id = candidate?.id || localStorage.getItem("cand_session_id") || ""; if (id) navigate(`/${id}/profile`); }}>
             <div className="bg-[#E7C768]/10 p-1.5 rounded-xl border border-[#E7C768]/20">
               <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR" className="w-8 h-8 object-contain" />
             </div>
@@ -1413,7 +1493,7 @@ export default function CandidateFlow() {
                 <span className="text-[#E7C768] font-bold text-xs uppercase tracking-wider block">Личный кабинет соискателя</span>
                 <h2 className="text-2xl font-bold text-white mt-1">Профиль кандидата: {candidate?.name || "Алексей Иванов"}</h2>
                 <p className="text-xs text-gray-300 mt-1">
-                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "cand-1"}</span>
+                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "—"}</span>
                 </p>
               </div>
               
@@ -1595,8 +1675,8 @@ export default function CandidateFlow() {
 
                   <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin pr-1 text-xs">
                     {allProjects.map((proj) => {
-                      const slug = proj.companySlug || "ooo-roborekrut-inzhiniring";
-                      const candidateId = candidate?.id || "candidate-demo";
+                      const slug = proj.companySlug || "";
+                      const candidateId = candidate?.id || "";
                       const isSelected = project?.id === proj.id;
                       
                       // Precise tab path keeping current states

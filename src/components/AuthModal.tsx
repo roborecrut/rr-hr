@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "./RouterContext";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveProfilePathForUser } from "@/lib/links";
 import Mascot from "./Mascot";
 import { 
   X,
@@ -72,19 +73,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const resolveProfilePath = async (): Promise<string> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return "/";
-    const { data: emp } = await supabase
-      .from("employers")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (emp?.id) return `/employer${emp.id}/profile`;
-    const { data: cand } = await supabase
-      .from("candidates")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (cand?.id) return `/candidate${cand.id}/profile`;
-    return "/employer/profile";
+    return await resolveProfilePathForUser(user.id);
   };
 
   const onSuccessRedirect = async () => {
