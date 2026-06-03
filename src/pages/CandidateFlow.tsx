@@ -663,7 +663,7 @@ export default function CandidateFlow() {
       return;
     }
 
-    let activeId = localStorage.getItem("cand_session_id") || "cand-1";
+    let activeId = localStorage.getItem("cand_session_id") || "";
     
     if (candIndex !== -1) {
       activeId = parts[candIndex];
@@ -698,7 +698,7 @@ export default function CandidateFlow() {
             name: `Кандидат #${randId}`,
             email: `candidate_${randId}@candidate-pool.ru`,
             telegramUsername: "tg_candidate_demo",
-            projectId: parts[1] || "sales-prod-1",
+            projectId: parts[1] || "",
             roleName: "Менеджер по продажам",
             registeredVia: "google"
           })
@@ -749,7 +749,7 @@ export default function CandidateFlow() {
         }
 
         // Fetch corresponding project details
-        const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "sales-prod-1";
+        const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
         const resProj = await fetch(`/api/projects/${activeProjId}`);
         if (resProj.ok) {
           const activeProj = await resProj.json();
@@ -1595,7 +1595,7 @@ export default function CandidateFlow() {
 
                   <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin pr-1 text-xs">
                     {allProjects.map((proj) => {
-                      const slug = proj.companySlug || "ooo-roborekrut-inzhiniring";
+                      const slug = proj.companySlug || "";
                       const candidateId = candidate?.id || "candidate-demo";
                       const isSelected = project?.id === proj.id;
                       
