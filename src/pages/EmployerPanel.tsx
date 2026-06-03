@@ -350,16 +350,21 @@ export default function EmployerPanel() {
       }
       // Supabase fallback — list companies owned by this employer (by public_id)
       const { supabase } = await import("@/integrations/supabase/client");
-      let q = supabase.from("companies").select("*");
+      let data: any[] = [];
       if (employerId) {
         const { data: emp } = await supabase
           .from("employers")
           .select("id")
           .eq("public_id", employerId)
           .maybeSingle();
-        if (emp?.id) q = supabase.from("companies").select("*").eq("owner_employer_id", emp.id);
+        if (emp?.id) {
+          const r = await supabase.from("companies").select("*").eq("owner_employer_id", emp.id);
+          data = (r.data as any[]) || [];
+        }
+      } else {
+        const r = await supabase.from("companies").select("*");
+        data = (r.data as any[]) || [];
       }
-      const { data } = await q;
       setCompaniesList(
         (data || []).map((c: any) => ({
           id: c.id,
