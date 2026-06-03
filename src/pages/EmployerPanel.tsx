@@ -131,18 +131,9 @@ export default function EmployerPanel() {
   const [telegramUsernameState, setTelegramUsernameState] = useState("cowal_sales");
 
   // Billing & Tariff States
-  const [employerId, setEmployerId] = useState(() => {
-    let id = localStorage.getItem("employer_session_id");
-    if (!id) {
-      id = "emp-demo"; // Seeded demo employer
-      localStorage.setItem("employer_session_id", id);
-      localStorage.setItem("employer_name", "Сергей Ковалев");
-      localStorage.setItem("employer_email", "hr-director@company.ru");
-      localStorage.setItem("employer_tg", "cowal_sales");
-      localStorage.setItem("employer_role", "employer");
-    }
-    return id;
-  });
+  const [employerId, setEmployerId] = useState<string>(
+    () => localStorage.getItem("employer_session_id") || "",
+  );
 
   const [balance, setBalance] = useState<number>(1000);
   const [limits, setLimits] = useState({
