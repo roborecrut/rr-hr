@@ -1414,6 +1414,29 @@ export default function EmployerPanel() {
             </div>
           </div>
 
+          {isAdmin && (
+            <div className="bg-indigo-950/60 border border-indigo-400/40 rounded-3xl p-4 shadow-xl text-left space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Админ-режим Lovable
+              </div>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Открывайте демо-страницы под видом кандидата без отдельной регистрации.
+              </p>
+              <button
+                onClick={() => handleOpenCandidateAsAdmin()}
+                className="w-full text-[11px] font-bold bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-100 px-3 py-2 rounded-xl transition"
+              >
+                Открыть кабинет кандидата →
+              </button>
+              <button
+                onClick={handleOpenVacancyAsAdmin}
+                className="w-full text-[11px] font-bold bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-100 px-3 py-2 rounded-xl transition"
+              >
+                Открыть лендинг вакансии →
+              </button>
+            </div>
+          )}
+
           {/* Quick Realtime Limit Monitor Tracker Widget */}
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-4 shadow-xl text-xs space-y-2 text-left">
             <span className="text-[#E7C768] font-bold block uppercase tracking-wider font-mono text-[9px]">Текущие ИИ-Лимиты</span>
