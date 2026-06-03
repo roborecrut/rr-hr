@@ -9,16 +9,25 @@ export const ALLOWED_HOSTS = new Set<string>([
 ]);
 
 export function isAllowedHost(host: string): boolean {
-  if (ALLOWED_HOSTS.has(host)) return true;
-  if (host.endsWith(".lovable.app")) return true;
-  if (host.endsWith(".lovableproject.com")) return true;
+  const h = host.toLowerCase();
+  if (ALLOWED_HOSTS.has(h)) return true;
+  if (h.endsWith(".lovable.app")) return true;
+  if (h.endsWith(".lovableproject.com")) return true;
   return false;
 }
+
+export type SafeRedirectReason =
+  | "empty"
+  | "parse_error"
+  | "bad_protocol"
+  | "host_not_allowed"
+  | "bad_port"
+  | "has_userinfo";
 
 export interface SafeRedirectResult {
   url: URL;
   rejected: boolean;
-  reason?: "empty" | "parse_error" | "bad_protocol" | "host_not_allowed";
+  reason?: SafeRedirectReason;
   originalInput?: string | null;
 }
 
@@ -28,38 +37,126 @@ export function safeRedirect(input: string | undefined | null): SafeRedirectResu
   if (!input) {
     return { url: new URL(FALLBACK), rejected: true, reason: "empty", originalInput: input ?? null };
   }
+  let u: URL;
   try {
-    const u = new URL(input);
-    if (u.protocol !== "https:") {
-      return { url: new URL(FALLBACK), rejected: true, reason: "bad_protocol", originalInput: input };
-    }
-    if (!isAllowedHost(u.hostname)) {
-      return { url: new URL(FALLBACK), rejected: true, reason: "host_not_allowed", originalInput: input };
-    }
-    return { url: u, rejected: false };
+    u = new URL(input);
   } catch {
     return { url: new URL(FALLBACK), rejected: true, reason: "parse_error", originalInput: input };
   }
+  if (u.protocol !== "https:") {
+    return { url: new URL(FALLBACK), rejected: true, reason: "bad_protocol", originalInput: input };
+  }
+  if (u.username || u.password) {
+    return { url: new URL(FALLBACK), rejected: true, reason: "has_userinfo", originalInput: input };
+  }
+  if (u.port && u.port !== "443") {
+    return { url: new URL(FALLBACK), rejected: true, reason: "bad_port", originalInput: input };
+  }
+  if (!isAllowedHost(u.hostname)) {
+    return { url: new URL(FALLBACK), rejected: true, reason: "host_not_allowed", originalInput: input };
+  }
+  return { url: u, rejected: false };
 }
 
-// Frontend-friendly next path sanitizer.
-// Accepts an absolute URL (must match currentOrigin) or a path starting with "/".
-// Rejects protocol-relative ("//evil"), the OIDC done page, and cross-origin URLs.
-export function safeNextPath(raw: string | null | undefined, currentOrigin: string): string | null {
-  if (!raw) return null;
-  let val = raw;
-  try {
-    if (/^https?:\/\//i.test(val)) {
-      const u = new URL(val);
-      if (u.origin !== currentOrigin) return null;
-      val = `${u.pathname}${u.search}`;
-    }
-  } catch {
-    return null;
+export type NextRejectReason =
+  | "empty"
+  | "too_long"
+  | "bad_encoding"
+  | "decoded_traversal"
+  | "bad_scheme"
+  | "protocol_relative"
+  | "path_traversal"
+  | "disallowed_path"
+  | "cross_origin"
+  | "parse_error";
+
+export interface SafeNextResult {
+  value: string | null;
+  rejected: boolean;
+  reason?: NextRejectReason;
+}
+
+const DISALLOWED_PREFIXES = ["/auth/telegram/", "/api/", "/functions/"];
+
+/**
+ * Hardened next-path sanitizer.
+ * Returns the validated path (string starting with "/") or null with a reason.
+ */
+export function safeNextPathStrict(
+  raw: string | null | undefined,
+  currentOrigin: string,
+): SafeNextResult {
+  if (!raw) return { value: null, rejected: true, reason: "empty" };
+  if (raw.length > 1024) return { value: null, rejected: true, reason: "too_long" };
+
+  // Reject null bytes and backslash encodings before decoding.
+  const lower = raw.toLowerCase();
+  if (lower.includes("%00") || lower.includes("%5c")) {
+    return { value: null, rejected: true, reason: "bad_encoding" };
   }
-  if (!val.startsWith("/") || val.startsWith("//")) return null;
-  if (val.startsWith("/auth/telegram/")) return null;
-  return val;
+  // Catch single & double-encoded traversal/scheme tricks.
+  if (
+    lower.includes("%2f%2f") ||
+    lower.includes("%2e%2e") ||
+    lower.includes("%252e") ||
+    lower.includes("%252f")
+  ) {
+    return { value: null, rejected: true, reason: "decoded_traversal" };
+  }
+
+  let val = raw;
+
+  // Absolute URL: must be same-origin https
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(val)) {
+    let u: URL;
+    try {
+      u = new URL(val);
+    } catch {
+      return { value: null, rejected: true, reason: "parse_error" };
+    }
+    if (u.protocol !== "https:" && u.protocol !== "http:") {
+      return { value: null, rejected: true, reason: "bad_scheme" };
+    }
+    if (u.origin !== currentOrigin) {
+      return { value: null, rejected: true, reason: "cross_origin" };
+    }
+    val = `${u.pathname}${u.search}`;
+  }
+
+  if (val.startsWith("//") || val.startsWith("\\\\") || val.startsWith("\\")) {
+    return { value: null, rejected: true, reason: "protocol_relative" };
+  }
+  if (!val.startsWith("/")) {
+    return { value: null, rejected: true, reason: "bad_scheme" };
+  }
+
+  // Decode path and check traversal segments.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(val.split("?")[0]);
+  } catch {
+    return { value: null, rejected: true, reason: "bad_encoding" };
+  }
+  const segs = decoded.split("/");
+  for (const s of segs) {
+    if (s === ".." || s === ".") {
+      return { value: null, rejected: true, reason: "path_traversal" };
+    }
+  }
+  for (const p of DISALLOWED_PREFIXES) {
+    if (decoded.startsWith(p)) {
+      return { value: null, rejected: true, reason: "disallowed_path" };
+    }
+  }
+  return { value: val, rejected: false };
+}
+
+/** Legacy shape: returns string|null. Prefer safeNextPathStrict. */
+export function safeNextPath(
+  raw: string | null | undefined,
+  currentOrigin: string,
+): string | null {
+  return safeNextPathStrict(raw, currentOrigin).value;
 }
 
 export interface CandidateTargetInput {
