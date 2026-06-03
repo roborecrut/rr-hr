@@ -3451,6 +3451,42 @@ export default function EmployerPanel() {
                         {isProfileSaved ? "Сохранено! ✓" : "Сохранить TG"}
                       </button>
                     </div>
+
+                    {/* Phone block (request via bot) */}
+                    <div className="pt-3 mt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <label className="text-slate-300 block mb-1 font-bold">Номер телефона из Telegram:</label>
+                        {telegramPhone ? (
+                          <a href={`tel:${telegramPhone}`} className="block w-full bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-3 py-2 text-emerald-300 font-mono hover:bg-emerald-950/60 transition">
+                            {telegramPhone}
+                          </a>
+                        ) : (
+                          <div className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-slate-400 italic">
+                            Не привязан
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRequestPhoneViaBot}
+                        disabled={isRequestingPhone}
+                        className="cursor-pointer bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-xl text-xs transition duration-150 shadow-md"
+                      >
+                        {isRequestingPhone ? "Отправка…" : telegramPhone ? "Обновить через бота" : "Запросить телефон через бота"}
+                      </button>
+                    </div>
+
+                    {/* Direct profile link fallback */}
+                    <div className="text-[10.5px] text-slate-400 font-mono pt-2">
+                      Прямая ссылка на профиль:&nbsp;
+                      {telegramUsernameState ? (
+                        <a href={`https://t.me/${telegramUsernameState.replace(/^@+/, "")}`} target="_blank" rel="noreferrer" className="text-sky-300 underline">
+                          t.me/{telegramUsernameState.replace(/^@+/, "")}
+                        </a>
+                      ) : telegramIdState ? (
+                        <a href={`tg://user?id=${telegramIdState}`} className="text-sky-300 underline">tg://user?id={telegramIdState}</a>
+                      ) : "—"}
+                    </div>
                   </div>
                 </div>
 
