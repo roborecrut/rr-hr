@@ -1153,27 +1153,33 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          intent: string | null
           owner_user_id: string
           redeemed_at: string | null
           ref_code: string
+          referee_kind: string
           reward_rr: number | null
           used_by_user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
+          intent?: string | null
           owner_user_id: string
           redeemed_at?: string | null
           ref_code: string
+          referee_kind?: string
           reward_rr?: number | null
           used_by_user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
+          intent?: string | null
           owner_user_id?: string
           redeemed_at?: string | null
           ref_code?: string
+          referee_kind?: string
           reward_rr?: number | null
           used_by_user_id?: string | null
         }
@@ -1572,10 +1578,19 @@ export type Database = {
       }
     }
     Functions: {
-      apply_referral_bonus: {
-        Args: { _new_user: string; _referrer_public_id: string }
-        Returns: undefined
-      }
+      apply_referral_bonus:
+        | {
+            Args: { _new_user: string; _referrer_public_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _intent?: string
+              _new_user: string
+              _referrer_public_id: string
+            }
+            Returns: undefined
+          }
       apply_transaction: {
         Args: {
           _amount: number
@@ -1603,6 +1618,45 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
+      get_my_referees: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          google_email: string
+          intent: string
+          referee_kind: string
+          registered_via: string
+          reward_rr: number
+          telegram_first_name: string
+          telegram_last_name: string
+          telegram_photo_url: string
+          telegram_username: string
+          used_by_user_id: string
+        }[]
+      }
+      get_my_referrer: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          created_at: string
+          display_name: string
+          email: string
+          google_email: string
+          intent: string
+          owner_public_id: string
+          owner_user_id: string
+          ref_code: string
+          referee_kind: string
+          registered_via: string
+          telegram_first_name: string
+          telegram_last_name: string
+          telegram_photo_url: string
+          telegram_username: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

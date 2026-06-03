@@ -197,8 +197,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (refCode && intent === "employer") {
-      await admin.rpc("apply_referral_bonus", { _referrer_public_id: refCode, _new_user: userId });
+    if (refCode) {
+      await admin.rpc("apply_referral_bonus", {
+        _referrer_public_id: refCode,
+        _new_user: userId,
+        _intent: intent,
+      });
     }
   }
 
