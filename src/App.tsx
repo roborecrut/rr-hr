@@ -13,6 +13,7 @@ import AdminPanel from "./pages/AdminPanel";
 import JobVacancyLanding from "./pages/JobVacancyLanding";
 import CompanyLanding from "./pages/CompanyLanding";
 import NotFoundPage from "./pages/NotFoundPage";
+import SegmentDispatcher from "./components/SegmentDispatcher";
 
 export default function App() {
   return (
@@ -31,7 +32,9 @@ export default function App() {
         <Route path="/candidate" element={<CandidateFlow />} />
         <Route path="/candidate/*" element={<CandidateFlow />} />
         <Route path="/company/:slug" element={<CompanyLanding />} />
-        <Route path="/:slug" element={<CompanyLanding />} />
+        {/* Concatenated dynamic segment: /employer{id}/..., /candidate{id}/..., or company slug */}
+        <Route path="/:firstSeg" element={<SegmentDispatcher />} />
+        <Route path="/:firstSeg/*" element={<SegmentDispatcher />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
