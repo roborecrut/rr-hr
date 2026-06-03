@@ -343,12 +343,37 @@ export default function EmployerPanel() {
   // Synchronized Full-Stack Fetching
   const fetchCompanies = async () => {
     try {
-      const res = await fetch("/api/companies");
-      if (res.ok) {
-        const list = await res.json();
-        // Set all companies
-        setCompaniesList(list);
+      const res = await fetch("/api/companies").catch(() => null as any);
+      if (res && res.ok) {
+        setCompaniesList(await res.json());
+        return;
       }
+      // Supabase fallback — list companies owned by this employer (by public_id)
+      const { supabase } = await import("@/integrations/supabase/client");
+      let q = supabase.from("companies").select("*");
+      if (employerId) {
+        const { data: emp } = await supabase
+          .from("employers")
+          .select("id")
+          .eq("public_id", employerId)
+          .maybeSingle();
+        if (emp?.id) q = supabase.from("companies").select("*").eq("owner_employer_id", emp.id);
+      }
+      const { data } = await q;
+      setCompaniesList(
+        (data || []).map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          logoUrl: c.logo_url,
+          missionText: c.mission_text,
+          description: c.about_text,
+          industry: "—",
+          staff: "—",
+          activeVacancies: 0,
+          employerId,
+        })),
+      );
     } catch (err) {
       console.error("Error loading companies from server:", err);
     }
@@ -356,8 +381,8 @@ export default function EmployerPanel() {
 
   const fetchEmployerData = async () => {
     try {
-      const res = await fetch(`/api/employers/${employerId}`);
-      if (res.ok) {
+      const res = await fetch(`/api/employers/${employerId}`).catch(() => null as any);
+      if (res && res.ok) {
         const data = await res.json();
         setBalance(data.balance || 0);
         if (data.limits) {
@@ -381,6 +406,21 @@ export default function EmployerPanel() {
         setTelegramFirstName(data.telegramFirstName || "Сергей");
         setTelegramLastName(data.telegramLastName || "Ковалев");
         setTelegramUsernameState(data.telegramUsername || data.telegramUsername || "cowal_sales");
+        return;
+      }
+      // Supabase fallback — read employer row by public_id
+      if (!employerId) return;
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: emp } = await supabase
+        .from("employers")
+        .select("*, wallets(balance_rr)")
+        .eq("public_id", employerId)
+        .maybeSingle();
+      if (emp) {
+        setBalance(Number((emp as any).wallets?.[0]?.balance_rr ?? (emp as any).wallets?.balance_rr ?? 0));
+        if (emp.contact_name) setProfileName(emp.contact_name);
+        if (emp.contact_email) setProfileEmail(emp.contact_email);
+        if (emp.contact_tg) setTelegramUsernameState(emp.contact_tg);
       }
     } catch (err) {
       console.error("Error loading employer profile:", err);
@@ -427,31 +467,85 @@ export default function EmployerPanel() {
   // Fetch initial data
   const fetchData = async () => {
     try {
-      const resProjects = await fetch("/api/projects");
-      const dataProj = await resProjects.json();
-      setProjects(dataProj);
+      const { supabase } = await import("@/integrations/supabase/client");
 
-      const resCand = await fetch("/api/candidates");
-      const dataCand = await resCand.json();
-      setCandidates(dataCand);
+      const resProjects = await fetch("/api/projects").catch(() => null as any);
+      if (resProjects && resProjects.ok) {
+        setProjects(await resProjects.json());
+      } else {
+        // Supabase fallback: projects for this employer (by public_id)
+        let pq = supabase.from("projects").select("*, companies(name, slug)");
+        if (employerId) {
+          const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
+          if (emp?.id) pq = supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
+        }
+        const { data: projRows } = await pq;
+        setProjects(
+          (projRows || []).map((p: any) => ({
+            id: p.id,
+            companyName: p.companies?.name || "",
+            companySlug: p.companies?.slug || undefined,
+            employerId: p.employer_id,
+            roleName: p.role_name,
+            salaryTerms: p.salary_terms || undefined,
+            scheduleTerms: p.schedule_terms || undefined,
+            motivationText: p.motivation_text || undefined,
+            customWiki: p.custom_wiki || undefined,
+            checklistQuestions: [],
+            roleplayQuestions: [],
+            logoUrl: p.logo_url || undefined,
+            slug: p.slug,
+          })) as any,
+        );
+      }
+
+      const resCand = await fetch("/api/candidates").catch(() => null as any);
+      if (resCand && resCand.ok) {
+        setCandidates(await resCand.json());
+      } else {
+        // Supabase fallback: candidates linked to this employer's projects
+        let cq = supabase.from("candidates").select("*, projects(role_name, company_id, companies(name, slug))");
+        if (employerId) {
+          const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
+          if (emp?.id) {
+            const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
+            const ids = (projIds || []).map((p) => p.id);
+            cq = ids.length
+              ? supabase.from("candidates").select("*, projects(role_name, company_id, companies(name, slug))").in("project_id", ids)
+              : supabase.from("candidates").select("*").limit(0);
+          }
+        }
+        const { data: candRows } = await cq;
+        setCandidates(
+          (candRows || []).map((c: any) => ({
+            id: `candidate${c.public_id}`,
+            publicId: c.public_id,
+            name: c.resume_name || `Кандидат #${c.public_id}`,
+            email: "",
+            projectId: c.project_id,
+            roleName: c.role_name || c.projects?.role_name || "",
+            currentStage: c.current_stage,
+            createdAt: c.created_at,
+            registeredVia: c.registered_via,
+          })) as any,
+        );
+      }
 
       // Load TG logs from server
-      const resTgLogs = await fetch("/api/telegram-logs");
-      const dataTgLogs = await resTgLogs.json();
-      setTgMsgLog(dataTgLogs);
+      const resTgLogs = await fetch("/api/telegram-logs").catch(() => null as any);
+      if (resTgLogs && resTgLogs.ok) setTgMsgLog(await resTgLogs.json());
 
       // Check Gemini availability
-      const resAiStatus = await fetch("/api/ai-status");
-      const dataAi = await resAiStatus.json();
-      setAiStatus(dataAi);
+      const resAiStatus = await fetch("/api/ai-status").catch(() => null as any);
+      if (resAiStatus && resAiStatus.ok) setAiStatus(await resAiStatus.json());
 
       // Fetch dynamic full-stack billing profile
       await fetchEmployerData();
       await fetchCompanies();
 
       // Mirror transactions from backend to payments listing
-      const resPayments = await fetch("/api/admin/payments");
-      if (resPayments.ok) {
+      const resPayments = await fetch("/api/admin/payments").catch(() => null as any);
+      if (resPayments && resPayments.ok) {
         const paymentsData = await resPayments.json();
         const mappedHistory = paymentsData
           .filter((p: any) => p.companyName.includes(employerId) || p.companyName.includes(profileEmail))
