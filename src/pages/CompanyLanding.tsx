@@ -8,6 +8,8 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
+import { supabase } from "@/integrations/supabase/client";
+import { buildCandidateUrl } from "@/lib/links";
 import {
   Briefcase,
   DollarSign,
@@ -44,9 +46,9 @@ import {
 export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
   
-  // Parse companySlug and vacancyId from path segments
+  // Parse companySlug and vacancyId from path segments. Empty when route is "/".
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "ooo-roborekrut-inzhiniring";
+  const companySlug = segments[0] || "";
   const vacancyId = segments[1] || "";
   const subTab = segments[2] || "company";
 
