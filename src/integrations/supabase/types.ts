@@ -196,6 +196,13 @@ export type Database = {
             referencedRelation: "project_questions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "candidate_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "public_project_questions"
+            referencedColumns: ["id"]
+          },
         ]
       }
       candidate_scores: {
@@ -1448,7 +1455,73 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_project_questions: {
+        Row: {
+          category: Database["public"]["Enums"]["question_category"] | null
+          created_at: string | null
+          id: string | null
+          material_content: string | null
+          material_title: string | null
+          options: Json | null
+          order_index: number | null
+          project_id: string | null
+          question: string | null
+          type: Database["public"]["Enums"]["quiz_type"] | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["question_category"] | null
+          created_at?: string | null
+          id?: string | null
+          material_content?: string | null
+          material_title?: string | null
+          options?: Json | null
+          order_index?: number | null
+          project_id?: string | null
+          question?: string | null
+          type?: Database["public"]["Enums"]["quiz_type"] | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["question_category"] | null
+          created_at?: string | null
+          id?: string | null
+          material_content?: string | null
+          material_title?: string | null
+          options?: Json | null
+          order_index?: number | null
+          project_id?: string | null
+          question?: string | null
+          type?: Database["public"]["Enums"]["quiz_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_training_quizzes: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          lesson_id: string | null
+          options: Json | null
+          order_index: number | null
+          question: string | null
+          type: Database["public"]["Enums"]["quiz_type"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quizzes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "training_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       apply_transaction: {
@@ -1487,6 +1560,13 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      referral_lookup: {
+        Args: { _code: string }
+        Returns: {
+          owner_user_id: string
+          ref_code: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
