@@ -77,14 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "RR Робот Рекрут" },
+      { name: "description", content: "Интеллектуальная RPA платформа, которая мгновенно подключает кандидатов, презентует условия вашей компании, проводит жесткое интервью и обучение продукту" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "RR Робот Рекрут" },
+      { property: "og:description", content: "Интеллектуальная RPA платформа, которая мгновенно подключает кандидатов, презентует условия вашей компании, проводит жесткое интервью и обучение продукту" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "RR Робот Рекрут" },
+      { name: "twitter:description", content: "Интеллектуальная RPA платформа, которая мгновенно подключает кандидатов, презентует условия вашей компании, проводит жесткое интервью и обучение продукту" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/aX88dl6bEqfCW63dJmKZjeZRxzw2/social-images/social-1780489235431-photo_2026-06-03_13-07-15.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/aX88dl6bEqfCW63dJmKZjeZRxzw2/social-images/social-1780489235431-photo_2026-06-03_13-07-15.webp" },
     ],
     links: [
       {
