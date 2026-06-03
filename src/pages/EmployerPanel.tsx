@@ -1957,7 +1957,7 @@ export default function EmployerPanel() {
                             href={`/${proj.companySlug || "company-portal"}/${proj.id}`} 
                             className="cursor-pointer text-sky-300 font-mono text-[10.5px] hover:underline hover:text-sky-450 block truncate"
                           >
-                            https://hr-rr.ru/{proj.companySlug || "company-portal"}/{proj.id}
+                            https://hr-rr.online/{proj.companySlug || "company-portal"}/{proj.id}
                           </a>
                         </div>
                       </div>
@@ -2463,7 +2463,7 @@ export default function EmployerPanel() {
                       <div className="bg-black/20 border border-white/5 p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                         <div className="space-y-0.5">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">ИИ-Лендинг Компании для Кандидатов</span>
-                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.ru/{comp.slug}</span>
+                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/{comp.slug}</span>
                         </div>
                         <button
                           onClick={() => navigate(`/${comp.slug}`)}
@@ -2807,13 +2807,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.ru?ref=${employerId}`}
+                        value={`https://hr-rr.online?ref=${employerId}`}
                         className="bg-black/30 w-full select-all font-mono font-normal text-slate-300 text-[11px] border border-white/5 p-1.5 rounded"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.ru?ref=${employerId}`);
+                          navigator.clipboard.writeText(`https://hr-rr.online?ref=${employerId}`);
                           addAuditEvent("success", "Ссылка скопирована", "Официальная ссылка скопирована в буфер обмена.");
                           alert("Официальная ссылка скопирована!");
                         }}
@@ -3196,13 +3196,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.ru?ref=${employerId}`}
+                        value={`https://hr-rr.online?ref=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.ru?ref=${employerId}`);
+                          navigator.clipboard.writeText(`https://hr-rr.online?ref=${employerId}`);
                           addAuditEvent("success", "Реф-ссылка скопирована", "Основная реферальная ссылка скопирована в буфер обмена.");
                           alert("Официальная реферальная ссылка скопирована!");
                         }}
