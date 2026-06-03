@@ -14,6 +14,190 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidate_answers: {
+        Row: {
+          answer_text: string | null
+          candidate_id: string
+          created_at: string
+          feedback: string | null
+          id: string
+          is_correct: boolean | null
+          question_id: string
+          score: number | null
+        }
+        Insert: {
+          answer_text?: string | null
+          candidate_id: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          is_correct?: boolean | null
+          question_id: string
+          score?: number | null
+        }
+        Update: {
+          answer_text?: string | null
+          candidate_id?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          is_correct?: boolean | null
+          question_id?: string
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_answers_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "project_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_scores: {
+        Row: {
+          assessment_summary: string | null
+          candidate_id: string
+          checklist_points: number | null
+          checklist_score: number | null
+          checklist_sys_score: number | null
+          interview_score: number | null
+          overall_score: number | null
+          resume_score: number | null
+          roleplay_points: number | null
+          situations_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          assessment_summary?: string | null
+          candidate_id: string
+          checklist_points?: number | null
+          checklist_score?: number | null
+          checklist_sys_score?: number | null
+          interview_score?: number | null
+          overall_score?: number | null
+          resume_score?: number | null
+          roleplay_points?: number | null
+          situations_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          assessment_summary?: string | null
+          candidate_id?: string
+          checklist_points?: number | null
+          checklist_score?: number | null
+          checklist_sys_score?: number | null
+          interview_score?: number | null
+          overall_score?: number | null
+          resume_score?: number | null
+          roleplay_points?: number | null
+          situations_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_scores_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_stages_history: {
+        Row: {
+          candidate_id: string
+          changed_by: string | null
+          created_at: string
+          from_stage: Database["public"]["Enums"]["candidate_stage"] | null
+          id: string
+          note: string | null
+          to_stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Insert: {
+          candidate_id: string
+          changed_by?: string | null
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["candidate_stage"] | null
+          id?: string
+          note?: string | null
+          to_stage: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Update: {
+          candidate_id?: string
+          changed_by?: string | null
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["candidate_stage"] | null
+          id?: string
+          note?: string | null
+          to_stage?: Database["public"]["Enums"]["candidate_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_stages_history_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_training_progress: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          is_completed: boolean
+          lesson_id: string
+          quiz_feedback: string | null
+          score: number | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          is_completed?: boolean
+          lesson_id: string
+          quiz_feedback?: string | null
+          score?: number | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          is_completed?: boolean
+          lesson_id?: string
+          quiz_feedback?: string | null
+          score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_training_progress_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_training_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "training_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           created_at: string
@@ -66,6 +250,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certifications: {
+        Row: {
+          candidate_id: string
+          certificate_url: string | null
+          id: string
+          issued_at: string
+          meta: Json | null
+          project_id: string | null
+        }
+        Insert: {
+          candidate_id: string
+          certificate_url?: string | null
+          id?: string
+          issued_at?: string
+          meta?: Json | null
+          project_id?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          certificate_url?: string | null
+          id?: string
+          issued_at?: string
+          meta?: Json | null
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certifications_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certifications_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -179,6 +405,89 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      interview_messages: {
+        Row: {
+          created_at: string
+          id: string
+          interview_id: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interview_id: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interview_id?: string
+          sender?: Database["public"]["Enums"]["message_sender"]
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_messages_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interviews: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          finished_at: string | null
+          id: string
+          project_id: string | null
+          started_at: string
+          status: string
+          transcript_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          project_id?: string | null
+          started_at?: string
+          status?: string
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          finished_at?: string | null
+          id?: string
+          project_id?: string | null
+          started_at?: string
+          status?: string
+          transcript_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -700,6 +1009,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
