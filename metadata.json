@@ -1,0 +1,6 @@
+{
+  "name": "RR",
+  "description": "Робот Рекрутер (Robot Recruiter) - ИИ платформа для автоматического найма, проведения кейс-интервью и индивидуального обучения сотрудников.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
