@@ -100,7 +100,8 @@ Deno.serve(async (req) => {
   }
 
   const redirectBase = String(st.redirect_to || "https://hr-rr.online").replace(/\/+$/, "");
-  const redirectUri = `${redirectBase}/auth/telegram/callback`;
+  // Must match the redirect_uri used in /auth (whitelisted in BotFather).
+  const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
 
   // Exchange code for id_token
   let tokenJson: any;
