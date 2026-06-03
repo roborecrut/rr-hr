@@ -228,6 +228,38 @@ export type Database = {
         }
         Relationships: []
       }
+      project_checklist_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number
+          project_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          project_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          project_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_checklist_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_landings: {
         Row: {
           created_at: string
@@ -265,6 +297,91 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_landings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_questions: {
+        Row: {
+          category: Database["public"]["Enums"]["question_category"]
+          correct_answer: string | null
+          created_at: string
+          explanation: string | null
+          id: string
+          material_content: string | null
+          material_title: string | null
+          options: Json
+          order_index: number
+          project_id: string
+          question: string
+          type: Database["public"]["Enums"]["quiz_type"]
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["question_category"]
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          material_content?: string | null
+          material_title?: string | null
+          options?: Json
+          order_index?: number
+          project_id: string
+          question: string
+          type?: Database["public"]["Enums"]["quiz_type"]
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["question_category"]
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          material_content?: string | null
+          material_title?: string | null
+          options?: Json
+          order_index?: number
+          project_id?: string
+          question?: string
+          type?: Database["public"]["Enums"]["quiz_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_roleplay_items: {
+        Row: {
+          created_at: string
+          id: string
+          order_index: number
+          project_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          project_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_index?: number
+          project_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_roleplay_items_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -443,6 +560,120 @@ export type Database = {
         }
         Relationships: []
       }
+      training_blocks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          project_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          project_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          project_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_blocks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_lessons: {
+        Row: {
+          block_id: string
+          content: string | null
+          created_at: string
+          id: string
+          order_index: number
+          title: string
+        }
+        Insert: {
+          block_id: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          title: string
+        }
+        Update: {
+          block_id?: string
+          content?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_lessons_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_quizzes: {
+        Row: {
+          correct_answer: string | null
+          created_at: string
+          explanation: string | null
+          id: string
+          lesson_id: string
+          options: Json
+          order_index: number
+          question: string
+          type: Database["public"]["Enums"]["quiz_type"]
+        }
+        Insert: {
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          lesson_id: string
+          options?: Json
+          order_index?: number
+          question: string
+          type?: Database["public"]["Enums"]["quiz_type"]
+        }
+        Update: {
+          correct_answer?: string | null
+          created_at?: string
+          explanation?: string | null
+          id?: string
+          lesson_id?: string
+          options?: Json
+          order_index?: number
+          question?: string
+          type?: Database["public"]["Enums"]["quiz_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_quizzes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "training_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -476,6 +707,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_project_owner: { Args: { _project: string }; Returns: boolean }
+      is_project_published: { Args: { _project: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
