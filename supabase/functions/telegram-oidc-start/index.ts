@@ -30,7 +30,9 @@ Deno.serve(async (req) => {
   const ref = (body.ref || "").trim() || null;
   const origin = (body.origin || "").replace(/\/+$/, "") || "https://hr-rr.online";
   const redirectTo = (body.redirect_to || origin).replace(/\/+$/, "");
-  const redirectUri = `${origin}/auth/telegram/callback`;
+  // Telegram OIDC redirect_uri must EXACTLY match what is whitelisted in BotFather.
+  // We keep one URL across all client origins by pointing it at the edge function.
+  const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
 
   // Generate state + PKCE verifier
   const stateBytes = new Uint8Array(32);
