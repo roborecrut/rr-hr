@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "./RouterContext";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
@@ -30,44 +30,6 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [authVia, setAuthVia] = useState<"telegram" | "google" | null>(null);
-  const [botUsername, setBotUsername] = useState<string>("");
-  const tgContainerRef = useRef<HTMLDivElement>(null);
-
-  // Fetch bot username + expose global callback for Telegram widget
-  useEffect(() => {
-    if (!isOpen) return;
-    let cancelled = false;
-    fetch(`${FN_URL}/telegram-config`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled) setBotUsername(String(d.username || "").replace(/^@+/, "").trim());
-      })
-      .catch(() => {});
-
-    (window as any).__rrTgAuth = (payload: Record<string, unknown>) => {
-      handleTelegram(payload).catch((e) => setErrorText(e?.message || "Ошибка Telegram"));
-    };
-    return () => {
-      cancelled = true;
-      delete (window as any).__rrTgAuth;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
-
-  // Inject Telegram widget script once bot username is known
-  useEffect(() => {
-    if (!isOpen || !botUsername || !tgContainerRef.current) return;
-    tgContainerRef.current.innerHTML = "";
-    const s = document.createElement("script");
-    s.src = "https://telegram.org/js/telegram-widget.js?22";
-    s.async = true;
-    s.setAttribute("data-telegram-login", botUsername);
-    s.setAttribute("data-size", "large");
-    s.setAttribute("data-radius", "12");
-    s.setAttribute("data-request-access", "write");
-    s.setAttribute("data-onauth", "__rrTgAuth(user)");
-    tgContainerRef.current.appendChild(s);
-  }, [isOpen, botUsername]);
 
   if (!isOpen) return null;
 
@@ -86,25 +48,26 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
     }, 600);
   };
 
-  const handleTelegram = async (tgPayload: Record<string, unknown>) => {
+  const handleTelegram = async () => {
     setErrorText(""); setIsLoading(true); setAuthVia("telegram");
     try {
-      const res = await fetch(`${FN_URL}/telegram-auth`, {
+      const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...tgPayload, intent, ref: query.ref || "" }),
+        body: JSON.stringify({
+          intent,
+          ref: query.ref || "",
+          origin: window.location.origin,
+          redirect_to: window.location.origin,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось войти через Telegram");
-      const { error } = await supabase.auth.verifyOtp({
-        type: "magiclink",
-        token_hash: data.token_hash,
-      });
-      if (error) throw error;
-      await onSuccessRedirect();
+      if (!res.ok || !data.url) throw new Error(data.error || "Не удалось начать вход через Telegram");
+      window.location.href = data.url;
     } catch (e: any) {
       setErrorText(e.message || "Ошибка Telegram авторизации");
-    } finally { setIsLoading(false); }
+      setIsLoading(false);
+    }
   };
 
   const handleGoogle = async () => {
@@ -176,28 +139,28 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
 
         {/* 1-Click Action Buttons Container */}
         <div className="space-y-4 pt-2">
-          {/* Telegram Login Widget */}
-          <div className="w-full bg-gradient-to-r from-amber-400/10 to-[#E7C768]/10 border border-[#E7C768]/30 rounded-2xl p-4 flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="bg-[#E7C768]/20 p-2 rounded-xl">
-                  <Send className="w-5 h-5 text-[#E7C768]" />
-                </div>
-                <div className="text-left">
-                  <div className="text-xs uppercase tracking-wider font-mono opacity-80">Быстрый вход</div>
-                  <div className="text-sm font-extrabold">Через Telegram</div>
+          {/* Telegram OIDC Login Button */}
+          <button
+            type="button"
+            disabled={isLoading}
+            onClick={handleTelegram}
+            className="w-full bg-gradient-to-r from-amber-400/15 to-[#E7C768]/15 hover:from-amber-400/25 hover:to-[#E7C768]/25 border border-[#E7C768]/40 disabled:opacity-60 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-between gap-3 transition-all duration-150 shadow-lg transform active:scale-98 cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-[#E7C768]/20 p-2 rounded-xl">
+                <Send className="w-5 h-5 text-[#E7C768]" />
+              </div>
+              <div className="text-left">
+                <div className="text-xs uppercase tracking-wider font-mono opacity-80">Быстрый вход</div>
+                <div className="text-sm font-extrabold">
+                  {isLoading && authVia === "telegram" ? "Перенаправляем в Telegram…" : "Войти через Telegram"}
                 </div>
               </div>
-              <span className="bg-emerald-900 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                +1,000 RR
-              </span>
             </div>
-            <div ref={tgContainerRef} className="flex justify-center min-h-[44px]">
-              {!botUsername && (
-                <span className="text-[11px] text-slate-400">Загрузка виджета…</span>
-              )}
-            </div>
-          </div>
+            <span className="bg-emerald-900 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+              +1,000 RR
+            </span>
+          </button>
 
           {/* Google Login Button */}
           <button

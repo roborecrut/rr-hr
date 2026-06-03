@@ -740,6 +740,36 @@ export type Database = {
           },
         ]
       }
+      oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          intent: string
+          provider: string
+          redirect_to: string | null
+          ref: string | null
+          state: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          intent: string
+          provider?: string
+          redirect_to?: string | null
+          ref?: string | null
+          state: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          intent?: string
+          provider?: string
+          redirect_to?: string | null
+          ref?: string | null
+          state?: string
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
