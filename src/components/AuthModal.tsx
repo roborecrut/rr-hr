@@ -69,6 +69,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   if (!isOpen) return null;
 
+  const resolveProfilePath = async (): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return "/";
+    const { data: emp } = await supabase
+      .from("employers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (emp?.id) return `/employer${emp.id}/profile`;
+    const { data: cand } = await supabase
+      .from("candidates")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (cand?.id) return `/candidate${cand.id}/profile`;
+    return "/employer/profile";
+  };
+
   const onSuccessRedirect = async () => {
     setIsSuccess(true);
     setTimeout(async () => {
