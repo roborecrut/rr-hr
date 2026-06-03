@@ -18,11 +18,12 @@ import {
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  intent?: "employer" | "candidate";
 }
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, intent = "employer" }: AuthModalProps) {
   const { navigate, query } = useRouter();
 
   const [errorText, setErrorText] = useState("");
@@ -91,7 +92,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const res = await fetch(`${FN_URL}/telegram-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...tgPayload, intent: "employer", ref: query.ref || "" }),
+        body: JSON.stringify({ ...tgPayload, intent, ref: query.ref || "" }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Не удалось войти через Telegram");
@@ -112,8 +113,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/employer/profile`,
-          queryParams: { intent: "employer" },
+          redirectTo: `${window.location.origin}${intent === "employer" ? "/employer/profile" : "/main"}`,
+          queryParams: { intent },
         },
       });
       if (error) throw error;
@@ -140,7 +141,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         <div className="text-center flex flex-col items-center gap-2 pb-2 border-b border-white/10">
           <Mascot state="greeting" size="md" />
           <h2 className="text-xl md:text-2xl font-black text-[#E7C768] tracking-tight">
-            Личный Кабинет Работодателя
+            {intent === "employer" ? "Личный Кабинет Работодателя" : "Вход для кандидата"}
           </h2>
           <p className="text-xs text-slate-300">
             ИИ подбор персонала, запуск авто-собеседований и интерактивного обучения

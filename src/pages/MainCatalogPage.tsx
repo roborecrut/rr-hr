@@ -434,7 +434,7 @@ export default function MainCatalogPage() {
           </div>
         </div>
       </footer>
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} intent="candidate" />
     </div>
   );
 }

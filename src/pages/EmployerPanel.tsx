@@ -3555,13 +3555,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.ru/auth?ref=${employerId}`}
+                        value={`https://hr-rr.online/auth?ref=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.ru/auth?ref=${employerId}`);
+                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=${employerId}`);
                           addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
                           alert("Веб-реф-ссылка скопирована!");
                         }}
