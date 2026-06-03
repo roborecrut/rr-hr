@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.telegram-request-contact]
 verify_jwt = false
+
+[functions.telegram-oidc-start]
+verify_jwt = false
+
+[functions.telegram-oidc-callback]
+verify_jwt = false
