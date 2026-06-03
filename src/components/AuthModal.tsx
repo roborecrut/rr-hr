@@ -37,7 +37,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     let cancelled = false;
     fetch(`${FN_URL}/telegram-config`)
       .then((r) => r.json())
-      .then((d) => { if (!cancelled) setBotUsername(d.username || ""); })
+      .then((d) => {
+        if (!cancelled) setBotUsername(String(d.username || "").replace(/^@+/, "").trim());
+      })
       .catch(() => {});
 
     (window as any).__rrTgAuth = (payload: Record<string, unknown>) => {
@@ -67,21 +69,31 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   if (!isOpen) return null;
 
+  const resolveProfilePath = async (): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return "/";
+    const { data: emp } = await supabase
+      .from("employers")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (emp?.id) return `/employer${emp.id}/profile`;
+    const { data: cand } = await supabase
+      .from("candidates")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (cand?.id) return `/candidate${cand.id}/profile`;
+    return "/employer/profile";
+  };
+
   const onSuccessRedirect = async () => {
     setIsSuccess(true);
-    // Wait briefly for the session, then resolve employer id and route
     setTimeout(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { onClose(); navigate("/"); return; }
-      const { data: emp } = await supabase
-        .from("employers")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      const target = await resolveProfilePath();
       onClose();
-      if (emp?.id) navigate(`/employer${emp.id}/profile`);
-      else navigate("/employer/profile");
-    }, 800);
+      navigate(target);
+    }, 600);
   };
 
   const handleTelegram = async (tgPayload: Record<string, unknown>) => {
