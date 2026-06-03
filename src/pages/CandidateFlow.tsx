@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
+import ReferredByCard from "../components/ReferredByCard";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
@@ -1505,6 +1506,8 @@ export default function CandidateFlow() {
                 {editingProfile ? "Отмена редактирования" : "📝 Редактировать профиль"}
               </button>
             </div>
+
+            <ReferredByCard />
 
             {saveProfileMsg && (
               <div className="p-3 bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 text-xs font-bold rounded-xl text-left">

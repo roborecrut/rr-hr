@@ -7,6 +7,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import ReferralsList from "../components/ReferralsList";
+import ReferredByCard from "../components/ReferredByCard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import {
   Users,
@@ -3573,6 +3575,10 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
+
+              {/* Referrals list + Referred-by */}
+              <ReferredByCard />
+              <ReferralsList publicId={employerId} />
 
               {/* Onboarding Next Step CTA */}
               <div className="bg-[#1E4468]/60 border border-[#E7C768]/30 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
