@@ -1,136 +1,92 @@
-## Цель
+## Проблема
 
-Спроектировать полную базу данных в Supabase для HR-платформы RR (работодатели, кандидаты, вакансии, лендинги, ИИ-интервью, обучение, оплаты, Telegram/Google auth) и набор Edge Functions взамен текущих заглушек `/api/*`. Регистрация — через Google OAuth (встроено в Supabase) и через Telegram Login Widget / Telegram Mini App.
+В коде зашиты заглушки: `emp-demo`, `ooo-roborekrut-inzhiniring`, `sales-prod-1`, `cand-1`, `693126`. Они используются как fallback в URL и в `/api/*`-фетчах. При этом БД пуста (employers, candidates, companies, projects — 0 строк), а старые `/api/*` эндпоинты не существуют — реально доступны только Supabase-таблицы + edge functions.
 
-## Аудит кода (что используется в `/api/*`)
+Цель: построить ссылки из реальных данных БД, засеять рабочий демо-набор и дать вам админский доступ к редактированию.
 
-Из обхода `src/`:
+## Схема URL → источник в БД
 
-- Сущности: employers, candidates, projects (вакансии), companies, payments, telegram-logs, ai-status, questions (5 категорий), training blocks.
-- Эндпоинты: `/api/employers`, `/api/employers/:id`, `/api/employers/:id/purchase`, `/api/employers/:id/topup`, `/api/candidates`, `/api/candidates/:id`, `/api/projects`, `/api/projects/:id`, `/api/companies`, `/api/telegram-logs`, `/api/telegram-mock-send`, `/api/ai-status`, `/api/admin/payments`, `/api/admin/candidates/:id`, `/api/admin/...`, `/api/get-questions`, `/api/evaluate-resume`, `/api/evaluate-checklist`, `/api/evaluate-situations`, `/api/evaluate-training-block`, `/api/enhance-single-field`, `/api/enhance-all-fields`, `/api/enhance-all-vacancy-fields`, `/api/parse-company-file`, `/api/parse-vacancy-file`, `/api/parse-training-file`, `/api/generate-project-onboarding`, `/api/employer-assist`, `/api/candidate-assist`, `/api/vacancy-consultant-chat`.
-- Типы из `src/types.ts`: `Candidate`, `JobProject`, `TrainingBlock/Lesson/Quiz`, `CandidateScores`.
+| Сегмент | Что значит | Источник |
+|---|---|---|
+| `/{companySlug}` | страница компании | `companies.slug` |
+| `/{companySlug}/{projectSlug}` | страница вакансии | `projects.slug` (внутри `companies`) |
+| `/{companySlug}/{projectSlug}/{candPublicId}/{tab}` | кабинет кандидата | `candidates.public_id` |
+| `/employer{employerPublicId}/{tab}` | кабинет работодателя | `employers.public_id` |
+| `/candidate{candPublicId}/{...}` | альт. кабинет кандидата | `candidates.public_id` |
 
-## Схема БД (30 таблиц)
+В БД таблицы `companies` и `projects` уже имеют поле `slug`. У `employers` и `candidates` нужен короткий публичный ID — добавим колонку `public_id`.
 
-### Auth / профили (универсально для двух ролей)
+## Шаги
 
-1. `app_role` enum: `admin | employer | candidate`.
-2. `user_roles(user_id, role)` — отдельная таблица ролей + `has_role()` SECURITY DEFINER (по нашему стандарту, во избежание privilege escalation).
-3. `profiles` — общая базовая инфа на `auth.users.id`: `display_name, avatar_url, locale, registered_via (google|telegram|email), telegram_id, telegram_username, google_email, created_at`. Заполняется триггером `on_auth_user_created`.
-4. `telegram_links` — связь `auth.users.id` ↔ `telegram_id`, хеш проверки подписи, `auth_date`. Используется и виджетом, и Mini App `initData`.
-5. `employers` — рабочий профиль работодателя: `user_id (FK auth.users unique), company_name, contact_name, contact_email, contact_tg, ref_by, balance_rr (numeric default 0), bonus_granted bool, plan, status`.
-6. `candidates` — рабочий профиль кандидата: `user_id, project_id (FK), landing_slug, ref_source, current_stage enum(terms|interview|scoring|training|certified), resume_name, resume_text, created_at, registered_via`.
+### 1. Миграция БД
 
-### Компании, вакансии, лендинги
+- Добавить `employers.public_id TEXT UNIQUE` (формат `emp-xxxx`, генерится триггером из `lower(left(company_name)) + nanoid(4)` либо `emp` + 6 hex, если пусто).
+- Добавить `candidates.public_id TEXT UNIQUE` (6-значное число, генерится триггером).
+- Триггер автозаполнения `slug` для `companies` и `projects` при insert/update, если пусто (транслит RU→LAT + `-` + индекс при коллизии).
+- Хелперы: `public.slugify_ru(text)` (immutable), `public.gen_employer_public_id()`, `public.gen_candidate_public_id()`.
+- Backfill: проставить `public_id`/`slug` существующим (пока пустым) строкам.
+- В `user_roles` добавить роль `admin` для второго email/tg (см. вопрос ниже).
 
-7. `companies` — `owner_employer_id, name, slug unique, logo_url, mission_text, about_text, stats_jsonb, system_text, team_text, payouts_text, schedule_text`.
-8. `company_pages` — кастомные суб-страницы лендинга по компании (about/team/payouts/system) с rich-контентом.
-9. `projects` (вакансии) — все поля из `JobProject`: `company_id, employer_id, role_name, salary_terms, schedule_terms, motivation_text, custom_wiki, vacancy_text, onboarding_text, mission_text, stats_*, training_*_text, tasks_activity_text, cabinet_tabs_text, logo_url, is_published bool, slug`.
-10. `project_landings` — отдельные публичные лендинги вакансии: `project_id, slug, theme, hero_jsonb, sections_jsonb, published_at` (для `/job` и `/company/:slug`).
-11. `project_questions` — `project_id, category enum(checklist_prof|checklist_sys|train_prof|train_product|train_sys|roleplay), order_index, question_jsonb (TrainingQuiz)`. Заменяет 5 массивов в JobProject.
-12. `project_checklist_items`, `project_roleplay_items` — упорядоченные текстовые списки.
+### 2. Сидинг демо-данных (через insert-tool)
 
-### Воронка кандидата / интервью
+Сначала создать auth-пользователей для демо невозможно из insert-tool, поэтому демо-employer и демо-candidate привязываем к `user_id = NULL` (поле уже не required в большинстве таблиц — уточню перед миграцией) либо к моему `auth.uid()` при первом входе. План:
 
-13. `candidate_stages_history` — лог переходов по этапам (для CRM канбана и аналитики).
-14. `interviews` — `candidate_id, project_id, started_at, finished_at, transcript_text, status`.
-15. `interview_messages` — диалог кандидата с ИИ-интервьюером (`sender enum(candidate|ai|recruiter), text, ts`).
-16. `candidate_answers` — ответы по `project_questions` (`question_id, answer_text, is_correct, score, feedback`). Покрывает чек-лист и сюжетные ситуации.
-17. `candidate_scores` — итоги: `interview_score, resume_score, checklist_points, roleplay_points, overall_score, checklist_score, checklist_sys_score, situations_score, assessment_summary` (1:1 к кандидату или версионно).
+- `companies`: 1 запись `name='ООО РобоРекрут инжиниринг'`, `slug='ooo-roborekrut-inzhiniring'`, owner = ваш будущий employer.
+- `projects`: 1 запись `slug='sales-prod-1'`, `role_name='Менеджер по продажам'`, `is_published=true`, привязка к компании.
+- `project_questions` / `training_blocks`/`lessons`/`quizzes`: минимальный набор для воронки.
+- `candidates`: 1 запись `public_id='693126'`, привязка к проекту, `current_stage='terms'`.
+- `employers`: 1 запись `public_id='emp-demo'`, привязка к компании.
 
-### Обучение
+Если `user_id NOT NULL` — добавлю в миграцию `user_id` nullable для демо-строк и RLS-политику «admin видит/правит всё» (через `has_role(uid,'admin')`), чтобы вы могли работать с демо до полноценной регистрации.
 
-18. `training_blocks` — `project_id, title, description, order_index` (Профобучение / Продукт / Процессы-мотивация).
-19. `training_lessons` — `block_id, title, content, order_index`.
-20. `training_quizzes` — `lesson_id, type (select|text), question, options_jsonb, correct_answer, explanation`.
-21. `candidate_training_progress` — `candidate_id, lesson_id, is_completed, score, quiz_feedback, finished_at`.
-22. `certifications` — выдача сертификатов по завершении.
+### 3. Хелперы ссылок (frontend)
 
-### CRM / коммуникации
+Создать `src/lib/links.ts`:
 
-23. `crm_notes` — заметки рекрутёра по кандидату.
-24. `messages_recruiter` — переписка работодатель↔кандидат (тип `Message` из кода).
-25. `telegram_logs` — `direction (in|out), chat_id, payload_jsonb, sent_by, created_at` (для `/api/telegram-logs` и mock-send).
-26. `ai_runs` — журнал вызовов ИИ (`endpoint, input_jsonb, output_jsonb, tokens, cost_rr, candidate_id, project_id`). Покроет `/api/ai-status` и аналитику.
-27. `assistant_chats` — сохранённые чаты `EmployerAIAssistant` и `candidate-assist` (вместо `localStorage`).
-
-### Финансы
-
-28. `wallets` — баланс RR работодателя (`employer_id, balance_rr, hold_rr`).
-29. `transactions` — все списания/начисления (`wallet_id, type enum(topup|purchase|bonus|refund|ai_cost), amount_rr, ref_table, ref_id, created_at`).
-30. `payments` — внешние оплаты (`employer_id, provider, external_id, amount, currency, status, raw_jsonb`). Для админ-страницы платежей.
-
-### Системные
-
-31. `referrals` — `ref_code, owner_user_id, used_by_user_id, reward_rr`.
-32. `audit_log` — действия админов.
-
-(Получается 32 таблицы — с запасом под "не меньше 25".)
-
-### Связи (ключевые FK)
-
-```text
-auth.users 1─1 profiles
-auth.users 1─1 employers / candidates
-employers 1─N companies 1─N projects 1─N project_landings
-projects  1─N project_questions / training_blocks / project_checklist_items
-training_blocks 1─N training_lessons 1─N training_quizzes
-candidates 1─N interviews 1─N interview_messages
-candidates 1─N candidate_answers ─► project_questions
-candidates 1─1 candidate_scores
-candidates 1─N candidate_training_progress ─► training_lessons
-employers  1─1 wallets 1─N transactions
-employers  1─N payments
+```ts
+buildCompanyUrl(company)            // /{slug}
+buildVacancyUrl(company, project)   // /{slug}/{projectSlug}
+buildCandidateUrl(company, project, cand, tab?, sub?)
+buildEmployerUrl(employer, tab?)
 ```
 
-## Edge Functions (Deno) — заменяют `/api/*`
+Все компоненты ходят только через них — никаких `"ooo-roborekrut-..."`/`"sales-prod-1"`/`"emp-demo"` в коде.
 
-Каждая функция использует `corsHeaders`, `SUPABASE_SERVICE_ROLE_KEY` где нужен сервисный доступ, и `LOVABLE_API_KEY` для AI Gateway (`https://ai.gateway.lovable.dev/v1`) — без отдельного OpenAI ключа.
+### 4. Замена источников данных
 
-1. `telegram-auth` — проверка подписи Telegram Login Widget (HMAC-SHA256 от `BOT_TOKEN`), создаёт/линкует `auth.users` через admin API, возвращает Supabase session. Требует секрет `TELEGRAM_BOT_TOKEN`.
-2. `telegram-miniapp-auth` — проверка `initData` (HMAC от `WebAppData`), та же выдача сессии.
-3. `telegram-webhook` (`verify_jwt=false`) — приём апдейтов от бота, запись в `telegram_logs`, маршрутизация уведомлений кандидатам.
-4. `telegram-send` — отправка сообщений через connector gateway или Bot API (заменяет `telegram-mock-send`).
-5. `employer-assist`, `candidate-assist`, `vacancy-consultant-chat` — чат-ассистенты через Lovable AI Gateway (`google/gemini-2.5-flash`).
-6. `enhance-single-field`, `enhance-all-fields`, `enhance-all-vacancy-fields` — улучшение текста полей (AI).
-7. `parse-company-file`, `parse-vacancy-file`, `parse-training-file` — парсинг загруженных DOCX/PDF (gemini multimodal).
-8. `generate-project-onboarding` — генерация полного контента проекта (онбординг, обучение, чек-листы) по brief + сохранение в `projects` + `project_questions` + `training_*`.
-9. `evaluate-resume`, `evaluate-checklist`, `evaluate-situations`, `evaluate-training-block` — оценка ответов кандидата, запись в `candidate_answers`, `candidate_scores`, `candidate_training_progress`, `ai_runs`.
-10. `get-questions` — выдача вопросов по `project_id + category` (или дефолт по `roleName`).
-11. `wallet-topup`, `wallet-purchase` — операции с балансом RR (атомарно через RPC `apply_transaction`).
-12. `admin-actions` — удаление/правка из админ-панели (`/api/admin/*`), требует `has_role(uid,'admin')`.
-13. `ai-status` — агрегат из `ai_runs` за сутки/неделю.
+- `EmployerPanel`:
+  - Резолв `employerId` так: 1) если в URL есть `/employer{publicId}` — ищем по `employers.public_id`; 2) иначе по `auth.uid()` из supabase-сессии. Никаких `emp-demo` в fallback.
+  - Заменить `fetch('/api/employers/...')`, `/api/companies`, `/api/projects`, `/api/candidates`, `/api/admin/payments`, `/api/telegram-logs`, `/api/ai-status` на прямые SELECT через `supabase.from(...)` с фильтрами по `employer_id`.
+  - Все `navigate(...)` строятся через `buildEmployerUrl(...)` / `buildVacancyUrl(...)`.
 
-## RLS / безопасность
+- `CandidateFlow`:
+  - Парсить URL: `/{companySlug}/{projectSlug}/{candidatePublicId}/...`. Грузить кандидата через `supabase.from('candidates').select(...).eq('public_id', candPublicId)`, проект — по `slug`, компанию — по `slug`.
+  - Fallback на `candidates.public_id` из сессии (если зашёл по `/candidate/...`).
+  - `getDynamicPath()` использует реальные `companySlug`/`projectSlug`, без `"ooo-roborekrut-inzhiniring"`.
 
-- `user_roles` + SECURITY DEFINER `has_role(uid, role)`; роли admin/employer/candidate проверяются в политиках без рекурсии.
-- Employers видят только свои companies/projects/candidates/wallet/transactions.
-- Candidates видят только свой профиль, свои interviews/answers/training_progress; список проектов — публичный SELECT (для лендингов).
-- `project_landings`, `companies (public fields)`, `projects (is_published=true)` — `GRANT SELECT TO anon` для лендингов.
-- Все приватные таблицы — только `authenticated`, политики через `auth.uid()` и `has_role`.
-- В каждой миграции — обязательные `GRANT` (anon/authenticated/service_role) согласно правилам Lovable Cloud.
-- Триггер `handle_new_user`: при создании `auth.users` создаём `profiles` и (если в metadata `intent=employer|candidate`) — соответствующую строку + дефолтную роль; работодателю — `wallets` с бонусом 1000 RR (одноразово, флаг `bonus_granted`).
-- Триггеры `updated_at` на всех таблицах с этим полем.
+- `CompanyLanding` / `JobVacancyLanding`:
+  - Грузить `company by slug`, `project by id|slug` через supabase. Убрать дефолты-заглушки.
 
-## Что меняется в коде фронта
+- `MainCatalogPage`, `LandingPage`, `AuthModal`, `TelegramMiniAppBoot`:
+  - При выборе вакансии/компании строить ссылку через `buildVacancyUrl`/`buildCandidateUrl`, используя `public_id`/`slug` из загруженной строки.
+  - В резолверах после логина (`resolveProfilePath`) брать `employers.public_id` или `candidates.public_id` вместо UUID.
 
-Это план только по БД и Edge Functions — фронт буду адаптировать отдельным шагом (заменю `fetch('/api/...')` на `supabase.functions.invoke(...)` и прямые SELECT через `@/integrations/supabase/client`, `localStorage` для auth заменю на сессии Supabase). Сейчас фронт не трогаю.
+### 5. Админ-доступ из интерфейса Lovable
 
-## Порядок выполнения (после approve)
+- `handle_new_user` уже даёт `admin` для `shishkarnem@gmail.com` и Telegram `169262990`. Добавим в этот же триггер ваш дополнительный аккаунт (нужно подтверждение, какой именно — см. вопрос).
+- RLS-политики на `employers/companies/projects/candidates` и связанные таблицы: добавить `USING (has_role(auth.uid(),'admin'))` для SELECT/UPDATE/DELETE, чтобы из кабинета admin мог открыть и править любую демо-сущность.
+- В UI EmployerPanel: если `has_role(admin)`, разрешить выбирать `employerId` из выпадашки (вместо строгой привязки к своему `auth.uid()`), чтобы открыть `/empemp-demo/...` и редактировать.
 
-1. Миграция 1 — enums, `profiles`, `user_roles`, `has_role`, триггер `handle_new_user`, базовые grants.
-2. Миграция 2 — `employers`, `candidates`, `companies`, `projects`, `project_landings`, связи + RLS.
-3. Миграция 3 — questions/checklist/roleplay + training (blocks/lessons/quizzes) + RLS.
-4. Миграция 4 — interviews, candidate_answers, candidate_scores, training_progress, certifications.
-5. Миграция 5 — wallets, transactions, payments, RPC `apply_transaction`.
-6. Миграция 6 — telegram_links, telegram_logs, ai_runs, assistant_chats, crm_notes, messages_recruiter, referrals, audit_log.
-7. Запрос секрета `TELEGRAM_BOT_TOKEN` (для login widget / mini app / webhook).
-8. Раскладка Edge Functions (по группам, не все сразу).
-9. После каждой миграции — прогон `supabase--linter`, фикс предупреждений.
+### 6. Удаление мусора
 
-## Открытые вопросы
+- Удалить хардкоды `"sales-prod-1"`, `"ooo-roborekrut-inzhiniring"`, `"emp-demo"`, `"cand-1"`, `"693126"` из `.tsx`.
+- Удалить мёртвые `fetch('/api/...')`, заменить на supabase-вызовы или (для AI) `supabase.functions.invoke('ai-*')`.
 
-1. Google OAuth — включить через Supabase Auth Providers (нужно, чтобы вы вставили Client ID/Secret в дашборде Supabase). Подтверждаете?
-2. Telegram бот — у вас уже есть `BOT_TOKEN` от @BotFather, или создать новый? (нужен для login widget + webhook). Username бота тоже нужен для виджета.
-3. Платежи — пока только таблица `payments` + ручной топап. Реальный провайдер (ЮKassa/Stripe/Paddle) подключаем сейчас или позже?
-4. Контент дефолтных вопросов/обучения (когда у проекта пусто) — генерировать ИИ по запросу или засеять seed-набор в БД?
+## Открытый вопрос (1 шт.)
+
+Какой дополнительный аккаунт давать админом для редактирования из интерфейса Lovable? Варианты:
+- (a) только текущие `shishkarnem@gmail.com` + TG `169262990` — ничего не добавляем;
+- (b) добавить ещё один email (укажите);
+- (c) добавить ещё один Telegram ID (укажите).
+
+После ответа выполняю миграцию + сидинг + рефакторинг ссылок.
