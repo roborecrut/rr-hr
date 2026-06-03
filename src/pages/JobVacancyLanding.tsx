@@ -8,6 +8,7 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Briefcase,
   DollarSign,
@@ -47,27 +48,49 @@ export default function JobVacancyLanding() {
   const [candTg, setCandTg] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Selected project ID or fallback
-  const projectId = query.id || "sales-prod-1";
+  // Selected project ID/slug from query (may be empty — then load first published)
+  const projectId = query.id || "";
 
   const fetchProjectDetails = async () => {
     try {
-      const res = await fetch(`/api/projects`);
-      if (res.ok) {
-        const list = await res.json();
-        const found = list.find((p: any) => p.id === projectId) || list[0];
+      // Load the requested project directly from Supabase (by uuid or by slug),
+      // joining its parent company to get the display name & logo.
+      let q = supabase
+        .from("projects")
+        .select("*, companies(name, slug, logo_url)")
+        .eq("is_published", true)
+        .limit(1);
+      if (projectId) {
+        const isUuid = /^[0-9a-f-]{36}$/i.test(projectId);
+        q = isUuid
+          ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", projectId).limit(1)
+          : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", projectId).limit(1);
+      }
+      const { data } = await q;
+      const row: any = data && data[0];
+      if (row) {
+        const found: JobProject = {
+          id: row.id,
+          companyName: row.companies?.name || "",
+          companySlug: row.companies?.slug || undefined,
+          employerId: row.employer_id,
+          roleName: row.role_name,
+          salaryTerms: row.salary_terms || undefined,
+          scheduleTerms: row.schedule_terms || undefined,
+          motivationText: row.motivation_text || undefined,
+          customWiki: row.custom_wiki || undefined,
+          checklistQuestions: [],
+          roleplayQuestions: [],
+          logoUrl: row.logo_url || row.companies?.logo_url || undefined,
+        };
         setProject(found);
-
-        // Initiate Consultant Bot Welcome message
-        if (found) {
-          setMessages([
-            {
-              sender: "recruiter",
-              text: `Привет! Я — твой интерактивный карьерный консультант. 🤖 Я досконально знаю всё о вакансии "${found.roleName}" в компании "${found.companyName}". Наша оплата составляет: ${found.salaryTerms || "конкурентные бонусы"}. Спроси меня о графике, задачах или обучении, и я подробно отвечу! Также ты можешь нажать кнопку "Начать Отбор", чтобы сразу пройти мгновенный блиц-тест!`,
-              timestamp: new Date().toLocaleTimeString()
-            }
-          ]);
-        }
+        setMessages([
+          {
+            sender: "recruiter",
+            text: `Привет! Я — твой интерактивный карьерный консультант. 🤖 Я досконально знаю всё о вакансии "${found.roleName}" в компании "${found.companyName}". Наша оплата составляет: ${found.salaryTerms || "конкурентные бонусы"}. Спроси меня о графике, задачах или обучении, и я подробно отвечу! Также ты можешь нажать кнопку "Начать Отбор", чтобы сразу пройти мгновенный блиц-тест!`,
+            timestamp: new Date().toLocaleTimeString(),
+          },
+        ]);
       }
     } catch (err) {
       console.error("Error loading project description:", err);
