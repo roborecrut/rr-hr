@@ -897,8 +897,7 @@ export default function CompanyLanding() {
         </button>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-white/10 py-6 text-center text-xs text-slate-400 mt-8">
+      <footer className="hidden md:block border-t border-white/10 py-6 text-center text-xs text-slate-400 mt-8">
         <div className="max-w-7xl mx-auto px-4">
           © {new Date().getFullYear()} {displayCompany.name} • Создано на платформе Робот Рекрутер RR.
         </div>
