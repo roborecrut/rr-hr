@@ -10,6 +10,35 @@ import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { buildCandidateUrl } from "@/lib/links";
+
+/** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
+function mapDbProjectToUi(company: any) {
+  return (p: any): JobProject => ({
+    id: p.id,
+    companyName: company?.name || "",
+    companySlug: company?.slug || undefined,
+    employerId: p.employer_id,
+    roleName: p.role_name,
+    salaryTerms: p.salary_terms || undefined,
+    scheduleTerms: p.schedule_terms || undefined,
+    motivationText: p.motivation_text || undefined,
+    customWiki: p.custom_wiki || undefined,
+    checklistQuestions: [],
+    roleplayQuestions: [],
+    vacancyText: p.vacancy_text || undefined,
+    motivationTextDetail: p.motivation_text_detail || undefined,
+    companyText: p.company_text || undefined,
+    onboardingText: p.onboarding_text || undefined,
+    payoutsText: p.payouts_text || undefined,
+    scheduleText: p.schedule_text || undefined,
+    teamText: p.team_text || undefined,
+    systemText: p.system_text || undefined,
+    logoUrl: p.logo_url || company?.logo_url || undefined,
+    missionText: p.mission_text || undefined,
+    // expose slug so URL builders can use it
+    ...({ slug: p.slug } as any),
+  });
+}
 import {
   Briefcase,
   DollarSign,
