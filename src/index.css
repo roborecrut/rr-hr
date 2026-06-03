@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-gold-text: #E7C768;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #EFEFEF;
+  color: #1A1A1A;
+}
+
+/* Sophisticated Dark Helper Classes */
+.main-gradient {
+  background: linear-gradient(135deg, #17344F 0%, #265582 100%);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #F4EE8E 0%, #D99E41 100%);
+}
+
+.card-blur {
+  background-color: rgba(30, 68, 104, 0.4);
+  border: 1px solid rgba(219, 219, 219, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+/* Custom Markdown Body Styling for chat messages */
+.markdown-body {
+  font-size: inherit;
+  line-height: 1.5;
+}
+.markdown-body p {
+  margin-bottom: 0.5rem;
+}
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+.markdown-body ul {
+  list-style-type: disc;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.markdown-body ol {
+  list-style-type: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+  font-weight: 700;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #E7C768;
+}
+.markdown-body strong {
+  font-weight: 700;
+}
+.markdown-body code {
+  font-family: monospace;
+  background-color: rgba(255, 255, 255, 0.15);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+

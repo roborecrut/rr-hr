@@ -1,0 +1,38 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Routes, Route } from "react-router-dom";
+import { RouterProvider } from "./components/RouterContext";
+import LandingPage from "./pages/LandingPage";
+import MainCatalogPage from "./pages/MainCatalogPage";
+import EmployerPanel from "./pages/EmployerPanel";
+import CandidateFlow from "./pages/CandidateFlow";
+import AdminPanel from "./pages/AdminPanel";
+import JobVacancyLanding from "./pages/JobVacancyLanding";
+import CompanyLanding from "./pages/CompanyLanding";
+import NotFoundPage from "./pages/NotFoundPage";
+
+export default function App() {
+  return (
+    <RouterProvider>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/main" element={<LandingPage />} />
+        <Route path="/vacancy" element={<MainCatalogPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/job" element={<JobVacancyLanding />} />
+        <Route path="/auth" element={<LandingPage />} />
+        <Route path="/setup" element={<EmployerPanel />} />
+        <Route path="/employer" element={<EmployerPanel />} />
+        <Route path="/employer/*" element={<EmployerPanel />} />
+        <Route path="/candidate" element={<CandidateFlow />} />
+        <Route path="/candidate/*" element={<CandidateFlow />} />
+        <Route path="/company/:slug" element={<CompanyLanding />} />
+        <Route path="/:slug" element={<CompanyLanding />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </RouterProvider>
+  );
+}
