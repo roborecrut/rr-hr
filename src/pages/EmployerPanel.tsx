@@ -3574,6 +3574,10 @@ export default function EmployerPanel() {
                 </div>
               </div>
 
+              {/* Referrals list + Referred-by */}
+              <ReferredByCard />
+              <ReferralsList publicId={employerId} />
+
               {/* Onboarding Next Step CTA */}
               <div className="bg-[#1E4468]/60 border border-[#E7C768]/30 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-left space-y-1">
