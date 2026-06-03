@@ -1130,6 +1130,7 @@ export type Database = {
           created_at: string
           first_name: string | null
           id: string
+          intent: string | null
           last_name: string | null
           photo_url: string | null
           source: string | null
@@ -1142,6 +1143,7 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id?: string
+          intent?: string | null
           last_name?: string | null
           photo_url?: string | null
           source?: string | null
@@ -1154,6 +1156,7 @@ export type Database = {
           created_at?: string
           first_name?: string | null
           id?: string
+          intent?: string | null
           last_name?: string | null
           photo_url?: string | null
           source?: string | null

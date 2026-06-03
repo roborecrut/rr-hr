@@ -52,9 +52,13 @@ Deno.serve(async (req) => {
   };
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const email = `tg_${tgUser.id}@rrhr.local`;
+  const email = `tg_${tgUser.id}_${intent}@rrhr.local`;
 
-  const { data: link } = await admin.from("telegram_links").select("user_id").eq("telegram_id", tgUser.id).maybeSingle();
+  const { data: link } = await admin.from("telegram_links")
+    .select("user_id")
+    .eq("telegram_id", tgUser.id)
+    .eq("intent", intent)
+    .maybeSingle();
   let userId = link?.user_id as string | undefined;
 
   if (!userId) {
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
     await admin.from("telegram_links").insert({
       user_id: userId, telegram_id: tgUser.id,
       telegram_username: tgUser.username, first_name: tgUser.first_name, last_name: tgUser.last_name,
-      photo_url: tgUser.photo_url, auth_date: new Date().toISOString(), source: "miniapp",
+      photo_url: tgUser.photo_url, auth_date: new Date().toISOString(), source: "miniapp", intent,
     });
 
     if (intent === "employer") {

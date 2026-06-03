@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.telegram-miniapp-auth]
 verify_jwt = false
+
+[functions.telegram-config]
+verify_jwt = false
