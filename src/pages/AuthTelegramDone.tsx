@@ -11,25 +11,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import { useRouter } from "@/components/RouterContext";
-
-function safeNextPath(raw: string | null): string | null {
-  if (!raw) return null;
-  let val = raw;
-  // If absolute URL, accept only same-origin and reduce to path+search
-  try {
-    if (/^https?:\/\//i.test(val)) {
-      const u = new URL(val);
-      if (u.origin !== window.location.origin) return null;
-      val = `${u.pathname}${u.search}`;
-    }
-  } catch {
-    return null;
-  }
-  if (!val.startsWith("/") || val.startsWith("//")) return null;
-  // Avoid bouncing back into the OIDC done page
-  if (val.startsWith("/auth/telegram/")) return null;
-  return val;
-}
+import { safeNextPath, chooseCandidateTarget } from "@/lib/telegramRoute";
 
 export default function AuthTelegramDone() {
   const { navigate } = useRouter();
@@ -47,7 +29,7 @@ export default function AuthTelegramDone() {
 
         const tokenHash = params.get("token_hash") || "";
         const intent = (params.get("intent") as "employer" | "candidate") || "candidate";
-        const nextPath = safeNextPath(params.get("next"));
+        const nextPath = safeNextPath(params.get("next"), window.location.origin);
         if (!tokenHash) throw new Error("token_hash отсутствует");
 
         setStatus("Создаём сессию…");
@@ -63,32 +45,34 @@ export default function AuthTelegramDone() {
 
         // Resolve target
         let target = "/main";
+        let reason = "default";
         if (intent === "employer") {
           try {
             target = await resolveProfilePathForUser(user.id);
+            reason = "employer_profile";
           } catch {
             target = "/employer/profile";
+            reason = "employer_fallback";
           }
         } else {
-          // Candidate: how many vacancies (candidate rows) does this user have?
           const { data: rows } = await supabase
             .from("candidates")
             .select("id, public_id")
             .eq("user_id", user.id);
-          const count = rows?.length || 0;
-          if (count >= 2) {
-            const pid = rows?.[0]?.public_id;
-            target = pid ? `/candidate${pid}/profile` : "/main";
-          } else if (nextPath) {
-            target = nextPath;
-          } else {
-            try {
-              target = await resolveProfilePathForUser(user.id);
-            } catch {
-              target = "/main";
-            }
-          }
+          let fallback = "/main";
+          try {
+            fallback = await resolveProfilePathForUser(user.id);
+          } catch { /* keep /main */ }
+          const decision = chooseCandidateTarget({
+            vacancyCount: rows?.length || 0,
+            firstPublicId: rows?.[0]?.public_id ?? null,
+            nextPath,
+            profileFallback: fallback,
+          });
+          target = decision.target;
+          reason = decision.reason;
         }
+        console.log("[auth/telegram/done] route", { intent, nextPath, target, reason });
 
         window.history.replaceState({}, "", window.location.pathname);
         navigate(target);
