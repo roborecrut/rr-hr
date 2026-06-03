@@ -3510,25 +3510,37 @@ export default function EmployerPanel() {
                 </div>
 
                 <p className="text-xs text-slate-200 leading-normal font-normal">
-                  Когда ваши коллеги регистрируют Личный Кабинет через подключение Google или Telegram по любой из реферальных ссылок ниже, вашему кабинету начисляется **1000 RR** для покупки авто-собеседований и ИИ-онбордингов, а ваш друг получает приветственный стартовый бонус **1000 RR**!
+                  Когда ваши коллеги регистрируют Личный Кабинет работодателя через Telegram по реферальной ссылке ниже, вашему кабинету начисляется <strong className="text-emerald-300">1000 RR</strong>, и вашему другу-работодателю также <strong className="text-emerald-300">1000 RR</strong> (поверх стартового бонуса +1000 RR).
                 </p>
+
+                <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono">
+                  <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-3">
+                    <span className="block text-[10px] text-slate-400 uppercase">Приглашено</span>
+                    <strong className="text-emerald-300 text-lg">{referralStats.count}</strong>
+                  </div>
+                  <div className="bg-amber-950/30 border border-amber-500/20 rounded-2xl p-3">
+                    <span className="block text-[10px] text-slate-400 uppercase">Начислено RR</span>
+                    <strong className="text-[#E7C768] text-lg">{referralStats.rr}</strong>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🔗 Официальная реферальная ссылка:</span>
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🔗 Реферальная ссылка Telegram Mini App:</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.online?ref=${employerId}`}
+                        value={`https://t.me/HR_RRbot/app?startapp=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online?ref=${employerId}`);
-                          addAuditEvent("success", "Реф-ссылка скопирована", "Основная реферальная ссылка скопирована в буфер обмена.");
-                          alert("Официальная реферальная ссылка скопирована!");
+                          const url = `https://t.me/HR_RRbot/app?startapp=${employerId}`;
+                          navigator.clipboard.writeText(url);
+                          addAuditEvent("success", "Реф-ссылка скопирована", "Telegram Mini App реф-ссылка скопирована в буфер обмена.");
+                          alert("Telegram реферальная ссылка скопирована!\n\n" + url);
                         }}
                         className="bg-white/10 hover:bg-white/15 text-[#E7C768] px-3.5 py-2.5 border border-white/5 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
                       >
@@ -3538,20 +3550,20 @@ export default function EmployerPanel() {
                   </div>
 
                   <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🚀 Песочница тестирования ссылок (Проверка):</span>
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🌐 Альтернативная веб-ссылка (Login Widget):</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/auth?ref=${employerId}`}
+                        value={`https://hr-rr.ru/auth?ref=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${employerId}`);
-                          addAuditEvent("success", "Sandbox реф-ссылка скопирована", "Тестовая ссылка для проверки в песочнице скопирована.");
-                          alert("Ссылка для тестирования скопирована!");
+                          navigator.clipboard.writeText(`https://hr-rr.ru/auth?ref=${employerId}`);
+                          addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
+                          alert("Веб-реф-ссылка скопирована!");
                         }}
                         className="bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 px-3.5 py-2.5 border border-emerald-500/20 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
                       >
