@@ -478,13 +478,18 @@ export default function EmployerPanel() {
       if (resProjects && resProjects.ok) {
         setProjects(await resProjects.json());
       } else {
-        // Supabase fallback: projects for this employer (by public_id)
-        let pq = supabase.from("projects").select("*, companies(name, slug)");
+      // Supabase fallback: projects for this employer (by public_id)
+        let projRows: any[] = [];
         if (employerId) {
           const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-          if (emp?.id) pq = supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
+          if (emp?.id) {
+            const r = await supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
+            projRows = (r.data as any[]) || [];
+          }
+        } else {
+          const r = await supabase.from("projects").select("*, companies(name, slug)");
+          projRows = (r.data as any[]) || [];
         }
-        const { data: projRows } = await pq;
         setProjects(
           (projRows || []).map((p: any) => ({
             id: p.id,
