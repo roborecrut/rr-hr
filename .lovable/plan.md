@@ -1,54 +1,76 @@
-## Корень проблемы
+## Цель
+Починить вход через Telegram («Bot domain invalid»), добавить реферальную программу со ссылкой `t.me/HR_RRbot/app?startapp={emp_public_id}` (+1000 RR обоим), забирать профильные данные Telegram (ID, имя, фамилия, аватар, @username, телефон) и выводить их в кабинете работодателя.
 
-1. **Роутинг не ловит `/employer{publicId}/profile`**. В `App.tsx` стоит `<Route path="/employer/*">`, который требует слэш после `employer`. Путь `/employeremp-demo/profile` — это один сегмент `employeremp-demo`, он матчится правилом `/:slug` и уходит в `CompanyLanding`, где компании `employeremp-demo` нет → пустая страница. То же самое для `/candidate{publicId}`.
-2. **В БД сидится демо с фиксированным `public_id='emp-demo'` / `'693126'`** — то есть «заглушки» теперь буквально записаны в данные. Надо засеять рабочий демо-набор с авто-сгенерированными `public_id` (триггеры это уже умеют).
-3. **На лендинге торчат три служебные кнопки** (Панель Работодателя, Кабинет Соискателя, Админ), которые были временными.
-4. **Нет режима «войти как кандидат» для админа** — из-за этого нельзя проверить кабинет кандидата.
+---
 
-## План
+## Что вы сделаете руками (один раз)
+В @BotFather:
+1. `/setdomain` → выбрать `@HR_RRbot` → ввести `hr-rr.ru`
+2. (Опционально для тестов в редакторе) повторить и добавить `id-preview--86998fcc-a4e0-4bf6-8ae7-d8b67afa546d.lovable.app`
+3. `/setmenubutton` → `@HR_RRbot` → URL `https://hr-rr.ru` → текст `Открыть RR`
 
-### 1. Лендинг (`src/pages/LandingPage.tsx`)
-- Удалить кнопки `nav_employer`, `nav_candidate`, `nav_admin` и их мобильные аналоги.
-- Оставить навигацию: Главная · Каталог Профессий.
-- Кнопка **«Личный кабинет RR»** (десктоп и мобайл): открывать `AuthModal`, если пользователь не авторизован; если уже залогинен — резолвить профиль через `resolveProfilePathForUser(user.id)` из `src/lib/links.ts` и переходить туда (employer → `buildEmployerUrl`, иначе candidate). Если у текущего юзера нет ни employer, ни candidate — открывать AuthModal с intent=employer.
+Без шага 1 Login Widget на проде работать не будет — это требование Telegram.
 
-### 2. Роутинг (`src/App.tsx`)
-- Добавить отдельные маршруты для слитной формы:
-  ```text
-  /employer:publicId/*   → EmployerPanel
-  /candidate:publicId/*  → CandidateFlow
-  ```
-  React Router v6 поддерживает параметр внутри сегмента (`/employer:publicId`). Параллельно сохранить существующие `/employer`, `/employer/*`, `/candidate`, `/candidate/*` для «без id».
-- В `CompanyLanding` (роут `/:slug`) на всякий случай добавить ранний guard: если `slug` начинается на `employer` или `candidate` и совпадает с `/^(employer|candidate)([A-Za-z0-9_-]+)$/` — `navigate(...)` на правильный путь с `/profile`. Это страхует от любых старых ссылок и от закэшированного localStorage.
+---
 
-### 3. БД — пересев демо-данных (через insert-tool, без миграции)
-- Удалить старые демо-строки с зашитыми `public_id='emp-demo'`, `slug='ooo-roborekrut-inzhiniring'`, `slug='sales-prod-1'`, `candidates.public_id='693126'`.
-- Заново вставить, **не задавая `public_id` и `slug` явно** — пусть триггеры сгенерируют:
-  - `companies`: name `«ООО РобоРекрут инжиниринг»`, описание, logo_url, owner_employer_id; slug сгенерится как `ooo-roborekrut-inzhiniring` (триггер `companies_set_slug`).
-  - `projects`: role_name `«Менеджер по продажам»`, `is_published=true`, заполнить vacancy_text / motivation / schedule / payouts / team / system / onboarding / mission / stats / checklist + roleplay items.
-  - `project_questions`, `training_blocks` + `training_lessons` + `training_quizzes` — минимальный рабочий набор для воронки.
-  - `employers`: company_name, без `public_id` (триггер `employers_set_public_id` сгенерит `empXXXXXX`). `user_id = NULL` (демо без владельца).
-  - `candidates`: 1 строка, `project_id` = новой вакансии, `current_stage='terms'`, без `public_id` (сгенерится 6 цифр). `user_id = NULL`.
-- `companies.owner_employer_id` → проставить на нового демо-employer.
-- В CRM работодателя кандидат подтянется автоматически (фильтр по `employer_id` через `projects`).
+## План работ
 
-### 4. Удалить хардкод-фолбэки в коде
-- `src/pages/EmployerPanel.tsx`: проверить, что нигде нет литералов `emp-demo` / `693126` / `ooo-roborekrut-...` / `sales-prod-1`. Резолвер `employerId` уже корректный (URL → auth.uid → первый employer из БД), оставляем.
-- `src/pages/CandidateFlow.tsx`, `MainCatalogPage.tsx`, `AuthModal.tsx`, `TelegramMiniAppBoot.tsx`: финальный проход `rg` и замена оставшихся литералов на резолвинг из БД через `src/lib/links.ts`.
+### 1. БД: миграция
+- В `profiles` уже есть `telegram_id`, `telegram_username`. Добавить колонки `telegram_first_name`, `telegram_last_name`, `telegram_photo_url`, `telegram_phone`.
+- Расширить `referrals`: добавить колонку `referred_user_id uuid` и unique-индекс `(owner_user_id, referred_user_id)` для идемпотентности.
+- Функция `public.apply_referral_bonus(_referrer_public_id text, _new_user uuid)` (SECURITY DEFINER): находит работодателя-реферера по `public_id`, находит нового работодателя по `_new_user`, проверяет что это первая регистрация и оба — работодатели, затем `apply_transaction(..., 'bonus', 1000, ...)` обоим и пишет запись в `referrals`.
+- Триггер `grant_employer_bonus` уже даёт +1000 RR любому новому работодателю — оставить как есть. Реферальные +1000 — поверх.
 
-### 5. Админ-режим «войти как кандидат»
-- В `EmployerPanel` на вкладке CRM (рядом с карточкой кандидата) и в шапке профиля добавить кнопку **«Открыть кабинет кандидата как админ»** — показывать только если `has_role(auth.uid(),'admin')` (проверка через `supabase.from('user_roles').select().eq('role','admin')` единожды при загрузке панели; кэшируем в state `isAdmin`).
-- Клик:
-  1. Резолвим `companies.slug` и `projects.slug` по `candidate.project_id`.
-  2. `navigate(buildCandidateUrl(company, project, candidate, 'profile'))` — открывается `CandidateFlow` под реальным URL.
-  3. В sessionStorage кладём флаг `rr_admin_impersonate=1`, чтобы CandidateFlow не блокировал доступ из-за чужого `user_id`. В `CandidateFlow` уже идёт загрузка по `public_id` из URL — добавим только баннер «Режим админ-просмотра» сверху и кнопку «Вернуться в панель работодателя».
-- Аналогично — кнопка «Открыть лендинг вакансии» (ведёт на `buildVacancyUrl(company, project)`) и «Открыть страницу компании» (`buildCompanyUrl(company)`).
-- RLS: у админа уже стоит `has_role(auth.uid(),'admin')` в политиках SELECT на `candidates/projects/companies` (это сделано прошлой миграцией), так что чтение пройдёт.
+### 2. Edge-функции
 
-### 6. Проверка
-- Открыть `/` без авторизации → видим только Главная / Каталог / Личный кабинет RR.
-- Залогиниться админским email → клик «Личный кабинет RR» → `/employer{realId}/profile`.
-- В CRM админа виден демо-кандидат; кнопка «Открыть кабинет кандидата» ведёт на `/ooo-roborekrut-inzhiniring/menedzher-po-prodazham-1/candidate{6цифр}/profile` и страница рендерится.
-- Кнопки `Профиль HR / Компании / Вакансии / Тариф / События` ведут на существующие `/{realPublicId}/...` страницы, не на `emp-demo`.
+**`telegram-auth`** (Login Widget) и **`telegram-miniapp-auth`** (Mini App) — в обеих:
+- Принимать `ref` (Login Widget) / читать `start_param` из initData (Mini App) — это `public_id` реферера.
+- Сохранять в `profiles` все поля: `telegram_first_name`, `telegram_last_name`, `telegram_photo_url`, `telegram_username`, `telegram_id` (через ON CONFLICT UPDATE).
+- Создавать запись `employers` только если intent=employer (как сейчас), но реферальный бонус — только если намерение employer.
+- После создания пользователя и employer-строки — вызов `apply_referral_bonus(ref, user_id)`.
 
-## Открытые вопросы (нет) — план самодостаточен, начинаю править после approve.
+**`telegram-webhook`** (новая или расширение существующей):
+- Обрабатывать `/start <emp_public_id>` (deep-link из кнопки «Поделиться»).
+- Обрабатывать сообщения с `contact` (после нажатия reply-keyboard «Поделиться номером») — сохранять `telegram_phone` в `profiles` по `telegram_id`.
+
+**Новая `telegram-request-contact`** (вызывается из кабинета):
+- Принимает user_id → находит `telegram_id` → шлёт через бота сообщение с reply-keyboard `request_contact: true` и текстом «Нажмите кнопку, чтобы привязать номер».
+
+### 3. Frontend
+
+**`AuthModal.tsx`**:
+- Передавать `ref` в `telegram-auth` (уже частично есть через `query.ref`) — без изменений логики, только убедиться что приходит.
+- Подсказку «Если виджет не загрузился — откройте по реф-ссылке `t.me/HR_RRbot?start=...`» как fallback.
+
+**`TelegramMiniAppBoot.tsx`**:
+- Читать `Telegram.WebApp.initDataUnsafe.start_param` и передавать как `ref` в `telegram-miniapp-auth`.
+
+**Кабинет работодателя — новый блок «Telegram-профиль»** (в `EmployerPanel` вкладка «Профиль»):
+- Аватар (telegram_photo_url), имя+фамилия, кликабельный `@username` → `https://t.me/{username}`, если нет username — кнопка-ссылка `tg://user?id={telegram_id}`.
+- Поле «Телефон»: если есть — `tel:` ссылка; если нет — кнопка «Запросить телефон через бота» → вызывает `telegram-request-contact`. Подсказка: «Перейдите в чат с @HR_RRbot и нажмите кнопку — номер появится здесь автоматически».
+
+**Кабинет работодателя — блок «Реферальная программа»**:
+- Показывает реф-ссылку `https://t.me/HR_RRbot/app?startapp={employer.public_id}` с кнопками «Скопировать» и «Поделиться» (Telegram Web Share).
+- Счётчик: сколько друзей-работодателей зарегистрировалось по ссылке и сколько RR начислено (запрос к `referrals` по `owner_user_id`).
+
+### 4. Реальный поток бонусов
+- Любой новый работодатель → триггер `grant_employer_bonus` → +1000 RR (приветственный).
+- Если при регистрации передан валидный `ref` (public_id существующего работодателя) → дополнительно +1000 RR новому и +1000 RR рефереру через `apply_referral_bonus`.
+- У кандидатов кошелька нет — реф-бонус не начисляется, регистрация по реф-ссылке кандидатом просто игнорируется (запись в `referrals` без транзакций).
+
+---
+
+## Технические детали
+
+- `botUsername` из `telegram-config` уже возвращает `HR_RRbot` — менять не нужно.
+- `start_param` в Mini App доступен в `window.Telegram.WebApp.initDataUnsafe.start_param` (Telegram передаёт его при открытии по `?startapp=...`).
+- Для получения телефона в Telegram единственный надёжный способ — `KeyboardButton.request_contact`, отправляется через Bot API в личном чате. В Login Widget и initData телефона нет.
+- Webhook `telegram-webhook` уже зарегистрирован? Если нет — после деплоя нужно один раз вызвать `setWebhook` через connector gateway или Bot API (укажу команду после реализации).
+- `verify_jwt = false` для `telegram-webhook` в `supabase/config.toml`.
+
+---
+
+## Что НЕ делается
+- Не трогаются роуты/слаги (сделано в прошлой итерации).
+- Не меняется логика кандидатов.
+- Привязка телефона из Google не добавляется (вы не просили).
