@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.telegram-config]
 verify_jwt = false
+
+[functions.telegram-request-contact]
+verify_jwt = false

@@ -45,5 +45,55 @@ Deno.serve(async (req) => {
     payload: update,
   });
 
+  // === Handle /start <ref_code> deep link (link Telegram chat to bot, capture ref) ===
+  const text: string | undefined = update.message?.text;
+  const fromTgId: number | undefined = update.message?.from?.id;
+  if (text && text.startsWith("/start") && fromTgId) {
+    const parts = text.split(/\s+/);
+    const refCode = parts[1]?.trim() || "";
+    if (refCode) {
+      // Save startParam on telegram_links for later attribution (best-effort)
+      const { data: link } = await supabase.from("telegram_links")
+        .select("user_id").eq("telegram_id", fromTgId).maybeSingle();
+      if (link?.user_id) {
+        await supabase.rpc("apply_referral_bonus", { _referrer_public_id: refCode, _new_user: link.user_id });
+      }
+    }
+    // Greet + offer phone share button
+    const BOT_TOKEN_SEND = BOT_TOKEN;
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN_SEND}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: fromTgId,
+        text: "👋 Добро пожаловать в RR! Откройте мини-приложение или поделитесь номером телефона, чтобы привязать его к профилю.",
+        reply_markup: {
+          keyboard: [[{ text: "📱 Поделиться номером", request_contact: true }]],
+          resize_keyboard: true, one_time_keyboard: true,
+        },
+      }),
+    });
+  }
+
+  // === Handle contact share — store phone on profiles ===
+  const contact = update.message?.contact;
+  if (contact?.phone_number && contact?.user_id) {
+    const phone = String(contact.phone_number).replace(/^\+?/, "+");
+    const { data: link } = await supabase.from("telegram_links")
+      .select("user_id").eq("telegram_id", contact.user_id).maybeSingle();
+    if (link?.user_id) {
+      await supabase.from("profiles").update({ telegram_phone: phone }).eq("id", link.user_id);
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: contact.user_id,
+          text: `✅ Номер ${phone} сохранён в вашем профиле RR.`,
+          reply_markup: { remove_keyboard: true },
+        }),
+      });
+    }
+  }
+
   return new Response(JSON.stringify({ ok: true }), { headers: { "Content-Type": "application/json" } });
 });

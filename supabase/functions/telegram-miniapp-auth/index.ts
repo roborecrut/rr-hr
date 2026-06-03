@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_KEY) return jsonResponse({ error: "env_missing" }, 500);
 
-  let body: { initData?: string; intent?: string } = {};
+  let body: { initData?: string; intent?: string; ref?: string } = {};
   try { body = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
   if (!body.initData) return jsonResponse({ error: "init_data_missing" }, 400);
 
@@ -50,6 +50,8 @@ Deno.serve(async (req) => {
   const tgUser = JSON.parse(userJson) as {
     id: number; first_name?: string; last_name?: string; username?: string; photo_url?: string;
   };
+  // start_param comes from t.me/<bot>/app?startapp=<value> deep link
+  const startParam = (params.get("start_param") || body.ref || "").trim();
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
@@ -90,7 +92,20 @@ Deno.serve(async (req) => {
         user_id: userId, contact_name: tgUser.first_name ?? null, contact_tg: tgUser.username ?? null,
       });
     }
+
+    if (startParam && intent === "employer") {
+      await admin.rpc("apply_referral_bonus", { _referrer_public_id: startParam, _new_user: userId });
+    }
   }
+
+  await admin.from("profiles").update({
+    telegram_id: tgUser.id,
+    telegram_username: tgUser.username ?? null,
+    telegram_first_name: tgUser.first_name ?? null,
+    telegram_last_name: tgUser.last_name ?? null,
+    telegram_photo_url: tgUser.photo_url ?? null,
+    avatar_url: tgUser.photo_url ?? null,
+  }).eq("id", userId);
 
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   if (linkErr) return jsonResponse({ error: "link_failed", details: linkErr.message }, 500);

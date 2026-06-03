@@ -799,7 +799,11 @@ export type Database = {
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          telegram_first_name: string | null
           telegram_id: number | null
+          telegram_last_name: string | null
+          telegram_phone: string | null
+          telegram_photo_url: string | null
           telegram_username: string | null
           updated_at: string
         }
@@ -814,7 +818,11 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          telegram_first_name?: string | null
           telegram_id?: number | null
+          telegram_last_name?: string | null
+          telegram_phone?: string | null
+          telegram_photo_url?: string | null
           telegram_username?: string | null
           updated_at?: string
         }
@@ -829,7 +837,11 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          telegram_first_name?: string | null
           telegram_id?: number | null
+          telegram_last_name?: string | null
+          telegram_phone?: string | null
+          telegram_photo_url?: string | null
           telegram_username?: string | null
           updated_at?: string
         }
@@ -1530,6 +1542,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_referral_bonus: {
+        Args: { _new_user: string; _referrer_public_id: string }
+        Returns: undefined
+      }
       apply_transaction: {
         Args: {
           _amount: number

@@ -129,6 +129,9 @@ export default function EmployerPanel() {
   const [telegramFirstName, setTelegramFirstName] = useState("Сергей");
   const [telegramLastName, setTelegramLastName] = useState("Ковалев");
   const [telegramUsernameState, setTelegramUsernameState] = useState("cowal_sales");
+  const [telegramPhone, setTelegramPhone] = useState<string>("");
+  const [isRequestingPhone, setIsRequestingPhone] = useState(false);
+  const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
 
   // Billing & Tariff States
   const [employerId, setEmployerId] = useState<string>(
@@ -695,6 +698,65 @@ export default function EmployerPanel() {
     })();
     return () => { cancelled = true; };
   }, [employerId]);
+
+  // Load real Telegram profile fields + referral stats for the authenticated user
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone, email")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (cancelled || !prof) return;
+      if (prof.telegram_id) setTelegramIdState(String(prof.telegram_id));
+      if (prof.telegram_username) setTelegramUsernameState(prof.telegram_username);
+      if (prof.telegram_first_name) setTelegramFirstName(prof.telegram_first_name);
+      if (prof.telegram_last_name) setTelegramLastName(prof.telegram_last_name);
+      if (prof.telegram_photo_url) setTelegramPhoto(prof.telegram_photo_url);
+      if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
+      if (prof.email) setGoogleEmail(prof.email);
+
+      const { data: refs } = await supabase
+        .from("referrals")
+        .select("reward_rr")
+        .eq("owner_user_id", user.id);
+      if (!cancelled && refs) {
+        setReferralStats({
+          count: refs.length,
+          rr: refs.reduce((s, r: any) => s + Number(r.reward_rr || 0), 0),
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [employerId]);
+
+  const handleRequestPhoneViaBot = async () => {
+    setIsRequestingPhone(true);
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        alert("Войдите через Telegram, чтобы привязать номер.");
+        return;
+      }
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-request-contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || "Ошибка");
+      alert("Откройте чат с @HR_RRbot и нажмите кнопку «Поделиться номером». Номер появится здесь автоматически.");
+      window.open("https://t.me/HR_RRbot", "_blank");
+    } catch (e: any) {
+      alert("Не удалось отправить запрос: " + (e?.message || "ошибка"));
+    } finally {
+      setIsRequestingPhone(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -3389,6 +3451,42 @@ export default function EmployerPanel() {
                         {isProfileSaved ? "Сохранено! ✓" : "Сохранить TG"}
                       </button>
                     </div>
+
+                    {/* Phone block (request via bot) */}
+                    <div className="pt-3 mt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <label className="text-slate-300 block mb-1 font-bold">Номер телефона из Telegram:</label>
+                        {telegramPhone ? (
+                          <a href={`tel:${telegramPhone}`} className="block w-full bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-3 py-2 text-emerald-300 font-mono hover:bg-emerald-950/60 transition">
+                            {telegramPhone}
+                          </a>
+                        ) : (
+                          <div className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-slate-400 italic">
+                            Не привязан
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRequestPhoneViaBot}
+                        disabled={isRequestingPhone}
+                        className="cursor-pointer bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-xl text-xs transition duration-150 shadow-md"
+                      >
+                        {isRequestingPhone ? "Отправка…" : telegramPhone ? "Обновить через бота" : "Запросить телефон через бота"}
+                      </button>
+                    </div>
+
+                    {/* Direct profile link fallback */}
+                    <div className="text-[10.5px] text-slate-400 font-mono pt-2">
+                      Прямая ссылка на профиль:&nbsp;
+                      {telegramUsernameState ? (
+                        <a href={`https://t.me/${telegramUsernameState.replace(/^@+/, "")}`} target="_blank" rel="noreferrer" className="text-sky-300 underline">
+                          t.me/{telegramUsernameState.replace(/^@+/, "")}
+                        </a>
+                      ) : telegramIdState ? (
+                        <a href={`tg://user?id=${telegramIdState}`} className="text-sky-300 underline">tg://user?id={telegramIdState}</a>
+                      ) : "—"}
+                    </div>
                   </div>
                 </div>
 
@@ -3412,25 +3510,37 @@ export default function EmployerPanel() {
                 </div>
 
                 <p className="text-xs text-slate-200 leading-normal font-normal">
-                  Когда ваши коллеги регистрируют Личный Кабинет через подключение Google или Telegram по любой из реферальных ссылок ниже, вашему кабинету начисляется **1000 RR** для покупки авто-собеседований и ИИ-онбордингов, а ваш друг получает приветственный стартовый бонус **1000 RR**!
+                  Когда ваши коллеги регистрируют Личный Кабинет работодателя через Telegram по реферальной ссылке ниже, вашему кабинету начисляется <strong className="text-emerald-300">1000 RR</strong>, и вашему другу-работодателю также <strong className="text-emerald-300">1000 RR</strong> (поверх стартового бонуса +1000 RR).
                 </p>
+
+                <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono">
+                  <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-3">
+                    <span className="block text-[10px] text-slate-400 uppercase">Приглашено</span>
+                    <strong className="text-emerald-300 text-lg">{referralStats.count}</strong>
+                  </div>
+                  <div className="bg-amber-950/30 border border-amber-500/20 rounded-2xl p-3">
+                    <span className="block text-[10px] text-slate-400 uppercase">Начислено RR</span>
+                    <strong className="text-[#E7C768] text-lg">{referralStats.rr}</strong>
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🔗 Официальная реферальная ссылка:</span>
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🔗 Реферальная ссылка Telegram Mini App:</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.online?ref=${employerId}`}
+                        value={`https://t.me/HR_RRbot/app?startapp=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online?ref=${employerId}`);
-                          addAuditEvent("success", "Реф-ссылка скопирована", "Основная реферальная ссылка скопирована в буфер обмена.");
-                          alert("Официальная реферальная ссылка скопирована!");
+                          const url = `https://t.me/HR_RRbot/app?startapp=${employerId}`;
+                          navigator.clipboard.writeText(url);
+                          addAuditEvent("success", "Реф-ссылка скопирована", "Telegram Mini App реф-ссылка скопирована в буфер обмена.");
+                          alert("Telegram реферальная ссылка скопирована!\n\n" + url);
                         }}
                         className="bg-white/10 hover:bg-white/15 text-[#E7C768] px-3.5 py-2.5 border border-white/5 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
                       >
@@ -3440,20 +3550,20 @@ export default function EmployerPanel() {
                   </div>
 
                   <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🚀 Песочница тестирования ссылок (Проверка):</span>
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🌐 Альтернативная веб-ссылка (Login Widget):</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/auth?ref=${employerId}`}
+                        value={`https://hr-rr.ru/auth?ref=${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${employerId}`);
-                          addAuditEvent("success", "Sandbox реф-ссылка скопирована", "Тестовая ссылка для проверки в песочнице скопирована.");
-                          alert("Ссылка для тестирования скопирована!");
+                          navigator.clipboard.writeText(`https://hr-rr.ru/auth?ref=${employerId}`);
+                          addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
+                          alert("Веб-реф-ссылка скопирована!");
                         }}
                         className="bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 px-3.5 py-2.5 border border-emerald-500/20 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
                       >
