@@ -5,6 +5,7 @@ import {
 import {
   safeRedirect,
   safeNextPath,
+  safeNextPathStrict,
   chooseCandidateTarget,
   isAllowedHost,
 } from "./telegramRoute.ts";
@@ -133,4 +134,124 @@ Deno.test("candidate: 2+ vacancies with missing public_id → /main", () => {
     nextPath: null, profileFallback: FALLBACK,
   });
   assertEquals(d.target, "/main");
+});
+
+// ─── safeRedirect: extra edge cases ───
+Deno.test("safeRedirect: rejects non-443 port", () => {
+  const r = safeRedirect("https://hr-rr.online:8443/x");
+  assert(r.rejected);
+  assertEquals(r.reason, "bad_port");
+});
+
+Deno.test("safeRedirect: rejects userinfo", () => {
+  const r = safeRedirect("https://user:pass@hr-rr.online/x");
+  assert(r.rejected);
+  assertEquals(r.reason, "has_userinfo");
+});
+
+Deno.test("safeRedirect: case-insensitive scheme/host accepted", () => {
+  const r = safeRedirect("HTTPS://HR-RR.ONLINE/x?ref=1");
+  assert(!r.rejected);
+  assertEquals(r.url.hostname, "hr-rr.online");
+  assertEquals(r.url.pathname, "/x");
+});
+
+// ─── safeNextPathStrict: detailed reason coverage ───
+Deno.test("safeNextPathStrict: javascript scheme", () => {
+  const r = safeNextPathStrict("javascript:alert(1)", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "bad_scheme");
+});
+
+Deno.test("safeNextPathStrict: data scheme", () => {
+  const r = safeNextPathStrict("data:text/html,<script>1</script>", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "bad_scheme");
+});
+
+Deno.test("safeNextPathStrict: percent-encoded traversal", () => {
+  const r = safeNextPathStrict("/%2e%2e/admin", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "decoded_traversal");
+});
+
+Deno.test("safeNextPathStrict: double-encoded traversal", () => {
+  const r = safeNextPathStrict("/%252e%252e/admin", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "decoded_traversal");
+});
+
+Deno.test("safeNextPathStrict: null byte", () => {
+  const r = safeNextPathStrict("/foo%00bar", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "bad_encoding");
+});
+
+Deno.test("safeNextPathStrict: backslash protocol-relative", () => {
+  const r = safeNextPathStrict("\\\\evil.com", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "protocol_relative");
+});
+
+Deno.test("safeNextPathStrict: bare dot segment", () => {
+  const r = safeNextPathStrict("/a/./b", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "path_traversal");
+});
+
+Deno.test("safeNextPathStrict: disallowed /api/ prefix", () => {
+  const r = safeNextPathStrict("/api/secret", "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "disallowed_path");
+});
+
+Deno.test("safeNextPathStrict: too long", () => {
+  const r = safeNextPathStrict("/" + "a".repeat(1100), "https://hr-rr.online");
+  assert(r.rejected);
+  assertEquals(r.reason, "too_long");
+});
+
+Deno.test("safeNextPathStrict: ok with query string", () => {
+  const r = safeNextPathStrict("/landing?ref=emp123456", "https://hr-rr.online");
+  assert(!r.rejected);
+  assertEquals(r.value, "/landing?ref=emp123456");
+});
+
+// ─── chooseCandidateTarget: matrix coverage ───
+Deno.test("chooseCandidateTarget: negative vacancyCount falls through", () => {
+  const d = chooseCandidateTarget({
+    vacancyCount: -1, firstPublicId: null, nextPath: null, profileFallback: "/p",
+  });
+  assertEquals(d.target, "/p");
+  assertEquals(d.reason, "fallback_profile");
+});
+
+Deno.test("chooseCandidateTarget: multi with empty firstPublicId → /main", () => {
+  const d = chooseCandidateTarget({
+    vacancyCount: 2, firstPublicId: "", nextPath: "/x", profileFallback: "/p",
+  });
+  assertEquals(d.target, "/main");
+});
+
+Deno.test("chooseCandidateTarget: matrix 0/1/2/3 × next", () => {
+  const matrix = [
+    { v: 0, n: null,  pid: "pid", expect: "/p" },
+    { v: 0, n: "/x",  pid: "pid", expect: "/x" },
+    { v: 1, n: null,  pid: "pid", expect: "/p" },
+    { v: 1, n: "/x",  pid: "pid", expect: "/x" },
+    { v: 2, n: "/x",  pid: "pid", expect: "/candidatepid/profile" },
+    { v: 3, n: null,  pid: "pid", expect: "/candidatepid/profile" },
+  ];
+  for (const m of matrix) {
+    const d = chooseCandidateTarget({
+      vacancyCount: m.v, firstPublicId: m.pid, nextPath: m.n, profileFallback: "/p",
+    });
+    assertEquals(d.target, m.expect, `v=${m.v} n=${m.n}`);
+  }
+});
+
+// Legacy safeNextPath still returns string|null
+Deno.test("safeNextPath legacy: still works", () => {
+  assertEquals(safeNextPath("/ok", "https://hr-rr.online"), "/ok");
+  assertEquals(safeNextPath("javascript:1", "https://hr-rr.online"), null);
 });
