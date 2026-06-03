@@ -3,17 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "./RouterContext";
+import { supabase } from "@/integrations/supabase/client";
 import Mascot from "./Mascot";
 import { 
   X,
-  Mail, 
-  User, 
   Send, 
   Chrome,
   Gift,
-  HelpCircle
 } from "lucide-react";
 
 interface AuthModalProps {
@@ -21,66 +19,105 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
+const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { navigate, query } = useRouter();
-  
+
   const [errorText, setErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [authVia, setAuthVia] = useState<"telegram" | "google" | null>(null);
+  const [botUsername, setBotUsername] = useState<string>("");
+  const tgContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fetch bot username + expose global callback for Telegram widget
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    fetch(`${FN_URL}/telegram-config`)
+      .then((r) => r.json())
+      .then((d) => { if (!cancelled) setBotUsername(d.username || ""); })
+      .catch(() => {});
+
+    (window as any).__rrTgAuth = (payload: Record<string, unknown>) => {
+      handleTelegram(payload).catch((e) => setErrorText(e?.message || "Ошибка Telegram"));
+    };
+    return () => {
+      cancelled = true;
+      delete (window as any).__rrTgAuth;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
+  // Inject Telegram widget script once bot username is known
+  useEffect(() => {
+    if (!isOpen || !botUsername || !tgContainerRef.current) return;
+    tgContainerRef.current.innerHTML = "";
+    const s = document.createElement("script");
+    s.src = "https://telegram.org/js/telegram-widget.js?22";
+    s.async = true;
+    s.setAttribute("data-telegram-login", botUsername);
+    s.setAttribute("data-size", "large");
+    s.setAttribute("data-radius", "12");
+    s.setAttribute("data-request-access", "write");
+    s.setAttribute("data-onauth", "__rrTgAuth(user)");
+    tgContainerRef.current.appendChild(s);
+  }, [isOpen, botUsername]);
 
   if (!isOpen) return null;
 
-  // Authenticate & register (strictly as employer in this modal)
-  const handleAuth = async (method: "google" | "telegram") => {
-    setErrorText("");
-    setIsLoading(true);
-    setAuthVia(method);
+  const onSuccessRedirect = async () => {
+    setIsSuccess(true);
+    // Wait briefly for the session, then resolve employer id and route
+    setTimeout(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { onClose(); navigate("/"); return; }
+      const { data: emp } = await supabase
+        .from("employers")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      onClose();
+      if (emp?.id) navigate(`/employer${emp.id}/profile`);
+      else navigate("/employer/profile");
+    }, 800);
+  };
 
-    // Generate random valid employer data automatically with 6-digit ID to guarantee a clean state
-    const randId = Math.floor(100000 + Math.random() * 900000);
-    const mockName = `Работодатель #${randId}`;
-    const mockEmail = `employer_${randId}@rr-platform.ru`;
-    const mockTg = `employer_tg_${randId}`;
-
+  const handleTelegram = async (tgPayload: Record<string, unknown>) => {
+    setErrorText(""); setIsLoading(true); setAuthVia("telegram");
     try {
-      // Registering as Employer
-      const payload = {
-        id: String(randId),
-        name: mockName,
-        email: mockEmail,
-        telegramUsername: mockTg,
-        registeredVia: method, // "google" or "telegram"
-        refBy: query.ref || ""
-      };
-
-      const res = await fetch("/api/employers", {
+      const res = await fetch(`${FN_URL}/telegram-auth`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ ...tgPayload, intent: "employer", ref: query.ref || "" }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Не удалось войти через Telegram");
+      const { error } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: data.token_hash,
+      });
+      if (error) throw error;
+      await onSuccessRedirect();
+    } catch (e: any) {
+      setErrorText(e.message || "Ошибка Telegram авторизации");
+    } finally { setIsLoading(false); }
+  };
 
-      if (!res.ok) {
-        throw new Error("Не удалось зарегистрировать личный кабинет.");
-      }
-
-      const employer = await res.json();
-
-      setIsSuccess(true);
-      setTimeout(() => {
-        localStorage.setItem("employer_session_id", employer.id);
-        localStorage.setItem("employer_name", employer.name);
-        localStorage.setItem("employer_email", employer.email);
-        localStorage.setItem("employer_tg", employer.telegramUsername);
-        localStorage.setItem("employer_role", "employer");
-        
-        onClose();
-        navigate(`/employer${employer.id}/profile`);
-      }, 1200);
-    } catch (err: any) {
-      console.error(err);
-      setErrorText(err.message || "Ошибка соединения. Попробуйте еще раз.");
-    } finally {
+  const handleGoogle = async () => {
+    setErrorText(""); setIsLoading(true); setAuthVia("google");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/employer/profile`,
+          queryParams: { intent: "employer" },
+        },
+      });
+      if (error) throw error;
+    } catch (e: any) {
+      setErrorText(e.message || "Ошибка Google авторизации");
       setIsLoading(false);
     }
   };
@@ -137,32 +174,34 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         {/* 1-Click Action Buttons Container */}
         <div className="space-y-4 pt-2">
-          {/* Telegram Login Button */}
-          <button
-            type="button"
-            disabled={isLoading}
-            onClick={() => handleAuth("telegram")}
-            className="w-full bg-gradient-to-r from-amber-400 to-[#E7C768] hover:brightness-110 disabled:opacity-50 text-slate-950 font-black py-4 px-5 rounded-2xl flex items-center justify-between gap-3 transition-all duration-150 shadow-xl transform active:scale-98 cursor-pointer group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="bg-slate-950/10 p-2 rounded-xl">
-                <Send className="w-5 h-5 text-slate-950" />
+          {/* Telegram Login Widget */}
+          <div className="w-full bg-gradient-to-r from-amber-400/10 to-[#E7C768]/10 border border-[#E7C768]/30 rounded-2xl p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="bg-[#E7C768]/20 p-2 rounded-xl">
+                  <Send className="w-5 h-5 text-[#E7C768]" />
+                </div>
+                <div className="text-left">
+                  <div className="text-xs uppercase tracking-wider font-mono opacity-80">Быстрый вход</div>
+                  <div className="text-sm font-extrabold">Через Telegram</div>
+                </div>
               </div>
-              <div className="text-left">
-                <div className="text-xs uppercase tracking-wider font-mono opacity-80">Быстрый вход</div>
-                <div className="text-sm font-extrabold">Войти через Telegram</div>
-              </div>
+              <span className="bg-emerald-900 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                +1,000 RR
+              </span>
             </div>
-            <span className="bg-emerald-900 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-              +1,000 RR
-            </span>
-          </button>
+            <div ref={tgContainerRef} className="flex justify-center min-h-[44px]">
+              {!botUsername && (
+                <span className="text-[11px] text-slate-400">Загрузка виджета…</span>
+              )}
+            </div>
+          </div>
 
           {/* Google Login Button */}
           <button
             type="button"
             disabled={isLoading}
-            onClick={() => handleAuth("google")}
+            onClick={handleGoogle}
             className="w-full bg-white/5 hover:bg-white/10 border border-white/10 disabled:opacity-50 text-white font-black py-4 px-5 rounded-2xl flex items-center justify-between gap-3 transition-all duration-150 shadow-lg transform active:scale-98 cursor-pointer group"
           >
             <div className="flex items-center gap-3">
