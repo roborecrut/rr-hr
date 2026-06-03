@@ -52,33 +52,35 @@ export default function TelegramMiniAppBoot() {
         return;
       }
 
-      // Try employer first (preserves intent if user was previously registered
-      // as an employer); fall back to candidate (default Mini App role).
-      const tryIntents: Array<"employer" | "candidate"> = ["employer", "candidate"];
-      let lastErr = "";
-      for (const intent of tryIntents) {
-        try {
-          const res = await fetch(`${FN_URL}/telegram-miniapp-auth`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData, intent }),
-          });
-          const data = await res.json();
-          if (!res.ok || !data?.token_hash) { lastErr = data?.error || `http_${res.status}`; continue; }
-          const { error } = await supabase.auth.verifyOtp({
-            type: "magiclink",
-            token_hash: data.token_hash,
-          });
-          if (error) { lastErr = error.message; continue; }
-          const path = await resolveProfilePath(data.user_id);
-          navigate(path, { replace: true });
+      try {
+        // Backend reuses any existing telegram_link for this tg user regardless
+        // of intent; new users default to "candidate".
+        const res = await fetch(`${FN_URL}/telegram-miniapp-auth`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initData, intent: "candidate" }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data?.token_hash) {
+          // eslint-disable-next-line no-console
+          console.warn("[TelegramMiniAppBoot] auth failed:", data?.error || res.status);
           return;
-        } catch (e: any) {
-          lastErr = e?.message || "tg_auth_failed";
         }
+        const { error } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: data.token_hash,
+        });
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.warn("[TelegramMiniAppBoot] verifyOtp failed:", error.message);
+          return;
+        }
+        const path = await resolveProfilePath(data.user_id);
+        navigate(path, { replace: true });
+      } catch (e: any) {
+        // eslint-disable-next-line no-console
+        console.warn("[TelegramMiniAppBoot] error:", e?.message || e);
       }
-      // eslint-disable-next-line no-console
-      console.warn("[TelegramMiniAppBoot] auth failed:", lastErr);
     })();
   }, [navigate]);
 
