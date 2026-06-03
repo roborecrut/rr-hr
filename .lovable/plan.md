@@ -1,69 +1,113 @@
-## Цель
+## Миграция Telegram-логина на OpenID Connect (OIDC)
 
-1. Везде в боте и при регистрации использовать `https://hr-rr.online` вместо `https://hr-rr.online`.
-2. Включить регистрацию кандидатов через Telegram (быстрый вход + миниапп) с сохранением Telegram-данных в профиле.
+Telegram задеприкейтил старый `data-auth-url` флоу виджета и перевёл логин на стандартный OIDC через `oauth.telegram.org`. Переписываем регистрацию работодателей, кандидатов и реферальную цепочку на новый флоу.
 
-## 1. Замена домена `hr-rr.online` → `hr-rr.online`
+### 1. Секреты (Lovable Cloud)
+Добавить через secrets tool:
+- `TELEGRAM_OIDC_CLIENT_ID` = `7919378481`
+- `TELEGRAM_OIDC_CLIENT_SECRET` = `URLgf27LlSizVsat5j88wAXu8HWYLAXG7Fq358lQzbG05E2G4qI66w`
 
-### Frontend
-- `src/pages/EmployerPanel.tsx:3558,3564` — ссылка быстрого входа `https://hr-rr.online/auth?ref=...` → `https://hr-rr.online/auth?ref=...`.
-- Остальные места (`CompanyLanding`, карточки проектов, реф-блок) уже используют `hr-rr.online` — не трогаем.
-- В демо-миграции `20260603195316_...sql` адрес `demo@hr-rr.online` — миграции read-only, оставляем (это просто email демо-работодателя, не домен бота).
+Существующие `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` остаются — нужны для miniapp, webhook и `telegram-request-contact`.
 
-### Edge-функции
-- В коде `telegram-auth`, `telegram-miniapp-auth`, `telegram-webhook` нет хардкода `hr-rr.online` (magic-link использует `SUPABASE_URL` + текущий origin). Проверим, что в `redirectTo` не зашит `hr-rr.online`; если есть — заменим.
+### 2. Шаги в BotFather (вручную, после деплоя)
+В разделе **Login → OpenID Connect** добавить Callback URLs:
+- `https://hr-rr.online/auth/telegram/callback`
+- `https://www.hr-rr.online/auth/telegram/callback`
+- `https://hr-rr.ru/auth/telegram/callback` (на всякий случай)
+- `https://id-preview--86998fcc-a4e0-4bf6-8ae7-d8b67afa546d.lovable.app/auth/telegram/callback` (превью)
 
-### План в `.lovable/plan.md`
-- В шагах BotFather: `/setdomain @HR_RRbot` → ввести **`hr-rr.online`** (а также добавить `www.hr-rr.online`). `/setmenubutton` → `https://hr-rr.online`.
+### 3. База: новая таблица `oauth_states`
+Миграция:
+```sql
+CREATE TABLE public.oauth_states (
+  state TEXT PRIMARY KEY,
+  code_verifier TEXT NOT NULL,
+  intent TEXT NOT NULL,           -- 'employer' | 'candidate'
+  ref TEXT,                       -- реферальный public_id
+  redirect_to TEXT,               -- куда вернуть после успеха
+  provider TEXT NOT NULL DEFAULT 'telegram',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+GRANT ALL ON public.oauth_states TO service_role;
+ALTER TABLE public.oauth_states ENABLE ROW LEVEL SECURITY;
+-- доступ только через service_role из edge функций; политик для anon/authenticated не нужно
+```
+TTL 10 минут — чистим в callback после использования + cron не обязателен (можно потом).
 
-### Действия пользователя (BotFather, вручную)
-1. `/setdomain` → `@HR_RRbot` → `hr-rr.online`
-2. `/setmenubutton` → `@HR_RRbot` → URL `https://hr-rr.online` → текст `Открыть RR`
+### 4. Новые edge функции
 
-## 2. Регистрация кандидатов через Telegram
+**`telegram-oidc-start`** (POST, `verify_jwt = false`)
+Вход: `{ intent: 'employer'|'candidate', ref?: string, redirect_to?: string }`.
+- Генерирует `state` (32 байта) и `code_verifier` (43–128 символов).
+- `code_challenge = base64url(SHA256(code_verifier))`, method `S256`.
+- Пишет запись в `oauth_states`.
+- Возвращает URL:
+  ```
+  https://oauth.telegram.org/auth?
+    bot_id=<TELEGRAM_OIDC_CLIENT_ID>
+    &origin=https://hr-rr.online
+    &redirect_uri=https://hr-rr.online/auth/telegram/callback
+    &response_type=code
+    &scope=openid
+    &state=<state>
+    &code_challenge=<challenge>
+    &code_challenge_method=S256
+  ```
 
-Сейчас:
-- `AuthModal` дёргает `telegram-auth` с жёстко зашитым `intent: "employer"` — кандидат не может войти быстрой кнопкой.
-- `TelegramMiniAppBoot` уже шлёт `intent: "candidate"` — но `apply_referral_bonus` корректно игнорирует кандидатов (бонус только работодателю-другу).
-- Поля `telegram_first_name/last_name/photo_url/phone/username/id` уже есть в `profiles` и заполняются `telegram-auth` / `telegram-miniapp-auth` независимо от роли. Отдельной таблицы под кандидатов не требуется — данные Telegram живут в `profiles` (одно на пользователя).
+**`telegram-oidc-callback`** (GET, `verify_jwt = false`)
+Параметры: `?code=...&state=...`.
+- Достаёт запись из `oauth_states` по `state` (если нет/просрочена → редирект `/auth/telegram/done?error=expired`).
+- POST на `https://oauth.telegram.org/token`:
+  ```
+  grant_type=authorization_code
+  code=<code>
+  code_verifier=<verifier>
+  client_id=<CLIENT_ID>
+  client_secret=<CLIENT_SECRET>
+  redirect_uri=<тот же>
+  ```
+- Парсит `id_token` (JWT). Верифицирует подпись через Telegram JWKS (`https://oauth.telegram.org/.well-known/jwks.json`, кэш в памяти функции).
+- Из claims берёт: `sub` (telegram id), `name`, `preferred_username`, `picture`.
+- Логика upsert идентична текущему `telegram-auth`:
+  - ищет `telegram_links` по `telegram_id + intent`,
+  - создаёт user через Admin API (email `tg_<id>_<intent>@rrhr.local`),
+  - создаёт `employers` строку при `intent='employer'`,
+  - вызывает `apply_referral_bonus` если `ref` есть и `intent='employer'`,
+  - синкает `profiles.telegram_*` поля.
+- Генерит magic-link `token_hash` через `admin.auth.admin.generateLink({ type: 'magiclink', email })`.
+- Удаляет запись из `oauth_states`.
+- 302 редирект на `${redirect_to || '/'}/auth/telegram/done#token_hash=<hash>&email=<email>&intent=<intent>`.
 
-### Изменения
+### 5. Фронт
 
-**AuthModal**
-- Добавить пропс/состояние `intent` (employer | candidate). На лендинге кандидата открывать модалку с `intent="candidate"`, в кабинете работодателя — `employer` (как сейчас).
-- Передавать выбранный `intent` в тело запроса `telegram-auth` и в `signInWithOAuth` (Google).
-- Кнопка «Войти через Telegram» становится доступна и для кандидата.
+**Новая страница `/auth/telegram/done`** (`src/pages/AuthTelegramDone.tsx`):
+- Читает `token_hash` и `email` из hash-фрагмента.
+- Вызывает `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })`.
+- При успехе — `resolveProfilePathForUser` и `navigate` (employer → `/employer/profile`, candidate → `/main`).
+- При ошибке — показывает сообщение и кнопку "Назад".
 
-**Лендинг/диспетчер**
-- `SegmentDispatcher` / `LandingPage` (кандидатская часть): подключить кнопку быстрого Telegram-входа с `intent="candidate"` и поддержать `?ref=<empPublicId>` в URL (сохраняется как `ref_source` у кандидата для аналитики, RR не начисляется).
+Зарегистрировать роут в роутере (там, где описаны остальные страницы — `src/App.tsx` или `SegmentDispatcher.tsx`).
 
-**TelegramMiniAppBoot**
-- Логика остаётся: `intent: "candidate"` по умолчанию. Если `start_param` начинается с префикса работодательской регистрации (например `emp_<public_id>` или сценарий «зарегистрироваться как работодатель из миниаппа»), переключаем на `employer`. Для простоты сейчас — оставить `candidate` всегда; работодатель регистрируется отдельно через кабинет/кнопку.
+**`AuthModal.tsx`** — заменить виджет на кастомную кнопку:
+- Убираем `useEffect`, который инжектит `telegram-widget.js`.
+- Убираем `__rrTgAuth` и `handleTelegram`.
+- Добавляем кнопку «Войти через Telegram», которая:
+  1. POST → `telegram-oidc-start` с `{ intent, ref, redirect_to: window.location.origin }`,
+  2. Получает `url`,
+  3. `window.location.href = url` (полный редирект — у OIDC нет popup-режима, как у виджета).
+- Loading-state: «Перенаправляем в Telegram…».
 
-**Профиль кандидата**
-- В странице кандидата (если есть `CandidatePanel`/`CandidateProfile`) показать блок «Telegram-профиль» с теми же полями, что у работодателя: аватар, имя+фамилия, кликабельный `@username` или `tg://user?id=...`, телефон (`tel:` ссылка) с кнопкой «Запросить через бота» (вызов существующего `telegram-request-contact`). Если страницы профиля кандидата ещё нет — добавим компактный блок в шапку личного кабинета кандидата.
+### 6. Что НЕ трогаем
+- `telegram-miniapp-auth` (HMAC initData) — продолжает работать как есть.
+- `telegram-webhook`, `telegram-send`, `telegram-request-contact`, `telegram-config` — без изменений.
+- Старая `telegram-auth` — оставляем на пару релизов как дед-код на случай отката; через 1–2 недели можно удалить.
+- Google OAuth — не меняется.
+- DB-поля `profiles.telegram_*`, `telegram_links`, `apply_referral_bonus` — уже есть, переиспользуем.
 
-**База данных**
-- Схема `profiles` уже содержит все нужные поля — миграция не требуется.
-- Никаких новых полей в `candidates` не добавляем (Telegram-данные у пользователя, а не у заявки на вакансию). Если пользователь явно хочет дубль полей в `candidates` — уточним отдельно.
+### 7. Технические детали и риски
+- `origin` и `redirect_uri` обязаны точно совпадать с тем, что прописано в BotFather, иначе OIDC вернёт `invalid_redirect_uri`.
+- JWKS Telegram: ключи RS256, ротация редкая, но обязательно кэшировать и обрабатывать `kid`.
+- `code_verifier` хранится только server-side в `oauth_states` (PKCE на стороне фронта не нужен — стейт серверный).
+- На превью-доменах нужен отдельный callback URL в BotFather — иначе Telegram не пустит.
 
-**Реферальная система для кандидатов**
-- `apply_referral_bonus` намеренно начисляет RR только при регистрации **работодателя** через ref работодателя. Для кандидата по ref-ссылке `https://t.me/HR_RRbot/app?startapp=<empPublicId>` запишем `profiles.ref_source = <empPublicId>` (или в `candidates.ref_source`), без начисления RR. Это даёт работодателю аналитику «откуда пришёл кандидат», но без двойных бонусов.
-
-## Технические детали
-
-Файлы к правке:
-- `src/pages/EmployerPanel.tsx` — 2 строки (`hr-rr.online` → `hr-rr.online`).
-- `src/components/AuthModal.tsx` — пропс `intent`, проброс в Telegram/Google.
-- `src/pages/LandingPage.tsx` / `SegmentDispatcher.tsx` — открытие AuthModal с `intent="candidate"` и сохранение `?ref=`.
-- `src/components/TelegramMiniAppBoot.tsx` — комментарий/доки; кода менять минимум.
-- `supabase/functions/telegram-auth/index.ts` — принять `intent` из тела (если ещё нет) и положить в `raw_user_meta_data.intent`, чтобы `handle_new_user` повесил роль `candidate` корректно.
-- `supabase/functions/telegram-miniapp-auth/index.ts` — то же самое (уже почти есть).
-- Страница профиля кандидата — добавить Telegram-блок (если страница существует; иначе вынесем в следующий этап).
-- `.lovable/plan.md` — обновить инструкции BotFather на `hr-rr.online`.
-
-Миграции БД: **не требуются**.
-
-## Открытые вопросы
-1. Подтвердить, что **не** нужно дублировать Telegram-поля в `candidates` (они уже есть в `profiles`).
-2. Есть ли уже страница «кабинет кандидата», куда вставить Telegram-блок, или сделать минимальный `CandidateProfile`?
+После твоего «ок» — переключаюсь в build mode, добавляю секреты, миграцию, две edge функции, страницу `/auth/telegram/done` и переписываю кнопку в `AuthModal`.
