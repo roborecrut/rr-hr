@@ -3,11 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "./RouterContext";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import Mascot from "./Mascot";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 import { 
   X,
   Send, 
@@ -22,6 +23,7 @@ interface AuthModalProps {
 }
 
 const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 export default function AuthModal({ isOpen, onClose, intent = "employer" }: AuthModalProps) {
   const { navigate, query } = useRouter();
@@ -30,6 +32,8 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [authVia, setAuthVia] = useState<"telegram" | "google" | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const tsRef = useRef<TurnstileInstance | null>(null);
 
   if (!isOpen) return null;
 
@@ -51,6 +55,9 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const handleTelegram = async () => {
     setErrorText(""); setIsLoading(true); setAuthVia("telegram");
     try {
+      if (TURNSTILE_SITE_KEY && !turnstileToken) {
+        throw new Error("Подтвердите, что вы не робот (Turnstile).");
+      }
       const fullUrl =
         window.location.origin + window.location.pathname + window.location.search;
       const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
@@ -61,10 +68,17 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           ref: query.ref || "",
           origin: window.location.origin,
           redirect_to: fullUrl,
+          turnstile_token: turnstileToken || undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error || "Не удалось начать вход через Telegram");
+      if (!res.ok || !data.url) {
+        try { tsRef.current?.reset(); } catch { /* ignore */ }
+        setTurnstileToken("");
+        if (res.status === 429) throw new Error("Слишком много попыток. Подождите минуту и попробуйте снова.");
+        if (res.status === 403) throw new Error("Не удалось пройти проверку Turnstile. Попробуйте ещё раз.");
+        throw new Error(data.error || "Не удалось начать вход через Telegram");
+      }
       window.location.href = data.url;
     } catch (e: any) {
       setErrorText(e.message || "Ошибка Telegram авторизации");
@@ -141,6 +155,18 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
 
         {/* 1-Click Action Buttons Container */}
         <div className="space-y-4 pt-2">
+          {TURNSTILE_SITE_KEY && (
+            <div className="flex justify-center">
+              <Turnstile
+                ref={tsRef}
+                siteKey={TURNSTILE_SITE_KEY}
+                onSuccess={(t) => setTurnstileToken(t)}
+                onExpire={() => setTurnstileToken("")}
+                onError={() => setTurnstileToken("")}
+                options={{ theme: "dark", size: "flexible" }}
+              />
+            </div>
+          )}
           {/* Telegram OIDC Login Button */}
           <button
             type="button"
