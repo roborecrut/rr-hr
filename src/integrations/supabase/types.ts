@@ -489,6 +489,53 @@ export type Database = {
           },
         ]
       }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          employer_id: string
+          external_id: string | null
+          id: string
+          provider: string
+          raw: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          employer_id: string
+          external_id?: string | null
+          id?: string
+          provider: string
+          raw?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          employer_id?: string
+          external_id?: string | null
+          id?: string
+          provider?: string
+          raw?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -983,6 +1030,47 @@ export type Database = {
           },
         ]
       }
+      transactions: {
+        Row: {
+          amount_rr: number
+          created_at: string
+          id: string
+          note: string | null
+          ref_id: string | null
+          ref_table: string | null
+          type: Database["public"]["Enums"]["tx_type"]
+          wallet_id: string
+        }
+        Insert: {
+          amount_rr: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          ref_id?: string | null
+          ref_table?: string | null
+          type: Database["public"]["Enums"]["tx_type"]
+          wallet_id: string
+        }
+        Update: {
+          amount_rr?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          ref_id?: string | null
+          ref_table?: string | null
+          type?: Database["public"]["Enums"]["tx_type"]
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1004,11 +1092,72 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          balance_rr: number
+          created_at: string
+          employer_id: string
+          hold_rr: number
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          balance_rr?: number
+          created_at?: string
+          employer_id: string
+          hold_rr?: number
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          balance_rr?: number
+          created_at?: string
+          employer_id?: string
+          hold_rr?: number
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: true
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      apply_transaction: {
+        Args: {
+          _amount: number
+          _employer: string
+          _note?: string
+          _ref_id?: string
+          _ref_table?: string
+          _type: Database["public"]["Enums"]["tx_type"]
+        }
+        Returns: {
+          amount_rr: number
+          created_at: string
+          id: string
+          note: string | null
+          ref_id: string | null
+          ref_table: string | null
+          type: Database["public"]["Enums"]["tx_type"]
+          wallet_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
       has_role: {
         Args: {
