@@ -51,6 +51,8 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const handleTelegram = async () => {
     setErrorText(""); setIsLoading(true); setAuthVia("telegram");
     try {
+      const fullUrl =
+        window.location.origin + window.location.pathname + window.location.search;
       const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -58,7 +60,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           intent,
           ref: query.ref || "",
           origin: window.location.origin,
-          redirect_to: window.location.origin,
+          redirect_to: fullUrl,
         }),
       });
       const data = await res.json();

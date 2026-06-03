@@ -1,135 +1,102 @@
 ## Цель
 
-1. На странице `/employer<public_id>/profile` показывать список приглашённых по реферальной ссылке (Telegram + Google) с именем, фамилией, e-mail, ссылкой на Telegram и аватаркой.
-2. В профиле тех, кто зарегистрировался по чужой ссылке (работодатель и кандидат), показывать карточку «Вы пришли по приглашению от …» с теми же данными.
-3. Провести аудит регистрации через Telegram (OIDC) для работодателя и кандидата, включая динамические лендинги вакансий/компаний, и закрыть найденные риски.
+1. Очистить «глобальную» навигацию: на всех публичных страницах в подвале оставить только логотип + название, ссылки «Главная / Каталог / Панель Руководителя / Панель Кандидата / Авторизация» убрать.
+2. На мобильных футер не показывать вовсе (на дашбордах кабинетов уже свои нижние навбары, на публичных страницах он просто не нужен).
+3. В шапке `MainCatalogPage` (`/vacancy`) убрать оставшиеся пункты «Панель Работодателя», «Кабинет Соискателя», «Админ» — оставить логотип/название, переключатель «Главная ↔ Каталог», бургер и одиночную кнопку «Войти / Регистрация».
+4. В Telegram OIDC жёстко валидировать `redirect_to`-домен и возвращать кандидата именно на лендинг вакансии, с которой он начал; если у кандидата уже несколько кандидатских записей (несколько вакансий), вести его в общий профиль, где он сам выбирает компанию/вакансию.
 
 ---
 
-## Часть A. Реферальный список в профилях
+## Часть A. Зачистка футеров и шапки
 
-### A1. БД: расширяем таблицу `referrals`
+### A1. `src/pages/LandingPage.tsx`
+- Удалить весь блок ссылок «Главная / Каталог должностей / Панель Руководителя / Панель Кандидата / Авторизация» (строки 800–806).
+- Оставить только колонку с лого + копирайтом.
+- Обернуть `<footer>` в `hidden md:block`, чтобы на мобильных не рендерился.
+- Проверить, что `AuthModal` всё равно открывается из других CTA на странице (есть в hero/в шапке).
 
-Сейчас `apply_referral_bonus` пишет строку в `referrals` только для пары работодатель→работодатель (там, где есть `v_new_emp`). Кандидатские регистрации по ссылке не фиксируются вообще.
+### A2. `src/pages/MainCatalogPage.tsx`
+**Шапка (строки 92–149, 152–220):**
+- Из десктоп-нав-бара (`<nav className="hidden md:flex …">`) удалить кнопки `nav_employer`, `nav_candidate`, `nav_admin`. Оставить только `nav_landing` («Главная») и `nav_catalog` («Каталог Профессий»).
+- Кнопку «Войти / Регистрация» оставить.
+- Из мобильного выпадающего меню (`mobile_nav_employer`, `mobile_nav_candidate`, `mobile_nav_admin`) — удалить те же три пункта. Оставить «Главная», «Каталог Профессий», «Войти / Регистрация».
 
-Миграция:
-- `ALTER TABLE public.referrals ADD COLUMN referee_kind text NOT NULL DEFAULT 'employer' CHECK (referee_kind IN ('employer','candidate'))`.
-- `ALTER TABLE public.referrals ADD COLUMN intent text` — копия `intent` из `oauth_states` (для отчётности).
-- Переписать `apply_referral_bonus(_referrer_public_id, _new_user, _intent)`:
-  - всегда вставляет строку в `referrals` (идемпотентно по `used_by_user_id`),
-  - `reward_rr = 1000` и `apply_transaction(..., bonus, 1000)` только когда `_intent='employer'` И у нового пользователя есть employer-строка,
-  - для `_intent='candidate'` — `reward_rr = 0`, бонус не начисляется, но факт регистрации сохранён.
+**Футер (строки 416–436):**
+- Удалить ряд ссылок «Главная / Каталог / Панель Руководителя / Панель Кандидата».
+- Оставить только лого + копирайт.
+- Обернуть `<footer>` в `hidden md:block`.
 
-### A2. БД: SECURITY DEFINER функции для чтения
+### A3. `src/pages/JobVacancyLanding.tsx`
+- Подвал уже минимальный (`© Год Робот Рекрутер RR`). Только обернуть в `hidden md:block`.
 
-```sql
-create or replace function public.get_my_referees()
-returns table(
-  used_by_user_id uuid,
-  referee_kind text,
-  created_at timestamptz,
-  reward_rr numeric,
-  display_name text,
-  email text,
-  google_email text,
-  telegram_username text,
-  telegram_first_name text,
-  telegram_last_name text,
-  telegram_photo_url text,
-  avatar_url text,
-  registered_via text
-) language sql stable security definer set search_path=public as $$
-  select r.used_by_user_id, r.referee_kind, r.created_at, r.reward_rr,
-         p.display_name, p.email, p.google_email,
-         p.telegram_username, p.telegram_first_name, p.telegram_last_name,
-         p.telegram_photo_url, p.avatar_url, p.registered_via::text
-  from public.referrals r
-  join public.profiles p on p.id = r.used_by_user_id
-  where r.owner_user_id = auth.uid()
-  order by r.created_at desc
-$$;
-```
+### A4. `src/pages/CompanyLanding.tsx`
+- Подвал уже минимальный (`© Год Имя компании …`). Только обернуть в `hidden md:block`.
 
-И симметричная `get_my_referrer()` — возвращает 0 или 1 строку с теми же полями, плюс `owner_public_id` (employers.public_id владельца).
+### A5. Проверить остальные публичные страницы на скрытую дубль-навигацию
+Поиск шаблонов:
+- `rg -n "footer|<footer" src/pages src/components` — пройтись по найденному, привести к виду «лого + ©» и `hidden md:block`.
+- `rg -n "Панель Руководителя|Панель Кандидата|Панель Работодателя|Кабинет Соискателя|Каталог должностей|Каталог Профессий" src` — отлавить остаточные ссылки в любых компонентах и удалить (кроме легитимных мест: внутри AuthModal, EmployerPanel-табы и т.п.).
+- `rg -n "navigate\(\"/employer\"|navigate\(\"/candidate\"|navigate\(\"/admin\"" src/pages src/components` — убедиться, что таких внешних кнопок не осталось в шапках/футерах публичных страниц.
 
-`GRANT EXECUTE ... TO authenticated`. RLS на `profiles` обходить не приходится, потому что функция `SECURITY DEFINER`.
-
-### A3. Фронт: `src/components/ReferralsList.tsx` (новый)
-
-- Вызывает `supabase.rpc('get_my_referees')`.
-- Рендерит список карточек: аватарка (telegram_photo_url || avatar_url || инициалы), имя (telegram_first_name + last_name || display_name), бейдж «Telegram/Google», e-mail (`google_email || email`), ссылка `https://t.me/<telegram_username>` если есть, дата регистрации, начисленный RR.
-- Пустое состояние с подсказкой «поделитесь ссылкой `?ref=<public_id>`».
-- Встраиваем в `EmployerPanel.tsx` в секцию профиля рядом с уже существующим блоком `referralStats` (около строки 134/720).
-
-### A4. Фронт: `src/components/ReferredByCard.tsx` (новый)
-
-- Вызывает `supabase.rpc('get_my_referrer')`.
-- Если запись есть — карточка «Вы зарегистрировались по приглашению» с теми же полями и ссылкой на профиль владельца (`/employer<owner_public_id>/profile`).
-- Встраиваем в `EmployerPanel.tsx` (профиль работодателя) и в `CandidateFlow.tsx` (профиль кандидата, рядом с его данными).
+Кабинеты (`EmployerPanel`, `CandidateFlow`, `AdminPanel`) — НЕ трогаем: там собственные шапки/табы.
 
 ---
 
-## Часть B. Аудит регистрации через Telegram OIDC
+## Часть B. Жёсткий whitelist редиректов + правильный возврат кандидата
 
-### B1. Передача `ref` для всех веток
+### B1. `supabase/functions/telegram-oidc-start/index.ts`
+- Принимать `redirect_to` как полный URL лендинга (например, `https://hr-rr.online/acme/sales-manager`).
+- Хелпер `safeRedirectTo(input: string): string` — валидирует:
+  - URL парсится,
+  - `protocol === 'https:'`,
+  - `host` входит в whitelist: `hr-rr.online`, `www.hr-rr.online`, `hr-rr.ru`, `www.hr-rr.ru`, `hr-rr.lovable.app`, и любой `*.lovable.app` / `*.lovableproject.com` (для превью).
+- При невалидном/пустом — fallback `https://hr-rr.online`.
+- Сохранять валидированную строку в `oauth_states.redirect_to` (как сейчас, но прошедшую через хелпер).
 
-В `AuthModal.tsx` уже шлём `ref: query.ref || ""` в `telegram-oidc-start`. Проверить и поправить:
-- В `JobVacancyLanding.tsx` и `CompanyLanding.tsx` при открытии `AuthModal` (intent='candidate') проверить, что `useRouter().query.ref` действительно прокидывается — оба лендинга монтируются под динамическими путями `/<companySlug>/<projectSlug>` и `/<companySlug>`. Если `RouterContext` парсит query из `window.location.search`, всё уже работает; если нет — пробросить вручную через props.
-- Подстраховаться: если `query.ref` пуст, читаем `new URLSearchParams(window.location.search).get('ref')` и `localStorage.getItem('rr_ref')` (последнее сохраняем при первом заходе на любой лендинг — это закроет случай, когда юзер ушёл на oauth.telegram.org и потерял query).
+### B2. `supabase/functions/telegram-oidc-callback/index.ts`
+- Аналогичный `safeRedirectTo` применять при чтении `st.redirect_to` (защита, если запись была старая или подделанная).
+- Логика возврата:
+  - Считать `nextPath` = path+search из `redirect_to` (если есть). Это лендинг, с которого юзер пришёл (`/<companySlug>/<projectSlug>` или `/`).
+  - В hash к `/auth/telegram/done` добавить `next=<encodeURIComponent(nextPath)>`.
+- Поведение для кандидата с несколькими записями решает фронт (см. B3).
 
-### B2. `telegram-oidc-start`
+### B3. `src/pages/AuthTelegramDone.tsx`
+После `verifyOtp` + `getUser`:
+1. Прочитать `next` из hash.
+2. Для **employer** — как раньше: `resolveProfilePathForUser(user.id)` → `/employerXXX/profile`.
+3. Для **candidate**:
+   - Считаем количество строк в `candidates` для текущего `user_id` (`select id, project_id`).
+   - Если `count >= 2` → `navigate('/candidate' + public_id + '/profile')` (общий профиль, где он выбирает компанию/вакансию). `public_id` берём из первой строки или из `resolveCandidateByUser`.
+   - Если `count === 1` И `next` принадлежит whitelisted-домену И начинается со слэша → `navigate(next)` (возвращаем на лендинг вакансии, чтобы он продолжил флоу терминов/интервью на той же странице).
+   - Если `count === 0` И `next` есть → `navigate(next)` (пусть лендинг сам создаст candidate-запись через стандартный путь).
+   - Fallback: `resolveProfilePathForUser(user.id)`.
+4. Если в `next` пришёл абсолютный URL — игнорировать его и оставить только pathname+search (защита от open-redirect на стороне фронта).
 
-- Принимать и сохранять в `oauth_states`: `intent`, `ref`, `redirect_to` (полный URL лендинга, не только origin), `landing_slug` (опционально — для кандидата, чтобы знать, куда вернуть).
-- Валидация `redirect_to`: пускать только URL с хоста из белого списка (`hr-rr.online`, `hr-rr.ru`, `*.lovable.app`, `*.lovableproject.com`). Без этого — open redirect.
+### B4. `src/components/AuthModal.tsx`
+- Передавать в `telegram-oidc-start` полный текущий URL как `redirect_to`:
+  `redirect_to: window.location.origin + window.location.pathname + window.location.search`.
+  Этого достаточно: на главной получим `https://hr-rr.online/`, на вакансии — `https://hr-rr.online/<company>/<project>?ref=…`.
 
-### B3. `telegram-oidc-callback`
-
-Проверить/починить:
-1. **Передача `intent` в `apply_referral_bonus`.** Сейчас функция вызывается только для employer; после правки A1 — вызывать всегда, передавать `intent`.
-2. **Создание `telegram_links` с `intent`.** Колонка `intent` в `telegram_links` уже есть — убедиться, что записывается и используется при поиске (`telegram_id + intent`), иначе работодатель и кандидат с одним TG ID будут конфликтовать.
-3. **Профиль кандидата.** Для `intent='candidate'` НЕ создавать employer-строку и НЕ начислять бонус 1000 RR (это для работодателей). При этом всё равно писать `referrals`-строку с `referee_kind='candidate'`.
-4. **Редирект.** Возвращать пользователя на `redirect_to` (лендинг вакансии/компании), а не всегда на `/`. Magic-link хэш отдаём в `<redirect_to>/auth/telegram/done#...&next=<encoded redirect_to>`.
-5. **JWKS-кэш.** Убедиться, что обработка `kid` и ротации не падает — на холодном старте функция должна перезагружать JWKS при unknown kid.
-6. **Обработка ошибок Telegram токен-эндпоинта.** Логировать тело ответа, возвращать понятный редирект `/auth/telegram/done?error=...`.
-7. **Чистка `oauth_states`.** Удалять запись после успеха и при ошибке; добавить запас по TTL (cron можно отложить — пока проверять `created_at > now() - interval '10 min'` на чтении).
-
-### B4. `AuthTelegramDone.tsx`
-
-- После `verifyOtp` уметь читать `next` из hash и редиректить кандидата обратно на лендинг (`/<companySlug>/<projectSlug>`), а не только в `/main`. Если `next` отсутствует — текущее поведение (`resolveProfilePathForUser`).
-- Показ ошибок: `error=expired|invalid_state|telegram_token_failed|jwks_failed`.
-
-### B5. Кандидат на динамическом лендинге
-
-Сценарий, который надо протестировать вручную после деплоя:
-1. Открыть `/<companySlug>/<projectSlug>?ref=emp123456` (вакансия).
-2. Нажать «Войти через Telegram» → OIDC → возврат на `/auth/telegram/done` → редирект обратно на лендинг.
-3. В `candidates` появилась строка с правильным `project_id`/`landing_slug`/`ref_source='emp123456'`.
-4. В `referrals` появилась строка `referee_kind='candidate'`, `reward_rr=0`, `owner_user_id` = владелец `emp123456`.
-5. В кабинете работодателя `emp123456` в `ReferralsList` появилась карточка нового кандидата.
-
-Аналогично для работодателя на главной (`/?ref=emp123456` → AuthModal intent='employer'): кандидат в списке + 1000 RR обоим.
+### B5. Тест-сценарий после деплоя
+1. `/<company>/<project>?ref=empXXX` → AuthModal → Telegram → возврат на тот же URL вакансии (одна вакансия в `candidates`).
+2. Существующий кандидат с 2+ вакансиями логинится через TG из любой вакансии → попадает в `/candidate<public_id>/profile`, где список компаний/вакансий.
+3. Запрос на edge с `redirect_to=https://evil.com` → callback редиректит на `https://hr-rr.online`, magic-link не утёк.
 
 ---
 
-## Технические детали для билд-режима
+## Технические детали
 
-- Файлы под изменение/создание:
-  - новая миграция (часть A1+A2),
-  - `supabase/functions/telegram-oidc-start/index.ts` (B2),
-  - `supabase/functions/telegram-oidc-callback/index.ts` (B3),
-  - `src/components/AuthModal.tsx` (B1: ref fallback),
-  - `src/pages/AuthTelegramDone.tsx` (B4),
-  - `src/components/ReferralsList.tsx` (новый),
-  - `src/components/ReferredByCard.tsx` (новый),
-  - `src/pages/EmployerPanel.tsx` (встроить оба компонента),
-  - `src/pages/CandidateFlow.tsx` (встроить `ReferredByCard`),
-  - `src/pages/JobVacancyLanding.tsx`, `src/pages/CompanyLanding.tsx` (сохранение `ref` в localStorage при заходе).
+- Файлы под изменение:
+  - `src/pages/LandingPage.tsx` (футер).
+  - `src/pages/MainCatalogPage.tsx` (хедер + футер).
+  - `src/pages/JobVacancyLanding.tsx`, `src/pages/CompanyLanding.tsx` (обёртка `hidden md:block` на футер).
+  - `src/components/AuthModal.tsx` (передача `redirect_to`).
+  - `src/pages/AuthTelegramDone.tsx` (маршрутизация по `next` + count кандидатов).
+  - `supabase/functions/telegram-oidc-start/index.ts` (whitelist).
+  - `supabase/functions/telegram-oidc-callback/index.ts` (whitelist + `next` в hash).
 
-- Безопасность:
-  - RLS на `referrals` остаётся; новые функции `SECURITY DEFINER` отдают только данные, привязанные к `auth.uid()`.
-  - Whitelist редиректов в OIDC-start, чтобы исключить open-redirect.
-  - В `apply_referral_bonus` сохранить идемпотентность по `used_by_user_id`.
+- Не трогаем: панели кабинетов (Employer/Candidate/Admin) и их внутренние табы.
 
-- Что НЕ трогаем: Mini App auth, Google OAuth, webhook, send-message, telegram-config.
+- Безопасность: оба слоя (edge + фронт) валидируют домен. На edge — для самого редиректа magic-link. На фронте — чтобы `next` в hash не перенаправил вовне.
 
-После твоего «ок» — переключусь в build mode и пройду шаги в порядке: миграция → правка двух edge-функций → компоненты → встраивание в страницы → ручной чек-лист B5.
+После «ок» — переключусь в build mode и пройду пункты A1→A4, потом B1→B4, в конце задеплою обе edge-функции.

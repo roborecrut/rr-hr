@@ -104,30 +104,6 @@ export default function MainCatalogPage() {
             >
               Каталог Профессий
             </button>
-            <button 
-              id="nav_employer"
-              onClick={() => {
-                localStorage.setItem("employer_active_tab_intent", "crm");
-                navigate("/employer");
-              }} 
-              className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 flex items-center gap-1 bg-white/5 border border-white/10"
-            >
-              Панель Работодателя 💼
-            </button>
-            <button 
-              id="nav_candidate"
-              onClick={() => navigate("/candidate")} 
-              className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 flex items-center gap-1 bg-white/5 border border-white/10"
-            >
-              Кабинет Соискателя 🎓
-            </button>
-            <button 
-              id="nav_admin"
-              onClick={() => navigate("/admin")} 
-              className="transition px-3 py-2 rounded-xl text-indigo-300 hover:text-indigo-150 flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20"
-            >
-              Админ ⚙️
-            </button>
           </nav>
 
           <div className="hidden md:block">
@@ -171,39 +147,6 @@ export default function MainCatalogPage() {
               className="transition text-left w-full px-4 py-3 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20"
             >
               Каталог Профессий
-            </button>
-            <button 
-              id="mobile_nav_employer"
-              onClick={() => {
-                localStorage.setItem("employer_active_tab_intent", "crm");
-                navigate("/employer");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Панель Работодателя</span>
-              <span>💼</span>
-            </button>
-            <button 
-              id="mobile_nav_candidate"
-              onClick={() => {
-                navigate("/candidate");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Кабинет Соискателя</span>
-              <span>🎓</span>
-            </button>
-            <button 
-              id="mobile_nav_admin"
-              onClick={() => {
-                navigate("/admin");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 border border-indigo-500/20 rounded-xl text-indigo-300 hover:text-indigo-150 bg-indigo-500/10"
-            >
-              Кабинет Администратора ⚙️
             </button>
             <div className="h-px bg-white/10 my-1"></div>
             <button 
@@ -413,25 +356,15 @@ export default function MainCatalogPage() {
         </section>
       </main>
 
-      {/* Footer using requested gradient styling, no black */}
-      <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center mt-12">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
-              alt="RR Logo" 
-              className="w-8 h-8 object-contain" 
-              referrerPolicy="no-referrer"
-            />
-            <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
-          </div>
-
-          <div className="flex gap-4 text-xs text-slate-400">
-            <button onClick={() => navigate("/main")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-white transition">Каталог</button>
-            <button onClick={() => navigate("/employer")} className="hover:text-white transition">Панель Руководителя</button>
-            <button onClick={() => navigate("/candidate")} className="hover:text-white transition">Панель Кандидата</button>
-          </div>
+      <footer className="hidden md:block bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center mt-12">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-center gap-2">
+          <img
+            src="https://i.ibb.co/WWRbtPq0/RR-Logo.png"
+            alt="RR Logo"
+            className="w-8 h-8 object-contain"
+            referrerPolicy="no-referrer"
+          />
+          <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
         </div>
       </footer>
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} intent="candidate" />

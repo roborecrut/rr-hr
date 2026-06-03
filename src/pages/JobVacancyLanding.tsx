@@ -576,8 +576,7 @@ export default function JobVacancyLanding() {
         </div>
       )}
 
-      {/* Elegant Footer */}
-      <footer className="border-t border-white/10 py-6 text-center text-xs text-slate-400">
+      <footer className="hidden md:block border-t border-white/10 py-6 text-center text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-4">
           © {new Date().getFullYear()} Робот Рекрутер RR. Все права защищены.
         </div>
