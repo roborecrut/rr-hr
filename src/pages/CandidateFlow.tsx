@@ -456,7 +456,7 @@ export default function CandidateFlow() {
   const getDynamicPath = (tabId: string, subTabId?: string, forceProject?: any) => {
     const parts = path.split("/").filter(Boolean);
     const candIndex = parts.findIndex(p => p.startsWith("candidate"));
-    const candidateId = candidate?.id || localStorage.getItem("cand_session_id") || "cand-1";
+    const candidateId = candidate?.id || localStorage.getItem("cand_session_id") || "";
 
     const targetProject = forceProject || project;
     let slug = "";
@@ -466,7 +466,7 @@ export default function CandidateFlow() {
       slug = parts[0];
       vacId = parts[1];
     } else if (targetProject) {
-      slug = targetProject.companySlug || "ooo-roborekrut-inzhiniring";
+      slug = targetProject.companySlug || "";
       vacId = targetProject.id;
     }
 
@@ -597,7 +597,7 @@ export default function CandidateFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: candidate?.id || "cand-1",
+          candidateId: candidate?.id || "",
           userQuestion: userText,
           contextTab: activeTab,
           contextSubTab: activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")
@@ -1109,7 +1109,7 @@ export default function CandidateFlow() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          candidateId: candidate?.id || "cand-1",
+          candidateId: candidate?.id || "",
           answers: [
             { question: targetSit.title || targetSit.desc, answer: userMsgText }
           ]
@@ -1349,7 +1349,7 @@ export default function CandidateFlow() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 w-full">
           {/* Logo & Vacancy info */}
-          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => navigate(`/${candidate?.id || localStorage.getItem("cand_session_id") || "candidate-demo"}/profile`)}>
+          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => { const id = candidate?.id || localStorage.getItem("cand_session_id") || ""; if (id) navigate(`/${id}/profile`); }}>
             <div className="bg-[#E7C768]/10 p-1.5 rounded-xl border border-[#E7C768]/20">
               <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR" className="w-8 h-8 object-contain" />
             </div>
@@ -1493,7 +1493,7 @@ export default function CandidateFlow() {
                 <span className="text-[#E7C768] font-bold text-xs uppercase tracking-wider block">Личный кабинет соискателя</span>
                 <h2 className="text-2xl font-bold text-white mt-1">Профиль кандидата: {candidate?.name || "Алексей Иванов"}</h2>
                 <p className="text-xs text-gray-300 mt-1">
-                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "cand-1"}</span>
+                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "—"}</span>
                 </p>
               </div>
               
@@ -1676,7 +1676,7 @@ export default function CandidateFlow() {
                   <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin pr-1 text-xs">
                     {allProjects.map((proj) => {
                       const slug = proj.companySlug || "";
-                      const candidateId = candidate?.id || "candidate-demo";
+                      const candidateId = candidate?.id || "";
                       const isSelected = project?.id === proj.id;
                       
                       // Precise tab path keeping current states

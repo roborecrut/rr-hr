@@ -985,7 +985,7 @@ export default function EmployerPanel() {
   const handleCopyLink = (projectId: string, projCompanySlug?: string) => {
     const proj = projects.find(p => p.id === projectId);
     const matchedCompany = companiesList.find(c => c.name.toLowerCase() === proj?.companyName?.toLowerCase());
-    const slug = projCompanySlug || proj?.companySlug || (matchedCompany ? matchedCompany.slug : "company-portal");
+    const slug = projCompanySlug || proj?.companySlug || (matchedCompany ? matchedCompany.slug : "");
     const signupUrl = `${window.location.origin}/${slug}/${projectId}`;
     navigator.clipboard.writeText(signupUrl);
     setCopiedProjectId(projectId);
@@ -2091,11 +2091,11 @@ export default function EmployerPanel() {
                         <div className="mt-2.5 bg-black/35 p-2.5 rounded-xl border border-white/5 space-y-1">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">Адрес ИИ-страницы Вакансии (Лендинг):</span>
                           <a 
-                            onClick={(e) => { e.preventDefault(); navigate(`/${proj.companySlug || "company-portal"}/${proj.id}`); }}
-                            href={`/${proj.companySlug || "company-portal"}/${proj.id}`} 
+                            onClick={(e) => { e.preventDefault(); navigate(`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`); }}
+                            href={`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`} 
                             className="cursor-pointer text-sky-300 font-mono text-[10.5px] hover:underline hover:text-sky-450 block truncate"
                           >
-                            https://hr-rr.online/{proj.companySlug || "company-portal"}/{proj.id}
+                            https://hr-rr.online/{proj.companySlug || ""}/{(proj as any).slug || proj.id}
                           </a>
                         </div>
                       </div>
