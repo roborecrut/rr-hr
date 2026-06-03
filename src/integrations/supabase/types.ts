@@ -14,6 +14,142 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_runs: {
+        Row: {
+          candidate_id: string | null
+          cost_rr: number | null
+          created_at: string
+          employer_id: string | null
+          endpoint: string
+          error: string | null
+          id: string
+          input: Json | null
+          model: string | null
+          output: Json | null
+          project_id: string | null
+          status: string | null
+          tokens_in: number | null
+          tokens_out: number | null
+          user_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          cost_rr?: number | null
+          created_at?: string
+          employer_id?: string | null
+          endpoint: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          model?: string | null
+          output?: Json | null
+          project_id?: string | null
+          status?: string | null
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          cost_rr?: number | null
+          created_at?: string
+          employer_id?: string | null
+          endpoint?: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          model?: string | null
+          output?: Json | null
+          project_id?: string | null
+          status?: string | null
+          tokens_in?: number | null
+          tokens_out?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_runs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_chats: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          messages: Json
+          scope_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          messages?: Json
+          scope_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          messages?: Json
+          scope_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          meta: Json | null
+          target_id: string | null
+          target_table: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          meta?: Json | null
+          target_id?: string | null
+          target_table?: string | null
+        }
+        Relationships: []
+      }
       candidate_answers: {
         Row: {
           answer_text: string | null
@@ -361,6 +497,76 @@ export type Database = {
           },
         ]
       }
+      company_pages: {
+        Row: {
+          company_id: string
+          content: Json
+          created_at: string
+          id: string
+          page_key: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          content?: Json
+          created_at?: string
+          id?: string
+          page_key: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          page_key?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_pages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_notes: {
+        Row: {
+          author_id: string | null
+          candidate_id: string
+          created_at: string
+          id: string
+          text: string
+        }
+        Insert: {
+          author_id?: string | null
+          candidate_id: string
+          created_at?: string
+          id?: string
+          text: string
+        }
+        Update: {
+          author_id?: string | null
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notes_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employers: {
         Row: {
           bonus_granted: boolean
@@ -485,6 +691,38 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      messages_recruiter: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          id: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          text: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          id?: string
+          sender: Database["public"]["Enums"]["message_sender"]
+          text: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          sender?: Database["public"]["Enums"]["message_sender"]
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_recruiter_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
             referencedColumns: ["id"]
           },
         ]
@@ -856,6 +1094,36 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          owner_user_id: string
+          redeemed_at: string | null
+          ref_code: string
+          reward_rr: number | null
+          used_by_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_user_id: string
+          redeemed_at?: string | null
+          ref_code: string
+          reward_rr?: number | null
+          used_by_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_user_id?: string
+          redeemed_at?: string | null
+          ref_code?: string
+          reward_rr?: number | null
+          used_by_user_id?: string | null
+        }
+        Relationships: []
+      }
       telegram_links: {
         Row: {
           auth_date: string | null
@@ -894,6 +1162,54 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      telegram_logs: {
+        Row: {
+          candidate_id: string | null
+          chat_id: number | null
+          created_at: string
+          direction: Database["public"]["Enums"]["tg_direction"]
+          employer_id: string | null
+          id: string
+          payload: Json
+          user_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          chat_id?: number | null
+          created_at?: string
+          direction: Database["public"]["Enums"]["tg_direction"]
+          employer_id?: string | null
+          id?: string
+          payload: Json
+          user_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          chat_id?: number | null
+          created_at?: string
+          direction?: Database["public"]["Enums"]["tg_direction"]
+          employer_id?: string | null
+          id?: string
+          payload?: Json
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "telegram_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telegram_logs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       test_connection: {
         Row: {
