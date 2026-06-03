@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
+import ReferredByCard from "../components/ReferredByCard";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
