@@ -1,17 +1,17 @@
 ## Цель
 
-1. Везде в боте и при регистрации использовать `https://hr-rr.online` вместо `https://hr-rr.ru`.
+1. Везде в боте и при регистрации использовать `https://hr-rr.online` вместо `https://hr-rr.online`.
 2. Включить регистрацию кандидатов через Telegram (быстрый вход + миниапп) с сохранением Telegram-данных в профиле.
 
-## 1. Замена домена `hr-rr.ru` → `hr-rr.online`
+## 1. Замена домена `hr-rr.online` → `hr-rr.online`
 
 ### Frontend
-- `src/pages/EmployerPanel.tsx:3558,3564` — ссылка быстрого входа `https://hr-rr.ru/auth?ref=...` → `https://hr-rr.online/auth?ref=...`.
+- `src/pages/EmployerPanel.tsx:3558,3564` — ссылка быстрого входа `https://hr-rr.online/auth?ref=...` → `https://hr-rr.online/auth?ref=...`.
 - Остальные места (`CompanyLanding`, карточки проектов, реф-блок) уже используют `hr-rr.online` — не трогаем.
-- В демо-миграции `20260603195316_...sql` адрес `demo@hr-rr.ru` — миграции read-only, оставляем (это просто email демо-работодателя, не домен бота).
+- В демо-миграции `20260603195316_...sql` адрес `demo@hr-rr.online` — миграции read-only, оставляем (это просто email демо-работодателя, не домен бота).
 
 ### Edge-функции
-- В коде `telegram-auth`, `telegram-miniapp-auth`, `telegram-webhook` нет хардкода `hr-rr.ru` (magic-link использует `SUPABASE_URL` + текущий origin). Проверим, что в `redirectTo` не зашит `hr-rr.ru`; если есть — заменим.
+- В коде `telegram-auth`, `telegram-miniapp-auth`, `telegram-webhook` нет хардкода `hr-rr.online` (magic-link использует `SUPABASE_URL` + текущий origin). Проверим, что в `redirectTo` не зашит `hr-rr.online`; если есть — заменим.
 
 ### План в `.lovable/plan.md`
 - В шагах BotFather: `/setdomain @HR_RRbot` → ввести **`hr-rr.online`** (а также добавить `www.hr-rr.online`). `/setmenubutton` → `https://hr-rr.online`.
@@ -53,7 +53,7 @@
 ## Технические детали
 
 Файлы к правке:
-- `src/pages/EmployerPanel.tsx` — 2 строки (`hr-rr.ru` → `hr-rr.online`).
+- `src/pages/EmployerPanel.tsx` — 2 строки (`hr-rr.online` → `hr-rr.online`).
 - `src/components/AuthModal.tsx` — пропс `intent`, проброс в Telegram/Google.
 - `src/pages/LandingPage.tsx` / `SegmentDispatcher.tsx` — открытие AuthModal с `intent="candidate"` и сохранение `?ref=`.
 - `src/components/TelegramMiniAppBoot.tsx` — комментарий/доки; кода менять минимум.
