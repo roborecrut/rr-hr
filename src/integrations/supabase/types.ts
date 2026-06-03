@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          google_email: string | null
+          id: string
+          locale: string | null
+          registered_via:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          telegram_id: number | null
+          telegram_username: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          google_email?: string | null
+          id: string
+          locale?: string | null
+          registered_via?:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          google_email?: string | null
+          id?: string
+          locale?: string | null
+          registered_via?:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          telegram_id?: number | null
+          telegram_username?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      telegram_links: {
+        Row: {
+          auth_date: string | null
+          created_at: string
+          first_name: string | null
+          id: string
+          last_name: string | null
+          photo_url: string | null
+          source: string | null
+          telegram_id: number
+          telegram_username: string | null
+          user_id: string
+        }
+        Insert: {
+          auth_date?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          photo_url?: string | null
+          source?: string | null
+          telegram_id: number
+          telegram_username?: string | null
+          user_id: string
+        }
+        Update: {
+          auth_date?: string | null
+          created_at?: string
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          photo_url?: string | null
+          source?: string | null
+          telegram_id?: number
+          telegram_username?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       test_connection: {
         Row: {
           created_at: string
@@ -35,15 +122,60 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "employer" | "candidate"
+      candidate_stage:
+        | "terms"
+        | "interview"
+        | "scoring"
+        | "training"
+        | "certified"
+      message_sender: "candidate" | "recruiter" | "ai"
+      question_category:
+        | "checklist_prof"
+        | "checklist_sys"
+        | "train_prof"
+        | "train_product"
+        | "train_sys"
+        | "roleplay"
+      quiz_type: "select" | "text"
+      registration_method: "google" | "telegram" | "email"
+      tg_direction: "in" | "out"
+      tx_type: "topup" | "purchase" | "bonus" | "refund" | "ai_cost"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -170,6 +302,28 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "employer", "candidate"],
+      candidate_stage: [
+        "terms",
+        "interview",
+        "scoring",
+        "training",
+        "certified",
+      ],
+      message_sender: ["candidate", "recruiter", "ai"],
+      question_category: [
+        "checklist_prof",
+        "checklist_sys",
+        "train_prof",
+        "train_product",
+        "train_sys",
+        "roleplay",
+      ],
+      quiz_type: ["select", "text"],
+      registration_method: ["google", "telegram", "email"],
+      tg_direction: ["in", "out"],
+      tx_type: ["topup", "purchase", "bonus", "refund", "ai_cost"],
+    },
   },
 } as const
