@@ -12,6 +12,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import { useRouter } from "@/components/RouterContext";
 
+function safeNextPath(raw: string | null): string | null {
+  if (!raw) return null;
+  let val = raw;
+  // If absolute URL, accept only same-origin and reduce to path+search
+  try {
+    if (/^https?:\/\//i.test(val)) {
+      const u = new URL(val);
+      if (u.origin !== window.location.origin) return null;
+      val = `${u.pathname}${u.search}`;
+    }
+  } catch {
+    return null;
+  }
+  if (!val.startsWith("/") || val.startsWith("//")) return null;
+  // Avoid bouncing back into the OIDC done page
+  if (val.startsWith("/auth/telegram/")) return null;
+  return val;
+}
+
 export default function AuthTelegramDone() {
   const { navigate } = useRouter();
   const [error, setError] = useState<string>("");
@@ -28,6 +47,7 @@ export default function AuthTelegramDone() {
 
         const tokenHash = params.get("token_hash") || "";
         const intent = (params.get("intent") as "employer" | "candidate") || "candidate";
+        const nextPath = safeNextPath(params.get("next"));
         if (!tokenHash) throw new Error("token_hash отсутствует");
 
         setStatus("Создаём сессию…");
@@ -41,13 +61,35 @@ export default function AuthTelegramDone() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error("Сессия не создана");
 
+        // Resolve target
         let target = "/main";
-        try {
-          target = await resolveProfilePathForUser(user.id);
-        } catch {
-          target = intent === "employer" ? "/employer/profile" : "/main";
+        if (intent === "employer") {
+          try {
+            target = await resolveProfilePathForUser(user.id);
+          } catch {
+            target = "/employer/profile";
+          }
+        } else {
+          // Candidate: how many vacancies (candidate rows) does this user have?
+          const { data: rows } = await supabase
+            .from("candidates")
+            .select("id, public_id")
+            .eq("user_id", user.id);
+          const count = rows?.length || 0;
+          if (count >= 2) {
+            const pid = rows?.[0]?.public_id;
+            target = pid ? `/candidate${pid}/profile` : "/main";
+          } else if (nextPath) {
+            target = nextPath;
+          } else {
+            try {
+              target = await resolveProfilePathForUser(user.id);
+            } catch {
+              target = "/main";
+            }
+          }
         }
-        // Clear hash and navigate
+
         window.history.replaceState({}, "", window.location.pathname);
         navigate(target);
       } catch (e: any) {
