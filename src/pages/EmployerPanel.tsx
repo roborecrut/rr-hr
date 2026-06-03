@@ -155,6 +155,71 @@ export default function EmployerPanel() {
   const [selectedPlanToBuy, setSelectedPlanToBuy] = useState<"silver" | "gold" | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
+  // Admin mode: разрешает редактору Lovable открывать кабинет демо-кандидата и
+  // переходить на лендинги без полноценной регистрации.
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (!cancelled && data) setIsAdmin(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Open the demo candidate cabinet under a real URL: /{companySlug}/{projectSlug}/candidate{publicId}/profile
+  const handleOpenCandidateAsAdmin = async (candidateOverride?: any) => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { buildCandidateUrl, buildVacancyUrl, buildCompanyUrl } = await import("@/lib/links");
+    let cand: any = candidateOverride;
+    if (!cand) {
+      const { data } = await supabase
+        .from("candidates")
+        .select("id, public_id, project_id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      cand = data;
+    }
+    if (!cand?.project_id || !cand?.public_id) return;
+    const { data: proj } = await supabase
+      .from("projects")
+      .select("id, slug, role_name, company_id")
+      .eq("id", cand.project_id)
+      .maybeSingle();
+    const { data: comp } = proj?.company_id
+      ? await supabase.from("companies").select("id, slug, name").eq("id", proj.company_id).maybeSingle()
+      : { data: null } as any;
+    sessionStorage.setItem("rr_admin_impersonate", "1");
+    navigate(buildCandidateUrl(comp, proj, cand, "profile"));
+    // hint vars to satisfy eslint about unused builders in some envs
+    void buildVacancyUrl; void buildCompanyUrl;
+  };
+
+  const handleOpenVacancyAsAdmin = async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { buildVacancyUrl } = await import("@/lib/links");
+    const { data: proj } = await supabase
+      .from("projects")
+      .select("id, slug, company_id")
+      .eq("is_published", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const { data: comp } = proj?.company_id
+      ? await supabase.from("companies").select("id, slug").eq("id", proj.company_id).maybeSingle()
+      : { data: null } as any;
+    if (proj && comp) navigate(buildVacancyUrl(comp, proj));
+  };
+
   // Companies custom database state
   const [companiesList, setCompaniesList] = useState<any[]>([]);
   const [showAddCompany, setShowAddCompany] = useState(false);
@@ -1348,6 +1413,29 @@ export default function EmployerPanel() {
               </button>
             </div>
           </div>
+
+          {isAdmin && (
+            <div className="bg-indigo-950/60 border border-indigo-400/40 rounded-3xl p-4 shadow-xl text-left space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-indigo-300 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Админ-режим Lovable
+              </div>
+              <p className="text-[11px] text-slate-300 leading-snug">
+                Открывайте демо-страницы под видом кандидата без отдельной регистрации.
+              </p>
+              <button
+                onClick={() => handleOpenCandidateAsAdmin()}
+                className="w-full text-[11px] font-bold bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-100 px-3 py-2 rounded-xl transition"
+              >
+                Открыть кабинет кандидата →
+              </button>
+              <button
+                onClick={handleOpenVacancyAsAdmin}
+                className="w-full text-[11px] font-bold bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-100 px-3 py-2 rounded-xl transition"
+              >
+                Открыть лендинг вакансии →
+              </button>
+            </div>
+          )}
 
           {/* Quick Realtime Limit Monitor Tracker Widget */}
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-4 shadow-xl text-xs space-y-2 text-left">
