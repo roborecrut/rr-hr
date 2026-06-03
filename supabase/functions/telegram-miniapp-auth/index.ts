@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
   if (!body.initData) return jsonResponse({ error: "init_data_missing" }, 400);
 
-  const intent = body.intent === "employer" ? "employer" : "candidate";
+  const requestedIntent = body.intent === "employer" ? "employer" : "candidate";
 
   // Parse initData
   const params = new URLSearchParams(body.initData);
@@ -52,14 +52,18 @@ Deno.serve(async (req) => {
   };
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
-  const email = `tg_${tgUser.id}_${intent}@rrhr.local`;
 
-  const { data: link } = await admin.from("telegram_links")
-    .select("user_id")
+  // Reuse an existing link for this telegram_id regardless of intent — the
+  // Mini App opens with the role the user already registered with.
+  const { data: anyLink } = await admin.from("telegram_links")
+    .select("user_id, intent")
     .eq("telegram_id", tgUser.id)
-    .eq("intent", intent)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
-  let userId = link?.user_id as string | undefined;
+  const intent = (anyLink?.intent as "employer" | "candidate" | undefined) || requestedIntent;
+  const email = `tg_${tgUser.id}_${intent}@rrhr.local`;
+  let userId = anyLink?.user_id as string | undefined;
 
   if (!userId) {
     const { data: created, error } = await admin.auth.admin.createUser({
