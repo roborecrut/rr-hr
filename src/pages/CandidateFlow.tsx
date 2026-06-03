@@ -2815,7 +2815,7 @@ export default function CandidateFlow() {
               <div className="mt-10 grid grid-cols-2 gap-8 items-end relative z-10 text-left px-4">
                 <div className="space-y-1">
                   <div className="text-[9px] uppercase tracking-wider text-gray-400">Выдан Системой:</div>
-                  <div className="text-[11px] font-bold font-mono text-[#E7C768]">HR-RR.ru (ИИ Аудит)</div>
+                  <div className="text-[11px] font-bold font-mono text-[#E7C768]">Робот Рекрутер (ИИ Аудит)</div>
                   <div className="w-24 h-px bg-white/20"></div>
                   <div className="text-[9px] text-gray-400 font-normal">Уполномоченная подпись системного робота</div>
                 </div>
@@ -2869,7 +2869,7 @@ export default function CandidateFlow() {
 
       {/* Small footer */}
       <footer className="py-4 text-center text-xs text-gray-400 border-t border-white/5 bg-[#1A1A1A]">
-        HR-RR.ru © 2026 Робот Рекрутер. Система обучения соискателей.
+        © 2026 Робот Рекрутер. Система обучения соискателей.
       </footer>
 
       {/* Floating AI Assistant Widget in the bottom-right corner of every sub-page */}
