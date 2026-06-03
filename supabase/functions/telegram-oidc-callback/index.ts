@@ -7,6 +7,30 @@ import { corsHeaders } from "../_shared/cors.ts";
 const TOKEN_URL = "https://oauth.telegram.org/token";
 const JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json";
 
+const ALLOWED_HOSTS = new Set([
+  "hr-rr.online",
+  "www.hr-rr.online",
+  "hr-rr.ru",
+  "www.hr-rr.ru",
+]);
+function isAllowedHost(host: string): boolean {
+  if (ALLOWED_HOSTS.has(host)) return true;
+  if (host.endsWith(".lovable.app")) return true;
+  if (host.endsWith(".lovableproject.com")) return true;
+  return false;
+}
+function safeRedirectUrl(input: string | undefined | null): URL {
+  const fallback = new URL("https://hr-rr.online");
+  if (!input) return fallback;
+  try {
+    const u = new URL(input);
+    if (u.protocol !== "https:" || !isAllowedHost(u.hostname)) return fallback;
+    return u;
+  } catch {
+    return fallback;
+  }
+}
+
 function b64urlToBytes(s: string): Uint8Array {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
   while (s.length % 4) s += "=";
@@ -99,7 +123,9 @@ Deno.serve(async (req) => {
     return fallbackDone(st.redirect_to || "https://hr-rr.online", "error=state_expired");
   }
 
-  const redirectBase = String(st.redirect_to || "https://hr-rr.online").replace(/\/+$/, "");
+  const redirectUrl = safeRedirectUrl(st.redirect_to);
+  const redirectBase = redirectUrl.origin;
+  const nextPath = `${redirectUrl.pathname}${redirectUrl.search}` || "/";
   // Must match the redirect_uri used in /auth (whitelisted in BotFather).
   const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
 
@@ -228,6 +254,7 @@ Deno.serve(async (req) => {
     token_hash: String(tokenHash || ""),
     email,
     intent,
+    next: nextPath,
   }).toString();
 
   return htmlRedirect(`${redirectBase}/auth/telegram/done#${qs}`);
