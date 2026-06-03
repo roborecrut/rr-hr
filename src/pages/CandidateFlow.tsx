@@ -676,36 +676,91 @@ export default function CandidateFlow() {
 
     try {
       // 1. Fetch available projects
-      const resAllProjs = await fetch("/api/projects");
-      if (resAllProjs.ok) {
-        const projs = await resAllProjs.json();
-        setAllProjects(projs);
+      let projsList: any[] = [];
+      const resAllProjs = await fetch("/api/projects").catch(() => null as any);
+      if (resAllProjs && resAllProjs.ok) {
+        projsList = await resAllProjs.json();
+      } else {
+        // Supabase fallback — pull published projects + parent company name/slug
+        const { data } = await supabase
+          .from("projects")
+          .select("*, companies(name, slug, logo_url)")
+          .eq("is_published", true);
+        projsList = (data || []).map((p: any) => ({
+          id: p.id,
+          companyName: p.companies?.name || "",
+          companySlug: p.companies?.slug || undefined,
+          employerId: p.employer_id,
+          roleName: p.role_name,
+          salaryTerms: p.salary_terms || undefined,
+          scheduleTerms: p.schedule_terms || undefined,
+          motivationText: p.motivation_text || undefined,
+          customWiki: p.custom_wiki || undefined,
+          checklistQuestions: [],
+          roleplayQuestions: [],
+          logoUrl: p.logo_url || p.companies?.logo_url || undefined,
+          slug: p.slug,
+        }));
+      }
+      setAllProjects(projsList);
+
+      // 2. Resolve candidate. Prefer Supabase by public_id, then legacy API.
+      let activeCand: any = null;
+      const pubId = activeId.startsWith("candidate") ? activeId.replace(/^candidate/, "") : activeId;
+      if (pubId) {
+        const { data: cand } = await supabase
+          .from("candidates")
+          .select("*")
+          .eq("public_id", pubId)
+          .maybeSingle();
+        if (cand) {
+          activeCand = {
+            id: `candidate${cand.public_id}`,
+            publicId: cand.public_id,
+            name: cand.resume_name || `Кандидат #${cand.public_id}`,
+            email: "",
+            projectId: cand.project_id,
+            roleName: cand.role_name || "",
+            currentStage: cand.current_stage,
+            registeredVia: cand.registered_via || "telegram",
+          };
+        }
       }
 
-      // 2. Fetch candidates
-      const resCand = await fetch(`/api/candidates`);
-      const candidatesList = await resCand.json();
-      let activeCand = candidatesList.find((c: any) => c.id === activeId);
+      if (!activeCand) {
+        const resCand = await fetch(`/api/candidates`).catch(() => null as any);
+        if (resCand && resCand.ok) {
+          const candidatesList = await resCand.json();
+          activeCand = candidatesList.find((c: any) => c.id === activeId);
+        }
+      }
 
-      // If starts with candidateXXXXXX and doesn't exist, auto-provision it so candidate experiences zero friction
+      // If starts with candidateXXXXXX and doesn't exist, auto-provision a Supabase row
       if (!activeCand && activeId.startsWith("candidate")) {
         const randomNum = activeId.replace("candidate", "");
         const randId = randomNum || Math.floor(100000 + Math.random() * 900000).toString();
-        const createdRes = await fetch(`/api/candidates`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: activeId,
-            name: `Кандидат #${randId}`,
-            email: `candidate_${randId}@candidate-pool.ru`,
-            telegramUsername: "tg_candidate_demo",
-            projectId: parts[1] || "",
-            roleName: "Менеджер по продажам",
-            registeredVia: "google"
+        const { data: created } = await supabase
+          .from("candidates")
+          .insert({
+            public_id: randId,
+            project_id: parts[1] ? null : null,
+            role_name: "Менеджер по продажам",
+            current_stage: "terms",
+            registered_via: "telegram",
           })
-        });
-        if (createdRes.ok) {
-          activeCand = await createdRes.json();
+          .select("*")
+          .single();
+        if (created) {
+          activeCand = {
+            id: `candidate${created.public_id}`,
+            publicId: created.public_id,
+            name: `Кандидат #${created.public_id}`,
+            email: `candidate_${created.public_id}@candidate-pool.ru`,
+            projectId: created.project_id,
+            roleName: created.role_name,
+            currentStage: created.current_stage,
+            registeredVia: created.registered_via,
+          };
         }
       }
 
@@ -751,10 +806,34 @@ export default function CandidateFlow() {
 
         // Fetch corresponding project details
         const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
-        const resProj = await fetch(`/api/projects/${activeProjId}`);
-        if (resProj.ok) {
-          const activeProj = await resProj.json();
-          setProject(activeProj);
+        if (activeProjId) {
+          const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
+          if (resProj && resProj.ok) {
+            setProject(await resProj.json());
+          } else {
+            // Supabase fallback by id OR slug
+            const isUuid = /^[0-9a-f-]{36}$/i.test(activeProjId);
+            const q = isUuid
+              ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", activeProjId).maybeSingle()
+              : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", activeProjId).maybeSingle();
+            const { data: p } = await q;
+            if (p) {
+              setProject({
+                id: p.id,
+                companyName: p.companies?.name || "",
+                companySlug: p.companies?.slug || undefined,
+                employerId: p.employer_id,
+                roleName: p.role_name,
+                salaryTerms: p.salary_terms || undefined,
+                scheduleTerms: p.schedule_terms || undefined,
+                motivationText: p.motivation_text || undefined,
+                customWiki: p.custom_wiki || undefined,
+                checklistQuestions: [],
+                roleplayQuestions: [],
+                logoUrl: p.logo_url || p.companies?.logo_url || undefined,
+              } as any);
+            }
+          }
         }
       }
     } catch (err) {
