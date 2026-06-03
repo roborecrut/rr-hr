@@ -13,6 +13,34 @@ async function sha256(input: string): Promise<Uint8Array> {
   return new Uint8Array(buf);
 }
 
+const ALLOWED_HOSTS = new Set([
+  "hr-rr.online",
+  "www.hr-rr.online",
+  "hr-rr.ru",
+  "www.hr-rr.ru",
+]);
+function isAllowedHost(host: string): boolean {
+  if (ALLOWED_HOSTS.has(host)) return true;
+  if (host.endsWith(".lovable.app")) return true;
+  if (host.endsWith(".lovableproject.com")) return true;
+  return false;
+}
+function safeRedirectTo(input: string | undefined | null): string {
+  const fallback = "https://hr-rr.online";
+  if (!input) return fallback;
+  try {
+    const u = new URL(input);
+    if (u.protocol !== "https:") return fallback;
+    if (!isAllowedHost(u.hostname)) return fallback;
+    // Preserve path+search, drop hash
+    return `${u.origin}${u.pathname}${u.search}`.replace(/\/+$/, (m) =>
+      u.pathname === "/" ? m : m,
+    );
+  } catch {
+    return fallback;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
@@ -28,8 +56,8 @@ Deno.serve(async (req) => {
 
   const intent = body.intent === "employer" ? "employer" : "candidate";
   const ref = (body.ref || "").trim() || null;
-  const origin = (body.origin || "").replace(/\/+$/, "") || "https://hr-rr.online";
-  const redirectTo = (body.redirect_to || origin).replace(/\/+$/, "");
+  const redirectTo = safeRedirectTo(body.redirect_to || body.origin);
+  const origin = new URL(redirectTo).origin;
   // Telegram OIDC redirect_uri must EXACTLY match what is whitelisted in BotFather.
   // We keep one URL across all client origins by pointing it at the edge function.
   const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
