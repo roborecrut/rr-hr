@@ -45,7 +45,9 @@ Deno.serve(async (req) => {
   try { payload = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
 
   const intent = (payload.intent === "employer" ? "employer" : "candidate") as "employer" | "candidate";
+  const refCode = typeof (payload as any).ref === "string" ? String((payload as any).ref).trim() : "";
   delete (payload as any).intent;
+  delete (payload as any).ref;
 
   const id = Number(payload.id);
   const hash = String(payload.hash || "");
@@ -114,7 +116,22 @@ Deno.serve(async (req) => {
         contact_tg: (payload.username as string) ?? null,
       });
     }
+
+    // Apply referral bonus (employer→employer only; function returns early otherwise)
+    if (refCode && intent === "employer") {
+      await admin.rpc("apply_referral_bonus", { _referrer_public_id: refCode, _new_user: userId });
+    }
   }
+
+  // Always sync latest Telegram profile fields onto profiles
+  await admin.from("profiles").update({
+    telegram_id: id,
+    telegram_username: (payload.username as string) ?? null,
+    telegram_first_name: (payload.first_name as string) ?? null,
+    telegram_last_name: (payload.last_name as string) ?? null,
+    telegram_photo_url: (payload.photo_url as string) ?? null,
+    avatar_url: (payload.photo_url as string) ?? null,
+  }).eq("id", userId);
 
   // 4) Issue magiclink — client uses verifyOtp to obtain a session
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({
