@@ -322,7 +322,7 @@ export default function CompanyLanding() {
     industry: "Торговля и дистрибьюция",
     staff: "15-50 человек",
     description: "Ведущее предприятие в сфере поставок сырья и заготовок.",
-    sites: "https://hr-rr.ru",
+    sites: "https://hr-rr.online",
     logoUrl: ""
   };
 

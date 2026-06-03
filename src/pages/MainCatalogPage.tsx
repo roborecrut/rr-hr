@@ -423,7 +423,7 @@ export default function MainCatalogPage() {
               className="w-8 h-8 object-contain" 
               referrerPolicy="no-referrer"
             />
-            <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR — HR-RR.ru</span>
+            <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
           </div>
 
           <div className="flex gap-4 text-xs text-slate-400">

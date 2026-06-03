@@ -208,7 +208,7 @@ export default function LandingPage() {
             <div className="inline-flex items-center gap-2 bg-[#E7C768]/10 border border-[#E7C768]/20 px-3 py-1.5 rounded-full w-max">
               <Cpu className="w-4 h-4 text-[#E7C768]" />
               <span className="text-xs font-semibold text-[#E7C768] uppercase tracking-wider">
-                Сервис ИИ Найма на HR-RR.ru
+                Сервис ИИ Найма
               </span>
             </div>
 
@@ -832,7 +832,7 @@ export default function LandingPage() {
               referrerPolicy="no-referrer"
             />
             <div className="text-left font-bold text-sm text-[#E7C768]">
-              © 2026 Робот Рекрутер RR — HR-RR.ru
+              © 2026 Робот Рекрутер RR
               <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
             </div>
           </div>
