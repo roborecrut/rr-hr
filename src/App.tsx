@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Routes, Route } from "react-router-dom";
-import { RouterProvider } from "./components/RouterContext";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import MainCatalogPage from "./pages/MainCatalogPage";
 import EmployerPanel from "./pages/EmployerPanel";
@@ -16,7 +15,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 
 export default function App() {
   return (
-    <RouterProvider>
+    <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
@@ -33,6 +32,6 @@ export default function App() {
         <Route path="/:slug" element={<CompanyLanding />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-    </RouterProvider>
+    </BrowserRouter>
   );
 }
