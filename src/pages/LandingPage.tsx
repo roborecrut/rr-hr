@@ -9,6 +9,8 @@ import Mascot from "../components/Mascot";
 import { BASIC_SPECIALTIES } from "../types";
 import AuthModal from "../components/AuthModal";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveProfilePathForUser } from "@/lib/links";
 import { 
   Users, 
   Award, 
@@ -33,6 +35,21 @@ import {
 export default function LandingPage() {
   const { navigate, path } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // "Личный кабинет RR" — если юзер уже залогинен, ведём в его реальный кабинет.
+  const handleOpenCabinet = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const target = await resolveProfilePathForUser(user.id);
+        if (target && target !== "/") {
+          navigate(target);
+          return;
+        }
+      }
+    } catch {/* fall through to modal */}
+    setIsAuthModalOpen(true);
+  };
 
   // States for Interactive Tariff Calculator
   const [interviewsCount, setInterviewsCount] = useState(5);
@@ -80,36 +97,12 @@ export default function LandingPage() {
             >
               Каталог Профессий
             </button>
-            <button 
-              id="nav_employer"
-              onClick={() => {
-                localStorage.setItem("employer_active_tab_intent", "crm");
-                navigate("/employer");
-              }} 
-              className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 flex items-center gap-1 bg-white/5 border border-white/10"
-            >
-              Панель Работодателя 💼
-            </button>
-            <button 
-              id="nav_candidate"
-              onClick={() => navigate("/candidate")} 
-              className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 flex items-center gap-1 bg-white/5 border border-white/10"
-            >
-              Кабинет Соискателя 🎓
-            </button>
-            <button 
-              id="nav_admin"
-              onClick={() => navigate("/admin")} 
-              className="transition px-3 py-2 rounded-xl text-indigo-300 hover:text-indigo-150 flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20"
-            >
-              Админ ⚙️
-            </button>
           </nav>
 
           <div className="hidden md:block">
             <button 
               id="btn_login"
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={handleOpenCabinet}
               className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white text-xs md:text-sm font-bold px-4 py-2.5 rounded-xl hover:shadow-lg transition-transform active:scale-95 duration-100"
             >
               Личный кабинет RR
@@ -149,45 +142,12 @@ export default function LandingPage() {
             >
               Каталог Профессий
             </button>
-            <button 
-              id="mobile_nav_employer"
-              onClick={() => {
-                localStorage.setItem("employer_active_tab_intent", "crm");
-                navigate("/employer");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Панель Работодателя</span>
-              <span>💼</span>
-            </button>
-            <button 
-              id="mobile_nav_candidate"
-              onClick={() => {
-                navigate("/candidate");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Кабинет Соискателя</span>
-              <span>🎓</span>
-            </button>
-            <button 
-              id="mobile_nav_admin"
-              onClick={() => {
-                navigate("/admin");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 border border-indigo-500/20 rounded-xl text-indigo-300 hover:text-indigo-150 bg-indigo-500/10"
-            >
-              Кабинет Администратора ⚙️
-            </button>
             <div className="h-px bg-white/10 my-1"></div>
             <button 
               id="mobile_btn_login"
               onClick={() => {
-                setIsAuthModalOpen(true);
                 setMobileMenuOpen(false);
+                handleOpenCabinet();
               }}
               className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold py-3 rounded-xl text-center shadow-lg transition"
             >
