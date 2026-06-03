@@ -3,6 +3,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { safeRedirect } from "../_shared/telegramRoute.ts";
+import { logEvent, clientIp, sha256Hex } from "../_shared/telemetry.ts";
+import { rlHit } from "../_shared/rateLimit.ts";
 
 function b64url(bytes: Uint8Array): string {
   let s = btoa(String.fromCharCode(...bytes));
@@ -24,26 +26,90 @@ Deno.serve(async (req) => {
   if (!CLIENT_ID) return jsonResponse({ error: "oidc_client_id_missing" }, 500);
   if (!SUPABASE_URL || !SERVICE_KEY) return jsonResponse({ error: "supabase_env_missing" }, 500);
 
-  let body: { intent?: string; ref?: string; redirect_to?: string; origin?: string } = {};
+  let body: {
+    intent?: string;
+    ref?: string;
+    redirect_to?: string;
+    origin?: string;
+    turnstile_token?: string;
+  } = {};
   try { body = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
 
   const intent = body.intent === "employer" ? "employer" : "candidate";
   const ref = (body.ref || "").trim() || null;
   const rawRedirect = body.redirect_to || body.origin || null;
+
+  const ip = clientIp(req);
+  const ipHash = await sha256Hex(ip);
+  const uaHash = await sha256Hex(req.headers.get("user-agent") || "");
+
+  // Rate limits — fail-open if RPC fails.
+  const okIpMin = await rlHit(`tg-start:ip:${ipHash}`, 60, 10);
+  const okIpHr  = await rlHit(`tg-start:ip-hr:${ipHash}`, 3600, 60);
+  const okIntent = await rlHit(`tg-start:${intent}:${ipHash}`, 3600, 20);
+  if (!okIpMin || !okIpHr || !okIntent) {
+    await logEvent({
+      kind: "rate_limited", source: "start", intent,
+      reason: !okIpMin ? "ip_min" : !okIpHr ? "ip_hr" : "intent",
+      ip_hash: ipHash, ua_hash: uaHash,
+    });
+    return jsonResponse({ error: "rate_limited" }, 429);
+  }
+
+  // Optional Turnstile verification (when secret + token are present).
+  const TURNSTILE_SECRET = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (TURNSTILE_SECRET) {
+    if (!body.turnstile_token) {
+      await logEvent({
+        kind: "turnstile_fail", source: "start", intent,
+        reason: "missing_token", ip_hash: ipHash, ua_hash: uaHash,
+      });
+      return jsonResponse({ error: "turnstile_required" }, 403);
+    }
+    try {
+      const form = new URLSearchParams({
+        secret: TURNSTILE_SECRET,
+        response: body.turnstile_token,
+        remoteip: ip,
+      });
+      const tr = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      });
+      const tj = await tr.json();
+      if (!tj.success) {
+        await logEvent({
+          kind: "turnstile_fail", source: "start", intent,
+          reason: (tj["error-codes"] || []).join(",") || "verify_failed",
+          ip_hash: ipHash, ua_hash: uaHash, meta: { codes: tj["error-codes"] },
+        });
+        return jsonResponse({ error: "turnstile_failed" }, 403);
+      }
+    } catch (e) {
+      await logEvent({
+        kind: "turnstile_fail", source: "start", intent,
+        reason: "verify_exception", ip_hash: ipHash, ua_hash: uaHash,
+        meta: { msg: (e as Error).message },
+      });
+      return jsonResponse({ error: "turnstile_unreachable" }, 503);
+    }
+  }
+
   const res = safeRedirect(rawRedirect);
   if (res.rejected) {
     console.warn("[telegram-oidc-start] redirect_to rejected", {
-      reason: res.reason,
-      input: res.originalInput,
-      intent,
-      ref,
+      reason: res.reason, input: res.originalInput, intent, ref,
+    });
+    await logEvent({
+      kind: "whitelist_reject", source: "start", reason: res.reason || "unknown",
+      intent, host: (() => { try { return new URL(rawRedirect || "").hostname; } catch { return null; } })(),
+      path: (() => { try { return new URL(rawRedirect || "").pathname; } catch { return null; } })(),
+      ip_hash: ipHash, ua_hash: uaHash, meta: { input: res.originalInput },
     });
   } else {
     console.log("[telegram-oidc-start] redirect_to accepted", {
-      host: res.url.hostname,
-      path: res.url.pathname,
-      intent,
-      ref,
+      host: res.url.hostname, path: res.url.pathname, intent, ref,
     });
   }
   const redirectTo = `${res.url.origin}${res.url.pathname}${res.url.search}`;

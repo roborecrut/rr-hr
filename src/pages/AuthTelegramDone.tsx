@@ -11,7 +11,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import { useRouter } from "@/components/RouterContext";
-import { safeNextPath, chooseCandidateTarget } from "@/lib/telegramRoute";
+import { safeNextPathStrict, chooseCandidateTarget } from "@/lib/telegramRoute";
 
 export default function AuthTelegramDone() {
   const { navigate } = useRouter();
@@ -29,7 +29,21 @@ export default function AuthTelegramDone() {
 
         const tokenHash = params.get("token_hash") || "";
         const intent = (params.get("intent") as "employer" | "candidate") || "candidate";
-        const nextPath = safeNextPath(params.get("next"), window.location.origin);
+        const rawNext = params.get("next");
+        const nextRes = safeNextPathStrict(rawNext, window.location.origin);
+        const nextPath = nextRes.value;
+        if (nextRes.rejected && rawNext) {
+          console.warn("[auth/telegram/done] next rejected", nextRes.reason, rawNext);
+          try {
+            await supabase.rpc("log_telegram_event", {
+              _kind: "next_reject",
+              _source: "done",
+              _reason: nextRes.reason ?? undefined,
+              _intent: intent,
+              _next_path: rawNext.slice(0, 1024),
+            });
+          } catch { /* ignore */ }
+        }
         if (!tokenHash) throw new Error("token_hash отсутствует");
 
         setStatus("Создаём сессию…");
@@ -73,6 +87,16 @@ export default function AuthTelegramDone() {
           reason = decision.reason;
         }
         console.log("[auth/telegram/done] route", { intent, nextPath, target, reason });
+        try {
+          await supabase.rpc("log_telegram_event", {
+            _kind: "route_decision",
+            _source: "done",
+            _reason: reason,
+            _intent: intent,
+            _path: target.slice(0, 512),
+            _next_path: nextPath ? nextPath.slice(0, 1024) : undefined,
+          });
+        } catch { /* ignore */ }
 
         window.history.replaceState({}, "", window.location.pathname);
         navigate(target);

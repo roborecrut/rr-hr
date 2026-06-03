@@ -1149,6 +1149,24 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           created_at: string
@@ -1182,6 +1200,54 @@ export type Database = {
           referee_kind?: string
           reward_rr?: number | null
           used_by_user_id?: string | null
+        }
+        Relationships: []
+      }
+      telegram_events: {
+        Row: {
+          created_at: string
+          host: string | null
+          id: string
+          intent: string | null
+          ip_hash: string | null
+          kind: string
+          meta: Json
+          next_path: string | null
+          path: string | null
+          reason: string | null
+          source: string | null
+          ua_hash: string | null
+          vacancy_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          host?: string | null
+          id?: string
+          intent?: string | null
+          ip_hash?: string | null
+          kind: string
+          meta?: Json
+          next_path?: string | null
+          path?: string | null
+          reason?: string | null
+          source?: string | null
+          ua_hash?: string | null
+          vacancy_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          host?: string | null
+          id?: string
+          intent?: string | null
+          ip_hash?: string | null
+          kind?: string
+          meta?: Json
+          next_path?: string | null
+          path?: string | null
+          reason?: string | null
+          source?: string | null
+          ua_hash?: string | null
+          vacancy_count?: number | null
         }
         Relationships: []
       }
@@ -1578,6 +1644,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_telegram_metrics: { Args: { _hours?: number }; Returns: Json }
       apply_referral_bonus:
         | {
             Args: { _new_user: string; _referrer_public_id: string }
@@ -1666,12 +1733,30 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      log_telegram_event: {
+        Args: {
+          _host?: string
+          _intent?: string
+          _kind: string
+          _meta?: Json
+          _next_path?: string
+          _path?: string
+          _reason?: string
+          _source?: string
+          _vacancy_count?: number
+        }
+        Returns: undefined
+      }
       referral_lookup: {
         Args: { _code: string }
         Returns: {
           owner_user_id: string
           ref_code: string
         }[]
+      }
+      rl_hit: {
+        Args: { _key: string; _limit: number; _window_sec: number }
+        Returns: boolean
       }
       slugify_ru: { Args: { _input: string }; Returns: string }
     }

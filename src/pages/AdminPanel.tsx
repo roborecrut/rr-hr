@@ -6,6 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
+import TelegramMetrics from "./admin/TelegramMetrics";
 import { JobProject, Candidate } from "../types";
 import {
   Users,
@@ -585,6 +586,11 @@ export default function AdminPanel() {
 
           </div>
 
+        </div>
+
+        {/* Telegram OIDC metrics */}
+        <div className="max-w-7xl mx-auto px-4 mt-6">
+          <TelegramMetrics />
         </div>
 
       </main>
