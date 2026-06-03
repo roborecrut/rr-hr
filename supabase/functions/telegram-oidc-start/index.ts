@@ -2,6 +2,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { safeRedirect } from "../_shared/telegramRoute.ts";
 
 function b64url(bytes: Uint8Array): string {
   let s = btoa(String.fromCharCode(...bytes));
@@ -11,34 +12,6 @@ function b64url(bytes: Uint8Array): string {
 async function sha256(input: string): Promise<Uint8Array> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
   return new Uint8Array(buf);
-}
-
-const ALLOWED_HOSTS = new Set([
-  "hr-rr.online",
-  "www.hr-rr.online",
-  "hr-rr.ru",
-  "www.hr-rr.ru",
-]);
-function isAllowedHost(host: string): boolean {
-  if (ALLOWED_HOSTS.has(host)) return true;
-  if (host.endsWith(".lovable.app")) return true;
-  if (host.endsWith(".lovableproject.com")) return true;
-  return false;
-}
-function safeRedirectTo(input: string | undefined | null): string {
-  const fallback = "https://hr-rr.online";
-  if (!input) return fallback;
-  try {
-    const u = new URL(input);
-    if (u.protocol !== "https:") return fallback;
-    if (!isAllowedHost(u.hostname)) return fallback;
-    // Preserve path+search, drop hash
-    return `${u.origin}${u.pathname}${u.search}`.replace(/\/+$/, (m) =>
-      u.pathname === "/" ? m : m,
-    );
-  } catch {
-    return fallback;
-  }
 }
 
 Deno.serve(async (req) => {
@@ -56,8 +29,25 @@ Deno.serve(async (req) => {
 
   const intent = body.intent === "employer" ? "employer" : "candidate";
   const ref = (body.ref || "").trim() || null;
-  const redirectTo = safeRedirectTo(body.redirect_to || body.origin);
-  const origin = new URL(redirectTo).origin;
+  const rawRedirect = body.redirect_to || body.origin || null;
+  const res = safeRedirect(rawRedirect);
+  if (res.rejected) {
+    console.warn("[telegram-oidc-start] redirect_to rejected", {
+      reason: res.reason,
+      input: res.originalInput,
+      intent,
+      ref,
+    });
+  } else {
+    console.log("[telegram-oidc-start] redirect_to accepted", {
+      host: res.url.hostname,
+      path: res.url.pathname,
+      intent,
+      ref,
+    });
+  }
+  const redirectTo = `${res.url.origin}${res.url.pathname}${res.url.search}`;
+  const origin = res.url.origin;
   // Telegram OIDC redirect_uri must EXACTLY match what is whitelisted in BotFather.
   // We keep one URL across all client origins by pointing it at the edge function.
   const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
