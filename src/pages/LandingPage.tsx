@@ -781,28 +781,18 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* Styled Theme Footer with NO Black background */}
-      <footer className="bg-[#17344F] text-white py-12 px-4 md:px-8 border-t-2 border-[#E7C768]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
-              alt="RR Logo" 
-              className="w-10 h-10 object-contain" 
-              referrerPolicy="no-referrer"
-            />
-            <div className="text-left font-bold text-sm text-[#E7C768]">
-              © 2026 Робот Рекрутер RR
-              <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-6 text-xs text-slate-300">
-            <button onClick={() => navigate("/main")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-[#E7C768] transition">Каталог должностей</button>
-            <button onClick={() => navigate("/employer")} className="hover:text-white transition">Панель Руководителя</button>
-            <button onClick={() => navigate("/candidate")} className="hover:text-white transition">Панель Кандидата</button>
-            <button onClick={() => setIsAuthModalOpen(true)} className="hover:text-white transition font-bold text-[#E7C768]">Авторизация</button>
+      {/* Minimal footer — desktop only; mobile uses its own bottom navs in cabinets */}
+      <footer className="hidden md:block bg-[#17344F] text-white py-10 px-4 md:px-8 border-t-2 border-[#E7C768]">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
+          <img
+            src="https://i.ibb.co/WWRbtPq0/RR-Logo.png"
+            alt="RR Logo"
+            className="w-10 h-10 object-contain"
+            referrerPolicy="no-referrer"
+          />
+          <div className="text-left font-bold text-sm text-[#E7C768]">
+            © 2026 Робот Рекрутер RR
+            <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
           </div>
         </div>
       </footer>
