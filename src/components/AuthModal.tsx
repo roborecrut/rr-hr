@@ -89,10 +89,30 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const handleGoogle = async () => {
     setErrorText(""); setIsLoading(true); setAuthVia("google");
     try {
+      // Persist intent/ref/project context so /auth/callback can finalize after Google round-trip
+      try {
+        const pathname = window.location.pathname;
+        let company_slug = "";
+        let project_slug = "";
+        // Heuristic: /{companySlug}/{projectSlug}[/...]
+        const segs = pathname.split("/").filter(Boolean);
+        if (segs.length >= 2 && !/^(employer|candidate)/.test(segs[0]) &&
+            !["main","vacancy","admin","job","auth","setup","employer","candidate"].includes(segs[0])) {
+          company_slug = segs[0];
+          project_slug = segs[1];
+        }
+        sessionStorage.setItem("pendingGoogleAuth", JSON.stringify({
+          intent,
+          ref: query.ref || "",
+          company_slug,
+          project_slug,
+          return_to: window.location.pathname + window.location.search,
+        }));
+      } catch { /* ignore */ }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}${intent === "employer" ? "/employer/profile" : "/main"}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           queryParams: { intent },
         },
       });
