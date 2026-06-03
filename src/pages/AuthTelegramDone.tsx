@@ -38,7 +38,7 @@ export default function AuthTelegramDone() {
             await supabase.rpc("log_telegram_event", {
               _kind: "next_reject",
               _source: "done",
-              _reason: nextRes.reason ?? null,
+              _reason: nextRes.reason ?? undefined,
               _intent: intent,
               _next_path: rawNext.slice(0, 1024),
             });
@@ -94,8 +94,7 @@ export default function AuthTelegramDone() {
             _reason: reason,
             _intent: intent,
             _path: target.slice(0, 512),
-            _next_path: nextPath ? nextPath.slice(0, 1024) : null,
-            _vacancy_count: intent === "candidate" ? (typeof reason === "string" ? null : null) : null,
+            _next_path: nextPath ? nextPath.slice(0, 1024) : undefined,
           });
         } catch { /* ignore */ }
 
