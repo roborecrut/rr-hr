@@ -242,7 +242,11 @@ export default function CompanyLanding() {
     const mockEmail = `candidate_${randId}@candidate-pool.ru`;
     const mockTg = method === "telegram" ? `tg_candidate_${randId}` : "";
 
-    const activeProject = selectedVacancy || vacancies[0] || { id: "sales-prod-1", roleName: "Менеджер по продажам", companySlug: "ooo-roborekrut-inzhiniring" };
+    const activeProject = selectedVacancy || vacancies[0];
+    if (!activeProject) {
+      setSubmitting(false);
+      return;
+    }
 
     const payload: any = {
       name: mockName,
@@ -266,14 +270,32 @@ export default function CompanyLanding() {
     }
 
     try {
+      // Try legacy API; on failure, create the candidate directly in Supabase so
+      // the URL we produce is bound to a real candidate row (public_id).
+      let candidateInfo: any = null;
       const res = await fetch("/api/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
-      });
+      }).catch(() => null as any);
+      if (res && res.ok) {
+        candidateInfo = await res.json();
+      } else {
+        const { data: created, error } = await supabase
+          .from("candidates")
+          .insert({
+            project_id: activeProject.id,
+            role_name: activeProject.roleName,
+            registered_via: method as any,
+            current_stage: "terms",
+          })
+          .select("id, public_id")
+          .single();
+        if (error || !created) throw error;
+        candidateInfo = { id: created.public_id || created.id, public_id: created.public_id };
+      }
 
-      if (res.ok) {
-        const candidateInfo = await res.json();
+      if (candidateInfo) {
         localStorage.setItem("cand_session_id", candidateInfo.id);
         localStorage.setItem("cand_role", "candidate");
 
@@ -282,9 +304,14 @@ export default function CompanyLanding() {
           setRegistrationSuccess(false);
           setShowApplyModal(false);
           setSubmitting(false);
-          
-          // As requested, always land candidate on /{companySlug}/{id}/candidateXXXXXX/profile
-          navigate(`/${activeProject.companySlug || "ooo-roborekrut-inzhiniring"}/${activeProject.id}/${candidateInfo.id}/profile`);
+          navigate(
+            buildCandidateUrl(
+              { slug: (activeProject as any).companySlug },
+              { slug: (activeProject as any).slug || activeProject.id },
+              { public_id: candidateInfo.public_id || candidateInfo.id },
+              "profile",
+            ),
+          );
         }, 1500);
       } else {
         setSubmitting(false);
