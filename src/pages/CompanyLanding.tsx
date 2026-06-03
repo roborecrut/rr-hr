@@ -102,33 +102,34 @@ export default function CompanyLanding() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch companies
-      const compRes = await fetch("/api/companies");
-      let activeCompany = null;
-      if (compRes.ok) {
-        const compList = await compRes.json();
-        const foundComp = compList.find((c: any) => c.slug === companySlug);
-        activeCompany = foundComp || compList[0];
-        setCompany(activeCompany);
+      // 1. Fetch company by slug (or first published if no slug)
+      let compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
+      if (companySlug) compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      const { data: compRows } = await compQuery;
+      const activeCompany = (compRows && compRows[0]) || null;
+      if (activeCompany) {
+        setCompany({ ...activeCompany, slug: activeCompany.slug });
       }
 
-      // 2. Fetch projects (vacancies)
-      const projRes = await fetch("/api/projects");
-      if (projRes.ok) {
-        const projList = await projRes.json();
-        // Filter vacancies by this company name or slug
-        const filtered = projList.filter((p: any) => {
-          return p.companySlug === companySlug || (activeCompany && p.companyName?.toLowerCase() === activeCompany.name?.toLowerCase());
-        });
-        setVacancies(filtered);
+      // 2. Fetch projects (vacancies) for this company
+      if (activeCompany?.id) {
+        const { data: projRows } = await supabase
+          .from("projects")
+          .select("*")
+          .eq("company_id", activeCompany.id)
+          .eq("is_published", true);
+        const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
+        setVacancies(mapped);
 
-        // If vacancyId requested, find it, otherwise take first as active for chatbot
+        // If a vacancyId (slug or uuid) was passed, find it; otherwise pick first
+        let active = mapped[0] || null;
         if (vacancyId) {
-          const foundVac = projList.find((p: any) => p.id === vacancyId);
-          setSelectedVacancy(foundVac || filtered[0] || projList[0]);
-        } else {
-          setSelectedVacancy(filtered[0] || projList[0]);
+          active = mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) || active;
         }
+        setSelectedVacancy(active);
+      } else {
+        setVacancies([]);
+        setSelectedVacancy(null);
       }
     } catch (err) {
       console.error("Error loading company landing details:", err);
