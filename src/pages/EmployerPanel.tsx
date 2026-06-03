@@ -504,18 +504,26 @@ export default function EmployerPanel() {
         setCandidates(await resCand.json());
       } else {
         // Supabase fallback: candidates linked to this employer's projects
-        let cq = supabase.from("candidates").select("*, projects(role_name, company_id, companies(name, slug))");
+        let candRows: any[] = [];
         if (employerId) {
           const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
           if (emp?.id) {
             const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
             const ids = (projIds || []).map((p) => p.id);
-            cq = ids.length
-              ? supabase.from("candidates").select("*, projects(role_name, company_id, companies(name, slug))").in("project_id", ids)
-              : supabase.from("candidates").select("*").limit(0);
+            if (ids.length) {
+              const { data } = await supabase
+                .from("candidates")
+                .select("*, projects(role_name, company_id, companies(name, slug))")
+                .in("project_id", ids);
+              candRows = (data as any[]) || [];
+            }
           }
+        } else {
+          const { data } = await supabase
+            .from("candidates")
+            .select("*, projects(role_name, company_id, companies(name, slug))");
+          candRows = (data as any[]) || [];
         }
-        const { data: candRows } = await cq;
         setCandidates(
           (candRows || []).map((c: any) => ({
             id: `candidate${c.public_id}`,
