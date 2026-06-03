@@ -4,17 +4,26 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
 import { safeRedirect } from "../_shared/telegramRoute.ts";
+import { logEvent, clientIp, sha256Hex } from "../_shared/telemetry.ts";
+import { rlHit } from "../_shared/rateLimit.ts";
 
 const TOKEN_URL = "https://oauth.telegram.org/token";
 const JWKS_URL = "https://oauth.telegram.org/.well-known/jwks.json";
 
-function safeRedirectUrl(input: string | undefined | null, ctx: Record<string, unknown> = {}): URL {
+async function safeRedirectUrl(input: string | undefined | null, ctx: Record<string, unknown> = {}): Promise<URL> {
   const r = safeRedirect(input);
   if (r.rejected) {
     console.warn("[telegram-oidc-callback] redirect_to rejected", {
       reason: r.reason,
       input: r.originalInput,
       ...ctx,
+    });
+    await logEvent({
+      kind: "whitelist_reject", source: "callback", reason: r.reason || "unknown",
+      intent: (ctx.intent as string) ?? null,
+      host: (() => { try { return new URL(input || "").hostname; } catch { return null; } })(),
+      path: (() => { try { return new URL(input || "").pathname; } catch { return null; } })(),
+      meta: { input: r.originalInput, ...ctx },
     });
   }
   return r.url;
@@ -94,6 +103,19 @@ Deno.serve(async (req) => {
   const state = u.searchParams.get("state") || "";
   const oauthErr = u.searchParams.get("error");
 
+  const ip = clientIp(req);
+  const ipHash = await sha256Hex(ip);
+  const okCbIp = await rlHit(`tg-cb:ip:${ipHash}`, 60, 30);
+  const okCbState = state ? await rlHit(`tg-cb:state:${state}`, 60, 1) : true;
+  if (!okCbIp || !okCbState) {
+    await logEvent({
+      kind: "rate_limited", source: "callback",
+      reason: !okCbIp ? "ip" : "state",
+      ip_hash: ipHash,
+    });
+    return new Response("rate_limited", { status: 429, headers: corsHeaders });
+  }
+
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
   const fallbackDone = (base: string, qs: string) =>
@@ -112,7 +134,7 @@ Deno.serve(async (req) => {
     return fallbackDone(st.redirect_to || "https://hr-rr.online", "error=state_expired");
   }
 
-  const redirectUrl = safeRedirectUrl(st.redirect_to, { state, intent: st.intent });
+  const redirectUrl = await safeRedirectUrl(st.redirect_to, { state, intent: st.intent });
   const redirectBase = redirectUrl.origin;
   const nextPath = `${redirectUrl.pathname}${redirectUrl.search}` || "/";
   console.log("[telegram-oidc-callback] resolved next", {
