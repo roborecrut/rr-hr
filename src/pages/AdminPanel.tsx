@@ -588,6 +588,11 @@ export default function AdminPanel() {
 
         </div>
 
+        {/* Telegram OIDC metrics */}
+        <div className="max-w-7xl mx-auto px-4 mt-6">
+          <TelegramMetrics />
+        </div>
+
       </main>
 
       {/* Elegant Footer */}
