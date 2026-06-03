@@ -8,6 +8,7 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 import {
   FileText,
   Upload,
