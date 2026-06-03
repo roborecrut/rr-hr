@@ -14,6 +14,172 @@ export type Database = {
   }
   public: {
     Tables: {
+      candidates: {
+        Row: {
+          created_at: string
+          current_stage: Database["public"]["Enums"]["candidate_stage"]
+          id: string
+          landing_slug: string | null
+          project_id: string | null
+          ref_source: string | null
+          registered_via:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          resume_name: string | null
+          resume_text: string | null
+          role_name: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          id?: string
+          landing_slug?: string | null
+          project_id?: string | null
+          ref_source?: string | null
+          registered_via?:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          resume_name?: string | null
+          resume_text?: string | null
+          role_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          id?: string
+          landing_slug?: string | null
+          project_id?: string | null
+          ref_source?: string | null
+          registered_via?:
+            | Database["public"]["Enums"]["registration_method"]
+            | null
+          resume_name?: string | null
+          resume_text?: string | null
+          role_name?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidates_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      companies: {
+        Row: {
+          about_text: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          logo_url: string | null
+          mission_text: string | null
+          name: string
+          owner_employer_id: string
+          payouts_text: string | null
+          schedule_text: string | null
+          slug: string | null
+          stats: Json
+          system_text: string | null
+          team_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          about_text?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          logo_url?: string | null
+          mission_text?: string | null
+          name: string
+          owner_employer_id: string
+          payouts_text?: string | null
+          schedule_text?: string | null
+          slug?: string | null
+          stats?: Json
+          system_text?: string | null
+          team_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          about_text?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          logo_url?: string | null
+          mission_text?: string | null
+          name?: string
+          owner_employer_id?: string
+          payouts_text?: string | null
+          schedule_text?: string | null
+          slug?: string | null
+          stats?: Json
+          system_text?: string | null
+          team_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "companies_owner_employer_id_fkey"
+            columns: ["owner_employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employers: {
+        Row: {
+          bonus_granted: boolean
+          company_name: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_tg: string | null
+          created_at: string
+          id: string
+          plan: string | null
+          ref_by: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bonus_granted?: boolean
+          company_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_tg?: string | null
+          created_at?: string
+          id?: string
+          plan?: string | null
+          ref_by?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bonus_granted?: boolean
+          company_name?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_tg?: string | null
+          created_at?: string
+          id?: string
+          plan?: string | null
+          ref_by?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -61,6 +227,161 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_landings: {
+        Row: {
+          created_at: string
+          hero: Json
+          id: string
+          project_id: string
+          published_at: string | null
+          sections: Json
+          slug: string
+          theme: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          hero?: Json
+          id?: string
+          project_id: string
+          published_at?: string | null
+          sections?: Json
+          slug: string
+          theme?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          hero?: Json
+          id?: string
+          project_id?: string
+          published_at?: string | null
+          sections?: Json
+          slug?: string
+          theme?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_landings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          cabinet_tabs_text: string | null
+          company_id: string | null
+          company_text: string | null
+          created_at: string
+          created_tasks: boolean
+          custom_wiki: string | null
+          employer_id: string
+          id: string
+          is_published: boolean
+          logo_url: string | null
+          mission_text: string | null
+          motivation_text: string | null
+          motivation_text_detail: string | null
+          onboarding_text: string | null
+          payouts_text: string | null
+          role_name: string
+          salary_terms: string | null
+          schedule_terms: string | null
+          schedule_text: string | null
+          slug: string | null
+          stats: Json
+          system_text: string | null
+          tasks_activity_text: string | null
+          team_text: string | null
+          training_product_text: string | null
+          training_prof_text: string | null
+          training_system_text: string | null
+          updated_at: string
+          vacancy_text: string | null
+        }
+        Insert: {
+          cabinet_tabs_text?: string | null
+          company_id?: string | null
+          company_text?: string | null
+          created_at?: string
+          created_tasks?: boolean
+          custom_wiki?: string | null
+          employer_id: string
+          id?: string
+          is_published?: boolean
+          logo_url?: string | null
+          mission_text?: string | null
+          motivation_text?: string | null
+          motivation_text_detail?: string | null
+          onboarding_text?: string | null
+          payouts_text?: string | null
+          role_name: string
+          salary_terms?: string | null
+          schedule_terms?: string | null
+          schedule_text?: string | null
+          slug?: string | null
+          stats?: Json
+          system_text?: string | null
+          tasks_activity_text?: string | null
+          team_text?: string | null
+          training_product_text?: string | null
+          training_prof_text?: string | null
+          training_system_text?: string | null
+          updated_at?: string
+          vacancy_text?: string | null
+        }
+        Update: {
+          cabinet_tabs_text?: string | null
+          company_id?: string | null
+          company_text?: string | null
+          created_at?: string
+          created_tasks?: boolean
+          custom_wiki?: string | null
+          employer_id?: string
+          id?: string
+          is_published?: boolean
+          logo_url?: string | null
+          mission_text?: string | null
+          motivation_text?: string | null
+          motivation_text_detail?: string | null
+          onboarding_text?: string | null
+          payouts_text?: string | null
+          role_name?: string
+          salary_terms?: string | null
+          schedule_terms?: string | null
+          schedule_text?: string | null
+          slug?: string | null
+          stats?: Json
+          system_text?: string | null
+          tasks_activity_text?: string | null
+          team_text?: string | null
+          training_product_text?: string | null
+          training_prof_text?: string | null
+          training_system_text?: string | null
+          updated_at?: string
+          vacancy_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       telegram_links: {
         Row: {
