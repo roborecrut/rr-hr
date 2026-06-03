@@ -484,6 +484,41 @@ export default function EmployerPanel() {
     }
   }, [path, employerId]);
 
+  // If no employer in URL/session, resolve via Supabase auth (user_id -> employer.public_id)
+  // or fall back to the first existing employer (admin/demo case).
+  useEffect(() => {
+    if (employerId) return;
+    let cancelled = false;
+    (async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: own } = await supabase
+          .from("employers")
+          .select("public_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!cancelled && own?.public_id) {
+          setEmployerId(own.public_id);
+          localStorage.setItem("employer_session_id", own.public_id);
+          return;
+        }
+      }
+      // Last-resort fallback (demo/admin browsing): first employer
+      const { data: any1 } = await supabase
+        .from("employers")
+        .select("public_id")
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled && any1?.public_id) {
+        setEmployerId(any1.public_id);
+        localStorage.setItem("employer_session_id", any1.public_id);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [employerId]);
+
   const handleLogout = () => {
     localStorage.clear();
     navigate("/main");
