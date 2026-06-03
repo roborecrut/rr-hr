@@ -1,76 +1,69 @@
 ## Цель
-Починить вход через Telegram («Bot domain invalid»), добавить реферальную программу со ссылкой `t.me/HR_RRbot/app?startapp={emp_public_id}` (+1000 RR обоим), забирать профильные данные Telegram (ID, имя, фамилия, аватар, @username, телефон) и выводить их в кабинете работодателя.
 
----
+1. Везде в боте и при регистрации использовать `https://hr-rr.online` вместо `https://hr-rr.ru`.
+2. Включить регистрацию кандидатов через Telegram (быстрый вход + миниапп) с сохранением Telegram-данных в профиле.
 
-## Что вы сделаете руками (один раз)
-В @BotFather:
-1. `/setdomain` → выбрать `@HR_RRbot` → ввести `hr-rr.ru`
-2. (Опционально для тестов в редакторе) повторить и добавить `id-preview--86998fcc-a4e0-4bf6-8ae7-d8b67afa546d.lovable.app`
-3. `/setmenubutton` → `@HR_RRbot` → URL `https://hr-rr.ru` → текст `Открыть RR`
+## 1. Замена домена `hr-rr.ru` → `hr-rr.online`
 
-Без шага 1 Login Widget на проде работать не будет — это требование Telegram.
+### Frontend
+- `src/pages/EmployerPanel.tsx:3558,3564` — ссылка быстрого входа `https://hr-rr.ru/auth?ref=...` → `https://hr-rr.online/auth?ref=...`.
+- Остальные места (`CompanyLanding`, карточки проектов, реф-блок) уже используют `hr-rr.online` — не трогаем.
+- В демо-миграции `20260603195316_...sql` адрес `demo@hr-rr.ru` — миграции read-only, оставляем (это просто email демо-работодателя, не домен бота).
 
----
+### Edge-функции
+- В коде `telegram-auth`, `telegram-miniapp-auth`, `telegram-webhook` нет хардкода `hr-rr.ru` (magic-link использует `SUPABASE_URL` + текущий origin). Проверим, что в `redirectTo` не зашит `hr-rr.ru`; если есть — заменим.
 
-## План работ
+### План в `.lovable/plan.md`
+- В шагах BotFather: `/setdomain @HR_RRbot` → ввести **`hr-rr.online`** (а также добавить `www.hr-rr.online`). `/setmenubutton` → `https://hr-rr.online`.
 
-### 1. БД: миграция
-- В `profiles` уже есть `telegram_id`, `telegram_username`. Добавить колонки `telegram_first_name`, `telegram_last_name`, `telegram_photo_url`, `telegram_phone`.
-- Расширить `referrals`: добавить колонку `referred_user_id uuid` и unique-индекс `(owner_user_id, referred_user_id)` для идемпотентности.
-- Функция `public.apply_referral_bonus(_referrer_public_id text, _new_user uuid)` (SECURITY DEFINER): находит работодателя-реферера по `public_id`, находит нового работодателя по `_new_user`, проверяет что это первая регистрация и оба — работодатели, затем `apply_transaction(..., 'bonus', 1000, ...)` обоим и пишет запись в `referrals`.
-- Триггер `grant_employer_bonus` уже даёт +1000 RR любому новому работодателю — оставить как есть. Реферальные +1000 — поверх.
+### Действия пользователя (BotFather, вручную)
+1. `/setdomain` → `@HR_RRbot` → `hr-rr.online`
+2. `/setmenubutton` → `@HR_RRbot` → URL `https://hr-rr.online` → текст `Открыть RR`
 
-### 2. Edge-функции
+## 2. Регистрация кандидатов через Telegram
 
-**`telegram-auth`** (Login Widget) и **`telegram-miniapp-auth`** (Mini App) — в обеих:
-- Принимать `ref` (Login Widget) / читать `start_param` из initData (Mini App) — это `public_id` реферера.
-- Сохранять в `profiles` все поля: `telegram_first_name`, `telegram_last_name`, `telegram_photo_url`, `telegram_username`, `telegram_id` (через ON CONFLICT UPDATE).
-- Создавать запись `employers` только если intent=employer (как сейчас), но реферальный бонус — только если намерение employer.
-- После создания пользователя и employer-строки — вызов `apply_referral_bonus(ref, user_id)`.
+Сейчас:
+- `AuthModal` дёргает `telegram-auth` с жёстко зашитым `intent: "employer"` — кандидат не может войти быстрой кнопкой.
+- `TelegramMiniAppBoot` уже шлёт `intent: "candidate"` — но `apply_referral_bonus` корректно игнорирует кандидатов (бонус только работодателю-другу).
+- Поля `telegram_first_name/last_name/photo_url/phone/username/id` уже есть в `profiles` и заполняются `telegram-auth` / `telegram-miniapp-auth` независимо от роли. Отдельной таблицы под кандидатов не требуется — данные Telegram живут в `profiles` (одно на пользователя).
 
-**`telegram-webhook`** (новая или расширение существующей):
-- Обрабатывать `/start <emp_public_id>` (deep-link из кнопки «Поделиться»).
-- Обрабатывать сообщения с `contact` (после нажатия reply-keyboard «Поделиться номером») — сохранять `telegram_phone` в `profiles` по `telegram_id`.
+### Изменения
 
-**Новая `telegram-request-contact`** (вызывается из кабинета):
-- Принимает user_id → находит `telegram_id` → шлёт через бота сообщение с reply-keyboard `request_contact: true` и текстом «Нажмите кнопку, чтобы привязать номер».
+**AuthModal**
+- Добавить пропс/состояние `intent` (employer | candidate). На лендинге кандидата открывать модалку с `intent="candidate"`, в кабинете работодателя — `employer` (как сейчас).
+- Передавать выбранный `intent` в тело запроса `telegram-auth` и в `signInWithOAuth` (Google).
+- Кнопка «Войти через Telegram» становится доступна и для кандидата.
 
-### 3. Frontend
+**Лендинг/диспетчер**
+- `SegmentDispatcher` / `LandingPage` (кандидатская часть): подключить кнопку быстрого Telegram-входа с `intent="candidate"` и поддержать `?ref=<empPublicId>` в URL (сохраняется как `ref_source` у кандидата для аналитики, RR не начисляется).
 
-**`AuthModal.tsx`**:
-- Передавать `ref` в `telegram-auth` (уже частично есть через `query.ref`) — без изменений логики, только убедиться что приходит.
-- Подсказку «Если виджет не загрузился — откройте по реф-ссылке `t.me/HR_RRbot?start=...`» как fallback.
+**TelegramMiniAppBoot**
+- Логика остаётся: `intent: "candidate"` по умолчанию. Если `start_param` начинается с префикса работодательской регистрации (например `emp_<public_id>` или сценарий «зарегистрироваться как работодатель из миниаппа»), переключаем на `employer`. Для простоты сейчас — оставить `candidate` всегда; работодатель регистрируется отдельно через кабинет/кнопку.
 
-**`TelegramMiniAppBoot.tsx`**:
-- Читать `Telegram.WebApp.initDataUnsafe.start_param` и передавать как `ref` в `telegram-miniapp-auth`.
+**Профиль кандидата**
+- В странице кандидата (если есть `CandidatePanel`/`CandidateProfile`) показать блок «Telegram-профиль» с теми же полями, что у работодателя: аватар, имя+фамилия, кликабельный `@username` или `tg://user?id=...`, телефон (`tel:` ссылка) с кнопкой «Запросить через бота» (вызов существующего `telegram-request-contact`). Если страницы профиля кандидата ещё нет — добавим компактный блок в шапку личного кабинета кандидата.
 
-**Кабинет работодателя — новый блок «Telegram-профиль»** (в `EmployerPanel` вкладка «Профиль»):
-- Аватар (telegram_photo_url), имя+фамилия, кликабельный `@username` → `https://t.me/{username}`, если нет username — кнопка-ссылка `tg://user?id={telegram_id}`.
-- Поле «Телефон»: если есть — `tel:` ссылка; если нет — кнопка «Запросить телефон через бота» → вызывает `telegram-request-contact`. Подсказка: «Перейдите в чат с @HR_RRbot и нажмите кнопку — номер появится здесь автоматически».
+**База данных**
+- Схема `profiles` уже содержит все нужные поля — миграция не требуется.
+- Никаких новых полей в `candidates` не добавляем (Telegram-данные у пользователя, а не у заявки на вакансию). Если пользователь явно хочет дубль полей в `candidates` — уточним отдельно.
 
-**Кабинет работодателя — блок «Реферальная программа»**:
-- Показывает реф-ссылку `https://t.me/HR_RRbot/app?startapp={employer.public_id}` с кнопками «Скопировать» и «Поделиться» (Telegram Web Share).
-- Счётчик: сколько друзей-работодателей зарегистрировалось по ссылке и сколько RR начислено (запрос к `referrals` по `owner_user_id`).
-
-### 4. Реальный поток бонусов
-- Любой новый работодатель → триггер `grant_employer_bonus` → +1000 RR (приветственный).
-- Если при регистрации передан валидный `ref` (public_id существующего работодателя) → дополнительно +1000 RR новому и +1000 RR рефереру через `apply_referral_bonus`.
-- У кандидатов кошелька нет — реф-бонус не начисляется, регистрация по реф-ссылке кандидатом просто игнорируется (запись в `referrals` без транзакций).
-
----
+**Реферальная система для кандидатов**
+- `apply_referral_bonus` намеренно начисляет RR только при регистрации **работодателя** через ref работодателя. Для кандидата по ref-ссылке `https://t.me/HR_RRbot/app?startapp=<empPublicId>` запишем `profiles.ref_source = <empPublicId>` (или в `candidates.ref_source`), без начисления RR. Это даёт работодателю аналитику «откуда пришёл кандидат», но без двойных бонусов.
 
 ## Технические детали
 
-- `botUsername` из `telegram-config` уже возвращает `HR_RRbot` — менять не нужно.
-- `start_param` в Mini App доступен в `window.Telegram.WebApp.initDataUnsafe.start_param` (Telegram передаёт его при открытии по `?startapp=...`).
-- Для получения телефона в Telegram единственный надёжный способ — `KeyboardButton.request_contact`, отправляется через Bot API в личном чате. В Login Widget и initData телефона нет.
-- Webhook `telegram-webhook` уже зарегистрирован? Если нет — после деплоя нужно один раз вызвать `setWebhook` через connector gateway или Bot API (укажу команду после реализации).
-- `verify_jwt = false` для `telegram-webhook` в `supabase/config.toml`.
+Файлы к правке:
+- `src/pages/EmployerPanel.tsx` — 2 строки (`hr-rr.ru` → `hr-rr.online`).
+- `src/components/AuthModal.tsx` — пропс `intent`, проброс в Telegram/Google.
+- `src/pages/LandingPage.tsx` / `SegmentDispatcher.tsx` — открытие AuthModal с `intent="candidate"` и сохранение `?ref=`.
+- `src/components/TelegramMiniAppBoot.tsx` — комментарий/доки; кода менять минимум.
+- `supabase/functions/telegram-auth/index.ts` — принять `intent` из тела (если ещё нет) и положить в `raw_user_meta_data.intent`, чтобы `handle_new_user` повесил роль `candidate` корректно.
+- `supabase/functions/telegram-miniapp-auth/index.ts` — то же самое (уже почти есть).
+- Страница профиля кандидата — добавить Telegram-блок (если страница существует; иначе вынесем в следующий этап).
+- `.lovable/plan.md` — обновить инструкции BotFather на `hr-rr.online`.
 
----
+Миграции БД: **не требуются**.
 
-## Что НЕ делается
-- Не трогаются роуты/слаги (сделано в прошлой итерации).
-- Не меняется логика кандидатов.
-- Привязка телефона из Google не добавляется (вы не просили).
+## Открытые вопросы
+1. Подтвердить, что **не** нужно дублировать Telegram-поля в `candidates` (они уже есть в `profiles`).
+2. Есть ли уже страница «кабинет кандидата», куда вставить Telegram-блок, или сделать минимальный `CandidateProfile`?
