@@ -141,7 +141,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         <div className="text-center flex flex-col items-center gap-2 pb-2 border-b border-white/10">
           <Mascot state="greeting" size="md" />
           <h2 className="text-xl md:text-2xl font-black text-[#E7C768] tracking-tight">
-            Личный Кабинет Работодателя
+            {intent === "employer" ? "Личный Кабинет Работодателя" : "Вход для кандидата"}
           </h2>
           <p className="text-xs text-slate-300">
             ИИ подбор персонала, запуск авто-собеседований и интерактивного обучения
