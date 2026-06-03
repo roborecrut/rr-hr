@@ -1506,6 +1506,8 @@ export default function CandidateFlow() {
               </button>
             </div>
 
+            <ReferredByCard />
+
             {saveProfileMsg && (
               <div className="p-3 bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 text-xs font-bold rounded-xl text-left">
                 {saveProfileMsg}
