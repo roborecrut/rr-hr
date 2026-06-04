@@ -40,6 +40,14 @@ export default function AuthCallback() {
           if (raw) pending = JSON.parse(raw) as Pending;
         } catch { /* ignore */ }
         sessionStorage.removeItem(STORAGE_KEY);
+        // URL params take precedence (storage may be lost in some browsers)
+        try {
+          const url = new URL(window.location.href);
+          const qpIntent = url.searchParams.get("intent");
+          if (qpIntent === "employer" || qpIntent === "candidate") pending.intent = qpIntent;
+          const qpRef = url.searchParams.get("ref");
+          if (qpRef && !pending.ref) pending.ref = qpRef;
+        } catch { /* ignore */ }
 
         setStatus("Проверяем сессию…");
         // Wait briefly for Supabase to hydrate the session from the URL fragment
@@ -67,7 +75,8 @@ export default function AuthCallback() {
             },
           });
         } catch { /* non-blocking */ }
-        let target = pending.return_to || "/";
+        let target = "";
+        let finalizeError = "";
         try {
           const res = await fetch(`${FN_URL}/auth-google-finalize`, {
             method: "POST",
@@ -84,19 +93,40 @@ export default function AuthCallback() {
             }),
           });
           const data = await res.json().catch(() => ({}));
-          if (res.ok && data?.target) target = data.target;
-        } catch (e) {
-          console.warn("auth-google-finalize failed, falling back", e);
+          if (res.ok && data?.target) {
+            target = data.target;
+          } else {
+            finalizeError = `finalize ${res.status}: ${data?.error || data?.details || "unknown"}`;
+          }
+        } catch (e: any) {
+          finalizeError = `finalize_network: ${e?.message || "fetch failed"}`;
         }
 
-        if (!target || target === "/") {
+        if (!target) {
+          try {
+            fetch(`${FN_URL}/log-client-error`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({
+                source: "auth-google-finalize",
+                message: finalizeError || "no_target",
+                meta: { intent: pending.intent, project_slug: pending.project_slug, company_slug: pending.company_slug },
+              }),
+              keepalive: true,
+            }).catch(() => {});
+          } catch { /* ignore */ }
+          // Try a soft fallback by existing profile, but surface error if нет
           try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) target = await resolveProfilePathForUser(user.id);
-          } catch { /* keep target */ }
+          } catch { /* ignore */ }
         }
 
-        navigate(target || "/main");
+        if (!target || target === "/") {
+          throw new Error(finalizeError || "Не удалось завершить регистрацию. Профиль не создан.");
+        }
+
+        navigate(target);
       } catch (e: any) {
         setError(e?.message || "Ошибка авторизации Google");
         try {
