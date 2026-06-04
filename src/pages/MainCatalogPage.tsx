@@ -370,10 +370,7 @@ export default function MainCatalogPage() {
           </div>
 
           <div className="flex gap-4 text-xs text-slate-400">
-            <button onClick={() => navigate("/main")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-white transition">Каталог</button>
-            <button onClick={() => navigate("/employer")} className="hover:text-white transition">Панель Руководителя</button>
-            <button onClick={() => navigate("/candidate")} className="hover:text-white transition">Панель Кандидата</button>
+            <span className="text-xs text-slate-400">Безоговорочная роботизация подбора персонала</span>
           </div>
         </div>
       </footer>
