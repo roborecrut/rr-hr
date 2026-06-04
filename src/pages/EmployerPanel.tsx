@@ -468,9 +468,7 @@ export default function EmployerPanel() {
       if (res && res.ok) {
         const data = await res.json();
         setBalance(data.balance || 0);
-        if (data.limits) {
-          setLimits(data.limits);
-        }
+        // legacy mock limits ignored — credits come from employers.* below
         if (data.name) setProfileName(data.name);
         if (data.title) setProfileTitle(data.title);
         if (data.email) setProfileEmail(data.email);
