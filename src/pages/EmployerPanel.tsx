@@ -324,7 +324,7 @@ export default function EmployerPanel() {
           statsValFounded: newCompanyStatsValFounded,
           statsLabelFounded: newCompanyStatsLabelFounded
         },
-        hint: newCompanyFiles?.length ? `attached files: ${newCompanyFiles.join(", ")}` : undefined,
+        hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
       });
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
