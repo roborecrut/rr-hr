@@ -264,25 +264,14 @@ export default function EmployerPanel() {
   const handleEnhanceSingleField = async (fieldName: string, currentVal: string) => {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
-      const res = await fetch("/api/enhance-single-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fieldName,
-          fieldVal: currentVal,
-          context: {
-            name: newCompanyName,
-            industry: newCompanyIndustry,
-            staff: newCompanyStaff,
-            description: newCompanyDesc,
-            site: newCompanySite,
-            missionText: newCompanyMissionText,
-          }
-        })
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const newVal = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: newCompanyName,
+        hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
       });
-      if (res.ok) {
-        const data = await res.json();
-        const newVal = data.value;
+      if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
         else if (fieldName === "description") setNewCompanyDesc(newVal);
@@ -303,6 +292,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
     }
@@ -312,17 +302,17 @@ export default function EmployerPanel() {
     setIsEnhancingAll(true);
     addAuditEvent("info", "ИИ Настройка", "ИИ-аналитик RR комплексно оформляет ваш бренд...");
     try {
-      const res = await fetch("/api/enhance-all-fields", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const enriched = await aiEnhanceAll({
+        mode: "all_company",
+        company_name: newCompanyName,
+        fields: {
           name: newCompanyName,
           industry: newCompanyIndustry,
           staff: newCompanyStaff,
           description: newCompanyDesc,
           sites: newCompanySite,
           logoUrl: newCompanyLogo,
-          files: newCompanyFiles,
           missionText: newCompanyMissionText,
           customWiki: newCompanyCustomWiki,
           salaryTerms: newCompanySalaryTerms,
@@ -333,10 +323,10 @@ export default function EmployerPanel() {
           statsLabelDialogs: newCompanyStatsLabelDialogs,
           statsValFounded: newCompanyStatsValFounded,
           statsLabelFounded: newCompanyStatsLabelFounded
-        })
+        },
+        hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
       });
-      if (res.ok) {
-        const enriched = await res.json();
+      if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
         if (enriched.staff) setNewCompanyStaff(enriched.staff);
@@ -358,6 +348,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
     }
@@ -367,13 +358,17 @@ export default function EmployerPanel() {
     setIsParsingFile(true);
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
-      const res = await fetch("/api/parse-company-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: filename })
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const payload = await aiEnhanceAll({
+        mode: "all_company",
+        fields: {
+          name: newCompanyName, industry: newCompanyIndustry, staff: newCompanyStaff,
+          description: newCompanyDesc, sites: newCompanySite, logoUrl: newCompanyLogo,
+          missionText: newCompanyMissionText, customWiki: newCompanyCustomWiki,
+        },
+        hint: `parse_file:${filename}`,
       });
-      if (res.ok) {
-        const payload = await res.json();
+      if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
         if (payload.industry) setNewCompanyIndustry(payload.industry);
         if (payload.staff) setNewCompanyStaff(payload.staff);
@@ -395,6 +390,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
     }
@@ -960,24 +956,33 @@ export default function EmployerPanel() {
       .replace(/\s+/g, "-");
 
     try {
-      const res = await fetch("/api/generate-project-onboarding", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName: setupCompanyName,
-          companySlug,
-          employerId,
-          roleName: setupRoleName,
-          salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule,
-          customWiki: setupCustomWiki,
-          logoUrl: setupLogoUrl
-        })
+      const { aiGenerateOnboarding } = await import("@/lib/aiClient");
+      const aiData = await aiGenerateOnboarding({
+        role_name: setupRoleName,
+        company_name: setupCompanyName,
+        brief: `Зарплата: ${setupSalary}\nГрафик: ${setupSchedule}\nБаза знаний:\n${setupCustomWiki}`,
+        save: false,
       });
-
-      if (!res.ok) throw new Error("Не удалось создать структуру.");
-
-      const newProjectData = await res.json();
+      const newProjectData: any = {
+        id: `proj_${Date.now()}`,
+        companyName: setupCompanyName,
+        companySlug,
+        employerId,
+        roleName: setupRoleName,
+        salaryTerms: setupSalary,
+        scheduleTerms: setupSchedule,
+        customWiki: setupCustomWiki,
+        logoUrl: setupLogoUrl,
+        vacancyText: aiData?.vacancy_text,
+        motivationText: aiData?.motivation_text,
+        onboardingText: aiData?.onboarding_text,
+        trainingProfText: aiData?.training_prof_text,
+        trainingProductText: aiData?.training_product_text,
+        trainingSystemText: aiData?.training_system_text,
+        checklistQuestions: (aiData?.checklist || []).map((q: any) => q.question).filter(Boolean),
+        roleplayQuestions: (aiData?.roleplay || []).map((q: any) => q.question).filter(Boolean),
+        createdTasks: true,
+      };
       setProjects(prev => [...prev, newProjectData]);
       
       // Notify Telegram Bot mock
@@ -1224,13 +1229,16 @@ export default function EmployerPanel() {
     addAuditEvent("info", "Анализ файла вакансии", `Запущен разбор вакансии из файла: ${filename}`);
     
     try {
-      const res = await fetch("/api/parse-vacancy-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: filename, companyName: setupCompanyName })
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const parsed = await aiEnhanceAll({
+        mode: "all_vacancy",
+        company_name: setupCompanyName,
+        fields: {
+          roleName: setupRoleName, salaryTerms: setupSalary,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+        },
+        hint: `parse_file:${filename}`,
       });
-      if (!res.ok) throw new Error("Сервер не смог распарсить файл.");
-      const parsed = await res.json();
       
       if (parsed.roleName) setSetupRoleName(parsed.roleName);
       if (parsed.salaryTerms) setSetupSalary(parsed.salaryTerms);
@@ -1261,20 +1269,17 @@ export default function EmployerPanel() {
     setIsGenerating(true);
     addAuditEvent("info", "ИИ-форматирование", "Оформляем все поля новой вакансии с помощью ИИ ProTalk...");
     try {
-      const res = await fetch("/api/enhance-all-vacancy-fields", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          companyName: setupCompanyName,
-          roleName: setupRoleName,
-          salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule,
-          customWiki: setupCustomWiki,
-          logoUrl: setupLogoUrl
-        })
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const enhanced = await aiEnhanceAll({
+        mode: "all_vacancy",
+        company_name: setupCompanyName,
+        role_name: setupRoleName,
+        fields: {
+          roleName: setupRoleName, salaryTerms: setupSalary,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+        },
       });
-      if (res.ok) {
-        const enhanced = await res.json();
+      if (enhanced) {
         if (enhanced.roleName) setSetupRoleName(enhanced.roleName);
         if (enhanced.salaryTerms) setSetupSalary(enhanced.salaryTerms);
         if (enhanced.scheduleTerms) setSetupSchedule(enhanced.scheduleTerms);
@@ -1295,23 +1300,17 @@ export default function EmployerPanel() {
     if (!editingProject) return;
     addAuditEvent("info", "ИИ-полировка поля", `Улучшаем сведения в поле "${fieldName}" через ProTalk LLM...`);
     try {
-      const res = await fetch("/api/enhance-single-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fieldName,
-          fieldVal: currentVal,
-          context: {
-            companyName: editingProject.companyName,
-            roleName: editingProject.roleName
-          }
-        })
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const value = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: editingProject.companyName,
+        role_name: editingProject.roleName,
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (value) {
         setEditingProject({
           ...editingProject,
-          [fieldName]: data.value
+          [fieldName]: value
         });
         addAuditEvent("success", "Поле улучшено с помощью ИИ", `Отредактировано и красиво оформлено.`);
       }
@@ -1327,13 +1326,14 @@ export default function EmployerPanel() {
     setIsEnhancingAllVac(true);
     addAuditEvent("info", "Полное ИИ-Оформление", "Запускаем полную реконструкцию контента лендинга через ИИ ProTalk...");
     try {
-      const res = await fetch("/api/enhance-all-vacancy-fields", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProject)
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const enhanced = await aiEnhanceAll({
+        mode: "all_vacancy",
+        company_name: editingProject.companyName,
+        role_name: editingProject.roleName,
+        fields: editingProject as any,
       });
-      if (res.ok) {
-        const enhanced = await res.json();
+      if (enhanced) {
         setEditingProject({
           ...editingProject,
           ...enhanced
@@ -1354,17 +1354,21 @@ export default function EmployerPanel() {
     setIsParsingTrainingFile(true);
     addAuditEvent("info", "Анализ обучающих материалов", `Запущен разбор регламентов обучения из файла: ${filename}`);
     try {
-      const res = await fetch("/api/parse-training-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: filename,
-          companyName: editingProject.companyName,
-          roleName: editingProject.roleName
-        })
+      const { aiGenerateOnboarding } = await import("@/lib/aiClient");
+      const aiData = await aiGenerateOnboarding({
+        role_name: editingProject.roleName,
+        company_name: editingProject.companyName,
+        brief: `Файл регламентов: ${filename}\nТекущая база:\n${editingProject.customWiki || ""}`,
+        save: false,
       });
-      if (res.ok) {
-        const parsed = await res.json();
+      const parsed = {
+        checklistQuestions: (aiData?.checklist || []).map((q: any) => q.question).filter(Boolean),
+        roleplayQuestions: (aiData?.roleplay || []).map((q: any) => q.question).filter(Boolean),
+        trainingProfText: aiData?.training_prof_text,
+        trainingProductText: aiData?.training_product_text,
+        trainingSystemText: aiData?.training_system_text,
+      };
+      {
         setEditingProject({
           ...editingProject,
           checklistQuestions: parsed.checklistQuestions || editingProject.checklistQuestions,
@@ -1388,26 +1392,20 @@ export default function EmployerPanel() {
     if (!editingProject) return;
     addAuditEvent("info", "ИИ-полировка обучения", `Улучшаем материалы в разделе "${fieldName}"...`);
     try {
-      const res = await fetch("/api/enhance-single-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fieldName,
-          fieldVal: currentVal,
-          context: {
-            companyName: editingProject.companyName,
-            roleName: editingProject.roleName,
-            purpose: "training_onboarding_evaluation"
-          }
-        })
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const value = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: editingProject.companyName,
+        role_name: editingProject.roleName,
+        hint: "training_onboarding_evaluation",
       });
-      if (res.ok) {
-        const data = await res.json();
+      if (value) {
         setEditingProject({
           ...editingProject,
           [fieldName]: fieldName === "checklistQuestions" || fieldName === "roleplayQuestions"
-            ? (typeof data.value === "string" ? data.value.split("\n").filter(Boolean) : data.value)
-            : data.value
+            ? value.split("\n").filter(Boolean)
+            : value
         });
         addAuditEvent("success", "Раздел обучения отшлифован ИИ", `Сведения успешно дополнены и структурированы.`);
       }

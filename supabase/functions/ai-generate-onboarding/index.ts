@@ -1,8 +1,8 @@
-// Generates a full onboarding pack for a project: vacancy text, training curricula,
-// checklist questions, roleplay items. Saves to projects + related tables if project_id is given.
+// Generates a full onboarding pack via ProTalk and saves it to projects + related tables.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { aiChat, tryParseJson } from "../_shared/ai.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  callProTalk, tryParseJson, getAdminClient, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
+} from "../_shared/protalk.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -36,9 +36,12 @@ Deno.serve(async (req) => {
       ]
     }`;
 
+  const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
+  const chatId = buildChatId({ userId: user?.id });
+  const socialId = buildSocialId({ user_id: user?.id });
+
   try {
-    const { text } = await aiChat({
-      json: true,
+    const { text, raw } = await callProTalk({
       messages: [
         { role: "system", content: system },
         { role: "user", content: `Роль: ${body.role_name}\nКомпания: ${body.company_name ?? "—"}\nБриф:\n${body.brief ?? ""}` },
@@ -48,10 +51,8 @@ Deno.serve(async (req) => {
     if (!data) return jsonResponse({ error: "ai_returned_non_json", raw: text }, 502);
 
     if (body.save && body.project_id) {
-      const url = Deno.env.get("SUPABASE_URL");
-      const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (url && svc) {
-        const admin = createClient(url, svc);
+      const admin = getAdminClient();
+      if (admin) {
         await admin.from("projects").update({
           vacancy_text: data.vacancy_text,
           motivation_text: data.motivation_text,
@@ -102,8 +103,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    await logToDb({
+      user_message: `generate-onboarding role=${body.role_name}`,
+      bot_reply: text.slice(0, 4000),
+      channel_id: chatId, user_social_id: socialId,
+      channel_name: "ai-generate-onboarding", server_name: "ai-generate-onboarding",
+      function_call_params: JSON.stringify({ project_id: body.project_id, company: body.company_name }),
+      tokens_in_source: raw?.usage?.prompt_tokens ?? null,
+      tokens_out_source: raw?.usage?.completion_tokens ?? null,
+    });
     return jsonResponse({ ok: true, data });
   } catch (e) {
-    return jsonResponse({ error: String((e as Error).message) }, 500);
+    const err = String((e as Error).message);
+    await logToDb({
+      user_message: `generate-onboarding role=${body.role_name}`, bot_reply: "",
+      channel_id: chatId, user_social_id: socialId,
+      channel_name: "ai-generate-onboarding", server_name: "ai-generate-onboarding",
+      function_error: err,
+    });
+    return jsonResponse({ error: err }, 500);
   }
 });
