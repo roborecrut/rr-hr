@@ -347,6 +347,7 @@ export type Database = {
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           id: string
           landing_slug: string | null
+          legacy_public_id: string | null
           project_id: string | null
           public_id: string | null
           ref_source: string | null
@@ -365,6 +366,7 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           id?: string
           landing_slug?: string | null
+          legacy_public_id?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -383,6 +385,7 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           id?: string
           landing_slug?: string | null
+          legacy_public_id?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -488,6 +491,8 @@ export type Database = {
           created_at: string
           id: string
           is_published: boolean
+          legacy_public_id: string | null
+          legacy_slug: string | null
           logo_url: string | null
           mission_text: string | null
           name: string
@@ -506,6 +511,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_published?: boolean
+          legacy_public_id?: string | null
+          legacy_slug?: string | null
           logo_url?: string | null
           mission_text?: string | null
           name: string
@@ -524,6 +531,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_published?: boolean
+          legacy_public_id?: string | null
+          legacy_slug?: string | null
           logo_url?: string | null
           mission_text?: string | null
           name?: string
@@ -623,14 +632,13 @@ export type Database = {
           company_name: string | null
           contact_email: string | null
           contact_name: string | null
-          contact_tg: string | null
           created_at: string
           id: string
+          legacy_public_id: string | null
           plan: string | null
           public_id: string | null
           ref_by: string | null
           status: string | null
-          telegram_bonus_granted: boolean
           updated_at: string
           user_id: string | null
         }
@@ -639,14 +647,13 @@ export type Database = {
           company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
-          contact_tg?: string | null
           created_at?: string
           id?: string
+          legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
-          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -655,14 +662,13 @@ export type Database = {
           company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
-          contact_tg?: string | null
           created_at?: string
           id?: string
+          legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
-          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -706,6 +712,7 @@ export type Database = {
           created_at: string
           finished_at: string | null
           id: string
+          legacy_public_id: string | null
           project_id: string | null
           public_id: string | null
           started_at: string
@@ -718,6 +725,7 @@ export type Database = {
           created_at?: string
           finished_at?: string | null
           id?: string
+          legacy_public_id?: string | null
           project_id?: string | null
           public_id?: string | null
           started_at?: string
@@ -730,6 +738,7 @@ export type Database = {
           created_at?: string
           finished_at?: string | null
           id?: string
+          legacy_public_id?: string | null
           project_id?: string | null
           public_id?: string | null
           started_at?: string
@@ -785,45 +794,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      oauth_states: {
-        Row: {
-          code_verifier: string
-          company_slug: string | null
-          created_at: string
-          intent: string
-          project_id: string | null
-          project_slug: string | null
-          provider: string
-          redirect_to: string | null
-          ref: string | null
-          state: string
-        }
-        Insert: {
-          code_verifier: string
-          company_slug?: string | null
-          created_at?: string
-          intent: string
-          project_id?: string | null
-          project_slug?: string | null
-          provider?: string
-          redirect_to?: string | null
-          ref?: string | null
-          state: string
-        }
-        Update: {
-          code_verifier?: string
-          company_slug?: string | null
-          created_at?: string
-          intent?: string
-          project_id?: string | null
-          project_slug?: string | null
-          provider?: string
-          redirect_to?: string | null
-          ref?: string | null
-          state?: string
-        }
-        Relationships: []
       }
       payments: {
         Row: {
@@ -886,12 +856,6 @@ export type Database = {
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
             | null
-          telegram_first_name: string | null
-          telegram_id: number | null
-          telegram_last_name: string | null
-          telegram_phone: string | null
-          telegram_photo_url: string | null
-          telegram_username: string | null
           updated_at: string
         }
         Insert: {
@@ -907,12 +871,6 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
-          telegram_first_name?: string | null
-          telegram_id?: number | null
-          telegram_last_name?: string | null
-          telegram_phone?: string | null
-          telegram_photo_url?: string | null
-          telegram_username?: string | null
           updated_at?: string
         }
         Update: {
@@ -928,12 +886,6 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
-          telegram_first_name?: string | null
-          telegram_id?: number | null
-          telegram_last_name?: string | null
-          telegram_phone?: string | null
-          telegram_photo_url?: string | null
-          telegram_username?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1110,6 +1062,8 @@ export type Database = {
           employer_id: string
           id: string
           is_published: boolean
+          legacy_public_id: string | null
+          legacy_slug: string | null
           logo_url: string | null
           max_interviews: number | null
           max_trainings: number | null
@@ -1144,6 +1098,8 @@ export type Database = {
           employer_id: string
           id?: string
           is_published?: boolean
+          legacy_public_id?: string | null
+          legacy_slug?: string | null
           logo_url?: string | null
           max_interviews?: number | null
           max_trainings?: number | null
@@ -1178,6 +1134,8 @@ export type Database = {
           employer_id?: string
           id?: string
           is_published?: boolean
+          legacy_public_id?: string | null
+          legacy_slug?: string | null
           logo_url?: string | null
           max_interviews?: number | null
           max_trainings?: number | null
@@ -1237,180 +1195,6 @@ export type Database = {
         }
         Relationships: []
       }
-      referrals: {
-        Row: {
-          created_at: string
-          id: string
-          intent: string | null
-          owner_user_id: string
-          redeemed_at: string | null
-          ref_code: string
-          referee_kind: string
-          reward_rr: number | null
-          used_by_user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          intent?: string | null
-          owner_user_id: string
-          redeemed_at?: string | null
-          ref_code: string
-          referee_kind?: string
-          reward_rr?: number | null
-          used_by_user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          intent?: string | null
-          owner_user_id?: string
-          redeemed_at?: string | null
-          ref_code?: string
-          referee_kind?: string
-          reward_rr?: number | null
-          used_by_user_id?: string | null
-        }
-        Relationships: []
-      }
-      telegram_events: {
-        Row: {
-          created_at: string
-          host: string | null
-          id: string
-          intent: string | null
-          ip_hash: string | null
-          kind: string
-          meta: Json
-          next_path: string | null
-          path: string | null
-          reason: string | null
-          source: string | null
-          ua_hash: string | null
-          vacancy_count: number | null
-        }
-        Insert: {
-          created_at?: string
-          host?: string | null
-          id?: string
-          intent?: string | null
-          ip_hash?: string | null
-          kind: string
-          meta?: Json
-          next_path?: string | null
-          path?: string | null
-          reason?: string | null
-          source?: string | null
-          ua_hash?: string | null
-          vacancy_count?: number | null
-        }
-        Update: {
-          created_at?: string
-          host?: string | null
-          id?: string
-          intent?: string | null
-          ip_hash?: string | null
-          kind?: string
-          meta?: Json
-          next_path?: string | null
-          path?: string | null
-          reason?: string | null
-          source?: string | null
-          ua_hash?: string | null
-          vacancy_count?: number | null
-        }
-        Relationships: []
-      }
-      telegram_links: {
-        Row: {
-          auth_date: string | null
-          created_at: string
-          first_name: string | null
-          id: string
-          intent: string | null
-          last_name: string | null
-          photo_url: string | null
-          source: string | null
-          telegram_id: number
-          telegram_username: string | null
-          user_id: string
-        }
-        Insert: {
-          auth_date?: string | null
-          created_at?: string
-          first_name?: string | null
-          id?: string
-          intent?: string | null
-          last_name?: string | null
-          photo_url?: string | null
-          source?: string | null
-          telegram_id: number
-          telegram_username?: string | null
-          user_id: string
-        }
-        Update: {
-          auth_date?: string | null
-          created_at?: string
-          first_name?: string | null
-          id?: string
-          intent?: string | null
-          last_name?: string | null
-          photo_url?: string | null
-          source?: string | null
-          telegram_id?: number
-          telegram_username?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
-      telegram_logs: {
-        Row: {
-          candidate_id: string | null
-          chat_id: number | null
-          created_at: string
-          direction: Database["public"]["Enums"]["tg_direction"]
-          employer_id: string | null
-          id: string
-          payload: Json
-          user_id: string | null
-        }
-        Insert: {
-          candidate_id?: string | null
-          chat_id?: number | null
-          created_at?: string
-          direction: Database["public"]["Enums"]["tg_direction"]
-          employer_id?: string | null
-          id?: string
-          payload: Json
-          user_id?: string | null
-        }
-        Update: {
-          candidate_id?: string | null
-          chat_id?: number | null
-          created_at?: string
-          direction?: Database["public"]["Enums"]["tg_direction"]
-          employer_id?: string | null
-          id?: string
-          payload?: Json
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "telegram_logs_candidate_id_fkey"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "candidates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "telegram_logs_employer_id_fkey"
-            columns: ["employer_id"]
-            isOneToOne: false
-            referencedRelation: "employers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       test_connection: {
         Row: {
           created_at: string
@@ -1437,6 +1221,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          legacy_public_id: string | null
           order_index: number
           project_id: string
           public_id: string | null
@@ -1446,6 +1231,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          legacy_public_id?: string | null
           order_index?: number
           project_id: string
           public_id?: string | null
@@ -1455,6 +1241,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          legacy_public_id?: string | null
           order_index?: number
           project_id?: string
           public_id?: string | null
@@ -1613,28 +1400,22 @@ export type Database = {
       }
       wallets: {
         Row: {
-          balance_rr: number
           created_at: string
           employer_id: string
-          hold_rr: number
           id: string
           units_balance: number
           updated_at: string
         }
         Insert: {
-          balance_rr?: number
           created_at?: string
           employer_id: string
-          hold_rr?: number
           id?: string
           units_balance?: number
           updated_at?: string
         }
         Update: {
-          balance_rr?: number
           created_at?: string
           employer_id?: string
-          hold_rr?: number
           id?: string
           units_balance?: number
           updated_at?: string
@@ -1720,20 +1501,6 @@ export type Database = {
       }
     }
     Functions: {
-      admin_telegram_metrics: { Args: { _hours?: number }; Returns: Json }
-      apply_referral_bonus:
-        | {
-            Args: { _new_user: string; _referrer_public_id: string }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _intent?: string
-              _new_user: string
-              _referrer_public_id: string
-            }
-            Returns: undefined
-          }
       apply_transaction: {
         Args: {
           _amount: number
@@ -1761,49 +1528,6 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
-      get_my_referees: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          created_at: string
-          display_name: string
-          email: string
-          google_email: string
-          intent: string
-          referee_kind: string
-          registered_via: string
-          reward_rr: number
-          telegram_first_name: string
-          telegram_last_name: string
-          telegram_photo_url: string
-          telegram_username: string
-          used_by_user_id: string
-        }[]
-      }
-      get_my_referrer: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          created_at: string
-          display_name: string
-          email: string
-          google_email: string
-          intent: string
-          owner_public_id: string
-          owner_user_id: string
-          ref_code: string
-          referee_kind: string
-          registered_via: string
-          telegram_first_name: string
-          telegram_last_name: string
-          telegram_photo_url: string
-          telegram_username: string
-        }[]
-      }
-      grant_telegram_link_bonus: {
-        Args: { _employer: string }
-        Returns: boolean
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1813,27 +1537,6 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
-      log_telegram_event: {
-        Args: {
-          _host?: string
-          _intent?: string
-          _kind: string
-          _meta?: Json
-          _next_path?: string
-          _path?: string
-          _reason?: string
-          _source?: string
-          _vacancy_count?: number
-        }
-        Returns: undefined
-      }
-      referral_lookup: {
-        Args: { _code: string }
-        Returns: {
-          owner_user_id: string
-          ref_code: string
-        }[]
-      }
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }
         Returns: boolean
