@@ -514,308 +514,118 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Interactive Tariff Calculator & Interactive Order (Интерактивный заказ) Section */}
+      {/* HR vs RR Сравнительный Калькулятор */}
       <section className="py-20 px-4 md:px-8 bg-[#1D3E5E]/40 border-t border-b border-white/10 relative overflow-hidden" id="tariffs">
         <div className="absolute top-1/2 left-1/2 w-[600px] h-[600px] bg-sky-500/5 blur-3xl rounded-full translate-x-[-50%] translate-y-[-50%] pointer-events-none"></div>
 
-        <div className="max-w-4xl mx-auto text-center space-y-12 relative z-10">
-          
+        <div className="max-w-5xl mx-auto text-center space-y-10 relative z-10">
+
           <div className="space-y-3">
             <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[#E7C768]/20">
-              Гибкие Тарифы Платформы
+              Сравнительный Калькулятор
             </span>
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-              Интерактивный Расчёт Стоимости
+              HR-отдел vs Робот&nbsp;Рекрутер
             </h2>
             <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-              Платите только за реальные действия ИИ Робота-Рекрутера во внутренней валюте <strong className="text-[#E7C768]">RR</strong> без абонентской платы (расчетный курс: <strong className="text-emerald-400">1 RR = 1 рубль</strong>). Настройте и сымитируйте параметры вашего бюджета.
+              Внутренняя валюта <strong className="text-[#E7C768]">RR</strong> (1&nbsp;RR&nbsp;=&nbsp;1&nbsp;₽). Чем больше объём — тем дешевле юнит:
+              <span className="block mt-1 text-xs text-slate-300">1–9 шт · <b className="text-white">200 RR</b> · 10–49 · <b className="text-white">150 RR</b> · 50–199 · <b className="text-white">100 RR</b> · 200+ · <b className="text-emerald-300">50 RR</b></span>
             </p>
           </div>
 
-          {/* Pricing Configurator Box */}
-          <div className="bg-[#1D3E5E]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-            
-            {/* Left side: Range selectors & clickers */}
-            <div className="md:col-span-7 space-y-6">
-              
-              {/* 1. ИИ Собеседование соискателя */}
+          {/* Sliders */}
+          <div className="bg-[#1D3E5E]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    <span className="text-amber-400">🎙️</span> 1. ИИ Собеседование соискателя (100 RR / шт):
-                  </span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] font-bold px-2 py-0.5 rounded-lg text-xs font-mono">{interviewsCount} шт</span>
+                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
+                  <span>👥 Кандидатов в найме / месяц</span>
+                  <span className="bg-[#E7C768]/10 text-[#E7C768] px-2 py-0.5 rounded-lg font-mono">{candidatesCount}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none"
-                  value={interviewsCount}
-                  onChange={(e) => setInterviewsCount(Number(e.target.value))}
-                />
-                <span className="text-[10.5px] block text-slate-350 leading-relaxed">
-                  <strong className="text-amber-400 font-semibold font-mono">Включает:</strong> ИИ Скрининг резюме + ИИ чек-лист по опыту и навыкам + ИИ ролевая игра с 3 ситуациями.
-                </span>
+                <input type="range" min="1" max="500" step="1" value={candidatesCount}
+                  onChange={(e) => setCandidatesCount(Number(e.target.value))}
+                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
               </div>
-
-              {/* 2. Интерактивное ИИ Обучение соискателя */}
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs text-left">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    <span className="text-[#E7C768]">🎓</span> 2. Интерактивное ИИ Обучение соискателя (100 RR / шт):
-                  </span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] font-bold px-2 py-0.5 rounded-lg text-xs font-mono">{trainingsCount} шт</span>
+                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
+                  <span>💼 Открытых вакансий</span>
+                  <span className="bg-[#E7C768]/10 text-[#E7C768] px-2 py-0.5 rounded-lg font-mono">{vacanciesCount}</span>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none"
-                  value={trainingsCount}
-                  onChange={(e) => setTrainingsCount(Number(e.target.value))}
-                />
-                <span className="text-[10.5px] block text-slate-350 leading-relaxed font-normal">
-                  <strong className="text-amber-400 font-semibold font-mono">Включает:</strong> Профессиональное ИИ дообучение после интервью + ИИ обучение продукту + ИИ обучение системе работы и условиям.
-                </span>
+                <input type="range" min="1" max="50" step="1" value={vacanciesCount}
+                  onChange={(e) => setVacanciesCount(Number(e.target.value))}
+                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
               </div>
-
-              {/* 3. ИИ Лендинг созданной вакансии */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    <span className="text-amber-400">🌐</span> 3. ИИ Лендинг созданной вакансии (500 RR / шт):
-                  </span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] font-bold px-2 py-0.5 rounded-lg text-xs font-mono">{landingsCount} шт</span>
+              <div className="space-y-2 md:col-span-2">
+                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
+                  <span>💰 Зарплата одного HR (₽/мес)</span>
+                  <span className="bg-white/10 text-white px-2 py-0.5 rounded-lg font-mono">{fmt(hrSalary)}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setLandingsCount(Math.max(0, landingsCount - 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    -
-                  </button>
-                  <span className="text-base font-bold text-white w-12 text-center font-mono">{landingsCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => setLandingsCount(Math.min(20, landingsCount + 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    +
-                  </button>
-                </div>
-                <span className="text-[10.5px] block text-slate-350 leading-relaxed font-normal">
-                  <strong className="text-amber-400 font-semibold font-mono">Описание:</strong> Создание стильного внешнего мини-сайта для регистрации кандидатов с ИИ консультантом по базе знаний.
-                </span>
+                <input type="range" min="30000" max="200000" step="5000" value={hrSalary}
+                  onChange={(e) => setHrSalary(Number(e.target.value))}
+                  className="w-full accent-rose-400 cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
               </div>
-
-              {/* 4. ИИ Система Интервью */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    <span className="text-amber-400">⚙️</span> 4. ИИ Система Интервью (300 RR / шт):
-                  </span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] font-bold px-2 py-0.5 rounded-lg text-xs font-mono">{interviewSystemsCount} шт</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setInterviewSystemsCount(Math.max(0, interviewSystemsCount - 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    -
-                  </button>
-                  <span className="text-base font-bold text-white w-12 text-center font-mono">{interviewSystemsCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => setInterviewSystemsCount(Math.min(10, interviewSystemsCount + 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    +
-                  </button>
-                </div>
-                <span className="text-[10.5px] block text-slate-350 leading-relaxed font-normal">
-                  <strong className="text-amber-400 font-semibold font-mono">Описание:</strong> Генератор сценариев с тестами под вашу специальность и вакансию.
-                </span>
-              </div>
-
-              {/* 5. ИИ Система Обучения */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    <span className="text-amber-400">👁️‍🗨️</span> 5. ИИ Система Обучения (200 RR / шт):
-                  </span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] font-bold px-2 py-0.5 rounded-lg text-xs font-mono">{trainingSystemsCount} шт</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setTrainingSystemsCount(Math.max(0, trainingSystemsCount - 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    -
-                  </button>
-                  <span className="text-base font-bold text-white w-12 text-center font-mono">{trainingSystemsCount}</span>
-                  <button
-                    type="button"
-                    onClick={() => setTrainingSystemsCount(Math.min(10, trainingSystemsCount + 1))}
-                    className="w-9 h-9 bg-white/5 border border-white/15 hover:bg-white/10 rounded-xl font-bold flex items-center justify-center text-slate-200 transition"
-                  >
-                    +
-                  </button>
-                </div>
-                <span className="text-[10.5px] block text-slate-350 leading-relaxed font-normal">
-                  <strong className="text-amber-400 font-semibold font-mono">Описание:</strong> ИИ создает Продвинутую тренажерную симуляцию для аттестаций новых сотрудников, переаттестаций текущих и быстрого онбординга.
-                </span>
-              </div>
-
             </div>
 
-            {/* Right side: Live Receipt breakdown */}
-            <div className="md:col-span-5 bg-[#17344F]/60 border border-white/10 p-6 rounded-2xl flex flex-col justify-between h-full space-y-4">
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wide text-[#E7C768] pb-2 border-b border-white/10">
-                  Ваша ИИ-конфигурация
-                </h4>
-                
-                <div className="space-y-2.5 text-xs text-slate-200 font-semibold">
-                  <div className="flex justify-between items-center">
-                    <span>Собеседования:</span>
-                    <span className="font-mono text-white font-bold">{(interviewsCount * 100).toLocaleString()} RR</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Курсы Обучения:</span>
-                    <span className="font-mono text-white font-bold">{(trainingsCount * 100).toLocaleString()} RR</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>ИИ Лендинги:</span>
-                    <span className="font-mono text-white font-bold">{(landingsCount * 500).toLocaleString()} RR</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Системы Интервью:</span>
-                    <span className="font-mono text-white font-bold">{(interviewSystemsCount * 300).toLocaleString()} RR</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Системы Обучения:</span>
-                    <span className="font-mono text-white font-bold">{(trainingSystemsCount * 200).toLocaleString()} RR</span>
+            {/* Two columns: HR vs RR */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+              {/* HR column */}
+              <div className="bg-rose-500/5 border-2 border-rose-400/30 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🧑‍💼</span>
+                  <h3 className="text-lg font-bold text-rose-200">Традиционный HR</h3>
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <div className="flex justify-between"><span>Нужно HR-специалистов:</span><span className="font-mono text-white">{hrCount}</span></div>
+                  <div className="flex justify-between"><span>~30 мин на кандидата:</span><span className="font-mono text-white">{fmtMin(candidatesCount * 30)}</span></div>
+                  <div className="flex justify-between"><span>~2 ч на вакансию:</span><span className="font-mono text-white">{fmtMin(vacanciesCount * 120)}</span></div>
+                </div>
+                <div className="pt-3 border-t border-rose-400/20 space-y-1">
+                  <div className="flex justify-between text-xs text-slate-300"><span>Время работы:</span>
+                    <span className="font-mono text-rose-200 font-bold">{fmtMin(hrMinutes)}</span></div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-slate-300">Стоимость в месяц:</span>
+                    <span className="text-2xl font-extrabold text-rose-300 font-mono">{fmt(hrCost)} ₽</span>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/10 text-left space-y-3">
-                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold leading-none">Итоговая Стоимость:</span>
-                <div className="text-3xl font-extrabold text-emerald-400 font-mono">
-                  {(
-                    interviewsCount * 100 + 
-                    trainingsCount * 100 + 
-                    landingsCount * 500 + 
-                    interviewSystemsCount * 300 + 
-                    trainingSystemsCount * 200
-                  ).toLocaleString()} RR
+              {/* RR column */}
+              <div className="bg-emerald-500/5 border-2 border-emerald-400/40 rounded-2xl p-5 space-y-3 relative">
+                <div className="absolute -top-3 right-4 bg-[#E7C768] text-[#17344F] text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  выгода в {costRatio}× по деньгам · в {timeRatio}× по времени
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setShowOrderSuccess(true)}
-                  className="w-full bg-[#E7C768] hover:bg-[#F4EE8E] text-[#17344F] font-bold py-3.5 px-4 rounded-xl text-center text-sm shadow-xl transition-all hover:scale-102 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  🚀 Оформить Интерактивный Заказ
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🤖</span>
+                  <h3 className="text-lg font-bold text-emerald-200">Робот Рекрутер</h3>
+                </div>
+                <div className="space-y-2 text-xs text-slate-300">
+                  <div className="flex justify-between"><span>Интервью + Обучение:</span><span className="font-mono text-white">{fmt(unitsTotal)} юн</span></div>
+                  <div className="flex justify-between"><span>Цена за юнит:</span><span className="font-mono text-[#E7C768] font-bold">{pricePerUnit} RR</span></div>
+                  <div className="flex justify-between"><span>~1.5 мин на кандидата:</span><span className="font-mono text-white">{fmtMin(candidatesCount * 1.5)}</span></div>
+                </div>
+                <div className="pt-3 border-t border-emerald-400/20 space-y-1">
+                  <div className="flex justify-between text-xs text-slate-300"><span>Ваше время:</span>
+                    <span className="font-mono text-emerald-200 font-bold">{fmtMin(rrMinutes)}</span></div>
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-slate-300">Стоимость в месяц:</span>
+                    <span className="text-2xl font-extrabold text-emerald-300 font-mono">{fmt(rrCost)} RR</span>
+                  </div>
+                </div>
+                <button type="button" onClick={handleOpenCabinet}
+                  className="w-full mt-2 bg-[#E7C768] hover:bg-[#F4EE8E] text-[#17344F] font-bold py-3 px-4 rounded-xl text-sm shadow-xl transition-all hover:scale-[1.02]">
+                  🚀 Начать с +500&nbsp;RR в подарок
                 </button>
               </div>
-
             </div>
 
+            <p className="text-[11px] text-slate-400 text-center leading-relaxed pt-2">
+              HR-агентства зарабатывают на разнице: при наценке ×10 готовый кадр обходится клиенту в {fmt(pricePerUnit * 2 * 10)} ₽, тогда как настоящая себестоимость через RR — всего {fmt(rrCost / Math.max(1,candidatesCount))} ₽ за подобранного кандидата.
+            </p>
           </div>
 
         </div>
       </section>
 
-      {/* Success Order Trigger Dialog */}
-      {showOrderSuccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/40 text-white rounded-3xl max-w-md w-full p-6 md:p-8 space-y-4 shadow-2xl relative text-left">
-            
-            <button
-              onClick={() => setShowOrderSuccess(false)}
-              className="absolute top-4 right-4 hover:bg-white/10 p-1.5 rounded-full text-slate-300 hover:text-white transition"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center flex flex-col items-center gap-3">
-              <Mascot state="recruitment" size="md" />
-              <h3 className="text-lg font-extrabold text-[#E7C768]">Заявка успешно имитирована!</h3>
-              <p className="text-xs text-slate-200">
-                Робот Рекрутер RR сформировал предварительные ИИ-выделения под ваш бюджет.
-              </p>
-            </div>
-
-            <div className="bg-[#17344F]/60 p-4 rounded-xl border border-white/5 space-y-2 text-xs text-slate-300">
-              <div className="flex justify-between font-bold text-white border-b border-white/10 pb-1.5 mb-1.5">
-                <span>Услуга</span>
-                <span>Насчитано</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ИИ Собеседования ({interviewsCount} шт.):</span>
-                <span className="font-mono text-white font-bold">{interviewsCount * 100} RR</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ИИ Обучения ({trainingsCount} шт.):</span>
-                <span className="font-mono text-white font-bold">{trainingsCount * 100} RR</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ИИ Лендинги ({landingsCount} шт.):</span>
-                <span className="font-mono text-white font-bold">{landingsCount * 500} RR</span>
-              </div>
-              <div className="flex justify-between">
-                <span>ИИ Системы Интервью ({interviewSystemsCount} шт.):</span>
-                <span className="font-mono text-white font-bold">{interviewSystemsCount * 300} RR</span>
-              </div>
-              <div className="flex justify-between pb-1.5 mb-1.5 border-b border-white/5">
-                <span>ИИ Системы Обучения ({trainingSystemsCount} шт.):</span>
-                <span className="font-mono text-white font-bold">{trainingSystemsCount * 200} RR</span>
-              </div>
-              <div className="flex justify-between font-extrabold text-sm text-emerald-400">
-                <span>Общая калькуляция:</span>
-                <span className="font-mono">
-                  {(
-                    interviewsCount * 100 + 
-                    trainingsCount * 100 + 
-                    landingsCount * 500 + 
-                    interviewSystemsCount * 300 + 
-                    trainingSystemsCount * 200
-                  ).toLocaleString()} RR
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOrderSuccess(false);
-                  navigate("/employer");
-                }}
-                className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold py-3 rounded-xl text-center text-sm shadow-md transition"
-              >
-                Создать онбординг прямо сейчас
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowOrderSuccess(false)}
-                className="w-full bg-white/5 border border-white/10 text-slate-300 py-3 rounded-xl text-center text-xs font-semibold hover:bg-white/10 hover:text-white"
-              >
-                Закрыть калькулятор
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
+      
       {/* Minimal footer — desktop only; mobile uses its own bottom navs in cabinets */}
       <footer className="hidden md:block bg-[#17344F] text-white py-10 px-4 md:px-8 border-t-2 border-[#E7C768]">
         <div className="max-w-7xl mx-auto flex items-center justify-center gap-3">
