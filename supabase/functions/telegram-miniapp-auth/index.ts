@@ -107,6 +107,31 @@ Deno.serve(async (req) => {
     avatar_url: tgUser.photo_url ?? null,
   }).eq("id", userId);
 
+  // Ensure role + account_kinds in profiles
+  await admin.from("user_roles").upsert(
+    { user_id: userId, role: intent },
+    { onConflict: "user_id,role" },
+  );
+  {
+    const { data: prof } = await admin.from("profiles").select("account_kinds").eq("id", userId).maybeSingle();
+    const kinds = new Set<string>(Array.isArray((prof as any)?.account_kinds) ? (prof as any).account_kinds : []);
+    kinds.add(intent);
+    await admin.from("profiles").update({
+      account_kinds: Array.from(kinds),
+      last_signup_intent: intent,
+    }).eq("id", userId);
+  }
+
+  // Resolve target path
+  let target = "/main";
+  if (intent === "employer") {
+    const { data: emp } = await admin.from("employers").select("public_id").eq("user_id", userId).maybeSingle();
+    target = emp?.public_id ? `/employer${emp.public_id}/profile` : "/employer/profile";
+  } else {
+    const { data: cand } = await admin.from("candidates").select("public_id").eq("user_id", userId).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    target = cand?.public_id ? `/candidate${cand.public_id}/profile` : "/main";
+  }
+
   const { data: linkData, error: linkErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   if (linkErr) return jsonResponse({ error: "link_failed", details: linkErr.message }, 500);
 
@@ -114,5 +139,6 @@ Deno.serve(async (req) => {
     ok: true, user_id: userId, email,
     token_hash: linkData.properties?.hashed_token,
     verification_type: "magiclink",
+    target,
   });
 });
