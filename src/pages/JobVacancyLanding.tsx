@@ -563,19 +563,18 @@ export default function JobVacancyLanding() {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={() => triggerOneClickRegister("telegram")}
-                className="cursor-pointer w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
-              >
-                <Send className="w-4 h-4" /> Войти через Telegram
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
                 onClick={() => triggerOneClickRegister("google")}
                 className="cursor-pointer w-full bg-white/10 hover:bg-white/20 border border-white/10 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
               >
                 Войти через Google
               </button>
+              <p className="text-[11px] text-slate-400 text-center leading-snug">
+                Или откройте{" "}
+                <a href="https://t.me/RoboRecrutBot/app" target="_blank" rel="noreferrer" className="text-[#E7C768] underline">
+                  Telegram Mini App
+                </a>{" "}
+                — авторизация и регистрация произойдут автоматически.
+              </p>
               {submitting && (
                 <div className="flex items-center justify-center gap-2 text-xs text-slate-300 py-2">
                   <Loader className="w-4 h-4 animate-spin" /> Перенаправляем…
