@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import TelegramMetrics from "./admin/TelegramMetrics";
+import ErrorLog from "./admin/ErrorLog";
 import { JobProject, Candidate } from "../types";
 import {
   Users,
