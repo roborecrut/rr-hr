@@ -192,7 +192,7 @@ export default function JobVacancyLanding() {
   };
 
   // Real candidate OAuth: registers as employee bound to this employer/vacancy.
-  const triggerOneClickRegister = async (method: "google" | "telegram") => {
+  const triggerOneClickRegister = async (method: "google") => {
     if (submitting || !project) return;
     setSubmitting(true);
     try {
@@ -210,34 +210,6 @@ export default function JobVacancyLanding() {
           options: { redirectTo: `${window.location.origin}/auth/callback` },
         });
         if (error) throw error;
-      } else {
-        const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-        const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...ctx,
-            origin: window.location.origin,
-            redirect_to: window.location.origin + window.location.pathname + window.location.search,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.url) {
-          try {
-            fetch(`${FN_URL}/log-client-error`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                source: "telegram-oidc-start",
-                message: `${res.status} ${data?.error || "unknown"}`,
-                meta: { status: res.status, body: data, intent: "candidate", project_id: project.id },
-              }),
-              keepalive: true,
-            });
-          } catch { /* ignore */ }
-          throw new Error(`Telegram: ${data?.error || data?.reason || res.status}`);
-        }
-        window.location.href = data.url;
       }
     } catch (err: any) {
       console.error("OneClick register failed:", err);
@@ -563,19 +535,18 @@ export default function JobVacancyLanding() {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={() => triggerOneClickRegister("telegram")}
-                className="cursor-pointer w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
-              >
-                <Send className="w-4 h-4" /> Войти через Telegram
-              </button>
-              <button
-                type="button"
-                disabled={submitting}
                 onClick={() => triggerOneClickRegister("google")}
                 className="cursor-pointer w-full bg-white/10 hover:bg-white/20 border border-white/10 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
               >
                 Войти через Google
               </button>
+              <p className="text-[11px] text-slate-400 text-center leading-snug">
+                Или откройте{" "}
+                <a href="https://t.me/RoboRecrutBot/app" target="_blank" rel="noreferrer" className="text-[#E7C768] underline">
+                  Telegram Mini App
+                </a>{" "}
+                — авторизация и регистрация произойдут автоматически.
+              </p>
               {submitting && (
                 <div className="flex items-center justify-center gap-2 text-xs text-slate-300 py-2">
                   <Loader className="w-4 h-4 animate-spin" /> Перенаправляем…

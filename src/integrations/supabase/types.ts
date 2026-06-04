@@ -493,6 +493,7 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text: string | null
+          public_id: string | null
           schedule_text: string | null
           slug: string | null
           stats: Json
@@ -510,6 +511,7 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text?: string | null
+          public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
@@ -527,6 +529,7 @@ export type Database = {
           name?: string
           owner_employer_id?: string
           payouts_text?: string | null
+          public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
@@ -627,6 +630,7 @@ export type Database = {
           public_id: string | null
           ref_by: string | null
           status: string | null
+          telegram_bonus_granted: boolean
           updated_at: string
           user_id: string | null
         }
@@ -642,6 +646,7 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -657,6 +662,7 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -701,6 +707,7 @@ export type Database = {
           finished_at: string | null
           id: string
           project_id: string | null
+          public_id: string | null
           started_at: string
           status: string
           transcript_text: string | null
@@ -712,6 +719,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           project_id?: string | null
+          public_id?: string | null
           started_at?: string
           status?: string
           transcript_text?: string | null
@@ -723,6 +731,7 @@ export type Database = {
           finished_at?: string | null
           id?: string
           project_id?: string | null
+          public_id?: string | null
           started_at?: string
           status?: string
           transcript_text?: string | null
@@ -1107,6 +1116,7 @@ export type Database = {
           motivation_text_detail: string | null
           onboarding_text: string | null
           payouts_text: string | null
+          public_id: string | null
           role_name: string
           salary_terms: string | null
           schedule_terms: string | null
@@ -1138,6 +1148,7 @@ export type Database = {
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           payouts_text?: string | null
+          public_id?: string | null
           role_name: string
           salary_terms?: string | null
           schedule_terms?: string | null
@@ -1169,6 +1180,7 @@ export type Database = {
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           payouts_text?: string | null
+          public_id?: string | null
           role_name?: string
           salary_terms?: string | null
           schedule_terms?: string | null
@@ -1421,6 +1433,7 @@ export type Database = {
           id: string
           order_index: number
           project_id: string
+          public_id: string | null
           title: string
         }
         Insert: {
@@ -1429,6 +1442,7 @@ export type Database = {
           id?: string
           order_index?: number
           project_id: string
+          public_id?: string | null
           title: string
         }
         Update: {
@@ -1437,6 +1451,7 @@ export type Database = {
           id?: string
           order_index?: number
           project_id?: string
+          public_id?: string | null
           title?: string
         }
         Relationships: [
@@ -1597,6 +1612,7 @@ export type Database = {
           employer_id: string
           hold_rr: number
           id: string
+          units_balance: number
           updated_at: string
         }
         Insert: {
@@ -1605,6 +1621,7 @@ export type Database = {
           employer_id: string
           hold_rr?: number
           id?: string
+          units_balance?: number
           updated_at?: string
         }
         Update: {
@@ -1613,6 +1630,7 @@ export type Database = {
           employer_id?: string
           hold_rr?: number
           id?: string
+          units_balance?: number
           updated_at?: string
         }
         Relationships: [
@@ -1775,6 +1793,10 @@ export type Database = {
           telegram_photo_url: string
           telegram_username: string
         }[]
+      }
+      grant_telegram_link_bonus: {
+        Args: { _employer: string }
+        Returns: boolean
       }
       has_role: {
         Args: {

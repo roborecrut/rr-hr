@@ -87,13 +87,13 @@ export default function TelegramMiniAppBoot() {
 
       try {
         // Backend reuses any existing telegram_link for this tg user regardless
-        // of intent; new users default to "candidate".
+        // of intent; intent is derived from startParam (emp.../emp...com...vac...).
         // start_param comes from t.me/HR_RRbot/app?startapp=<empPublicId> (referral)
         const startParam: string | undefined = tg?.initDataUnsafe?.start_param;
         const res = await fetch(`${FN_URL}/telegram-miniapp-auth`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ initData, intent: "candidate", ref: startParam || "" }),
+          body: JSON.stringify({ initData, ref: startParam || "" }),
         });
         const data = await res.json();
         if (!res.ok || !data?.token_hash) {

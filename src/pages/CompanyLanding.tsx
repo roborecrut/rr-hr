@@ -74,12 +74,22 @@ import {
 
 export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
-  
-  // Parse companySlug and vacancyId from path segments. Empty when route is "/".
+
+  // Parse first two path segments. Supports:
+  //   /                            → first published company
+  //   /com{publicId}               → company by public_id
+  //   /com{publicId}/vac{publicId} → vacancy under company
+  //   /{companySlug}[/...]         → legacy slug-based URL
+  //   /{companySlug}/{vacancyId|slug}/{tab}
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "";
-  const vacancyId = segments[1] || "";
+  const seg0 = segments[0] || "";
+  const seg1 = segments[1] || "";
   const subTab = segments[2] || "company";
+
+  const companyPublicId = /^com(\d+)$/.test(seg0) ? seg0.slice(3) : "";
+  const companySlug = companyPublicId ? "" : seg0;
+  const vacancyPublicId = /^vac(\d+)$/.test(seg1) ? seg1.slice(3) : "";
+  const vacancyId = vacancyPublicId ? "" : seg1;
 
   // States
   const [company, setCompany] = useState<any>(null);
@@ -105,10 +115,13 @@ export default function CompanyLanding() {
     if (selectedVacancy && visibleTabs.length > 0) {
       const isCurrentTabVisible = visibleTabs.some(t => t.key === subTab);
       if (!isCurrentTabVisible) {
-        navigate(`/${companySlug}/${selectedVacancy.id}/${visibleTabs[0].key}`);
+        const base = companyPublicId
+          ? `/com${companyPublicId}${vacancyPublicId ? `/vac${vacancyPublicId}` : ""}`
+          : `/${companySlug}/${selectedVacancy.id}`;
+        navigate(`${base}/${visibleTabs[0].key}`);
       }
     }
-  }, [subTab, selectedVacancy?.id, visibleTabs.length, companySlug]);
+  }, [subTab, selectedVacancy?.id, visibleTabs.length, companySlug, companyPublicId, vacancyPublicId]);
 
   // Consultant chatbot conversation state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -131,9 +144,15 @@ export default function CompanyLanding() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch company by slug (or first published if no slug)
-      let compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
-      if (companySlug) compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      // 1. Fetch company by public_id, slug, or first published if neither
+      let compQuery;
+      if (companyPublicId) {
+        compQuery = supabase.from("companies").select("*").eq("public_id", companyPublicId).limit(1);
+      } else if (companySlug) {
+        compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      } else {
+        compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
+      }
       const { data: compRows } = await compQuery;
       const activeCompany = (compRows && compRows[0]) || null;
       if (activeCompany) {
@@ -150,9 +169,12 @@ export default function CompanyLanding() {
         const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
         setVacancies(mapped);
 
-        // If a vacancyId (slug or uuid) was passed, find it; otherwise pick first
+        // Pick active vacancy: by public_id (new), then by slug/uuid (legacy)
         let active = mapped[0] || null;
-        if (vacancyId) {
+        if (vacancyPublicId) {
+          const row = (projRows || []).find((r: any) => r.public_id === vacancyPublicId);
+          active = (row && mapped.find((m) => m.id === row.id)) || active;
+        } else if (vacancyId) {
           active = mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) || active;
         }
         setSelectedVacancy(active);
@@ -169,7 +191,7 @@ export default function CompanyLanding() {
 
   useEffect(() => {
     loadData();
-  }, [path, companySlug, vacancyId]);
+  }, [path, companyPublicId, companySlug, vacancyPublicId, vacancyId]);
 
   // Initiate chatbot message when active vacancy loads
   useEffect(() => {
@@ -232,7 +254,7 @@ export default function CompanyLanding() {
   };
 
   // Real candidate OAuth: registers as employee of the current employer/vacancy.
-  const triggerOneClickRegister = async (method: "google" | "telegram") => {
+  const triggerOneClickRegister = async (method: "google") => {
     if (submitting) return;
     setAuthMethod(method);
     setSubmitting(true);
@@ -253,34 +275,6 @@ export default function CompanyLanding() {
           options: { redirectTo: `${window.location.origin}/auth/callback` },
         });
         if (error) throw error;
-      } else {
-        const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-        const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...ctx,
-            origin: window.location.origin,
-            redirect_to: window.location.origin + window.location.pathname + window.location.search,
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || !data?.url) {
-          try {
-            fetch(`${FN_URL}/log-client-error`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                source: "telegram-oidc-start",
-                message: `${res.status} ${data?.error || "unknown"}`,
-                meta: { status: res.status, body: data, intent: "candidate", project_id: activeProject.id },
-              }),
-              keepalive: true,
-            });
-          } catch { /* ignore */ }
-          throw new Error(`Telegram: ${data?.error || data?.reason || res.status}`);
-        }
-        window.location.href = data.url;
       }
     } catch (err: any) {
       console.error("OneClick register failed:", err);
@@ -603,7 +597,7 @@ export default function CompanyLanding() {
 
               <button
                 onClick={() => {
-                  triggerOneClickRegister("telegram");
+                  triggerOneClickRegister("google");
                   setShowApplyModal(true);
                 }}
                 className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3.5 rounded-2xl hover:bg-[#F4EE8E] transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
@@ -701,18 +695,7 @@ export default function CompanyLanding() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("telegram")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-6 h-6 text-sky-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03-.01-.14-.07-.19s-.16-.03-.22-.01c-.1.02-1.63 1.03-4.6 3.04-.44.3-.83.45-1.18.44-.39-.01-1.13-.22-1.68-.4-.68-.22-1.22-.34-1.17-.72.03-.2.3-.41.81-.62 3.17-1.38 5.28-2.29 6.34-2.73 3.01-1.26 3.63-1.48 4.04-1.48.09 0 .29.02.42.13.11.08.14.21.15.3l-.01.12z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Tg</span>
-                      </button>
-
+                    <div className="grid grid-cols-1 gap-3 pt-2">
                       <button
                         type="button"
                         onClick={() => triggerOneClickRegister("google")}
@@ -729,10 +712,11 @@ export default function CompanyLanding() {
                     <div className="bg-sky-500/10 border border-sky-500/25 p-3 rounded-2xl space-y-1.5 text-xs text-sky-200">
                       <div className="flex items-center gap-1.5 font-bold">
                         <AlertCircle className="w-4 h-4 text-sky-400" />
-                        <span>Автоматические напоминания</span>
+                        <span>Удобный Telegram Mini App</span>
                       </div>
                       <p className="text-[11px] leading-relaxed">
-                        🎓 <strong>Обратите внимание!</strong> При регистрации через <strong>Telegram</strong> мы будем присылать вам напоминания в чат-бота, чтобы вы не забывали проходить этапы онбординга или лекции с пользой!
+                        🎓 Откройте <a href="https://t.me/RoboRecrutBot/app" target="_blank" rel="noreferrer" className="font-bold underline">t.me/RoboRecrutBot/app</a> прямо в Telegram —
+                        авторизация и регистрация на эту вакансию произойдут автоматически, а напоминания будут приходить в чат.
                       </p>
                     </div>
                   </>

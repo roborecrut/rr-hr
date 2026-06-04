@@ -11,6 +11,7 @@ export type DBCompany = {
   name: string | null;
   owner_employer_id?: string | null;
   logo_url?: string | null;
+  public_id?: string | null;
 };
 
 export type DBProject = {
@@ -20,6 +21,7 @@ export type DBProject = {
   employer_id: string;
   company_id: string | null;
   is_published?: boolean;
+  public_id?: string | null;
 };
 
 export type DBCandidate = {
@@ -48,6 +50,36 @@ export function buildVacancyUrl(
 ): string {
   if (!company?.slug || !project?.slug) return `/`;
   return `/${company.slug}/${project.slug}`;
+}
+
+/** New numeric URL builders (no transliteration). */
+export function buildCompanyUrlById(company: { public_id?: string | null } | null | undefined): string {
+  return company?.public_id ? `/com${company.public_id}` : `/`;
+}
+export function buildVacancyUrlById(
+  company: { public_id?: string | null } | null | undefined,
+  project: { public_id?: string | null } | null | undefined,
+): string {
+  if (!company?.public_id || !project?.public_id) return `/`;
+  return `/com${company.public_id}/vac${project.public_id}`;
+}
+
+/** Telegram Mini App deeplinks. */
+const TG_BOT_USERNAME = "RoboRecrutBot";
+export function buildEmployerTgLink(employerPublicId: string): string {
+  return `https://t.me/${TG_BOT_USERNAME}/app?startapp=emp${employerPublicId}`;
+}
+export function buildCandidateTgLink(
+  employerPublicId: string,
+  companyPublicId: string,
+  vacancyPublicId: string,
+): string {
+  return `https://t.me/${TG_BOT_USERNAME}/app?startapp=emp${employerPublicId}com${companyPublicId}vac${vacancyPublicId}`;
+}
+
+/** Referral link (employer-owned). */
+export function buildReferralLink(employerPublicId: string, origin: string = "https://hr-rr.online"): string {
+  return `${origin}/auth?ref=emp${employerPublicId}`;
 }
 
 export function buildCandidateUrl(
@@ -114,7 +146,7 @@ export async function resolveCandidateByUser(userId: string): Promise<DBCandidat
 export async function resolveCompanyBySlug(slug: string): Promise<DBCompany | null> {
   const { data } = await supabase
     .from("companies")
-    .select("id, slug, name, owner_employer_id, logo_url")
+    .select("id, slug, name, owner_employer_id, logo_url, public_id")
     .eq("slug", slug)
     .maybeSingle();
   return (data as DBCompany) || null;
@@ -123,7 +155,7 @@ export async function resolveCompanyBySlug(slug: string): Promise<DBCompany | nu
 export async function resolveProjectBySlug(slug: string): Promise<DBProject | null> {
   const { data } = await supabase
     .from("projects")
-    .select("id, slug, role_name, employer_id, company_id, is_published")
+    .select("id, slug, role_name, employer_id, company_id, is_published, public_id")
     .eq("slug", slug)
     .maybeSingle();
   return (data as DBProject) || null;
@@ -132,8 +164,26 @@ export async function resolveProjectBySlug(slug: string): Promise<DBProject | nu
 export async function resolveProjectById(id: string): Promise<DBProject | null> {
   const { data } = await supabase
     .from("projects")
-    .select("id, slug, role_name, employer_id, company_id, is_published")
+    .select("id, slug, role_name, employer_id, company_id, is_published, public_id")
     .eq("id", id)
+    .maybeSingle();
+  return (data as DBProject) || null;
+}
+
+export async function resolveCompanyByPublicId(publicId: string): Promise<DBCompany | null> {
+  const { data } = await supabase
+    .from("companies")
+    .select("id, slug, name, owner_employer_id, logo_url, public_id")
+    .eq("public_id", publicId)
+    .maybeSingle();
+  return (data as DBCompany) || null;
+}
+
+export async function resolveProjectByPublicId(publicId: string): Promise<DBProject | null> {
+  const { data } = await supabase
+    .from("projects")
+    .select("id, slug, role_name, employer_id, company_id, is_published, public_id")
+    .eq("public_id", publicId)
     .maybeSingle();
   return (data as DBProject) || null;
 }

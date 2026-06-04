@@ -17,5 +17,7 @@ export default function SegmentDispatcher() {
   const { firstSeg = "" } = useParams();
   if (/^employer[A-Za-z0-9_-]+$/.test(firstSeg)) return <EmployerPanel />;
   if (/^candidate[A-Za-z0-9_-]+$/.test(firstSeg)) return <CandidateFlow />;
+  // New numeric URLs: /com{publicId}/...  (vacancy nested under /com..)
+  if (/^com\d+$/.test(firstSeg)) return <CompanyLanding />;
   return <CompanyLanding />;
 }
