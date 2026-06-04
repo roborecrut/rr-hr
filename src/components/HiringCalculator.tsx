@@ -4,12 +4,26 @@
  */
 import { useState } from "react";
 
-const PRICE_PER_UNIT = 150; // средняя цена в RR за одно интервью или обучение
 const HR_HOURLY = 80000 / 160; // 500 RR/час
 
 function round(n: number, d = 0) {
   const f = Math.pow(10, d);
   return Math.round(n * f) / f;
+}
+
+/** Тарифная сетка: цена за 1 ИИ-интервью или 1 ИИ-обучение в RR в зависимости от объёма пакета. */
+function tierPrice(qty: number): number {
+  if (qty <= 9) return 200;
+  if (qty <= 49) return 150;
+  if (qty <= 199) return 100;
+  return 50;
+}
+
+function tierLabel(qty: number): string {
+  if (qty <= 9) return "1–9 шт";
+  if (qty <= 49) return "10–49 шт";
+  if (qty <= 199) return "50–199 шт";
+  return "200+ шт";
 }
 
 export default function HiringCalculator() {
@@ -18,13 +32,15 @@ export default function HiringCalculator() {
   // Робот RR (масштабируется от ТЗ при N=5)
   const regCount = n * 10;          // зарегистрировалось
   const intCount = n * 6;           // прошло интервью
-  const intRR = intCount * PRICE_PER_UNIT;
+  const intPrice = tierPrice(intCount);
+  const intRR = intCount * intPrice;
   const okCount = round(n * 2.4, 1);
   const trnCount = n * 2;           // вышли на обучение
-  const trnRR = trnCount * PRICE_PER_UNIT;
+  const trnPrice = tierPrice(trnCount);
+  const trnRR = trnCount * trnPrice;
   const passCount = n;              // прошли обучение
   const totalRR = intRR + trnRR;
-  const totalMin = regCount + intCount + trnCount + passCount;
+  const totalMin = regCount + intCount + Math.round(okCount) + trnCount + passCount;
   const perUnitRR = round(totalRR / n);
 
   // Человек HR (часы)
@@ -82,9 +98,9 @@ export default function HiringCalculator() {
             🤖 Робот RR
           </div>
           <Row label="Зарегистрировалось" value={`${regCount}`} sub={`${regCount} мин`} />
-          <Row label="Прошло интервью" value={`${intCount}`} sub={`${intRR.toLocaleString()} RR · ${intCount} мин`} />
+          <Row label="Прошло интервью" value={`${intCount}`} sub={`${intCount}×${intPrice} = ${intRR.toLocaleString()} RR · ${intCount} мин`} />
           <Row label="Успешно" value={`${okCount}`} />
-          <Row label="Вышли на обучение" value={`${trnCount}`} sub={`${trnRR.toLocaleString()} RR · ${trnCount} мин`} />
+          <Row label="Вышли на обучение" value={`${trnCount}`} sub={`${trnCount}×${trnPrice} = ${trnRR.toLocaleString()} RR · ${trnCount} мин`} />
           <Row label="Прошли обучение" value={`${passCount}`} sub={`${passCount} мин`} />
           <div className="pt-3 mt-2 border-t border-emerald-500/30 space-y-1">
             <div className="flex justify-between text-emerald-300 font-bold">
@@ -94,6 +110,10 @@ export default function HiringCalculator() {
             <div className="flex justify-between text-xs text-emerald-200">
               <span>За одного готового сотрудника:</span>
               <span className="font-mono font-bold">{perUnitRR.toLocaleString()} RR</span>
+            </div>
+            <div className="flex justify-between text-[10px] text-emerald-200/70">
+              <span>Тариф интервью / обучения:</span>
+              <span className="font-mono">{tierLabel(intCount)} · {intPrice} / {tierLabel(trnCount)} · {trnPrice} RR</span>
             </div>
           </div>
         </div>
@@ -126,8 +146,13 @@ export default function HiringCalculator() {
 
       {/* Summary */}
       <div className="bg-gradient-to-r from-[#E7C768]/15 to-emerald-500/10 border-2 border-[#E7C768]/40 rounded-2xl p-5 text-center space-y-2">
+        <div className="text-xs text-slate-300 font-mono">
+          {hrPerUnit.toLocaleString()} RR / {perUnitRR.toLocaleString()} RR = <span className="text-[#E7C768] font-bold">×{ratioMoney}</span> по деньгам
+          {" · "}
+          {hrTotalH}×60 / {totalMin} = <span className="text-[#E7C768] font-bold">×{ratioTime}</span> по времени
+        </div>
         <div className="text-2xl md:text-3xl font-extrabold text-[#E7C768]">
-          ×{ratioMoney} дешевле  •  ×{ratioTime} быстрее
+          В {ratioMoney} раза дешевле и в {ratioTime} раз производительнее
         </div>
         <p className="text-sm text-slate-200">
           С нашими ценами ИИ в <strong className="text-emerald-300">{ratioMoney} раз дешевле</strong> человека и требует
@@ -143,17 +168,17 @@ export default function HiringCalculator() {
       {/* Pricing tiers */}
       <div className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3">
         <div className="text-sm font-bold text-[#E7C768] uppercase tracking-wider">
-          Прайс пакетов — оптом дешевле
+          Тарифы — цена за каждое интервью или обучение
         </div>
         <p className="text-xs text-slate-300">
-          Стоимость 1 ИИ-интервью <strong>или</strong> 1 ИИ-обучения. Чем больше пакет — тем дешевле за штуку.
+          Цена за единицу зависит от количества: чем больше пакет интервью или обучений — тем дешевле каждая штука.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
           {[
             { range: "1–9", price: 200 },
-            { range: "10–99", price: 150 },
-            { range: "100–999", price: 100 },
-            { range: "1 000–9 999", price: 50 },
+            { range: "10–49", price: 150 },
+            { range: "50–199", price: 100 },
+            { range: "200+", price: 50 },
           ].map((t) => (
             <div key={t.range} className="bg-black/30 rounded-xl p-3 border border-white/10 text-center">
               <div className="text-slate-300">{t.range} шт</div>
@@ -162,6 +187,7 @@ export default function HiringCalculator() {
             </div>
           ))}
         </div>
+        <p className="text-[11px] text-slate-400">1 RR = 1 ₽. Списание происходит при старте интервью или старте обучения. Лимиты задаются в настройках вакансии.</p>
         <div className="pt-2 border-t border-white/10 space-y-1 text-xs text-slate-300">
           <div className="font-bold text-white mb-1">Разовые услуги при создании вакансии:</div>
           <div className="flex justify-between"><span>🌐 ИИ-Лендинг вакансии</span><span className="font-mono text-white">500 RR</span></div>
