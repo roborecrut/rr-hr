@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import {
   Users,
