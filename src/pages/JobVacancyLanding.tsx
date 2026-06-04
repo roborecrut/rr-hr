@@ -124,25 +124,24 @@ export default function JobVacancyLanding() {
     setIsAiTyping(true);
 
     try {
-      const res = await fetch("/api/vacancy-consultant-chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: project.id,
-          messages: messages,
-          userQuestion: questionText
-        })
+      const { aiChat } = await import("@/lib/aiClient");
+      const history = messages.map(m => ({
+        role: (m.sender === "candidate" ? "user" : "assistant") as "user" | "assistant",
+        content: m.text,
+      }));
+      const context = `Вакансия: ${project.roleName}; Компания: ${project.companyName}; Условия: ${project.salaryTerms || ""} / ${project.scheduleTerms || ""}; База: ${project.customWiki || ""}`;
+      const reply = await aiChat({
+        kind: "vacancy_consultant",
+        project_id: project.id,
+        context,
+        messages: [...history, { role: "user", content: questionText }],
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        const aiMsg: Message = {
-          sender: "recruiter",
-          text: data.reply,
-          timestamp: new Date().toLocaleTimeString()
-        };
-        setMessages(prev => [...prev, aiMsg]);
-      }
+      const aiMsg: Message = {
+        sender: "recruiter",
+        text: reply || "Извините, ИИ-консультант временно недоступен.",
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
       console.error("Failed to fetch response from consultant:", err);
     } finally {
