@@ -86,6 +86,18 @@ export default function AuthCallback() {
         navigate(target || "/main");
       } catch (e: any) {
         setError(e?.message || "Ошибка авторизации Google");
+        try {
+          fetch(`${FN_URL}/log-client-error`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source: "auth-callback",
+              message: e?.message || "unknown",
+              meta: { stack: e?.stack, pathname: window.location.pathname, search: window.location.search },
+            }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch { /* ignore */ }
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -71,13 +71,28 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           turnstile_token: turnstileToken || undefined,
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.url) {
         try { tsRef.current?.reset(); } catch { /* ignore */ }
         setTurnstileToken("");
+        // Log to server-side journal for admin visibility
+        try {
+          fetch(`${FN_URL}/log-client-error`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source: "telegram-oidc-start",
+              message: `${res.status} ${data?.error || "unknown"}`,
+              meta: { status: res.status, body: data, intent, origin: window.location.origin, path: window.location.pathname },
+            }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch { /* ignore */ }
+        console.error("[telegram-start]", { status: res.status, data });
         if (res.status === 429) throw new Error("Слишком много попыток. Подождите минуту и попробуйте снова.");
         if (res.status === 403) throw new Error("Не удалось пройти проверку Turnstile. Попробуйте ещё раз.");
-        throw new Error(data.error || "Не удалось начать вход через Telegram");
+        const detail = [data?.error, data?.reason, data?.details].filter(Boolean).join(" / ");
+        throw new Error(detail ? `Telegram: ${detail}` : "Не удалось начать вход через Telegram");
       }
       window.location.href = data.url;
     } catch (e: any) {

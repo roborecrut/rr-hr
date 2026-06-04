@@ -35,16 +35,34 @@ Deno.serve(async (req) => {
     const projectSlug: string | null = (body?.project_slug || "").toString().trim() || null;
     const companySlug: string | null = (body?.company_slug || "").toString().trim() || null;
 
-    // Make sure profile.registered_via reflects Google (only when missing / placeholder)
-    await admin.from("profiles").update({
-      registered_via: "google",
+    // Sync Google identity into profiles. Always refresh google_email/email/avatar
+    // from the provider; only fill display_name when it's empty so we don't
+    // overwrite user edits.
+    const meta = (user.user_metadata || {}) as Record<string, unknown>;
+    const googleAvatar =
+      (meta.avatar_url as string) || (meta.picture as string) || null;
+    const googleFullName =
+      (meta.full_name as string) || (meta.name as string) || null;
+    const { data: existingProfile } = await admin
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    const profileUpdate: Record<string, unknown> = {
       google_email: user.email ?? null,
-      avatar_url: (user.user_metadata?.avatar_url as string) || null,
-      display_name:
-        (user.user_metadata?.full_name as string) ||
-        (user.user_metadata?.name as string) ||
-        (user.email ? user.email.split("@")[0] : null),
-    }).eq("id", user.id);
+      email: user.email ?? null,
+    };
+    if (!existingProfile?.display_name && googleFullName) {
+      profileUpdate.display_name = googleFullName;
+    }
+    if (!existingProfile?.avatar_url && googleAvatar) {
+      profileUpdate.avatar_url = googleAvatar;
+    }
+    // registered_via only on first Google login (keep "telegram" if user signed up there first)
+    if (!existingProfile) {
+      profileUpdate.registered_via = "google";
+    }
+    await admin.from("profiles").update(profileUpdate).eq("id", user.id);
 
     // Employer flow: ensure employer record
     let target = "/";
