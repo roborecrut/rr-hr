@@ -2763,338 +2763,246 @@ export default function EmployerPanel() {
           {activeTab === "tariff" && (
             <div className="space-y-6 text-left">
 
-              {/* Hiring Calculator + new pricing */}
+              {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
               <HiringCalculator />
-              
-              {/* BALANCE SUMMARY PANEL CARD */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-6 font-medium">
-                <div className="md:col-span-4 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
+
+              {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div>
-                    <span className="text-[10px] font-bold text-[#E7C768] tracking-widest uppercase font-mono block">Лицевой счет счета</span>
-                    <h2 className="text-3xl font-extrabold text-white mt-1.5 font-mono select-none">{balance} <span className="text-lg font-bold text-[#E7C768]">RR</span></h2>
+                    <span className="text-[10px] font-bold text-[#E7C768] tracking-widest uppercase font-mono block">Лицевой счёт</span>
+                    <h2 className="text-3xl font-extrabold text-white mt-1.5 font-mono select-none">
+                      {balance.toLocaleString("ru-RU")} <span className="text-lg font-bold text-[#E7C768]">RR</span>
+                    </h2>
                     <p className="text-[11px] text-slate-300 mt-2 leading-relaxed">
-                      У вас бессрочный баланс. Оплата списывается исключительно за фактически приобретенные пакетные лимиты ИИ.
+                      1 RR = 1 ₽. Списания происходят автоматически: при успешной генерации лендинга/системы интервью/обучения,
+                      а также за каждое прохождение этапа кандидатом.
                     </p>
                   </div>
                   <div className="bg-black/25 rounded-2xl p-3 border border-white/5 space-y-1">
-                    <span className="text-[9px] text-slate-400 font-bold block uppercase font-mono">Ваш ID аккаунта</span>
-                    <span className="font-mono text-xs font-bold text-slate-300">{employerId}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block uppercase font-mono">ID работодателя</span>
+                    <span className="font-mono text-xs font-bold text-slate-300">emp{employerId}</span>
                   </div>
                 </div>
 
-                {/* LIMITS INSTRUCTION SHIELD */}
-                <div className="md:col-span-8 bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+                <div className="md:col-span-7 bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div>
-                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 leading-snug">
-                      <Award className="w-4 h-4 text-[#E7C768]" /> Текущие ИИ-Лимиты на балансе
+                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-[#E7C768]" /> Купленные пакетные лимиты
                     </h3>
                     <p className="text-[11px] text-slate-350 mt-1">
-                      Лимиты расходуются соискателями при прохождении ИИ-интервью, ИИ-обучения и создании новых адаптационных материалов.
+                      Эти лимиты расходуются по 1 шт. в момент, когда кандидат впервые нажимает «Приступить»
+                      к ИИ-интервью или ИИ-обучению. Повторно за того же кандидата не списывается.
                     </p>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5 text-xs text-center py-2">
-                    <div className="bg-black/20 p-2.5 rounded-2xl border border-white/5 hover:border-white/10 transition">
-                      <span className="text-[10px] text-slate-400 block font-normal leading-tight">ИИ-Интервью</span>
-                      <strong className="text-base text-white block mt-1 font-mono">
-                        {limits.interviews} <span className="text-[10px] font-sans font-light text-slate-400 font-normal">шт</span>
-                      </strong>
+                  <div className="grid grid-cols-2 gap-3.5 text-xs text-center">
+                    <div className="bg-black/20 p-3 rounded-2xl border border-white/5">
+                      <span className="text-[10px] text-slate-400 block uppercase">Интервью</span>
+                      <strong className="text-2xl text-white block mt-1 font-mono">{interviewCredits}</strong>
+                      <span className="text-[10px] text-slate-400">шт.</span>
                     </div>
-                    <div className="bg-black/20 p-2.5 rounded-2xl border border-white/5 hover:border-white/10 transition">
-                      <span className="text-[10px] text-slate-400 block font-normal leading-tight">ИИ-Обучение</span>
-                      <strong className="text-base text-white block mt-1 font-mono">
-                        {limits.trainings} <span className="text-[10px] font-sans font-light text-slate-400 font-normal">шт</span>
-                      </strong>
-                    </div>
-                    <div className="bg-black/20 p-2.5 rounded-2xl border border-white/5 hover:border-white/10 transition">
-                      <span className="text-[10px] text-slate-400 block font-normal leading-tight">ИИ-Лендинги</span>
-                      <strong className="text-base text-white block mt-1 font-mono">
-                        {limits.landings} <span className="text-[10px] font-sans font-light text-slate-400 font-normal">шт</span>
-                      </strong>
-                    </div>
-                    <div className="bg-black/20 p-2.5 rounded-2xl border border-white/5 hover:border-white/10 transition">
-                      <span className="text-[10px] text-slate-400 block font-normal leading-tight">Систем интервью</span>
-                      <strong className="text-base text-white block mt-1 font-mono">
-                        {limits.interviewSystems} <span className="text-[10px] font-sans font-light text-slate-400 font-normal">шт</span>
-                      </strong>
-                    </div>
-                    <div className="bg-black/20 p-2.5 rounded-2xl border border-white/5 hover:border-white/10 transition">
-                      <span className="text-[10px] text-slate-400 block font-normal leading-tight">Систем обучения</span>
-                      <strong className="text-base text-white block mt-1 font-mono">
-                        {limits.trainingSystems} <span className="text-[10px] font-sans font-light text-slate-400 font-normal">шт</span>
-                      </strong>
+                    <div className="bg-black/20 p-3 rounded-2xl border border-white/5">
+                      <span className="text-[10px] text-slate-400 block uppercase">Обучения</span>
+                      <strong className="text-2xl text-white block mt-1 font-mono">{trainingCredits}</strong>
+                      <span className="text-[10px] text-slate-400">шт.</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* PURCHASING MARKETPLACE TABLE AND CALCULATOR ROW */}
+              {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* 1. PURCHASE SERVICES DIRECTLY TABLE */}
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
+
+                {/* Фикс-услуги */}
+                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
                   <div>
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
-                      🛍️ Купить лимиты ИИ услуг за RR
+                      🛍️ Разовые услуги (фикс. цена)
                     </h3>
-                    <p className="text-xs text-slate-300">
-                      Лимиты активируются мгновенно и не имеют срока давности.
+                    <p className="text-xs text-slate-300 mt-1">
+                      Списываются с баланса <strong className="text-white">автоматически</strong> сразу после успешной ИИ-генерации.
+                      Отдельно покупать не нужно.
                     </p>
-                    
-                    {purchaseError && (
-                      <div className="bg-red-950/40 border border-red-500/35 text-red-300 rounded-xl p-2.5 text-[11px] mt-2 font-mono">
-                        ⚠️ {purchaseError}
-                      </div>
-                    )}
                   </div>
 
-                  <div className="space-y-2.5 pt-2">
-                    {/* Item 1: Interview */}
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs font-normal">
-                      <div className="max-w-[70%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                          <span className="text-amber-400">🎙️</span> ИИ Собеседование соискателя
-                        </h4>
+                  <div className="space-y-2.5 pt-1">
+                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
+                      <div className="max-w-[75%]">
+                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">🌐 ИИ-Лендинг вакансии</h4>
                         <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          <strong className="text-amber-400/90 font-semibold font-mono text-[9.5px]">Включает:</strong> ИИ Скрининг резюме + ИИ чек-лист по опыту и навыкам + ИИ ролевая игра с 3 ситуациями.
+                          Стильный мини-сайт вакансии с описанием условий, компанией и ИИ-консультантом по базе знаний.
                         </p>
                       </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-bold text-[#E7C768]">100 RR</span>
-                        <button
-                          onClick={(e) => handlePurchaseItem("interview")}
-                          disabled={isBuying !== null}
-                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                        >
-                          {isBuying === "interview" ? "Куплю..." : "Купить"}
-                        </button>
-                      </div>
+                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.landing} RR</span>
                     </div>
 
-                    {/* Item 2: AI Training */}
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs font-normal">
-                      <div className="max-w-[70%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                          <span className="text-amber-400">🎓</span> Интерактивное ИИ Обучение соискателя
-                        </h4>
+                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
+                      <div className="max-w-[75%]">
+                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">⚙️ ИИ-Система интервью</h4>
                         <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          <strong className="text-amber-400/90 font-semibold font-mono text-[9.5px]">Включает:</strong> Профессиональное ИИ дообучение после интервью + ИИ обучение продукту + ИИ обучение системе работы и условиям.
+                          Генератор скрининга резюме, чек-листа и 3 ролевых ситуаций под вашу вакансию.
                         </p>
                       </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-bold text-[#E7C768]">100 RR</span>
-                        <button
-                          onClick={(e) => handlePurchaseItem("training")}
-                          disabled={isBuying !== null}
-                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                        >
-                          {isBuying === "training" ? "Куплю..." : "Купить"}
-                        </button>
-                      </div>
+                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.interview_setup} RR</span>
                     </div>
 
-                    {/* Item 3: Job AI Landing page */}
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs font-normal">
-                      <div className="max-w-[70%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                          <span className="text-amber-400">🌐</span> ИИ Лендинг созданной вакансии
-                        </h4>
+                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
+                      <div className="max-w-[75%]">
+                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">🎓 ИИ-Система обучения</h4>
                         <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          <strong className="text-amber-400/90 font-semibold font-mono text-[9.5px]">Описание:</strong> Создание стильного внешнего мини-сайта для регистрации ваших кандидатов в системе с описанием вакансии, условий и информации о компании с ИИ консультантом по базе знаний.
+                          Профессиональное дообучение + обучение продукту + обучение регламентам по вашей базе знаний.
                         </p>
                       </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-bold text-[#E7C768]">500 RR</span>
-                        <button
-                          onClick={(e) => handlePurchaseItem("landing")}
-                          disabled={isBuying !== null}
-                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                        >
-                          {isBuying === "landing" ? "Куплю..." : "Купить"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Item 4: AI Interview System creation */}
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs font-normal">
-                      <div className="max-w-[70%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                          <span className="text-amber-400">⚙️</span> ИИ Система Интервью
-                        </h4>
-                        <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          <strong className="text-amber-400/90 font-semibold font-mono text-[9.5px]">Описание:</strong> Генератор сценариев с тестами под вашу специальность и вакансию.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-bold text-[#E7C768]">300 RR</span>
-                        <button
-                          onClick={(e) => handlePurchaseItem("system_interview")}
-                          disabled={isBuying !== null}
-                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                        >
-                          {isBuying === "system_interview" ? "Куплю..." : "Купить"}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Item 5: AI Training System creation */}
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs font-normal">
-                      <div className="max-w-[70%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">
-                          <span className="text-amber-400">👁️‍🗨️</span> ИИ Система Обучения
-                        </h4>
-                        <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          <strong className="text-amber-400/90 font-semibold font-mono text-[9.5px]">Описание:</strong> ИИ создает Продвинутую индивидуальную тренажерную симуляцию для персонала, для аттестаций новых сотрудников, переаттестаций текущих и для быстрого онбординга.
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="font-mono font-bold text-[#E7C768]">200 RR</span>
-                        <button
-                          onClick={(e) => handlePurchaseItem("system_training")}
-                          disabled={isBuying !== null}
-                          className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                        >
-                          {isBuying === "system_training" ? "Куплю..." : "Купить"}
-                        </button>
-                      </div>
+                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.training_setup} RR</span>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. TOP UP BILLING CALCULATOR CARD */}
-                <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl space-y-4 flex flex-col justify-between">
-                  <form onSubmit={handleTopupBalance} className="space-y-4 flex flex-col justify-between h-full">
-                    <div>
-                      <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
-                        💵 Калькулятор пополнения баланса
-                      </h3>
-                      <p className="text-xs text-slate-300 mt-1">
-                        Выгодный курс: **1 рубль = 1 RR**. Начальный минимальный платеж 100 рублей.
-                      </p>
-                    </div>
+                {/* Пакеты лимитов */}
+                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-4">
+                  <div>
+                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                      📦 Пакеты лимитов интервью и обучения
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Покупаются за RR. Чем больше пакет — тем дешевле каждая штука. 1 RR = 1 ₽.
+                    </p>
+                  </div>
 
-                    <div className="space-y-3.5 my-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase tracking-wider">
-                          Вы вносите к оплате (в рублях):
-                        </label>
-                        <div className="relative">
+                  {purchaseError && (
+                    <div className="bg-red-950/40 border border-red-500/35 text-red-300 rounded-xl p-2.5 text-[11px] font-mono">
+                      ⚠️ {purchaseError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-[10px]">
+                    {[{r:"1–9",p:200},{r:"10–49",p:150},{r:"50–199",p:100},{r:"200+",p:50}].map(t => (
+                      <div key={t.r} className="bg-black/30 rounded-xl p-2 border border-white/10 text-center">
+                        <div className="text-slate-300">{t.r} шт</div>
+                        <div className="text-sm font-bold font-mono text-[#E7C768]">{t.p} RR</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {(["interview","training"] as const).map((kind) => {
+                    const qty = packQty[kind];
+                    const unit = packTierPrice(qty);
+                    const total = unit * qty;
+                    const label = kind === "interview" ? "🎙️ Пакет интервью" : "🎓 Пакет обучения";
+                    return (
+                      <div key={kind} className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="font-bold text-white text-xs">{label}</h4>
+                          <span className="text-[10px] text-slate-400 font-mono">Текущий остаток: {kind === "interview" ? interviewCredits : trainingCredits}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <label className="text-slate-300">Кол-во:</label>
                           <input
                             type="number"
-                            min="100"
-                            value={topupAmountRub}
-                            onChange={(e) => setTopupAmountRub(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="bg-black/35 w-full rounded-2xl border border-white/10 px-4 py-3 font-mono font-extrabold text-white text-sm focus:outline-none focus:border-[#E7C768]"
+                            min={1}
+                            value={qty}
+                            onChange={(e) => setPackQty(s => ({ ...s, [kind]: Math.max(1, parseInt(e.target.value) || 1) }))}
+                            className="w-20 bg-black/30 border border-white/15 text-[#E7C768] font-bold text-center rounded-lg px-2 py-1 font-mono"
                           />
-                          <span className="absolute right-4 top-3 text-xs font-bold text-[#E7C768] font-mono">₽ (RUB)</span>
+                          <span className="text-slate-400 font-mono text-[11px]">× {unit} RR = </span>
+                          <span className="font-mono font-extrabold text-[#E7C768]">{total.toLocaleString("ru-RU")} RR</span>
+                          <button
+                            type="button"
+                            onClick={() => handleBuyPack(kind)}
+                            disabled={packBusy !== null}
+                            className="ml-auto bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
+                          >
+                            {packBusy === kind ? "..." : "Купить пакет"}
+                          </button>
                         </div>
-                        {topupAmountRub < 100 && (
-                          <span className="text-[10px] text-amber-400 block mt-1 font-mono">⚠️ Минимум 100 рублей</span>
-                        )}
                       </div>
-
-                      {/* Quick pick templates */}
-                      <div className="flex gap-2 text-[10px] font-mono font-bold leading-none">
-                        <button
-                          type="button"
-                          onClick={() => setTopupAmountRub(100)}
-                          className={`px-3 py-2 rounded-xl transition-all border ${topupAmountRub === 100 ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60 font-bold" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15 font-normal"}`}
-                        >
-                          100 ₽
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTopupAmountRub(500)}
-                          className={`px-3 py-2 rounded-xl transition-all border ${topupAmountRub === 500 ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60 font-bold" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15 font-normal"}`}
-                        >
-                          500 ₽
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setTopupAmountRub(1000)}
-                          className={`px-3 py-2 rounded-xl transition-all border ${topupAmountRub === 1000 ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60 font-bold" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15 font-normal"}`}
-                        >
-                          1 000 ₽
-                        </button>
-                      </div>
-
-                      {/* Equivalent calculation block */}
-                      <div className="bg-emerald-950/20 p-3.5 rounded-2xl border border-emerald-500/20 text-xs flex justify-between items-center bg-black/20">
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-normal">Будет начислено на счет баланса:</span>
-                          <span className="text-sm font-extrabold text-[#E7C768] block mt-1 font-mono">
-                            {topupAmountRub} RR
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-slate-400 bg-white/5 hover:bg-white/10 transition px-2.5 py-1 rounded-full font-mono font-bold uppercase tracking-wider">
-                          Курс 1:1
-                        </span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isToppingUp || topupAmountRub < 100}
-                      className="cursor-pointer bg-gradient-to-r from-emerald-500 to-teal-650 hover:from-emerald-600 hover:to-teal-700 disabled:opacity-40 text-[#17344F] font-bold text-xs uppercase tracking-wider py-3.5 rounded-2xl w-full transition flex items-center justify-center gap-1.5"
-                    >
-                      {isToppingUp ? "Обработка шлюза..." : "🚀 Пополнить Баланс"}
-                    </button>
-                  </form>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* REFERRAL PROGRAM CARD */}
-              <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl select-none">🎁</span>
+              {/* 4. ПОПОЛНЕНИЕ RR ЗА РУБЛИ */}
+              <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
+                <form onSubmit={handleTopupBalance} className="space-y-4">
                   <div>
-                    <h3 className="font-bold text-sm text-[#E7C768]">Зарабатывайте 1000 RR за рекомендацию друга!</h3>
-                    <p className="text-[11px] text-slate-300 leading-relaxed font-normal mt-0.5">
-                      Пригласите другого руководителя или HR-менеджера. Когда они заригистрируются по вашей ссылке через Google или Telegram,
-                      вам мгновенно зачислится бонус **1000 RR**, а приглашенный друг получит приветственные **1000 RR** на баланс!
-                    </p>
+                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                      💵 Пополнение баланса RR за рубли
+                    </h3>
+                    <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-1.5 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono">Официальная реферальная ссылка:</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`https://hr-rr.online?ref=${employerId}`}
-                        className="bg-black/30 w-full select-all font-mono font-normal text-slate-300 text-[11px] border border-white/5 p-1.5 rounded"
-                      />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">К оплате (₽)</label>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min={100}
+                          value={topupAmountRub}
+                          onChange={(e) => setTopupAmountRub(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="bg-black/35 w-full rounded-2xl border border-white/10 px-4 py-3 font-mono font-extrabold text-white text-sm focus:outline-none focus:border-[#E7C768]"
+                        />
+                        <span className="absolute right-4 top-3 text-xs font-bold text-[#E7C768] font-mono">₽</span>
+                      </div>
+                      <div className="flex gap-2 text-[10px] font-mono font-bold">
+                        {[100, 500, 1000, 5000].map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setTopupAmountRub(v)}
+                            className={`px-3 py-2 rounded-xl border transition-all ${topupAmountRub === v ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15"}`}
+                          >
+                            {v.toLocaleString("ru-RU")} ₽
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block uppercase">Будет зачислено</span>
+                        <span className="text-2xl font-extrabold text-[#E7C768] block font-mono">{topupAmountRub.toLocaleString("ru-RU")} RR</span>
+                      </div>
                       <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online?ref=${employerId}`);
-                          addAuditEvent("success", "Ссылка скопирована", "Официальная ссылка скопирована в буфер обмена.");
-                          alert("Официальная ссылка скопирована!");
-                        }}
-                        className="bg-white/10 hover:bg-white/20 text-[#E7C768] px-2 py-1 border border-white/5 text-[10px] uppercase font-bold rounded cursor-pointer"
+                        type="submit"
+                        disabled={isToppingUp || topupAmountRub < 100}
+                        className="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 text-[#17344F] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl mt-3 transition"
                       >
-                        Копировать
+                        {isToppingUp ? "Обработка..." : "🚀 Пополнить баланс"}
                       </button>
                     </div>
                   </div>
+                </form>
+              </div>
 
-                  <div className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-1.5 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono">Тестирование в Песочнице (Для проверки):</span>
+              {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
+              <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎁</span>
+                  <div>
+                    <h3 className="font-bold text-sm text-[#E7C768]">Реферальная программа: +1000 RR за каждого приглашённого</h3>
+                    <p className="text-[11px] text-slate-300 leading-relaxed mt-0.5">
+                      Когда приглашённый работодатель регистрируется через Google по вашей ссылке, ему начисляется приветственный бонус
+                      <strong className="text-white"> 1000 RR</strong>, а вам — <strong className="text-white">+1000 RR</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-black/20 p-3 rounded-2xl border border-white/5 text-xs">
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono mb-1.5">Ваша реферальная ссылка</span>
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/auth?ref=${employerId}`}
-                        className="bg-black/30 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/5 p-1.5 rounded"
+                        value={`${window.location.origin}/auth?ref=emp${employerId}`}
+                        className="bg-black/30 w-full select-all font-mono text-emerald-300 text-[11px] border border-white/5 p-2 rounded"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=${employerId}`);
-                          addAuditEvent("success", "Ссылка скопирована", "Песочная тестовая ссылка скопирована.");
-                          alert("Ссылка для тестирования скопирована!");
+                          navigator.clipboard.writeText(`${window.location.origin}/auth?ref=emp${employerId}`);
+                          addAuditEvent("success", "Ссылка скопирована", "Реферальная ссылка скопирована.");
                         }}
                         className="bg-emerald-950 hover:bg-emerald-900 text-emerald-400 px-2 py-1 border border-emerald-500/20 text-[10px] uppercase font-bold rounded cursor-pointer"
                       >
@@ -3102,43 +3010,73 @@ export default function EmployerPanel() {
                       </button>
                     </div>
                   </div>
+
+                  <div className="bg-black/20 p-3 rounded-2xl border border-white/5 text-xs">
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono mb-1.5">Кем вы приглашены</span>
+                    {referrer ? (
+                      <div className="space-y-1 text-slate-200">
+                        <div className="font-bold text-white text-[12px]">{referrer.name || "—"} <span className="text-slate-400 font-mono text-[10px]">emp{referrer.public_id}</span></div>
+                        <div className="font-mono text-[10.5px] text-slate-300">{referrer.email}</div>
+                        {referrer.telegram && <div className="font-mono text-[10.5px] text-sky-300">Telegram: @{referrer.telegram}</div>}
+                        {referrer.phone && <div className="font-mono text-[10.5px] text-amber-300">Тел.: {referrer.phone}</div>}
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 text-[11px]">Вы зарегистрировались самостоятельно (без реферального кода).</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-black/20 p-3 rounded-2xl border border-white/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase font-mono">Кого пригласили вы</span>
+                    <span className="font-mono text-[#E7C768] text-[11px] font-bold">{referees.length} чел · +{referees.reduce((s, r) => s + r.bonus_rr, 0).toLocaleString("ru-RU")} RR</span>
+                  </div>
+                  {referees.length === 0 ? (
+                    <div className="text-[11px] text-slate-400">Пока никто не зарегистрировался по вашей ссылке.</div>
+                  ) : (
+                    <div className="space-y-1 text-xs">
+                      {referees.map((r, i) => (
+                        <div key={i} className="flex items-center justify-between bg-black/20 rounded-lg px-2 py-1.5 border border-white/5">
+                          <div className="min-w-0 truncate">
+                            <span className="text-white font-bold">{r.name || "—"}</span>
+                            <span className="text-slate-400 font-mono text-[10px] ml-2">{r.email}</span>
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono shrink-0">
+                            {new Date(r.created_at).toLocaleDateString("ru-RU")} · <span className="text-emerald-400 font-bold">+{r.bonus_rr} RR</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* PAYMENT TRANSACTIONS RECEIPT REGISTRY FOR EMPOWERED TRACKING */}
+              {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
               <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
                 <div className="p-4 bg-gradient-to-r from-[#17344F] to-[#265582] text-xs font-bold font-mono tracking-wider text-slate-300">
-                  История Платежей, Списаний & Бонусов счета
+                  История всех операций по балансу
                 </div>
                 {paymentHistory.length === 0 ? (
-                  <p className="p-4 text-xs text-slate-400 font-normal">Пока не зафиксировано ни одной операции по данному работодателю.</p>
+                  <p className="p-4 text-xs text-slate-400">Пока не было ни одной операции.</p>
                 ) : (
-                  <div className="overflow-x-auto text-xs font-mono">
+                  <div className="overflow-x-auto text-xs">
                     <table className="w-full text-left">
                       <thead>
-                        <tr className="bg-black/25 text-[#E7C768] border-b border-white/5 font-bold">
-                          <th className="p-3">ID Операции</th>
-                          <th className="p-3">Дата операции</th>
-                          <th className="p-3">Название операции / наименование услуги</th>
-                          <th className="p-3 text-right">Начислено / Списано</th>
-                          <th className="p-3 text-right">Метод</th>
-                          <th className="p-3 text-right">Статус</th>
+                        <tr className="bg-black/25 text-[#E7C768] border-b border-white/5 font-bold font-mono">
+                          <th className="p-3">Дата</th>
+                          <th className="p-3">Тип</th>
+                          <th className="p-3">Описание</th>
+                          <th className="p-3 text-right">Сумма</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/5 text-slate-200 font-normal">
+                      <tbody className="divide-y divide-white/5 text-slate-200">
                         {paymentHistory.map((pt, i) => (
                           <tr key={i} className="hover:bg-white/5">
-                            <td className="p-3 font-semibold text-slate-400">{pt.id}</td>
-                            <td className="p-3">{pt.date}</td>
-                            <td className="p-3 font-sans font-medium text-white">{pt.plan}</td>
-                            <td className="p-3 text-right font-bold font-mono">
-                              <span className={pt.amount.startsWith("-") ? "text-red-450" : "text-emerald-400"}>
-                                {pt.amount}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right font-sans text-slate-300">{pt.method}</td>
-                            <td className="p-3 text-right font-sans">
-                              <span className="bg-emerald-950/80 border border-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded font-bold text-[10px]">{pt.status}</span>
+                            <td className="p-3 font-mono text-slate-400">{pt.date}</td>
+                            <td className="p-3 font-mono text-[10px] uppercase text-slate-300">{pt.type}</td>
+                            <td className="p-3">{pt.note}</td>
+                            <td className={`p-3 text-right font-mono font-bold ${pt.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                              {pt.amount >= 0 ? "+" : ""}{pt.amount.toLocaleString("ru-RU")} RR
                             </td>
                           </tr>
                         ))}
@@ -3150,7 +3088,6 @@ export default function EmployerPanel() {
             </div>
           )}
 
-          {/* PAGE 5: PROFILE — HR Profile (Google + contacts) */}
           {activeTab === "profile" && (
             <div className="space-y-6 text-left">
 
