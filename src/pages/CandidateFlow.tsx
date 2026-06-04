@@ -1026,10 +1026,29 @@ export default function CandidateFlow() {
     }
   }, [candidate, project]);
 
+  // Списать 1 лимит интервью/обучения работодателю — идемпотентно.
+  const spendStagePack = async (kind: "interview" | "training") => {
+    try {
+      const pubId = candidate?.publicId || (candidate?.id || "").replace(/^candidate/, "");
+      if (!pubId) return;
+      const { data: cand } = await supabase
+        .from("candidates")
+        .select("id")
+        .eq("public_id", pubId)
+        .maybeSingle();
+      if (!cand?.id) return;
+      const { error } = await supabase.rpc("spend_pack", { _candidate: cand.id, _kind: kind });
+      if (error) console.warn(`spend_pack(${kind}) failed`, error.message);
+    } catch (e) {
+      console.warn(`spend_pack(${kind}) failed`, e);
+    }
+  };
+
   // Stage 1 -> Stage 2 (Interviewing)
   const handleStartInterview = () => {
     setInterviewSubTab("resume");
     updateStageOnBackend("interview");
+    spendStagePack("interview");
   };
 
   const handleEvaluateResume = async () => {
