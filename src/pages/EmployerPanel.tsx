@@ -10,6 +10,7 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import ReferralsList from "../components/ReferralsList";
 import ReferredByCard from "../components/ReferredByCard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Users,
   Smartphone,
