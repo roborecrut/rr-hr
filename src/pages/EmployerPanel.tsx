@@ -10,6 +10,7 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import {
   Users,
   Smartphone,
