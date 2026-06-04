@@ -1,53 +1,23 @@
-## Проблемы
+План исправления:
 
-1. **Кнопки «Выйти» не выходят из Supabase/Google.** В `EmployerPanel.tsx` (`handleLogout`, строка 818) и в `CandidateFlow.tsx` (строки 1397, 1454, 2939) выполняется `localStorage.clear()` / `removeItem(...)` + `navigate("/main")`, но **никогда не вызывается `supabase.auth.signOut()`**. В результате:
-   - In‑memory сессия в supabase‑клиенте остаётся;
-   - `TelegramMiniAppBoot` / автологин может тут же снова восстановить сессию;
-   - `localStorage.clear()` ломает другие настройки приложения (pendingGoogleAuth, чек‑листы и т.п.).
+1. Починить направление после Google OAuth
+- Сделать вход с лендинга и `/auth` явно работодателем: `intent=employer` должен сохраняться и в `sessionStorage`, и в callback URL.
+- В `AuthCallback` убрать опасный дефолт `candidate` для основного входа: если пользователь заходит с главной/`/auth`, финализация должна создавать/находить работодателя.
+- В `AuthRecover` убрать автоматическое восстановление как кандидат на главной странице, потому что сейчас оно может повторно запускать callback с `intent=candidate` и оставлять пользователя без employer-профиля.
+- В `auth-google-finalize` проверять ошибки insert/upsert, гарантированно создавать employer-запись и возвращать путь вида `/employer100004/profile`, а не `/main`.
 
-2. **Локального запоминания нет / постоянно надо логиниться.** В `supabase/client.ts` уже стоит `persistSession: true, storage: localStorage`, то есть сессия должна сохраняться. Реальная причина «не помнит» = п.1: `localStorage.clear()` стирает supabase‑токен при каждом «Выйти», а при автологине через MiniApp вытесняется веб‑сессия. Достаточно правильного `signOut` + не трогать остальной storage.
+2. Исправить бонус за регистрацию
+- Обновить DB-функцию `grant_employer_bonus()` через миграцию: за создание employer-аккаунта начислять `1000 RR` вместо `500 RR`.
+- Изменить текст транзакции на понятный: `Signup bonus (Google)`.
+- Сохранить идемпотентность через `bonus_granted`, чтобы бонус не начислялся повторно при каждом входе.
 
-3. **«⚠️ finalize 200: unknown» при повторной регистрации через Google.** В `AuthCallback.tsx` это сообщение формируется только когда `res.ok=true`, но `data?.target` — undefined/пусто (см. `finalizeError = finalize ${res.status}: ${data?.error || data?.details || "unknown"}`). То есть edge‑функция вернула 200 с телом, в котором нет поля `target` (или JSON не распарсился). Логов нет, но недавняя правка `auth-google-finalize` (мерж аккаунтов / `account_kinds`) могла в редкой ветке вернуть пустое `target` или 200 без тела. Нужно:
-   - На клиенте: не падать при пустом `target`, а резолвить путь по существующему профилю через `resolveProfilePathForUser` (фоллбек уже есть, но throw срабатывает раньше — поправить порядок).
-   - На сервере: гарантировать, что `target` всегда заполнен (если ничего не нашли → `/main` или `/employer{publicId}/profile`), и добавить подробное логирование причины.
+3. Убрать Telegram-регистрацию из пользовательского интерфейса
+- Убрать `TelegramMiniAppBoot` из `App.tsx`, чтобы сайт больше не пытался автоматически регистрировать через Telegram Mini App.
+- В `AuthModal` удалить Telegram Mini App режим, ссылку на Telegram и текст про привязку; оставить только Google-вход и бонус `+1000 RR`.
+- На лендинге заменить блок `500 RR + 500 RR за Telegram` на единый Google-бонус `1000 RR`, убрать кнопку `Открыть RoboRecrut Mini App`.
+- В кабинете работодателя убрать видимые элементы привязки Telegram/запроса телефона/дополнительного Telegram-бонуса, оставить Google-профиль и обычные контакты работодателя.
 
-## Что делаю
-
-### 1. Корректный выход из аккаунта
-- В `EmployerPanel.tsx` переписать `handleLogout`:
-  ```ts
-  const handleLogout = async () => {
-    try { await supabase.auth.signOut(); } catch {}
-    // не трогаем весь localStorage — чистим только наши служебные ключи
-    ["pendingGoogleAuth","cand_session_id","cand_role"].forEach(k => localStorage.removeItem(k));
-    window.location.assign("/main"); // hard‑reload, чтобы сбросить in‑memory state
-  };
-  ```
-- В `CandidateFlow.tsx` заменить все три места выхода (1397, 1454, 2939) на ту же логику через общий хелпер.
-- (Опц.) Вынести `signOutEverywhere()` в `src/lib/auth.ts`, чтобы не дублировать.
-
-### 2. Локальное запоминание
-- Оставляем `persistSession: true` (уже так).
-- Перестаём вызывать `localStorage.clear()` — это и было причиной «забывания» побочных данных.
-- В `TelegramMiniAppBoot` ничего не меняем: если есть валидная сессия — она подхватится, пользователь сразу в кабинете.
-
-### 3. Повторный вход без ошибки `finalize 200: unknown`
-- **AuthCallback.tsx**: изменить порядок — если `target` пустой/`"/"`, СНАЧАЛА пробовать `resolveProfilePathForUser(user.id)`, и только если и он не дал результата — показывать ошибку. Так уже зарегистрированный пользователь всегда попадёт в свой кабинет, даже если finalize вернул пустой target.
-- **edge `auth-google-finalize`**: 
-  - Завернуть основную логику в try/catch так, чтобы любые ветки employer/candidate возвращали валидный `target` (никогда `""` / `"/"`).
-  - Если intent=`employer` и `publicId` не получили после insert — перечитать employer по `user_id` и собрать target.
-  - Если intent=`candidate` без проекта и без существующих кандидатов — вернуть `/main` (уже так, проверить).
-  - Добавить `console.log` с user.id / intent / выбранной веткой, чтобы видеть в логах причину.
-  - Перед `return json({ target })` — `if (!target) target = "/main";` страховка.
-
-### 4. Проверка
-- Локально: войти через Google → перезагрузить страницу (должен остаться в кабинете) → Выйти → войти заново (без ошибки) → выйти и зайти как соискатель (для проверки, что обе ветки чистые).
-
-## Файлы, которые буду менять
-- `src/pages/EmployerPanel.tsx` — `handleLogout`
-- `src/pages/CandidateFlow.tsx` — 3 кнопки выхода
-- `src/lib/auth.ts` — новый общий `signOutEverywhere()` (по желанию)
-- `src/pages/AuthCallback.tsx` — фоллбек до throw
-- `supabase/functions/auth-google-finalize/index.ts` — гарантированный непустой `target` + логи
-
-Без миграций БД.
+4. Проверка после правок
+- Проверить, что проблемный тип пользователя без employer-записи больше не уходит на `/main`, а финализация создаёт employer и возвращает `/employer{id}/profile`.
+- Проверить edge function `auth-google-finalize` по логам/тестовому вызову после деплоя.
+- Проверить, что в интерфейсе не осталось CTA регистрации/входа через Telegram и старых текстов `+500 RR`.
