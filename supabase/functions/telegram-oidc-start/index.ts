@@ -157,11 +157,10 @@ Deno.serve(async (req) => {
   }
 
   const params = new URLSearchParams({
-    bot_id: CLIENT_ID,
-    origin,
+    client_id: CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "openid",
+    scope: "openid profile",
     state,
     code_challenge: codeChallenge,
     code_challenge_method: "S256",
