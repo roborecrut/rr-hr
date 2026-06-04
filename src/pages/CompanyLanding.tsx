@@ -695,18 +695,7 @@ export default function CompanyLanding() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("telegram")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-6 h-6 text-sky-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03-.01-.14-.07-.19s-.16-.03-.22-.01c-.1.02-1.63 1.03-4.6 3.04-.44.3-.83.45-1.18.44-.39-.01-1.13-.22-1.68-.4-.68-.22-1.22-.34-1.17-.72.03-.2.3-.41.81-.62 3.17-1.38 5.28-2.29 6.34-2.73 3.01-1.26 3.63-1.48 4.04-1.48.09 0 .29.02.42.13.11.08.14.21.15.3l-.01.12z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Tg</span>
-                      </button>
-
+                    <div className="grid grid-cols-1 gap-3 pt-2">
                       <button
                         type="button"
                         onClick={() => triggerOneClickRegister("google")}
@@ -723,10 +712,11 @@ export default function CompanyLanding() {
                     <div className="bg-sky-500/10 border border-sky-500/25 p-3 rounded-2xl space-y-1.5 text-xs text-sky-200">
                       <div className="flex items-center gap-1.5 font-bold">
                         <AlertCircle className="w-4 h-4 text-sky-400" />
-                        <span>Автоматические напоминания</span>
+                        <span>Удобный Telegram Mini App</span>
                       </div>
                       <p className="text-[11px] leading-relaxed">
-                        🎓 <strong>Обратите внимание!</strong> При регистрации через <strong>Telegram</strong> мы будем присылать вам напоминания в чат-бота, чтобы вы не забывали проходить этапы онбординга или лекции с пользой!
+                        🎓 Откройте <a href="https://t.me/RoboRecrutBot/app" target="_blank" rel="noreferrer" className="font-bold underline">t.me/RoboRecrutBot/app</a> прямо в Telegram —
+                        авторизация и регистрация на эту вакансию произойдут автоматически, а напоминания будут приходить в чат.
                       </p>
                     </div>
                   </>
