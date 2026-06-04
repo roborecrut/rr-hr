@@ -10,6 +10,7 @@ import ReferredByCard from "../components/ReferredByCard";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import { signOutEverywhere } from "@/lib/auth";
 import {
   FileText,
   Upload,
