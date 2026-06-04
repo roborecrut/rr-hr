@@ -1449,6 +1449,26 @@ export default function EmployerPanel() {
                   <Activity className="w-4 h-4 text-[#D99E41]" /> 6. События & Логи
                 </span>
               </button>
+
+              <div className="h-px bg-white/10 my-2"></div>
+
+              <button
+                onClick={() => navigate(`/emp${employerId}/interviews`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 7. Интервью (ИИ)
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate(`/emp${employerId}/training`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 8. Обучение (ИИ)
+                </span>
+              </button>
             </div>
           </div>
 
