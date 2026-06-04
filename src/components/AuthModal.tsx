@@ -121,6 +121,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           ref: query.ref || "",
           company_slug,
           project_slug,
+          project_id: query.project_id || query.id || "",
           return_to: window.location.pathname + window.location.search,
         }));
       } catch { /* ignore */ }
@@ -128,7 +129,6 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: { intent },
         },
       });
       if (error) throw error;

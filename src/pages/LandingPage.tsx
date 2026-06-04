@@ -797,7 +797,7 @@ export default function LandingPage() {
         </div>
       </footer>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} intent="employer" />
       <EmployerAIAssistant />
     </div>
   );
