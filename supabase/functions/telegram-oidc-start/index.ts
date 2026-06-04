@@ -124,7 +124,6 @@ Deno.serve(async (req) => {
     });
   }
   const redirectTo = `${res.url.origin}${res.url.pathname}${res.url.search}`;
-  const origin = res.url.origin;
   // Telegram OIDC redirect_uri must EXACTLY match what is whitelisted in BotFather.
   // We keep one URL across all client origins by pointing it at the edge function.
   const redirectUri = `${SUPABASE_URL}/functions/v1/telegram-oidc-callback`;
