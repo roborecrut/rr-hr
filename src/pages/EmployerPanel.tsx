@@ -1326,46 +1326,24 @@ export default function EmployerPanel() {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center justify-center gap-2 md:gap-4 text-xs md:text-sm font-semibold">
-            <button onClick={() => navigate("/main")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Главная
-            </button>
-            <button onClick={() => navigate("/vacancy")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Каталог Профессий
-            </button>
-            <button onClick={() => navigate("/employer/crm")} className="transition px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">
-              Панель Работодателя 💼
-            </button>
-            <button onClick={() => navigate("/candidate")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 bg-white/5 border border-white/10">
-              Кабинет Соискателя 🎓
-            </button>
-          </nav>
-
-          <div className="hidden md:flex items-center gap-3">
-            <div className="text-right">
-              <span className="text-xs block text-[#E7C768] font-bold">{profileName}</span>
-              <span className="text-[10px] block text-slate-300 font-mono">{profileEmail}</span>
+          <div className="flex items-center gap-3">
+            {googlePhoto && (
+              <img
+                src={googlePhoto}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="hidden sm:block w-9 h-9 rounded-full object-cover border border-white/20"
+              />
+            )}
+            <div className="text-right hidden sm:block">
+              <span className="text-xs block text-[#E7C768] font-bold">{googleName || profileName}</span>
+              <span className="text-[10px] block text-slate-300 font-mono">ID: {employerId}</span>
             </div>
             <button onClick={handleLogout} className="cursor-pointer bg-white/10 hover:bg-white/20 text-white rounded-xl px-3 py-2 text-xs font-bold transition flex items-center gap-1 border border-white/10">
               <LogOut className="w-3.5 h-3.5" /> Выйти
             </button>
           </div>
-
-          <button className="md:hidden flex items-center justify-center p-2 rounded-xl hover:bg-white/10 text-white transition-all" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X className="w-6 h-6 text-[#E7C768]" /> : <Menu className="w-6 h-6" />}
-          </button>
         </div>
-
-        {/* Mobile Dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 font-semibold">
-            <button onClick={() => { navigate("/main"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Главная</button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Каталог Профессий</button>
-            <button onClick={() => { navigate("/employer/crm"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-[#E7C768] bg-white/10">Панель Работодателя</button>
-            <button onClick={() => { navigate("/candidate"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Кабинет Соискателя</button>
-            <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-red-300 hover:bg-red-950/25">Выйти из кабинета</button>
-          </div>
-        )}
       </header>
 
       {/* Main Workspace Frame */}
