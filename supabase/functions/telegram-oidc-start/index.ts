@@ -107,6 +107,11 @@ Deno.serve(async (req) => {
       path: (() => { try { return new URL(rawRedirect || "").pathname; } catch { return null; } })(),
       ip_hash: ipHash, ua_hash: uaHash, meta: { input: res.originalInput },
     });
+    return jsonResponse({
+      error: "redirect_rejected",
+      reason: res.reason || "unknown",
+      details: "redirect_to не входит в whitelist доменов",
+    }, 400);
   } else {
     console.log("[telegram-oidc-start] redirect_to accepted", {
       host: res.url.hostname, path: res.url.pathname, intent, ref,
@@ -137,7 +142,10 @@ Deno.serve(async (req) => {
     redirect_to: redirectTo,
     provider: "telegram",
   });
-  if (insErr) return jsonResponse({ error: "state_persist_failed", details: insErr.message }, 500);
+  if (insErr) {
+    console.error("[telegram-oidc-start] state_persist_failed", { msg: insErr.message, intent });
+    return jsonResponse({ error: "state_persist_failed", details: insErr.message }, 500);
+  }
 
   const params = new URLSearchParams({
     bot_id: CLIENT_ID,

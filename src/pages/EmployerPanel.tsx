@@ -135,6 +135,10 @@ export default function EmployerPanel() {
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
 
+  // Linked providers — controls "connect" CTAs
+  const [hasGoogle, setHasGoogle] = useState<boolean>(false);
+  const [hasTelegram, setHasTelegram] = useState<boolean>(false);
+
   // Billing & Tariff States
   const [employerId, setEmployerId] = useState<string>(
     () => localStorage.getItem("employer_session_id") || "",
@@ -710,17 +714,67 @@ export default function EmployerPanel() {
       if (!user || cancelled) return;
       const { data: prof } = await supabase
         .from("profiles")
-        .select("telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone, email")
+        .select("display_name, avatar_url, email, google_email, registered_via, telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled || !prof) return;
-      if (prof.telegram_id) setTelegramIdState(String(prof.telegram_id));
-      if (prof.telegram_username) setTelegramUsernameState(prof.telegram_username);
-      if (prof.telegram_first_name) setTelegramFirstName(prof.telegram_first_name);
-      if (prof.telegram_last_name) setTelegramLastName(prof.telegram_last_name);
-      if (prof.telegram_photo_url) setTelegramPhoto(prof.telegram_photo_url);
-      if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
-      if (prof.email) setGoogleEmail(prof.email);
+      // ---- Telegram ----
+      const tgLinked = !!prof.telegram_id;
+      setHasTelegram(tgLinked);
+      if (tgLinked) {
+        setTelegramIdState(String(prof.telegram_id));
+        setTelegramUsernameState(prof.telegram_username || "");
+        setTelegramFirstName(prof.telegram_first_name || "");
+        setTelegramLastName(prof.telegram_last_name || "");
+        setTelegramPhoto(prof.telegram_photo_url || "");
+        if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
+      } else {
+        // clear placeholders so the UI shows "не привязан"
+        setTelegramIdState("");
+        setTelegramUsernameState("");
+        setTelegramFirstName("");
+        setTelegramLastName("");
+        setTelegramPhoto("");
+      }
+
+      // ---- Google / general profile ----
+      const meta = (user.user_metadata || {}) as Record<string, any>;
+      const identities = (user.identities || []) as Array<{ provider: string; identity_data?: any }>;
+      const googleIdentity = identities.find((i) => i.provider === "google");
+      const googleLinked = !!googleIdentity || !!prof.google_email || prof.registered_via === "google";
+      setHasGoogle(googleLinked);
+
+      const fullName: string =
+        prof.display_name ||
+        meta.full_name || meta.name ||
+        [prof.telegram_first_name, prof.telegram_last_name].filter(Boolean).join(" ") ||
+        "";
+      const email: string = prof.google_email || prof.email || user.email || "";
+      const avatar: string =
+        prof.avatar_url ||
+        meta.avatar_url || meta.picture ||
+        (googleIdentity?.identity_data?.avatar_url as string) || "";
+      const googleSub: string =
+        (googleIdentity?.identity_data?.sub as string) ||
+        (meta.sub as string) || "";
+
+      if (fullName) {
+        setProfileName(fullName);
+        setGoogleName(fullName);
+      }
+      if (email) {
+        setProfileEmail(email);
+        setGoogleEmail(email);
+      }
+      if (googleLinked) {
+        setGooglePhoto(avatar || "");
+        setGoogleId(googleSub || "");
+        setGoogleVerified(true);
+      } else {
+        setGooglePhoto("");
+        setGoogleId("");
+        setGoogleVerified(false);
+      }
 
       const { data: refs } = await supabase
         .from("referrals")
@@ -1362,18 +1416,24 @@ export default function EmployerPanel() {
           </div>
 
           <nav className="hidden md:flex items-center justify-center gap-2 md:gap-4 text-xs md:text-sm font-semibold">
-            <button onClick={() => navigate("/main")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Главная
-            </button>
-            <button onClick={() => navigate("/vacancy")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Каталог Профессий
-            </button>
-            <button onClick={() => navigate("/employer/crm")} className="transition px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">
-              Панель Работодателя 💼
-            </button>
-            <button onClick={() => navigate("/candidate")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 bg-white/5 border border-white/10">
-              Кабинет Соискателя 🎓
-            </button>
+            {[
+              { tab: "profile",   label: "Профиль",  slug: "profile" },
+              { tab: "companies", label: "Компании", slug: "companies" },
+              { tab: "vacancies", label: "Вакансии", slug: "vacancies" },
+              { tab: "vacancies", label: "Чек-листы", slug: "vacancies#checklists" },
+              { tab: "vacancies", label: "Тесты",    slug: "vacancies#tests" },
+              { tab: "crm",       label: "CRM",      slug: "crm" },
+              { tab: "tariff",    label: "Тариф",    slug: "tariff" },
+              { tab: "events",    label: "События",  slug: "events" },
+            ].map((it) => (
+              <button
+                key={it.label}
+                onClick={() => navigate(`/employer${employerId}/${it.slug.split("#")[0]}`)}
+                className={`transition px-3 py-2 rounded-xl ${activeTab === it.tab ? "text-[#E7C768] bg-white/10 border border-[#E7C768]/30" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
+              >
+                {it.label}
+              </button>
+            ))}
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -1394,10 +1454,24 @@ export default function EmployerPanel() {
         {/* Mobile Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 font-semibold">
-            <button onClick={() => { navigate("/main"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Главная</button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Каталог Профессий</button>
-            <button onClick={() => { navigate("/employer/crm"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-[#E7C768] bg-white/10">Панель Работодателя</button>
-            <button onClick={() => { navigate("/candidate"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Кабинет Соискателя</button>
+            {[
+              { tab: "profile",   label: "Профиль",   slug: "profile" },
+              { tab: "companies", label: "Компании",  slug: "companies" },
+              { tab: "vacancies", label: "Вакансии",  slug: "vacancies" },
+              { tab: "vacancies", label: "Чек-листы", slug: "vacancies" },
+              { tab: "vacancies", label: "Тесты",     slug: "vacancies" },
+              { tab: "crm",       label: "CRM",       slug: "crm" },
+              { tab: "tariff",    label: "Тариф",     slug: "tariff" },
+              { tab: "events",    label: "События",   slug: "events" },
+            ].map((it) => (
+              <button
+                key={it.label}
+                onClick={() => { navigate(`/employer${employerId}/${it.slug}`); setMobileMenuOpen(false); }}
+                className={`transition text-left w-full px-4 py-3 rounded-xl ${activeTab === it.tab ? "text-[#E7C768] bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
+              >
+                {it.label}
+              </button>
+            ))}
             <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-red-300 hover:bg-red-950/25">Выйти из кабинета</button>
           </div>
         )}
@@ -3211,10 +3285,45 @@ export default function EmployerPanel() {
                     <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                       <Chrome className="w-4 h-4 text-sky-400" /> 1. Профиль Google
                     </h3>
-                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      Google OAuth2 Verified
+                    <span className={`${hasGoogle ? "bg-sky-500/10 text-sky-400 border-sky-500/25" : "bg-amber-500/10 text-amber-300 border-amber-500/25"} border text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider`}>
+                      {hasGoogle ? "Google OAuth2 Verified" : "Не привязан"}
                     </span>
                   </div>
+
+                  {!hasGoogle && (
+                    <div className="bg-sky-950/30 border border-sky-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                      <div className="text-xs text-slate-200">
+                        Привяжите Google, чтобы быстро входить и получать письма/уведомления на почту.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            sessionStorage.setItem("pendingGoogleAuth", JSON.stringify({
+                              intent: "employer",
+                              return_to: window.location.pathname,
+                            }));
+                            const { supabase } = await import("@/integrations/supabase/client");
+                            const linkFn = (supabase.auth as any).linkIdentity;
+                            if (typeof linkFn === "function") {
+                              await linkFn.call(supabase.auth, {
+                                provider: "google",
+                                options: { redirectTo: `${window.location.origin}/auth/callback` },
+                              });
+                            } else {
+                              await supabase.auth.signInWithOAuth({
+                                provider: "google",
+                                options: { redirectTo: `${window.location.origin}/auth/callback` },
+                              });
+                            }
+                          } catch (e) { console.error("link google failed", e); }
+                        }}
+                        className="bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow"
+                      >
+                        <Chrome className="w-4 h-4" /> Привязать Google
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                     <div className="relative shrink-0">
@@ -3321,10 +3430,46 @@ export default function EmployerPanel() {
                     <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                       <Send className="w-4 h-4 text-sky-400" /> 2. Профиль Telegram
                     </h3>
-                    <span className="bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      TG Bot Active
+                    <span className={`${hasTelegram ? "bg-[#E7C768]/15 text-[#E7C768] border-[#E7C768]/30" : "bg-amber-500/10 text-amber-300 border-amber-500/25"} border text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider`}>
+                      {hasTelegram ? "TG Bot Active" : "Не привязан"}
                     </span>
                   </div>
+
+                  {!hasTelegram && (
+                    <div className="bg-amber-950/25 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                      <div className="text-xs text-slate-200">
+                        Привяжите Telegram, чтобы получать уведомления о кандидатах и быстро входить в кабинет.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+                            const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                intent: "employer",
+                                origin: window.location.origin,
+                                redirect_to: window.location.origin + window.location.pathname,
+                              }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok || !data.url) {
+                              alert(`Telegram: ${data?.error || data?.reason || res.status}`);
+                              return;
+                            }
+                            window.location.href = data.url;
+                          } catch (e: any) {
+                            alert(e?.message || "Telegram error");
+                          }
+                        }}
+                        className="bg-amber-500 hover:bg-amber-400 text-[#17344F] font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-2 shadow"
+                      >
+                        <Send className="w-4 h-4" /> Привязать Telegram
+                      </button>
+                    </div>
+                  )}
 
                   <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                     <div className="relative shrink-0">
