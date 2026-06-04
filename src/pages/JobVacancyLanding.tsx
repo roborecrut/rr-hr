@@ -191,6 +191,33 @@ export default function JobVacancyLanding() {
     }
   };
 
+  // Real candidate OAuth: registers as employee bound to this employer/vacancy.
+  const triggerOneClickRegister = async (method: "google") => {
+    if (submitting || !project) return;
+    setSubmitting(true);
+    try {
+      const ctx = {
+        intent: "candidate" as const,
+        company_slug: (project as any).companySlug || "",
+        project_slug: (project as any).slug || "",
+        project_id: project.id,
+        return_to: window.location.pathname + window.location.search,
+      };
+      if (method === "google") {
+        sessionStorage.setItem("pendingGoogleAuth", JSON.stringify(ctx));
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (error) throw error;
+      }
+    } catch (err: any) {
+      console.error("OneClick register failed:", err);
+      alert(err?.message || "Не удалось начать регистрацию");
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-[#17344F] min-h-screen text-white flex items-center justify-center font-sans">
@@ -504,69 +531,31 @@ export default function JobVacancyLanding() {
               </p>
             </div>
 
-            <form onSubmit={handleApplyOnboarding} className="space-y-4">
-              
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-200 block flex items-center gap-1">
-                  <User className="w-3.5 h-3.5 text-slate-300" /> Ваше Имя и Фамилия:
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="w-full bg-[#17344F] text-sm p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768] text-white font-semibold"
-                  placeholder="Иван Петров"
-                  value={candName}
-                  onChange={(e) => setCandName(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-200 block flex items-center gap-1">
-                  <Mail className="w-3.5 h-3.5 text-slate-300" /> Контактный Email:
-                </label>
-                <input
-                  type="email"
-                  required
-                  className="w-full bg-[#17344F] text-sm p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768] text-white font-semibold"
-                  placeholder="name@gmail.com"
-                  value={candEmail}
-                  onChange={(e) => setCandEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-200 block flex items-center gap-1">
-                  <MessageSquare className="w-3.5 h-3.5 text-slate-300" /> Telegram Username (для оповещений):
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-3 text-sm text-slate-400 font-bold">@</span>
-                  <input
-                    type="text"
-                    className="w-full bg-[#17344F] text-sm pl-7 pr-3 py-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768] text-white font-semibold"
-                    placeholder="t_username"
-                    value={candTg}
-                    onChange={(e) => setCandTg(e.target.value)}
-                  />
-                </div>
-              </div>
-
+            <div className="space-y-3">
               <button
-                type="submit"
+                type="button"
                 disabled={submitting}
-                className="cursor-pointer w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold py-3 rounded-xl hover:shadow-lg transition flex items-center justify-center gap-1.5 shadow mt-2"
+                onClick={() => triggerOneClickRegister("google")}
+                className="cursor-pointer w-full bg-white/10 hover:bg-white/20 border border-white/10 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center gap-2"
               >
-                {submitting ? (
-                  <>
-                    <Loader className="w-4 h-4 animate-spin" /> Авторизация...
-                  </>
-                ) : (
-                  <>
-                    Запустить Робота Рекрутера <ChevronRight className="w-4.5 h-4.5" />
-                  </>
-                )}
+                Войти через Google
               </button>
-
-            </form>
+              <p className="text-[11px] text-slate-400 text-center leading-snug">
+                Или откройте{" "}
+                <a href="https://t.me/RoboRecrutBot/app" target="_blank" rel="noreferrer" className="text-[#E7C768] underline">
+                  Telegram Mini App
+                </a>{" "}
+                — авторизация и регистрация произойдут автоматически.
+              </p>
+              {submitting && (
+                <div className="flex items-center justify-center gap-2 text-xs text-slate-300 py-2">
+                  <Loader className="w-4 h-4 animate-spin" /> Перенаправляем…
+                </div>
+              )}
+              <p className="text-[11px] text-slate-400">
+                Регистрация привязывает вас к работодателю этой вакансии. У одного аккаунта могут быть отдельные профили работодателя и сотрудника.
+              </p>
+            </div>
 
             <span className="text-[10px] block text-center text-slate-400 leading-normal italic">
               * Заполняя данные, вы соглашаетесь с обработкой персональных данных для проведения собеседования.

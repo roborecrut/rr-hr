@@ -5,6 +5,7 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TelegramMiniAppBoot from "./components/TelegramMiniAppBoot";
+import AuthRecover from "./components/AuthRecover";
 import LandingPage from "./pages/LandingPage";
 import MainCatalogPage from "./pages/MainCatalogPage";
 import EmployerPanel from "./pages/EmployerPanel";
@@ -15,13 +16,13 @@ import JobVacancyLanding from "./pages/JobVacancyLanding";
 import CompanyLanding from "./pages/CompanyLanding";
 import NotFoundPage from "./pages/NotFoundPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
-import AuthTelegramDone from "./pages/AuthTelegramDone";
 import AuthCallback from "./pages/AuthCallback";
 
 export default function App() {
   return (
     <BrowserRouter>
       <TelegramMiniAppBoot />
+      <AuthRecover />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
@@ -29,15 +30,16 @@ export default function App() {
         <Route path="/admin" element={<AdminGuard><AdminPanel /></AdminGuard>} />
         <Route path="/job" element={<JobVacancyLanding />} />
         <Route path="/auth" element={<LandingPage />} />
-        <Route path="/auth/telegram/done" element={<AuthTelegramDone />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/setup" element={<EmployerPanel />} />
         <Route path="/employer" element={<EmployerPanel />} />
         <Route path="/employer/*" element={<EmployerPanel />} />
         <Route path="/candidate" element={<CandidateFlow />} />
         <Route path="/candidate/*" element={<CandidateFlow />} />
-        <Route path="/company/:slug" element={<CompanyLanding />} />
-        {/* Concatenated dynamic segment: /employer{id}/..., /candidate{id}/..., or company slug */}
+        {/* Concatenated dynamic segment:
+            /employer{id}/..., /candidate{id}/...,
+            /com{id}, /com{id}/vac{id}/...,
+            or legacy company slug. */}
         <Route path="/:firstSeg" element={<SegmentDispatcher />} />
         <Route path="/:firstSeg/*" element={<SegmentDispatcher />} />
         <Route path="*" element={<NotFoundPage />} />

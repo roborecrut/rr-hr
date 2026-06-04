@@ -10,6 +10,8 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import ReferralsList from "../components/ReferralsList";
 import ReferredByCard from "../components/ReferredByCard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
+import { supabase } from "@/integrations/supabase/client";
+import { signOutEverywhere } from "@/lib/auth";
 import {
   Users,
   Smartphone,
@@ -126,11 +128,11 @@ export default function EmployerPanel() {
   const [googleId, setGoogleId] = useState("g-1094857293049182743");
   const [googleVerified, setGoogleVerified] = useState(true);
 
-  const [telegramIdState, setTelegramIdState] = useState("59384591");
-  const [telegramPhoto, setTelegramPhoto] = useState("https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2.2&w=256&h=256&q=80");
-  const [telegramFirstName, setTelegramFirstName] = useState("Сергей");
-  const [telegramLastName, setTelegramLastName] = useState("Ковалев");
-  const [telegramUsernameState, setTelegramUsernameState] = useState("cowal_sales");
+  const [telegramIdState, setTelegramIdState] = useState("");
+  const [telegramPhoto, setTelegramPhoto] = useState("");
+  const [telegramFirstName, setTelegramFirstName] = useState("");
+  const [telegramLastName, setTelegramLastName] = useState("");
+  const [telegramUsernameState, setTelegramUsernameState] = useState("");
   const [telegramPhone, setTelegramPhone] = useState<string>("");
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
@@ -814,9 +816,8 @@ export default function EmployerPanel() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/main");
+  const handleLogout = async () => {
+    await signOutEverywhere("/main");
   };
 
   // Action: Buy Service Limits via Balance RR
@@ -3443,23 +3444,17 @@ export default function EmployerPanel() {
                       <button
                         type="button"
                         onClick={async () => {
+                          // Build deeplink to RoboRecrutBot Mini App with employer public_id.
                           try {
-                            const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
-                            const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                intent: "employer",
-                                origin: window.location.origin,
-                                redirect_to: window.location.origin + window.location.pathname,
-                              }),
-                            });
-                            const data = await res.json().catch(() => ({}));
-                            if (!res.ok || !data.url) {
-                              alert(`Telegram: ${data?.error || data?.reason || res.status}`);
-                              return;
-                            }
-                            window.location.href = data.url;
+                            const { data: { user } } = await supabase.auth.getUser();
+                            if (!user) { alert("Сначала войдите в систему"); return; }
+                            const { data: emp } = await supabase.from("employers")
+                              .select("public_id").eq("user_id", user.id).maybeSingle();
+                            const pid = (emp as any)?.public_id || "";
+                            const url = pid
+                              ? `https://t.me/RoboRecrutBot/app?startapp=emp${pid}`
+                              : `https://t.me/RoboRecrutBot/app`;
+                            window.open(url, "_blank");
                           } catch (e: any) {
                             alert(e?.message || "Telegram error");
                           }
@@ -3471,6 +3466,7 @@ export default function EmployerPanel() {
                     </div>
                   )}
 
+                  {hasTelegram && (<>
                   <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                     <div className="relative shrink-0">
                       <img 
@@ -3635,6 +3631,7 @@ export default function EmployerPanel() {
                       ) : "—"}
                     </div>
                   </div>
+                  </>)}
                 </div>
 
               </div>

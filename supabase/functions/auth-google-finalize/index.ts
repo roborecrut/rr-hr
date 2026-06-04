@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
     const ref: string | null = (body?.ref || "").toString().trim() || null;
     const projectSlug: string | null = (body?.project_slug || "").toString().trim() || null;
     const companySlug: string | null = (body?.company_slug || "").toString().trim() || null;
+    const projectIdHint: string | null = (body?.project_id || "").toString().trim() || null;
 
     // Sync Google identity into profiles. Always refresh google_email/email/avatar
     // from the provider; only fill display_name when it's empty so we don't
@@ -45,26 +46,41 @@ Deno.serve(async (req) => {
       (meta.full_name as string) || (meta.name as string) || null;
     const { data: existingProfile } = await admin
       .from("profiles")
-      .select("display_name, avatar_url")
+      .select("id, display_name, avatar_url, account_kinds, registered_via")
       .eq("id", user.id)
       .maybeSingle();
-    const profileUpdate: Record<string, unknown> = {
-      google_email: user.email ?? null,
-      email: user.email ?? null,
-    };
-    if (!existingProfile?.display_name && googleFullName) {
-      profileUpdate.display_name = googleFullName;
+    const kinds = new Set<string>(Array.isArray(existingProfile?.account_kinds) ? existingProfile!.account_kinds as string[] : []);
+    kinds.add(intent);
+    if (existingProfile) {
+      const profileUpdate: Record<string, unknown> = {
+        google_email: user.email ?? null,
+        email: user.email ?? null,
+        last_signup_intent: intent,
+        account_kinds: Array.from(kinds),
+      };
+      if (!existingProfile.display_name && googleFullName) profileUpdate.display_name = googleFullName;
+      if (!existingProfile.avatar_url && googleAvatar) profileUpdate.avatar_url = googleAvatar;
+      await admin.from("profiles").update(profileUpdate).eq("id", user.id);
+    } else {
+      // Trigger didn't fire (или intent отсутствовал) — создаём профиль здесь
+      await admin.from("profiles").insert({
+        id: user.id,
+        display_name: googleFullName || (user.email ? user.email.split("@")[0] : null),
+        avatar_url: googleAvatar,
+        email: user.email ?? null,
+        google_email: user.email ?? null,
+        registered_via: "google",
+        account_kinds: Array.from(kinds),
+        last_signup_intent: intent,
+      });
     }
-    if (!existingProfile?.avatar_url && googleAvatar) {
-      profileUpdate.avatar_url = googleAvatar;
-    }
-    // registered_via only on first Google login (keep "telegram" if user signed up there first)
-    if (!existingProfile) {
-      profileUpdate.registered_via = "google";
-    }
-    await admin.from("profiles").update(profileUpdate).eq("id", user.id);
 
-    // Employer flow: ensure employer record
+    // Always ensure role matching intent (do NOT delete other role — dual profiles allowed)
+    await admin.from("user_roles").upsert(
+      { user_id: user.id, role: intent },
+      { onConflict: "user_id,role" },
+    );
+
     let target = "/";
     if (intent === "employer") {
       const { data: existingEmp } = await admin
@@ -83,25 +99,32 @@ Deno.serve(async (req) => {
               (user.user_metadata?.full_name as string) ||
               (user.user_metadata?.name as string) ||
               null,
+            contact_email: user.email ?? null,
           })
           .select("id, public_id")
           .single();
         publicId = created?.public_id;
-
-        // Ensure employer role
-        await admin
-          .from("user_roles")
-          .upsert({ user_id: user.id, role: "employer" }, { onConflict: "user_id,role" });
       }
       target = publicId ? `/employer${publicId}/profile` : "/employer/profile";
     } else {
       // Candidate flow: if project context is known, ensure candidate row for it
-      if (projectSlug) {
-        const { data: project } = await admin
+      let project: { id: string; slug: string | null; company_id: string | null; employer_id: string } | null = null;
+      if (projectIdHint) {
+        const { data } = await admin
           .from("projects")
-          .select("id, slug, company_id")
+          .select("id, slug, company_id, employer_id")
+          .eq("id", projectIdHint)
+          .maybeSingle();
+        project = data as any;
+      }
+      if (!project && projectSlug) {
+        const { data } = await admin
+          .from("projects")
+          .select("id, slug, company_id, employer_id")
           .eq("slug", projectSlug)
           .maybeSingle();
+        project = data as any;
+      }
         if (project?.id) {
           const { data: existingCand } = await admin
             .from("candidates")
@@ -117,18 +140,25 @@ Deno.serve(async (req) => {
                 user_id: user.id,
                 project_id: project.id,
                 registered_via: "google",
+                referrer_employer_id: project.employer_id ?? null,
               })
               .select("id, public_id")
               .single();
             candPid = createdCand?.public_id;
           }
-          if (companySlug && project.slug && candPid) {
-            target = `/${companySlug}/${project.slug}/candidate${candPid}/profile`;
+          // Resolve company slug from DB when not passed
+          let compSlug = companySlug;
+          if (!compSlug && project.company_id) {
+            const { data: comp } = await admin
+              .from("companies").select("slug").eq("id", project.company_id).maybeSingle();
+            compSlug = (comp?.slug as string) || null;
+          }
+          if (compSlug && project.slug && candPid) {
+            target = `/${compSlug}/${project.slug}/candidate${candPid}/profile`;
           } else if (candPid) {
             target = `/candidate${candPid}/profile`;
           }
         }
-      }
       if (target === "/") {
         const { data: anyCand } = await admin
           .from("candidates")
@@ -154,6 +184,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Страховка: target никогда не должен быть пустым/"/"
+    if (!target || target === "/") {
+      console.log("auth-google-finalize: empty target fallback", { user: user.id, intent });
+      // Попробуем ещё раз достать employer/candidate, если есть
+      const { data: emp } = await admin
+        .from("employers").select("public_id").eq("user_id", user.id).maybeSingle();
+      if (emp?.public_id) {
+        target = `/employer${emp.public_id}/profile`;
+      } else {
+        const { data: cand } = await admin
+          .from("candidates").select("public_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1).maybeSingle();
+        target = cand?.public_id ? `/candidate${cand.public_id}/profile` : "/main";
+      }
+    }
+    console.log("auth-google-finalize: ok", { user: user.id, intent, target });
     return json({ target });
   } catch (e: any) {
     console.error("auth-google-finalize error", e);

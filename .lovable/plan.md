@@ -1,65 +1,53 @@
+## Проблемы
 
-## 1. Подтянуть реальные данные Google/Telegram в профиль работодателя
+1. **Кнопки «Выйти» не выходят из Supabase/Google.** В `EmployerPanel.tsx` (`handleLogout`, строка 818) и в `CandidateFlow.tsx` (строки 1397, 1454, 2939) выполняется `localStorage.clear()` / `removeItem(...)` + `navigate("/main")`, но **никогда не вызывается `supabase.auth.signOut()`**. В результате:
+   - In‑memory сессия в supabase‑клиенте остаётся;
+   - `TelegramMiniAppBoot` / автологин может тут же снова восстановить сессию;
+   - `localStorage.clear()` ломает другие настройки приложения (pendingGoogleAuth, чек‑листы и т.п.).
 
-Сейчас в `src/pages/EmployerPanel.tsx` все поля Google (имя, email, фото, ID) и Telegram (имя/фамилия/ник/фото) инициализируются хардкод‑заглушками («Сергей Ковалев», unsplash‑аватарки и т.п.) — их видно и в шапке (`profileName`/`profileEmail`), и в карточках на странице «Профиль». Загрузка из БД сейчас читает только telegram‑поля.
+2. **Локального запоминания нет / постоянно надо логиниться.** В `supabase/client.ts` уже стоит `persistSession: true, storage: localStorage`, то есть сессия должна сохраняться. Реальная причина «не помнит» = п.1: `localStorage.clear()` стирает supabase‑токен при каждом «Выйти», а при автологине через MiniApp вытесняется веб‑сессия. Достаточно правильного `signOut` + не трогать остальной storage.
 
-Что сделать:
-- Расширить запрос `profiles` до полного набора: `display_name, avatar_url, email, google_email, registered_via, telegram_*`.
-- Дочитать данные провайдеров через `supabase.auth.getUser()` (`user.app_metadata.providers`, `user_metadata.full_name/name/avatar_url/picture/sub`).
-- Заполнять из реальных данных:
-  - `profileName` ← `display_name` или `user_metadata.full_name`.
-  - `profileEmail` ← `email` (из auth.user / профиля).
-  - Google‑карточка: `googleName/googleEmail/googlePhoto/googleId` ← `user_metadata.full_name / google_email или email / avatar_url или picture / sub`.
-  - Telegram‑карточка: остаётся как сейчас, но если telegram‑полей нет — показывать заглушку «не привязан» вместо случайных значений.
-- Если провайдер не привязан (нет `google_email` либо нет `telegram_id`), рендерить кнопки быстрой привязки:
-  - «Привязать Google» → `supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: <origin>/auth/callback } })` с `sessionStorage.pendingGoogleAuth = { intent: 'employer', return_to: '/employer/profile' }`.
-  - «Привязать Telegram» → вызов `telegram-oidc-start` (как в `AuthModal`), `redirect_to` = текущая страница профиля.
+3. **«⚠️ finalize 200: unknown» при повторной регистрации через Google.** В `AuthCallback.tsx` это сообщение формируется только когда `res.ok=true`, но `data?.target` — undefined/пусто (см. `finalizeError = finalize ${res.status}: ${data?.error || data?.details || "unknown"}`). То есть edge‑функция вернула 200 с телом, в котором нет поля `target` (или JSON не распарсился). Логов нет, но недавняя правка `auth-google-finalize` (мерж аккаунтов / `account_kinds`) могла в редкой ветке вернуть пустое `target` или 200 без тела. Нужно:
+   - На клиенте: не падать при пустом `target`, а резолвить путь по существующему профилю через `resolveProfilePathForUser` (фоллбек уже есть, но throw срабатывает раньше — поправить порядок).
+   - На сервере: гарантировать, что `target` всегда заполнен (если ничего не нашли → `/main` или `/employer{publicId}/profile`), и добавить подробное логирование причины.
 
-В `supabase/functions/auth-google-finalize/index.ts` дополнительно сохранять в `profiles` все Google‑поля при каждом входе (сейчас уже частично делается — добавить `google_email` всегда, не только из триггера, и `display_name`/`avatar_url` обновлять, только если они пустые, чтобы не затирать ручные правки).
+## Что делаю
 
-## 2. Диагностика ошибки регистрации через Telegram
+### 1. Корректный выход из аккаунта
+- В `EmployerPanel.tsx` переписать `handleLogout`:
+  ```ts
+  const handleLogout = async () => {
+    try { await supabase.auth.signOut(); } catch {}
+    // не трогаем весь localStorage — чистим только наши служебные ключи
+    ["pendingGoogleAuth","cand_session_id","cand_role"].forEach(k => localStorage.removeItem(k));
+    window.location.assign("/main"); // hard‑reload, чтобы сбросить in‑memory state
+  };
+  ```
+- В `CandidateFlow.tsx` заменить все три места выхода (1397, 1454, 2939) на ту же логику через общий хелпер.
+- (Опц.) Вынести `signOutEverywhere()` в `src/lib/auth.ts`, чтобы не дублировать.
 
-В `AuthModal.handleTelegram` сейчас уже выводится `errorText`, но пользователь говорит «даже не перенаправило» — значит `telegram-oidc-start` вернул ошибку, а её текст потерялся (либо Turnstile не пройден, либо отказ по белому списку, либо rate‑limit). Плана:
+### 2. Локальное запоминание
+- Оставляем `persistSession: true` (уже так).
+- Перестаём вызывать `localStorage.clear()` — это и было причиной «забывания» побочных данных.
+- В `TelegramMiniAppBoot` ничего не меняем: если есть валидная сессия — она подхватится, пользователь сразу в кабинете.
 
-- В `AuthModal` показывать развёрнутую ошибку: статус + поле `error` + `details`/`reason`, и логировать `console.error("[telegram-start]", { status, body })`.
-- В `supabase/functions/telegram-oidc-start` добавить:
-  - `console.error("[telegram-oidc-start] failed", { stage, reason, intent, host, path, ip_hash })` в каждой ветке ошибок (turnstile, whitelist_reject, state_persist_failed).
-  - При `safeRedirect` rejected — возвращать 400 (а не молча генерить URL), чтобы причина была явной; пока есть только запись в `telegram_events`.
-- Завести в БД таблицу `client_errors` (минимальная: `id, created_at, source, message, meta jsonb, user_id`) + edge‑функция `log-client-error` (verify_jwt=false, rate‑limited по IP). В `AuthModal`/`AuthCallback`/обёртках Telegram отправлять туда любые catch‑ошибки. Это даст единый «временный журнал ошибок», пока нет полноценного APM, и админская страница `/admin` сможет его читать через RLS `has_role(auth.uid(),'admin')`.
-- Добавить в `/admin` (`src/pages/admin/`) простую вкладку «Журнал ошибок» (последние 200 записей из `client_errors` + последние записи `telegram_events` с `kind in ('whitelist_reject','rate_limited','turnstile_fail')`).
+### 3. Повторный вход без ошибки `finalize 200: unknown`
+- **AuthCallback.tsx**: изменить порядок — если `target` пустой/`"/"`, СНАЧАЛА пробовать `resolveProfilePathForUser(user.id)`, и только если и он не дал результата — показывать ошибку. Так уже зарегистрированный пользователь всегда попадёт в свой кабинет, даже если finalize вернул пустой target.
+- **edge `auth-google-finalize`**: 
+  - Завернуть основную логику в try/catch так, чтобы любые ветки employer/candidate возвращали валидный `target` (никогда `""` / `"/"`).
+  - Если intent=`employer` и `publicId` не получили после insert — перечитать employer по `user_id` и собрать target.
+  - Если intent=`candidate` без проекта и без существующих кандидатов — вернуть `/main` (уже так, проверить).
+  - Добавить `console.log` с user.id / intent / выбранной веткой, чтобы видеть в логах причину.
+  - Перед `return json({ target })` — `if (!target) target = "/main";` страховка.
 
-После этого попросить вас повторить вход через Telegram — в логах сразу будет видно `reason`.
+### 4. Проверка
+- Локально: войти через Google → перезагрузить страницу (должен остаться в кабинете) → Выйти → войти заново (без ошибки) → выйти и зайти как соискатель (для проверки, что обе ветки чистые).
 
-## 3. Шапка кабинета работодателя
+## Файлы, которые буду менять
+- `src/pages/EmployerPanel.tsx` — `handleLogout`
+- `src/pages/CandidateFlow.tsx` — 3 кнопки выхода
+- `src/lib/auth.ts` — новый общий `signOutEverywhere()` (по желанию)
+- `src/pages/AuthCallback.tsx` — фоллбек до throw
+- `supabase/functions/auth-google-finalize/index.ts` — гарантированный непустой `target` + логи
 
-В `EmployerPanel.tsx` (строки ~1364–1402 и мобильное меню) сейчас захардкожены ссылки «Главная / Каталог Профессий / Панель Работодателя / Кабинет Соискателя». Заменить на:
-
-```
-Профиль | Компании | Вакансии | Чек-листы | Тесты | CRM | Тариф | События
-```
-
-Ссылки навешиваются на уже существующие табы из левого «Пульта Управления» (`profile`, `companies`, `vacancies`, `checklists`, `tests`, `crm`, `billing`, `events`) — каждая кнопка переключает `activeTab` и одновременно делает `navigate(\`/employer${employerId}/<slug>\`)`. Подсветка активного пункта — по `activeTab`.
-
-Технически это не «новые отдельные страницы» в роутере (контент уже рендерится в `EmployerPanel` по `activeTab`), а нормальные deep‑link URL’ы вида `/employer{publicId}/profile`, `/companies`, `/vacancies`, `/checklists`, `/tests`, `/crm`, `/billing`, `/events`. Добавить парсинг этих суффиксов в `SegmentDispatcher`/`RouterContext` (там, где сейчас обрабатывается `/employer{id}/profile`), чтобы при перезагрузке открывалась нужная вкладка. Мобильное меню переписать тем же списком.
-
-## Технические детали
-
-- Файлы под правки:
-  - `src/pages/EmployerPanel.tsx` (шапка, моб. меню, инициализация Google/Telegram state, fetch профиля).
-  - `src/components/RouterContext.tsx` / `src/components/SegmentDispatcher.tsx` — добавить недостающие employer‑суффиксы.
-  - `src/components/AuthModal.tsx` — детализированный вывод ошибок Telegram + клиентский лог.
-  - `src/pages/AuthCallback.tsx` — лог ошибок в `client_errors`.
-  - `supabase/functions/telegram-oidc-start/index.ts` — `console.error` и 400 на rejected redirect.
-  - `supabase/functions/auth-google-finalize/index.ts` — всегда писать `google_email`, безопасный апдейт `display_name/avatar_url`.
-  - Новая edge‑функция `supabase/functions/log-client-error/index.ts`.
-  - Новая страница `src/pages/admin/ErrorLog.tsx`, ссылка в `AdminPanel`.
-
-- Миграции:
-  - `create table public.client_errors (...)` + GRANTы (`select` admin via has_role, `insert` через service role из edge function), RLS «admin can select, no one else».
-
-- Привязка дополнительных провайдеров делается через `supabase.auth.linkIdentity` — это не создаёт нового пользователя, а добавляет identity к текущему; для Telegram используем тот же flow `telegram-oidc-*`, а в `telegram-oidc-callback` уже есть ветка «текущий юзер залогинен → линкуем telegram_id к profiles».
-
-## Что НЕ делаем в этой итерации
-
-- Не выносим EmployerPanel в отдельные файлы‑страницы (большой рефакторинг — отдельной задачей).
-- Не добавляем полноценный APM/Sentry — только временный `client_errors` журнал.
+Без миграций БД.
