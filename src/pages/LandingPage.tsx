@@ -2,7 +2,7 @@
  * Лендинг работодателя — Google-only регистрация, бонус 1000 RR (10 ед.),
  * три карточки услуг и калькулятор Робот vs HR.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import AuthModal from "../components/AuthModal";
@@ -20,12 +20,41 @@ import {
   Menu,
   X,
   Gift,
+  LogOut,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function LandingPage() {
   const { navigate, path } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
+  const [profilePath, setProfilePath] = useState<string>("/");
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setAuthedUserId(user?.id ?? null);
+      if (user) {
+        const p = await resolveProfilePathForUser(user.id);
+        if (!cancelled) setProfilePath(p);
+      } else {
+        setProfilePath("/");
+      }
+    };
+    refresh();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setAuthedUserId(null);
+    setProfilePath("/");
+  };
+  const isAuthed = !!authedUserId;
 
   const handleOpenCabinet = async () => {
     try {
@@ -57,9 +86,20 @@ export default function LandingPage() {
             <button onClick={handleOpenCabinet} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Кабинет</button>
           </nav>
 
-          <button onClick={() => setIsAuthModalOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
-            <Chrome className="w-4 h-4" /> Войти через Google
-          </button>
+          {isAuthed ? (
+            <div className="hidden md:flex items-center gap-2">
+              <button onClick={() => navigate(profilePath)} className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+                <LayoutDashboard className="w-4 h-4" /> Кабинет
+              </button>
+              <button onClick={handleLogout} className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-4 py-2 rounded-xl transition">
+                <LogOut className="w-4 h-4" /> Выйти
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setIsAuthModalOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+              <Chrome className="w-4 h-4" /> Войти через Google
+            </button>
+          )}
 
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -70,7 +110,14 @@ export default function LandingPage() {
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
             <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Каталог</button>
-            <button onClick={() => { setIsAuthModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] font-bold">Войти через Google</button>
+            {isAuthed ? (
+              <>
+                <button onClick={() => { navigate(profilePath); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-[#E7C768] text-[#17344F] font-bold">Кабинет</button>
+                <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-white/10 border border-white/20 font-semibold">Выйти</button>
+              </>
+            ) : (
+              <button onClick={() => { setIsAuthModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] font-bold">Войти через Google</button>
+            )}
           </div>
         )}
       </header>
@@ -109,12 +156,21 @@ export default function LandingPage() {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2"
-              >
-                <Chrome className="w-5 h-5" /> Войти через Google · +1000 RR
-              </button>
+              {isAuthed ? (
+                <button
+                  onClick={() => navigate(profilePath)}
+                  className="cursor-pointer bg-[#E7C768] text-[#17344F] font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2"
+                >
+                  <LayoutDashboard className="w-5 h-5" /> Перейти в кабинет
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2"
+                >
+                  <Chrome className="w-5 h-5" /> Войти через Google · +1000 RR
+                </button>
+              )}
               <button
                 onClick={() => navigate("/vacancy")}
                 className="cursor-pointer flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-6 py-4 rounded-xl transition"
@@ -188,13 +244,27 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
         <h2 className="text-3xl md:text-4xl font-bold">Готовы автоматизировать найм?</h2>
-        <p className="text-slate-300">Регистрация через Google — 1 клик. Бонус +1000 RR уже на счёте.</p>
-        <button
-          onClick={() => setIsAuthModalOpen(true)}
-          className="cursor-pointer inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"
-        >
-          <Chrome className="w-5 h-5" /> Войти через Google
-        </button>
+        {isAuthed ? (
+          <>
+            <p className="text-slate-300">Ваш кабинет открыт и готов к работе.</p>
+            <button
+              onClick={() => navigate(profilePath)}
+              className="cursor-pointer inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"
+            >
+              <LayoutDashboard className="w-5 h-5" /> Перейти в кабинет
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-slate-300">Регистрация через Google — 1 клик. Бонус +1000 RR уже на счёте.</p>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="cursor-pointer inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"
+            >
+              <Chrome className="w-5 h-5" /> Войти через Google
+            </button>
+          </>
+        )}
       </section>
 
       {/* Footer */}
@@ -207,11 +277,8 @@ export default function LandingPage() {
               <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-6 text-xs text-slate-300">
-            <button onClick={() => navigate("/")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-[#E7C768] transition">Каталог должностей</button>
-            <button onClick={handleOpenCabinet} className="hover:text-white transition">Кабинет</button>
-            <button onClick={() => setIsAuthModalOpen(true)} className="hover:text-white transition font-bold text-[#E7C768]">Войти</button>
+          <div className="text-xs text-slate-300">
+            Безоговорочная роботизация подбора персонала
           </div>
         </div>
       </footer>

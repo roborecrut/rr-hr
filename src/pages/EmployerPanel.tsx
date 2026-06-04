@@ -45,7 +45,11 @@ import {
   Award,
   Sparkles,
   ChevronRight,
-  Phone
+  Phone,
+  MessageSquare,
+  GraduationCap,
+  Upload,
+  Wand2
 } from "lucide-react";
 import {
   VacancyView,
@@ -63,7 +67,7 @@ export default function EmployerPanel() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Derive active tab from subroute PATH
-  let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" = "crm";
+  let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" | "interviews" | "training" = "crm";
   if (path.includes("/vacancies")) {
     activeTab = "vacancies";
   } else if (path.includes("/companies")) {
@@ -74,6 +78,10 @@ export default function EmployerPanel() {
     activeTab = "profile";
   } else if (path.includes("/events")) {
     activeTab = "events";
+  } else if (path.includes("/interviews")) {
+    activeTab = "interviews";
+  } else if (path.includes("/training")) {
+    activeTab = "training";
   } else {
     activeTab = "crm";
   }
@@ -1439,6 +1447,26 @@ export default function EmployerPanel() {
               >
                 <span className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-[#D99E41]" /> 6. События & Логи
+                </span>
+              </button>
+
+              <div className="h-px bg-white/10 my-2"></div>
+
+              <button
+                onClick={() => navigate(`/emp${employerId}/interviews`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 7. Интервью (ИИ)
+                </span>
+              </button>
+
+              <button
+                onClick={() => navigate(`/emp${employerId}/training`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 8. Обучение (ИИ)
                 </span>
               </button>
             </div>
@@ -3403,6 +3431,97 @@ export default function EmployerPanel() {
             </div>
           )}
 
+          {activeTab === "interviews" && (
+            <div className="space-y-6">
+              <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-xl font-bold text-white">Конструктор ИИ-Интервью</h2>
+                    <p className="text-xs text-slate-300">3 этапа: Резюме → Чек-лист (20 вопросов) → Ситуации (3 кейса). Используется ИИ для генерации и редактирования.</p>
+                  </div>
+                </div>
+                {projects.length === 0 && (
+                  <p className="text-xs text-amber-300 pt-2">Сначала создайте вакансию во вкладке «3. Вакансии &amp; ИИ» — интервью настраиваются под конкретную вакансию.</p>
+                )}
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-4">
+                {[
+                  { stepNum: "1", title: "Резюме", desc: "Скрининг и оценка структуры опыта. ИИ формирует критерии и автоматически проставляет баллы." },
+                  { stepNum: "2", title: "Чек-лист", desc: "20 вопросов от ИИ — генерация на основе базы знаний и регламентов вакансии." },
+                  { stepNum: "3", title: "Ситуации", desc: "3 диалоговых кейса — поведенческая оценка кандидата в реальных сценариях." },
+                ].map(s => (
+                  <div key={s.stepNum} className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-[#E7C768] text-[#17344F] font-bold flex items-center justify-center text-sm">{s.stepNum}</span>
+                      <h3 className="font-bold text-[#E7C768]">{s.title}</h3>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{s.desc}</p>
+                    <div className="space-y-2 pt-2">
+                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-200 font-semibold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
+                        <Upload className="w-3.5 h-3.5" /> Загрузить базу знаний / регламент
+                      </button>
+                      <button className="w-full bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-xs text-[#E7C768] font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
+                        <Wand2 className="w-3.5 h-3.5" /> Сгенерировать ИИ
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 leading-relaxed">
+                Эти настройки автоматически подтянутся в лендинг вакансии и в кабинет кандидата, который придёт по ссылке. Конструктор полей и сохранение в БД — в следующей итерации.
+              </div>
+            </div>
+          )}
+
+          {activeTab === "training" && (
+            <div className="space-y-6">
+              <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
+                    <GraduationCap className="w-6 h-6" />
+                  </div>
+                  <div className="text-left">
+                    <h2 className="text-xl font-bold text-white">Конструктор ИИ-Обучения</h2>
+                    <p className="text-xs text-slate-300">3 этапа: Профессиональное обучение → Обучение продукту → Обучение процессам компании.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid lg:grid-cols-3 gap-4">
+                {[
+                  { stepNum: "1", title: "Профессиональное", desc: "Базовые знания профессии. ИИ собирает учебный модуль и тесты из регламентов." },
+                  { stepNum: "2", title: "Продукт", desc: "Сведения о продукте/услуге компании — материалы и проверочные вопросы." },
+                  { stepNum: "3", title: "Процессы", desc: "Внутренние процессы и инструкции — симулятор онбординга и финальная аттестация." },
+                ].map(s => (
+                  <div key={s.stepNum} className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-full bg-[#E7C768] text-[#17344F] font-bold flex items-center justify-center text-sm">{s.stepNum}</span>
+                      <h3 className="font-bold text-[#E7C768]">{s.title}</h3>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{s.desc}</p>
+                    <div className="space-y-2 pt-2">
+                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-200 font-semibold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
+                        <Upload className="w-3.5 h-3.5" /> Загрузить материалы и регламенты
+                      </button>
+                      <button className="w-full bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-xs text-[#E7C768] font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
+                        <Wand2 className="w-3.5 h-3.5" /> Сгенерировать тесты ИИ
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 leading-relaxed">
+                Материалы и тесты будут связаны с лендингом вакансии и личным кабинетом кандидата. Полнофункциональный конструктор и сохранение — следующим шагом.
+              </div>
+            </div>
+          )}
+
         </main>
       </div>
 
@@ -3419,10 +3538,8 @@ export default function EmployerPanel() {
             <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
           </div>
 
-          <div className="flex gap-4 text-xs text-slate-400 font-semibold">
-            <button onClick={() => navigate("/main")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-white transition">Каталог</button>
-            <button onClick={() => navigate("/employer/crm")} className="hover:text-white transition">Панель CRM</button>
+          <div className="text-xs text-slate-400 font-semibold">
+            Безоговорочная роботизация подбора персонала
           </div>
         </div>
       </footer>
