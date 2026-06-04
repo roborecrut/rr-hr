@@ -148,39 +148,6 @@ export default function MainCatalogPage() {
             >
               Каталог Профессий
             </button>
-            <button 
-              id="mobile_nav_employer"
-              onClick={() => {
-                localStorage.setItem("employer_active_tab_intent", "crm");
-                navigate("/employer");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Панель Работодателя</span>
-              <span>💼</span>
-            </button>
-            <button 
-              id="mobile_nav_candidate"
-              onClick={() => {
-                navigate("/candidate");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5 flex items-center justify-between"
-            >
-              <span>Кабинет Соискателя</span>
-              <span>🎓</span>
-            </button>
-            <button 
-              id="mobile_nav_admin"
-              onClick={() => {
-                navigate("/admin");
-                setMobileMenuOpen(false);
-              }} 
-              className="transition text-left w-full px-4 py-3 border border-indigo-500/20 rounded-xl text-indigo-300 hover:text-indigo-150 bg-indigo-500/10"
-            >
-              Кабинет Администратора ⚙️
-            </button>
             <div className="h-px bg-white/10 my-1"></div>
             <button 
               id="mobile_btn_login"
