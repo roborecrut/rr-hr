@@ -597,7 +597,7 @@ export default function CompanyLanding() {
 
               <button
                 onClick={() => {
-                  triggerOneClickRegister("telegram");
+                  triggerOneClickRegister("google");
                   setShowApplyModal(true);
                 }}
                 className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3.5 rounded-2xl hover:bg-[#F4EE8E] transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
