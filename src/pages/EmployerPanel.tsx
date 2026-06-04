@@ -759,6 +759,125 @@ export default function EmployerPanel() {
     navigate("/main");
   };
 
+  /** Перевод серверных ошибок (RPC) в человеческие сообщения. */
+  const translateBillingError = (msg: string): string => {
+    if (!msg) return "Неизвестная ошибка";
+    const m = msg.toLowerCase();
+    if (m.includes("insufficient_funds")) return "Недостаточно средств на балансе. Пополните счёт.";
+    if (m.includes("no_credits")) return "Нет купленных лимитов. Купите пакет интервью или обучения.";
+    if (m.includes("min_100")) return "Минимальный платёж — 100 ₽.";
+    if (m.includes("no_employer")) return "Профиль работодателя не найден.";
+    if (m.includes("bad_kind") || m.includes("bad_item") || m.includes("bad_qty")) return "Некорректные параметры запроса.";
+    if (m.includes("forbidden")) return "Недостаточно прав.";
+    return msg;
+  };
+
+  /** Подтягивает баланс, лимиты, реферера, рефери и историю операций. */
+  const fetchBillingState = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: emp } = await supabase
+        .from("employers")
+        .select("id, public_id, interview_credits, training_credits, wallets(units_balance, id)")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!emp) return;
+      setBalance(Number(((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance) || 0));
+      setInterviewCredits(Number((emp as any).interview_credits || 0));
+      setTrainingCredits(Number((emp as any).training_credits || 0));
+
+      const walletId = (emp as any).wallets?.[0]?.id ?? (emp as any).wallets?.id;
+      if (walletId) {
+        const { data: txs } = await supabase
+          .from("transactions")
+          .select("created_at, type, amount_rr, note")
+          .eq("wallet_id", walletId)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        setPaymentHistory((txs || []).map((t: any) => ({
+          date: new Date(t.created_at).toLocaleString("ru-RU"),
+          type: t.type,
+          note: t.note || "",
+          amount: ["topup", "bonus", "refund"].includes(t.type) ? Number(t.amount_rr) : -Number(t.amount_rr),
+        })));
+      }
+
+      // Реферер (кто меня пригласил)
+      const { data: refRow } = await supabase
+        .from("referrals_emp")
+        .select("bonus_units, created_at, referrer_employer_id")
+        .eq("referred_employer_id", (emp as any).id)
+        .maybeSingle();
+      if (refRow?.referrer_employer_id) {
+        const { data: refEmp } = await supabase
+          .from("employers")
+          .select("public_id, contact_phone, contact_telegram, user_id")
+          .eq("id", refRow.referrer_employer_id)
+          .maybeSingle();
+        if (refEmp) {
+          const { data: refProf } = await supabase
+            .from("profiles")
+            .select("display_name, email")
+            .eq("id", (refEmp as any).user_id)
+            .maybeSingle();
+          setReferrer({
+            public_id: (refEmp as any).public_id,
+            name: (refProf as any)?.display_name || "",
+            email: (refProf as any)?.email || "",
+            phone: (refEmp as any).contact_phone || null,
+            telegram: (refEmp as any).contact_telegram || null,
+          });
+        }
+      } else {
+        setReferrer(null);
+      }
+
+      // Кого пригласил я
+      const { data: invited } = await supabase
+        .from("referrals_emp")
+        .select("bonus_units, created_at, referred_employer_id")
+        .eq("referrer_employer_id", (emp as any).id)
+        .order("created_at", { ascending: false });
+      if (invited && invited.length) {
+        const ids = invited.map((r: any) => r.referred_employer_id);
+        const { data: emps } = await supabase
+          .from("employers")
+          .select("id, user_id")
+          .in("id", ids);
+        const userIds = (emps || []).map((e: any) => e.user_id);
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("id, display_name, email")
+          .in("id", userIds);
+        const profById: Record<string, any> = {};
+        (profs || []).forEach((p: any) => { profById[p.id] = p; });
+        const empToUser: Record<string, string> = {};
+        (emps || []).forEach((e: any) => { empToUser[e.id] = e.user_id; });
+        setReferees(invited.map((r: any) => {
+          const uid = empToUser[r.referred_employer_id];
+          const p = uid ? profById[uid] : null;
+          return {
+            name: p?.display_name || "",
+            email: p?.email || "",
+            created_at: r.created_at,
+            bonus_rr: Number(r.bonus_units) || 0,
+          };
+        }));
+      } else {
+        setReferees([]);
+      }
+    } catch (e) {
+      console.error("fetchBillingState failed", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchBillingState();
+    const t = setInterval(fetchBillingState, 8000);
+    return () => clearInterval(t);
+  }, [employerId]);
+
   // Покупка пакета лимитов интервью/обучения по тарифной сетке (RR → лимит шт.)
   const handleBuyPack = async (kind: "interview" | "training") => {
     setPurchaseError("");
