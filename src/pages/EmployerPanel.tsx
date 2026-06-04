@@ -114,24 +114,24 @@ export default function EmployerPanel() {
 
   // Profile States
   const [adminTgId, setAdminTgId] = useState(() => localStorage.getItem("employer_tg_id") || "59384591");
-  const [profileName, setProfileName] = useState("Сергей Ковалев");
-  const [profileTitle, setProfileTitle] = useState("Директор по персоналу");
-  const [profileEmail, setProfileEmail] = useState("hr-director@company.ru");
-  const [profilePhone, setProfilePhone] = useState("+7 (926) 012-34-56");
+  const [profileName, setProfileName] = useState("");
+  const [profileTitle, setProfileTitle] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
   const [isProfileSaved, setIsProfileSaved] = useState(false);
 
   // High-fidelity Google and Telegram profile states
-  const [googleName, setGoogleName] = useState("Сергей Ковалев");
-  const [googleEmail, setGoogleEmail] = useState("hr-director@company.ru");
-  const [googlePhoto, setGooglePhoto] = useState("https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80");
-  const [googleId, setGoogleId] = useState("g-1094857293049182743");
+  const [googleName, setGoogleName] = useState("");
+  const [googleEmail, setGoogleEmail] = useState("");
+  const [googlePhoto, setGooglePhoto] = useState("");
+  const [googleId, setGoogleId] = useState("");
   const [googleVerified, setGoogleVerified] = useState(true);
 
-  const [telegramIdState, setTelegramIdState] = useState("59384591");
-  const [telegramPhoto, setTelegramPhoto] = useState("https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2.2&w=256&h=256&q=80");
-  const [telegramFirstName, setTelegramFirstName] = useState("Сергей");
-  const [telegramLastName, setTelegramLastName] = useState("Ковалев");
-  const [telegramUsernameState, setTelegramUsernameState] = useState("cowal_sales");
+  const [telegramIdState, setTelegramIdState] = useState("");
+  const [telegramPhoto, setTelegramPhoto] = useState("");
+  const [telegramFirstName, setTelegramFirstName] = useState("");
+  const [telegramLastName, setTelegramLastName] = useState("");
+  const [telegramUsernameState, setTelegramUsernameState] = useState("");
   const [telegramPhone, setTelegramPhone] = useState<string>("");
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
