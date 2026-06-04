@@ -44,7 +44,8 @@ import {
   DollarSign,
   Award,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Phone
 } from "lucide-react";
 import {
   VacancyView,
