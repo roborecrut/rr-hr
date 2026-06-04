@@ -74,12 +74,22 @@ import {
 
 export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
-  
-  // Parse companySlug and vacancyId from path segments. Empty when route is "/".
+
+  // Parse first two path segments. Supports:
+  //   /                            → first published company
+  //   /com{publicId}               → company by public_id
+  //   /com{publicId}/vac{publicId} → vacancy under company
+  //   /{companySlug}[/...]         → legacy slug-based URL
+  //   /{companySlug}/{vacancyId|slug}/{tab}
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "";
-  const vacancyId = segments[1] || "";
+  const seg0 = segments[0] || "";
+  const seg1 = segments[1] || "";
   const subTab = segments[2] || "company";
+
+  const companyPublicId = /^com(\d+)$/.test(seg0) ? seg0.slice(3) : "";
+  const companySlug = companyPublicId ? "" : seg0;
+  const vacancyPublicId = /^vac(\d+)$/.test(seg1) ? seg1.slice(3) : "";
+  const vacancyId = vacancyPublicId ? "" : seg1;
 
   // States
   const [company, setCompany] = useState<any>(null);
@@ -131,9 +141,15 @@ export default function CompanyLanding() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Fetch company by slug (or first published if no slug)
-      let compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
-      if (companySlug) compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      // 1. Fetch company by public_id, slug, or first published if neither
+      let compQuery;
+      if (companyPublicId) {
+        compQuery = supabase.from("companies").select("*").eq("public_id", companyPublicId).limit(1);
+      } else if (companySlug) {
+        compQuery = supabase.from("companies").select("*").eq("slug", companySlug).limit(1);
+      } else {
+        compQuery = supabase.from("companies").select("*").eq("is_published", true).limit(1);
+      }
       const { data: compRows } = await compQuery;
       const activeCompany = (compRows && compRows[0]) || null;
       if (activeCompany) {
@@ -150,9 +166,12 @@ export default function CompanyLanding() {
         const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
         setVacancies(mapped);
 
-        // If a vacancyId (slug or uuid) was passed, find it; otherwise pick first
+        // Pick active vacancy: by public_id (new), then by slug/uuid (legacy)
         let active = mapped[0] || null;
-        if (vacancyId) {
+        if (vacancyPublicId) {
+          const row = (projRows || []).find((r: any) => r.public_id === vacancyPublicId);
+          active = (row && mapped.find((m) => m.id === row.id)) || active;
+        } else if (vacancyId) {
           active = mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) || active;
         }
         setSelectedVacancy(active);
@@ -169,7 +188,7 @@ export default function CompanyLanding() {
 
   useEffect(() => {
     loadData();
-  }, [path, companySlug, vacancyId]);
+  }, [path, companyPublicId, companySlug, vacancyPublicId, vacancyId]);
 
   // Initiate chatbot message when active vacancy loads
   useEffect(() => {
