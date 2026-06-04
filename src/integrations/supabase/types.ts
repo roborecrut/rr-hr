@@ -636,11 +636,13 @@ export type Database = {
           contact_telegram: string | null
           created_at: string
           id: string
+          interview_credits: number
           legacy_public_id: string | null
           plan: string | null
           public_id: string | null
           ref_by: string | null
           status: string | null
+          training_credits: number
           updated_at: string
           user_id: string | null
         }
@@ -653,11 +655,13 @@ export type Database = {
           contact_telegram?: string | null
           created_at?: string
           id?: string
+          interview_credits?: number
           legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          training_credits?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -670,11 +674,13 @@ export type Database = {
           contact_telegram?: string | null
           created_at?: string
           id?: string
+          interview_credits?: number
           legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          training_credits?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -1386,6 +1392,7 @@ export type Database = {
           amount_rr: number
           created_at: string
           id: string
+          idem_key: string | null
           note: string | null
           ref_id: string | null
           ref_table: string | null
@@ -1396,6 +1403,7 @@ export type Database = {
           amount_rr: number
           created_at?: string
           id?: string
+          idem_key?: string | null
           note?: string | null
           ref_id?: string | null
           ref_table?: string | null
@@ -1406,6 +1414,7 @@ export type Database = {
           amount_rr?: number
           created_at?: string
           id?: string
+          idem_key?: string | null
           note?: string | null
           ref_id?: string | null
           ref_table?: string | null
@@ -1559,6 +1568,7 @@ export type Database = {
           amount_rr: number
           created_at: string
           id: string
+          idem_key: string | null
           note: string | null
           ref_id: string | null
           ref_table: string | null
@@ -1582,11 +1592,15 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      pack_tier_price: { Args: { _qty: number }; Returns: number }
+      purchase_pack: { Args: { _kind: string; _qty: number }; Returns: Json }
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }
         Returns: boolean
       }
       slugify_ru: { Args: { _input: string }; Returns: string }
+      spend_fixed: { Args: { _item: string; _project: string }; Returns: Json }
+      spend_pack: { Args: { _candidate: string; _kind: string }; Returns: Json }
       spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
     }
     Enums: {

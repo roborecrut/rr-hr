@@ -21,7 +21,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-const REFERRAL_BONUS_UNITS = 10; // = 1000 RR
+const REFERRAL_BONUS_RR = 1000; // 1 RR = 1 ₽
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
         .insert({
           referrer_employer_id: referrer.id,
           referred_employer_id: employerId,
-          bonus_units: REFERRAL_BONUS_UNITS,
+          bonus_units: REFERRAL_BONUS_RR,
         })
         .select("id")
         .maybeSingle();
@@ -107,10 +107,10 @@ Deno.serve(async (req) => {
         const { error: txErr } = await admin.rpc("apply_transaction", {
           _employer: referrer.id,
           _type: "bonus",
-          _amount: REFERRAL_BONUS_UNITS,
+          _amount: REFERRAL_BONUS_RR,
           _ref_table: "referrals_emp",
           _ref_id: refRow.id,
-          _note: "Referral bonus: +1000 RR for inviting new employer",
+          _note: "Реферальный бонус: +1000 RR за приглашение",
         });
         if (txErr) console.error("apply_transaction failed", txErr);
         else referralAwarded = true;
