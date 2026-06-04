@@ -76,9 +76,12 @@ export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
   
   // Parse companySlug and vacancyId from path segments. Empty when route is "/".
+  // New URLs: /com{publicId}/vac{publicId}/...  Legacy: /{slug}/{slug}/...
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "";
-  const vacancyId = segments[1] || "";
+  const rawCompany = segments[0] || "";
+  const rawVacancy = segments[1] || "";
+  const companySlug = rawCompany.replace(/^com/i, "");
+  const vacancyId = rawVacancy.replace(/^vac/i, "");
   const subTab = segments[2] || "company";
 
   // States

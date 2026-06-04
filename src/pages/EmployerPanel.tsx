@@ -656,7 +656,7 @@ export default function EmployerPanel() {
   }, [employerId]);
 
   useEffect(() => {
-    const pathIdMatch = path.match(/^\/employer([a-zA-Z0-9_-]+)/);
+    const pathIdMatch = path.match(/^\/(?:emp|employer)([a-zA-Z0-9_-]+)/);
     if (pathIdMatch && pathIdMatch[1] !== employerId) {
       setEmployerId(pathIdMatch[1]);
       localStorage.setItem("employer_session_id", pathIdMatch[1]);

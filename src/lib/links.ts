@@ -39,7 +39,7 @@ export type DBEmployer = {
 /* ----------------------------- URL builders ----------------------------- */
 
 export function buildCompanyUrl(company: { slug: string | null } | null | undefined): string {
-  return company?.slug ? `/${company.slug}` : `/`;
+  return company?.slug ? `/com${company.slug}` : `/`;
 }
 
 export function buildVacancyUrl(
@@ -47,7 +47,7 @@ export function buildVacancyUrl(
   project: { slug: string | null } | null | undefined,
 ): string {
   if (!company?.slug || !project?.slug) return `/`;
-  return `/${company.slug}/${project.slug}`;
+  return `/com${company.slug}/vac${project.slug}`;
 }
 
 export function buildCandidateUrl(
@@ -57,10 +57,10 @@ export function buildCandidateUrl(
   tab: string = "profile",
   sub?: string,
 ): string {
-  const candId = candidate?.public_id ? `candidate${candidate.public_id}` : `candidate`;
+  const candId = candidate?.public_id ? `cand${candidate.public_id}` : `cand`;
   const tail = sub ? `${tab}/${sub}` : tab;
   if (company?.slug && project?.slug) {
-    return `/${company.slug}/${project.slug}/${candId}/${tail}`;
+    return `/com${company.slug}/vac${project.slug}/${candId}/${tail}`;
   }
   return `/${candId}/${tail}`;
 }
@@ -70,7 +70,7 @@ export function buildEmployerUrl(
   tab: string = "profile",
 ): string {
   const pid = employer?.public_id ?? "";
-  return pid ? `/employer${pid}/${tab}` : `/employer/${tab}`;
+  return pid ? `/emp${pid}/${tab}` : `/employer/${tab}`;
 }
 
 /* ---------------------------- DB Resolvers ----------------------------- */
@@ -146,6 +146,6 @@ export async function resolveProfilePathForUser(userId: string): Promise<string>
   const emp = await resolveEmployerByUser(userId);
   if (emp?.public_id) return buildEmployerUrl(emp, "profile");
   const cand = await resolveCandidateByUser(userId);
-  if (cand?.public_id) return `/candidate${cand.public_id}/profile`;
+  if (cand?.public_id) return `/cand${cand.public_id}/profile`;
   return "/";
 }
