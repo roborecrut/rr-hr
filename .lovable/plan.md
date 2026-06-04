@@ -1,91 +1,65 @@
-## Что подтвердилось по диагностике
 
-- В БД у свежих пользователей есть только роль `candidate`, `employers_count = 0`, `account_kinds = []`, `last_signup_intent = null` — то есть финализация регистрации работодателя не отработала.
-- В проекте есть функция `handle_new_user`, но в текущей БД нет активного auth-trigger, поэтому новые auth-пользователи не получают корректный профиль автоматически.
-- `AuthCallback` сейчас может молча проглотить ошибку `auth-google-finalize` и вернуть пользователя на исходный лендинг — поэтому после Google входа вы видите ту же страницу вместо профиля.
-- `TelegramMiniAppBoot` запускается на каждой странице. В обычном браузере `window.Telegram.WebApp` может существовать из-за подключенного скрипта, но `initData` пустой — это не Mini App, и запись `miniapp_no_init_data` сейчас является шумом.
-- В кабинете работодателя Telegram-профиль имеет дефолтные заглушки в state (`Сергей`, `cowal_sales`, fake ID/avatar), поэтому UI может выглядеть как привязанный Telegram даже без реальной записи.
+## 1. Подтянуть реальные данные Google/Telegram в профиль работодателя
 
-## План правок
+Сейчас в `src/pages/EmployerPanel.tsx` все поля Google (имя, email, фото, ID) и Telegram (имя/фамилия/ник/фото) инициализируются хардкод‑заглушками («Сергей Ковалев», unsplash‑аватарки и т.п.) — их видно и в шапке (`profileName`/`profileEmail`), и в карточках на странице «Профиль». Загрузка из БД сейчас читает только telegram‑поля.
 
-### 1. Починить базовую auth-схему и текущую ошибочную регистрацию
+Что сделать:
+- Расширить запрос `profiles` до полного набора: `display_name, avatar_url, email, google_email, registered_via, telegram_*`.
+- Дочитать данные провайдеров через `supabase.auth.getUser()` (`user.app_metadata.providers`, `user_metadata.full_name/name/avatar_url/picture/sub`).
+- Заполнять из реальных данных:
+  - `profileName` ← `display_name` или `user_metadata.full_name`.
+  - `profileEmail` ← `email` (из auth.user / профиля).
+  - Google‑карточка: `googleName/googleEmail/googlePhoto/googleId` ← `user_metadata.full_name / google_email или email / avatar_url или picture / sub`.
+  - Telegram‑карточка: остаётся как сейчас, но если telegram‑полей нет — показывать заглушку «не привязан» вместо случайных значений.
+- Если провайдер не привязан (нет `google_email` либо нет `telegram_id`), рендерить кнопки быстрой привязки:
+  - «Привязать Google» → `supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: <origin>/auth/callback } })` с `sessionStorage.pendingGoogleAuth = { intent: 'employer', return_to: '/employer/profile' }`.
+  - «Привязать Telegram» → вызов `telegram-oidc-start` (как в `AuthModal`), `redirect_to` = текущая страница профиля.
 
-- Добавить миграцию, которая восстановит trigger на `auth.users` для `public.handle_new_user`.
-- Изменить `handle_new_user`, чтобы он не назначал `candidate` по умолчанию для OAuth-пользователей без явного intent. Роль должен окончательно назначать finalize-flow.
-- Для текущего админ/рабочего аккаунта сделать repair: добавить `employer` роль и запись в `employers`, если кандидатской записи нет и регистрация была фактически как работодатель.
-- Убедиться, что `profiles.account_kinds` и `profiles.last_signup_intent` заполняются при каждой финализации регистрации.
+В `supabase/functions/auth-google-finalize/index.ts` дополнительно сохранять в `profiles` все Google‑поля при каждом входе (сейчас уже частично делается — добавить `google_email` всегда, не только из триггера, и `display_name`/`avatar_url` обновлять, только если они пустые, чтобы не затирать ручные правки).
 
-### 2. Сделать Google OAuth устойчивым к потере intent
+## 2. Диагностика ошибки регистрации через Telegram
 
-- В `AuthModal` передавать intent/context не только через `sessionStorage`, но и через query-параметры callback URL:
-  - `intent=employer|candidate`
-  - `company_slug`
-  - `project_slug`
-  - `project_id`
-  - `return_to`
-- В `AuthCallback` читать context сначала из URL, затем из storage.
-- Убрать текущую логику, где при ошибке `auth-google-finalize` пользователь просто возвращается на исходную страницу.
-- Если finalize не создал нужный профиль/роль — показывать ошибку и писать ее в `client_errors`, а не делать вид, что вход успешен.
-- После успешного Google входа всегда переходить на target из `auth-google-finalize`, а не на `return_to`, если это регистрационный сценарий.
+В `AuthModal.handleTelegram` сейчас уже выводится `errorText`, но пользователь говорит «даже не перенаправило» — значит `telegram-oidc-start` вернул ошибку, а её текст потерялся (либо Turnstile не пройден, либо отказ по белому списку, либо rate‑limit). Плана:
 
-### 3. Усилить `auth-google-finalize`
+- В `AuthModal` показывать развёрнутую ошибку: статус + поле `error` + `details`/`reason`, и логировать `console.error("[telegram-start]", { status, body })`.
+- В `supabase/functions/telegram-oidc-start` добавить:
+  - `console.error("[telegram-oidc-start] failed", { stage, reason, intent, host, path, ip_hash })` в каждой ветке ошибок (turnstile, whitelist_reject, state_persist_failed).
+  - При `safeRedirect` rejected — возвращать 400 (а не молча генерить URL), чтобы причина была явной; пока есть только запись в `telegram_events`.
+- Завести в БД таблицу `client_errors` (минимальная: `id, created_at, source, message, meta jsonb, user_id`) + edge‑функция `log-client-error` (verify_jwt=false, rate‑limited по IP). В `AuthModal`/`AuthCallback`/обёртках Telegram отправлять туда любые catch‑ошибки. Это даст единый «временный журнал ошибок», пока нет полноценного APM, и админская страница `/admin` сможет его читать через RLS `has_role(auth.uid(),'admin')`.
+- Добавить в `/admin` (`src/pages/admin/`) простую вкладку «Журнал ошибок» (последние 200 записей из `client_errors` + последние записи `telegram_events` с `kind in ('whitelist_reject','rate_limited','turnstile_fail')`).
 
-- Делать `upsert` профиля, а не только `update`, потому что trigger мог не создать профиль.
-- Всегда добавлять роль по intent аддитивно: `employer` не удаляет `candidate`, `candidate` не удаляет `employer`.
-- Для intent `employer` гарантированно создавать строку в `employers` и возвращать `/employer{public_id}/profile`; если insert не удался — возвращать понятную ошибку.
-- Для intent `candidate` с vacancy/company context создавать или находить `candidates` по `(user_id, project_id)`, записывать `referrer_employer_id`, возвращать профиль кандидата именно по этой вакансии.
+После этого попросить вас повторить вход через Telegram — в логах сразу будет видно `reason`.
 
-### 4. Починить Telegram OIDC кнопку и журнал ошибок
+## 3. Шапка кабинета работодателя
 
-- В `AuthModal` и кнопке привязки Telegram в кабинете логировать ошибки не только когда ответ пришел с HTTP-статусом, но и когда `fetch` упал до ответа.
-- Для Turnstile убрать блокировку Telegram OIDC, если на фронте нет публичного `VITE_TURNSTILE_SITE_KEY`, но на Edge есть `TURNSTILE_SECRET_KEY`; оставить rate limit как защиту. Иначе текущая конфигурация дает 403 без возможности пройти проверку.
-- Возвращать пользователю точные сообщения: `turnstile_required`, `redirect_rejected`, `state_persist_failed`, `env_missing`, а не общий текст “Не удалось начать вход через Telegram”.
-- Проверить/добавить `GRANT EXECUTE` для `admin_telegram_metrics` authenticated/admin flow, чтобы “forbidden” в метриках означал именно отсутствие admin-роли, а не проблему доступа к RPC.
+В `EmployerPanel.tsx` (строки ~1364–1402 и мобильное меню) сейчас захардкожены ссылки «Главная / Каталог Профессий / Панель Работодателя / Кабинет Соискателя». Заменить на:
 
-### 5. Вынести Mini App авторегистрацию в отдельный hook
+```
+Профиль | Компании | Вакансии | Чек-листы | Тесты | CRM | Тариф | События
+```
 
-- Создать `src/hooks/useTelegramMiniAppAuth.ts` и перенести туда определение Telegram Mini App.
-- `TelegramMiniAppBoot` оставить тонким компонентом, который вызывает hook.
-- Не писать `miniapp_no_init_data` в обычном браузере, даже если `window.Telegram.WebApp` существует из-за подключенного SDK.
-- Ждать готовности Telegram SDK и `initData` несколько попыток, не завершать flow навсегда после первой пустой проверки.
-- Если Mini App действительно открыт внутри Telegram:
-  - вызвать `telegram-miniapp-auth`;
-  - автоматически создать/найти пользователя;
-  - назначить правильную роль;
-  - создать candidate/employer profile при необходимости;
-  - сразу перенаправить в профиль.
+Ссылки навешиваются на уже существующие табы из левого «Пульта Управления» (`profile`, `companies`, `vacancies`, `checklists`, `tests`, `crm`, `billing`, `events`) — каждая кнопка переключает `activeTab` и одновременно делает `navigate(\`/employer${employerId}/<slug>\`)`. Подсветка активного пункта — по `activeTab`.
 
-### 6. Доработать `telegram-miniapp-auth`
+Технически это не «новые отдельные страницы» в роутере (контент уже рендерится в `EmployerPanel` по `activeTab`), а нормальные deep‑link URL’ы вида `/employer{publicId}/profile`, `/companies`, `/vacancies`, `/checklists`, `/tests`, `/crm`, `/billing`, `/events`. Добавить парсинг этих суффиксов в `SegmentDispatcher`/`RouterContext` (там, где сейчас обрабатывается `/employer{id}/profile`), чтобы при перезагрузке открывалась нужная вкладка. Мобильное меню переписать тем же списком.
 
-- Для уже привязанного Telegram пользователя определять target по существующим ролям/профилям.
-- Для нового пользователя по умолчанию создавать candidate-профиль, если нет employer context.
-- Если `start_param` содержит employer/project context — привязать кандидата к работодателю/вакансии.
-- Возвращать target в формате профиля, а не `/main`, когда профиль создан.
-- Логировать `bad_signature`, `create_user_failed`, `link_failed`, `target_resolution_failed` в `telegram_events`/`client_errors`.
+## Технические детали
 
-### 7. Исправить кабинет работодателя: Telegram без заглушек
+- Файлы под правки:
+  - `src/pages/EmployerPanel.tsx` (шапка, моб. меню, инициализация Google/Telegram state, fetch профиля).
+  - `src/components/RouterContext.tsx` / `src/components/SegmentDispatcher.tsx` — добавить недостающие employer‑суффиксы.
+  - `src/components/AuthModal.tsx` — детализированный вывод ошибок Telegram + клиентский лог.
+  - `src/pages/AuthCallback.tsx` — лог ошибок в `client_errors`.
+  - `supabase/functions/telegram-oidc-start/index.ts` — `console.error` и 400 на rejected redirect.
+  - `supabase/functions/auth-google-finalize/index.ts` — всегда писать `google_email`, безопасный апдейт `display_name/avatar_url`.
+  - Новая edge‑функция `supabase/functions/log-client-error/index.ts`.
+  - Новая страница `src/pages/admin/ErrorLog.tsx`, ссылка в `AdminPanel`.
 
-- Убрать дефолтные Telegram-значения из state:
-  - fake ID `59384591`
-  - `Сергей Ковалев`
-  - `cowal_sales`
-  - fake avatar
-- Если `profiles.telegram_id` пустой — показывать только статус “Не привязан” и кнопку “Привязать Telegram”.
-- Не показывать блок avatar/username/ID/“Уведомления ВКЛ” без реальной Telegram-привязки.
-- После успешной Telegram-привязки обновлять данные из `profiles`, а не из localStorage/mock API.
+- Миграции:
+  - `create table public.client_errors (...)` + GRANTы (`select` admin via has_role, `insert` через service role из edge function), RLS «admin can select, no one else».
 
-### 8. Исправить UX для уже вошедшего пользователя
+- Привязка дополнительных провайдеров делается через `supabase.auth.linkIdentity` — это не создаёт нового пользователя, а добавляет identity к текущему; для Telegram используем тот же flow `telegram-oidc-*`, а в `telegram-oidc-callback` уже есть ветка «текущий юзер залогинен → линкуем telegram_id к profiles».
 
-- При открытии основного лендинга проверять текущую Supabase-сессию.
-- Если пользователь уже имеет employer profile — сразу переводить в `/employer{public_id}/profile` или показывать кнопку “Открыть кабинет” вместо регистрации.
-- Если пользователь уже имеет candidate profile и находится на vacancy landing — переводить в профиль кандидата по этой вакансии или показывать “Продолжить собеседование”.
-- Если пользователь вошел Google, но хочет добавить второй профиль работодателя/кандидата — не просить повторную OAuth-регистрацию, а вызвать finalize/ensure-profile для текущей сессии.
+## Что НЕ делаем в этой итерации
 
-## Проверка после внедрения
-
-- Google с главного лендинга создает `profiles.account_kinds = ['employer']`, роль `employer`, строку `employers`, редиректит в профиль работодателя.
-- Google с лендинга вакансии создает/находит `candidate`, ставит роль `candidate`, записывает `project_id` и `referrer_employer_id`, редиректит в профиль кандидата.
-- Один auth-аккаунт может иметь обе роли и оба профиля.
-- Telegram OIDC больше не падает без понятного лога.
-- Mini App в Telegram выполняет авторегистрацию и редиректит в кабинет; обычный браузер не создает ложный `miniapp_no_init_data`.
-- Кабинет работодателя не показывает Telegram-заглушки без реальной Telegram-привязки.
+- Не выносим EmployerPanel в отдельные файлы‑страницы (большой рефакторинг — отдельной задачей).
+- Не добавляем полноценный APM/Sentry — только временный `client_errors` журнал.

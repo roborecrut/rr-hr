@@ -19,7 +19,7 @@ async function sha256(input: string): Promise<Uint8Array> {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  try {
+
   const CLIENT_ID = Deno.env.get("TELEGRAM_OIDC_CLIENT_ID");
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -32,17 +32,11 @@ Deno.serve(async (req) => {
     redirect_to?: string;
     origin?: string;
     turnstile_token?: string;
-    company_slug?: string;
-    project_slug?: string;
-    project_id?: string;
   } = {};
   try { body = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
 
   const intent = body.intent === "employer" ? "employer" : "candidate";
   const ref = (body.ref || "").trim() || null;
-  const companySlug = (body.company_slug || "").trim() || null;
-  const projectSlug = (body.project_slug || "").trim() || null;
-  const projectId = (body.project_id || "").trim() || null;
   const rawRedirect = body.redirect_to || body.origin || null;
 
   const ip = clientIp(req);
@@ -147,9 +141,6 @@ Deno.serve(async (req) => {
     ref,
     redirect_to: redirectTo,
     provider: "telegram",
-    company_slug: companySlug,
-    project_slug: projectSlug,
-    project_id: projectId,
   });
   if (insErr) {
     console.error("[telegram-oidc-start] state_persist_failed", { msg: insErr.message, intent });
@@ -172,12 +163,4 @@ Deno.serve(async (req) => {
     url: `https://oauth.telegram.org/auth?${params.toString()}`,
     state,
   });
-  } catch (e) {
-    const msg = (e as Error)?.message || "unknown";
-    console.error("[telegram-oidc-start] crash", msg);
-    try {
-      await logEvent({ kind: "start_failed" as any, source: "start", reason: msg.slice(0,200) });
-    } catch { /* noop */ }
-    return jsonResponse({ error: "start_failed", details: msg }, 500);
-  }
 });

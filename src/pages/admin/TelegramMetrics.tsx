@@ -29,12 +29,7 @@ export default function TelegramMetrics() {
       if (error) throw error;
       setData(data as unknown as Metrics);
     } catch (e: unknown) {
-      const msg = (e as Error).message || "Ошибка загрузки";
-      if (msg.toLowerCase().includes("forbidden")) {
-        setError("Недостаточно прав: эта вкладка доступна только администраторам (роль admin в user_roles). Это не ошибка Telegram OIDC.");
-      } else {
-        setError(msg);
-      }
+      setError((e as Error).message || "Ошибка загрузки");
     } finally {
       setLoading(false);
     }

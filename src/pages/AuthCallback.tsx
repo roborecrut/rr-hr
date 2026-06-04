@@ -21,7 +21,6 @@ type Pending = {
   ref?: string;
   project_slug?: string;
   company_slug?: string;
-  project_id?: string;
   return_to?: string;
 };
 
@@ -40,14 +39,6 @@ export default function AuthCallback() {
           if (raw) pending = JSON.parse(raw) as Pending;
         } catch { /* ignore */ }
         sessionStorage.removeItem(STORAGE_KEY);
-        // URL params take precedence (storage may be lost in some browsers)
-        try {
-          const url = new URL(window.location.href);
-          const qpIntent = url.searchParams.get("intent");
-          if (qpIntent === "employer" || qpIntent === "candidate") pending.intent = qpIntent;
-          const qpRef = url.searchParams.get("ref");
-          if (qpRef && !pending.ref) pending.ref = qpRef;
-        } catch { /* ignore */ }
 
         setStatus("Проверяем сессию…");
         // Wait briefly for Supabase to hydrate the session from the URL fragment
@@ -64,19 +55,7 @@ export default function AuthCallback() {
         } catch { /* ignore */ }
 
         setStatus("Настраиваем кабинет…");
-        // Sync intent into user_metadata so future triggers/queries see it
-        try {
-          await supabase.auth.updateUser({
-            data: {
-              intent: pending.intent || "candidate",
-              signup_context: pending.project_slug ? "vacancy_landing" : "main",
-              company_slug: pending.company_slug || null,
-              project_slug: pending.project_slug || null,
-            },
-          });
-        } catch { /* non-blocking */ }
-        let target = "";
-        let finalizeError = "";
+        let target = pending.return_to || "/";
         try {
           const res = await fetch(`${FN_URL}/auth-google-finalize`, {
             method: "POST",
@@ -89,44 +68,22 @@ export default function AuthCallback() {
               ref: pending.ref || "",
               project_slug: pending.project_slug || "",
               company_slug: pending.company_slug || "",
-              project_id: pending.project_id || "",
             }),
           });
           const data = await res.json().catch(() => ({}));
-          if (res.ok && data?.target) {
-            target = data.target;
-          } else {
-            finalizeError = `finalize ${res.status}: ${data?.error || data?.details || "unknown"}`;
-          }
-        } catch (e: any) {
-          finalizeError = `finalize_network: ${e?.message || "fetch failed"}`;
-        }
-
-        if (!target) {
-          try {
-            fetch(`${FN_URL}/log-client-error`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-              body: JSON.stringify({
-                source: "auth-google-finalize",
-                message: finalizeError || "no_target",
-                meta: { intent: pending.intent, project_slug: pending.project_slug, company_slug: pending.company_slug },
-              }),
-              keepalive: true,
-            }).catch(() => {});
-          } catch { /* ignore */ }
-          // Try a soft fallback by existing profile, but surface error if нет
-          try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) target = await resolveProfilePathForUser(user.id);
-          } catch { /* ignore */ }
+          if (res.ok && data?.target) target = data.target;
+        } catch (e) {
+          console.warn("auth-google-finalize failed, falling back", e);
         }
 
         if (!target || target === "/") {
-          throw new Error(finalizeError || "Не удалось завершить регистрацию. Профиль не создан.");
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) target = await resolveProfilePathForUser(user.id);
+          } catch { /* keep target */ }
         }
 
-        navigate(target);
+        navigate(target || "/main");
       } catch (e: any) {
         setError(e?.message || "Ошибка авторизации Google");
         try {

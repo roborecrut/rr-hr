@@ -350,7 +350,6 @@ export type Database = {
           project_id: string | null
           public_id: string | null
           ref_source: string | null
-          referrer_employer_id: string | null
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -368,7 +367,6 @@ export type Database = {
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
-          referrer_employer_id?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -386,7 +384,6 @@ export type Database = {
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
-          referrer_employer_id?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -402,13 +399,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidates_referrer_employer_id_fkey"
-            columns: ["referrer_employer_id"]
-            isOneToOne: false
-            referencedRelation: "employers"
             referencedColumns: ["id"]
           },
         ]
@@ -780,11 +770,8 @@ export type Database = {
       oauth_states: {
         Row: {
           code_verifier: string
-          company_slug: string | null
           created_at: string
           intent: string
-          project_id: string | null
-          project_slug: string | null
           provider: string
           redirect_to: string | null
           ref: string | null
@@ -792,11 +779,8 @@ export type Database = {
         }
         Insert: {
           code_verifier: string
-          company_slug?: string | null
           created_at?: string
           intent: string
-          project_id?: string | null
-          project_slug?: string | null
           provider?: string
           redirect_to?: string | null
           ref?: string | null
@@ -804,11 +788,8 @@ export type Database = {
         }
         Update: {
           code_verifier?: string
-          company_slug?: string | null
           created_at?: string
           intent?: string
-          project_id?: string | null
-          project_slug?: string | null
           provider?: string
           redirect_to?: string | null
           ref?: string | null
@@ -865,14 +846,12 @@ export type Database = {
       }
       profiles: {
         Row: {
-          account_kinds: string[]
           avatar_url: string | null
           created_at: string
           display_name: string | null
           email: string | null
           google_email: string | null
           id: string
-          last_signup_intent: string | null
           locale: string | null
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
@@ -886,14 +865,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_kinds?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           google_email?: string | null
           id: string
-          last_signup_intent?: string | null
           locale?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
@@ -907,14 +884,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_kinds?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           google_email?: string | null
           id?: string
-          last_signup_intent?: string | null
           locale?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]

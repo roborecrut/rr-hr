@@ -191,9 +191,6 @@ Deno.serve(async (req) => {
 
   const intent = st.intent as "employer" | "candidate";
   const refCode = st.ref as string | null;
-  const companySlugCtx = (st.company_slug as string | null) || null;
-  const projectSlugCtx = (st.project_slug as string | null) || null;
-  const projectIdCtx = (st.project_id as string | null) || null;
 
   // Lookup existing link
   const { data: existingLink } = await admin
@@ -252,60 +249,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Ensure role exists for this intent (do NOT delete the other one)
-  await admin.from("user_roles").upsert(
-    { user_id: userId, role: intent },
-    { onConflict: "user_id,role" },
-  );
-
-  // Candidate flow: bind to project + referrer employer
-  let candidateRedirectPath: string | null = null;
-  if (intent === "candidate" && (projectIdCtx || projectSlugCtx)) {
-    let project: any = null;
-    if (projectIdCtx) {
-      const { data } = await admin.from("projects").select("id, slug, company_id, employer_id").eq("id", projectIdCtx).maybeSingle();
-      project = data;
-    }
-    if (!project && projectSlugCtx) {
-      const { data } = await admin.from("projects").select("id, slug, company_id, employer_id").eq("slug", projectSlugCtx).maybeSingle();
-      project = data;
-    }
-    if (project?.id) {
-      const { data: existingCand } = await admin.from("candidates").select("id, public_id").eq("user_id", userId).eq("project_id", project.id).maybeSingle();
-      let candPid = existingCand?.public_id as string | null | undefined;
-      if (!existingCand) {
-        const { data: createdCand } = await admin.from("candidates").insert({
-          user_id: userId,
-          project_id: project.id,
-          registered_via: "telegram",
-          referrer_employer_id: project.employer_id ?? null,
-        }).select("public_id").single();
-        candPid = createdCand?.public_id;
-      }
-      let compSlug = companySlugCtx;
-      if (!compSlug && project.company_id) {
-        const { data: comp } = await admin.from("companies").select("slug").eq("id", project.company_id).maybeSingle();
-        compSlug = (comp?.slug as string) || null;
-      }
-      if (compSlug && project.slug && candPid) {
-        candidateRedirectPath = `/${compSlug}/${project.slug}/candidate${candPid}/profile`;
-      } else if (candPid) {
-        candidateRedirectPath = `/candidate${candPid}/profile`;
-      }
-    }
-  }
-
-  // Update profiles: account_kinds + last_signup_intent
-  {
-    const { data: prof } = await admin.from("profiles").select("account_kinds").eq("id", userId).maybeSingle();
-    const kinds = new Set<string>(Array.isArray((prof as any)?.account_kinds) ? (prof as any).account_kinds : []);
-    kinds.add(intent);
-    await admin.from("profiles").update({
-      account_kinds: Array.from(kinds),
-      last_signup_intent: intent,
-    }).eq("id", userId);
-  }
-
   // Sync latest Telegram fields
   await admin.from("profiles").update({
     telegram_id: tgId,
@@ -324,12 +267,11 @@ Deno.serve(async (req) => {
   if (linkErr) return fallbackDone(redirectBase, `error=${encodeURIComponent("magiclink_failed: " + linkErr.message)}`);
 
   const tokenHash = linkData.properties?.hashed_token;
-  const effectiveNext = candidateRedirectPath || nextPath;
   const qs = new URLSearchParams({
     token_hash: String(tokenHash || ""),
     email,
     intent,
-    next: effectiveNext,
+    next: nextPath,
   }).toString();
 
   return htmlRedirect(`${redirectBase}/auth/telegram/done#${qs}`);

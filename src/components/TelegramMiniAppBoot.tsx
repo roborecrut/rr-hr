@@ -25,26 +25,13 @@ export default function TelegramMiniAppBoot() {
     if (ran.current) return;
     ran.current = true;
 
+    const tg = (window as any)?.Telegram?.WebApp;
+    const initData: string | undefined = tg?.initData;
+    if (!initData) return;
+
+    try { tg.ready?.(); tg.expand?.(); } catch { /* noop */ }
+
     (async () => {
-      // Wait briefly for Telegram WebApp SDK to inject initData
-      let tg: any = (window as any)?.Telegram?.WebApp;
-      let initData: string | undefined = tg?.initData;
-      for (let i = 0; i < 10 && !initData; i++) {
-        await new Promise((r) => setTimeout(r, 100));
-        tg = (window as any)?.Telegram?.WebApp;
-        initData = tg?.initData;
-      }
-      if (!initData) {
-        // Not opened inside a real Telegram Mini App (initData empty) — bail silently.
-        // The telegram-web-app.js script is included on every page, so window.Telegram.WebApp
-        // always exists in the browser; we must NOT treat its presence as Mini App context.
-        return;
-      }
-      // ^ telegram-web-app.js script loads on every page, so window.Telegram.WebApp
-      // always exists. We only act when initData is present (real Mini App context).
-
-      try { tg.ready?.(); tg.expand?.(); } catch { /* noop */ }
-
       const { data: existing } = await supabase.auth.getSession();
       if (existing?.session?.user) {
         const path = await resolveProfilePath(existing.session.user.id);
@@ -64,19 +51,8 @@ export default function TelegramMiniAppBoot() {
         });
         const data = await res.json();
         if (!res.ok || !data?.token_hash) {
+          // eslint-disable-next-line no-console
           console.warn("[TelegramMiniAppBoot] auth failed:", data?.error || res.status);
-          try {
-            await fetch(`${FN_URL}/log-client-error`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                source: "telegram-miniapp-auth",
-                message: `${res.status} ${data?.error || "unknown"}`,
-                meta: { status: res.status, body: data },
-              }),
-              keepalive: true,
-            });
-          } catch { /* ignore */ }
           return;
         }
         const { error } = await supabase.auth.verifyOtp({
@@ -84,25 +60,15 @@ export default function TelegramMiniAppBoot() {
           token_hash: data.token_hash,
         });
         if (error) {
+          // eslint-disable-next-line no-console
           console.warn("[TelegramMiniAppBoot] verifyOtp failed:", error.message);
           return;
         }
-        const path = data?.target || await resolveProfilePath(data.user_id);
+        const path = await resolveProfilePath(data.user_id);
         navigate(path, { replace: true });
       } catch (e: any) {
+        // eslint-disable-next-line no-console
         console.warn("[TelegramMiniAppBoot] error:", e?.message || e);
-        try {
-          await fetch(`${FN_URL}/log-client-error`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source: "telegram-miniapp-boot",
-              message: e?.message || "unknown",
-              meta: { stack: e?.stack },
-            }),
-            keepalive: true,
-          });
-        } catch { /* ignore */ }
       }
     })();
   }, [navigate]);
