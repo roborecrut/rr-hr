@@ -150,13 +150,12 @@ export default function EmployerPanel() {
   );
 
   const [balance, setBalance] = useState<number>(1000);
-  const [limits, setLimits] = useState({
-    interviews: 2,
-    trainings: 2,
-    landings: 1,
-    interviewSystems: 1,
-    trainingSystems: 1
-  });
+  const [interviewCredits, setInterviewCredits] = useState<number>(0);
+  const [trainingCredits, setTrainingCredits] = useState<number>(0);
+  const [packQty, setPackQty] = useState<{ interview: number; training: number }>({ interview: 10, training: 10 });
+  const [packBusy, setPackBusy] = useState<null | "interview" | "training">(null);
+  const [referrer, setReferrer] = useState<null | { name: string; email: string; phone: string | null; telegram: string | null; public_id: string }>(null);
+  const [referees, setReferees] = useState<Array<{ name: string; email: string; created_at: string; bonus_rr: number }>>([]);
 
   const [topupAmountRub, setTopupAmountRub] = useState<number>(100);
   const [purchaseError, setPurchaseError] = useState<string>("");
