@@ -184,6 +184,24 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Страховка: target никогда не должен быть пустым/"/"
+    if (!target || target === "/") {
+      console.log("auth-google-finalize: empty target fallback", { user: user.id, intent });
+      // Попробуем ещё раз достать employer/candidate, если есть
+      const { data: emp } = await admin
+        .from("employers").select("public_id").eq("user_id", user.id).maybeSingle();
+      if (emp?.public_id) {
+        target = `/employer${emp.public_id}/profile`;
+      } else {
+        const { data: cand } = await admin
+          .from("candidates").select("public_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1).maybeSingle();
+        target = cand?.public_id ? `/candidate${cand.public_id}/profile` : "/main";
+      }
+    }
+    console.log("auth-google-finalize: ok", { user: user.id, intent, target });
     return json({ target });
   } catch (e: any) {
     console.error("auth-google-finalize error", e);
