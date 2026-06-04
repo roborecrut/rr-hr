@@ -721,7 +721,10 @@ export default function EmployerPanel() {
     /* Telegram removed */
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch { /* ignore */ }
     localStorage.clear();
     navigate("/main");
   };
