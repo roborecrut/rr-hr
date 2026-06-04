@@ -3152,410 +3152,153 @@ export default function EmployerPanel() {
             </div>
           )}
 
-          {/* PAGE 5: PROFILE & TELEGRAM PORTAL */}
+          {/* PAGE 5: PROFILE — HR Profile (Google + contacts) */}
           {activeTab === "profile" && (
             <div className="space-y-6 text-left">
-              
-              {/* Dynamic Header */}
+
+              {/* Header */}
               <div className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
                   <h2 className="text-lg font-black text-white flex items-center gap-2">
                     <User className="w-5 h-5 text-amber-400" />
-                    Мульти-профиль HR Администратора
+                    Профиль работодателя
                   </h2>
-                  <p className="text-xs text-slate-300">Авторизованные аккаунты Google и Telegram для интеграций ИИ-рекрутинга.</p>
+                  <p className="text-xs text-slate-300">Данные авторизации Google и контакты, которые увидят кандидаты.</p>
                 </div>
                 <div className="bg-emerald-950/40 text-emerald-400 text-xs font-bold border border-emerald-500/30 px-3 py-1 rounded-full font-mono flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>Сессия ID: {employerId}</span>
+                  <span>ID работодателя: {employerId}</span>
                 </div>
               </div>
 
-              {/* REFERRAL LINK BLOCK */}
+              {/* Реферальная ссылка (только Google) */}
               <ReferralLinkBlock employerPublicId={employerId} />
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* GOOGLE PROFILE ACCOUNT BLOCK */}
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
-                      <Chrome className="w-4 h-4 text-sky-400" /> 1. Профиль Google
-                    </h3>
-                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      Google OAuth2 Verified
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
-                    <div className="relative shrink-0">
-                      <img 
-                        src={googlePhoto} 
-                        alt="Google avatar" 
-                        className="w-16 h-16 rounded-full object-cover border-2 border-sky-400 shadow-md referrerPolicy='no-referrer'"
-                        onError={(e) => {
-                          (e.target as any).src = "https://lh3.googleusercontent.com/a/default-user=s96-c";
-                        }}
-                      />
-                      <span className="absolute bottom-0 right-0 bg-emerald-500 w-4 h-4 rounded-full border-2 border-[#1E4468] flex items-center justify-center text-[8px] text-white font-bold" title="Синхронизировано">✓</span>
-                    </div>
-
-                    <div className="text-center sm:text-left min-w-0 flex-1 space-y-1">
-                      <h4 className="text-sm font-extrabold text-white truncate">{googleName}</h4>
-                      <p className="text-xs text-slate-350 font-mono truncate">{googleEmail}</p>
-                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 font-mono text-[10px]">
-                        <span className="bg-emerald-950/50 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20">
-                          ID: {googleId}
-                        </span>
-                        {googleVerified && (
-                          <span className="bg-sky-950/40 text-sky-400 px-1.5 py-0.5 rounded border border-sky-500/20">
-                            Gmail Verified ✓
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Form for Google info editing */}
-                  <div className="space-y-3.5 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Имя в аккаунте:</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-400" 
-                          value={googleName}
-                          onChange={(e) => {
-                            setGoogleName(e.target.value);
-                            setProfileName(e.target.value);
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Email аккаунта:</label>
-                        <input 
-                          type="email" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-sky-400" 
-                          value={googleEmail}
-                          onChange={(e) => {
-                            setGoogleEmail(e.target.value);
-                            setProfileEmail(e.target.value);
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Google ID:</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white font-mono" 
-                          value={googleId}
-                          onChange={(e) => setGoogleId(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Ссылка на фото Google:</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white text-[11px]" 
-                          placeholder="Медиа URL"
-                          value={googlePhoto}
-                          onChange={(e) => setGooglePhoto(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400 font-mono">Последняя синхронизация Google: Сегодня</span>
-                      <button 
-                        type="button" 
-                        onClick={() => handleUpdateProfile({
-                          googleName,
-                          googleEmail,
-                          googlePhoto,
-                          googleId,
-                          googleVerified
-                        })}
-                        className="cursor-pointer bg-sky-600 hover:bg-sky-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition duration-150 shadow-md"
-                      >
-                        {isProfileSaved ? "Сохранено! ✓" : "Сохранить Google"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* TELEGRAM PROFILE BLOCK */}
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                    <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
-                      <Send className="w-4 h-4 text-sky-400" /> 2. Профиль Telegram
-                    </h3>
-                    <span className="bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      TG Bot Active
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
-                    <div className="relative shrink-0">
-                      <img 
-                        src={telegramPhoto} 
-                        alt="Telegram avatar" 
-                        className="w-16 h-16 rounded-full object-cover border-2 border-amber-400 shadow-md"
-                        onError={(e) => {
-                          (e.target as any).src = "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2.2&w=256&h=256&q=80";
-                        }}
-                      />
-                      <span className="absolute bottom-0 right-0 bg-amber-500 w-4 h-4 rounded-full border-2 border-[#1E4468] flex items-center justify-center text-[8px] text-white font-bold" title="Telegram Бот на связи">✓</span>
-                    </div>
-
-                    <div className="text-center sm:text-left min-w-0 flex-1 space-y-1">
-                      <h4 className="text-sm font-extrabold text-white truncate">
-                        {telegramFirstName} {telegramLastName}
-                      </h4>
-                      
-                      {/* Clickable Username Link */}
-                      <div className="text-xs font-semibold">
-                        <span className="text-slate-400 mr-1.5 font-normal">Никнейм:</span>
-                        <a 
-                          href={telegramUsernameState ? `https://t.me/${telegramUsernameState.replace("@", "")}` : "https://t.me/HR_RRbot"} 
-                          target="_blank" 
-                          rel="noreferrer"
-                          className="text-sky-305 hover:underline font-mono text-sm inline-flex items-center gap-1 font-black bg-sky-950/40 hover:bg-sky-950/60 transition px-2 py-0.5 rounded"
-                        >
-                          @{telegramUsernameState ? telegramUsernameState.replace("@", "") : "cowal_sales"} 🔗
-                        </a>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 font-mono text-[10px]">
-                        <span className="bg-amber-950/60 text-[#E7C768] px-1.5 py-0.5 rounded font-bold border border-amber-500/25">
-                          ID: {telegramIdState || adminTgId}
-                        </span>
-                        <span className="bg-emerald-950/40 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                          Уведомления ВКЛ ✅
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Form for Telegram info editing */}
-                  <div className="space-y-3.5 text-xs">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Имя (First Name):</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400" 
-                          value={telegramFirstName}
-                          onChange={(e) => setTelegramFirstName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Фамилия (Last Name):</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400" 
-                          value={telegramLastName}
-                          onChange={(e) => setTelegramLastName(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Никнейм @username:</label>
-                        <input 
-                          type="text" 
-                          className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400" 
-                          placeholder="например: active_hr"
-                          value={telegramUsernameState}
-                          onChange={(e) => setTelegramUsernameState(e.target.value.replace("@", ""))}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Telegram ID (Цифры):</label>
-                        <div className="flex gap-1.5">
-                          <input 
-                            type="text" 
-                            className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-center focus:outline-none focus:border-amber-400" 
-                            placeholder="например: 59384591"
-                            value={telegramIdState}
-                            onChange={(e) => {
-                              setTelegramIdState(e.target.value);
-                              setAdminTgId(e.target.value);
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              saveTgId();
-                              handleUpdateProfile({
-                                telegramId: telegramIdState,
-                                telegramPhoto,
-                                telegramFirstName,
-                                telegramLastName,
-                                telegramUsername: telegramUsernameState
-                              });
-                            }}
-                            className="bg-amber-600 hover:bg-amber-500 font-bold px-3 py-2 text-white rounded-xl text-[10px]"
-                          >
-                            Привязать
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-between gap-2.5">
-                      <div className="bg-black/25 text-[9.5px] px-2.5 py-1.5 rounded-lg border border-white/5 text-slate-400 font-mono flex-1 leading-normal">
-                        🤖 Для синхронизации ID напишите команду <strong className="text-[#E7C768]">/start</strong> боту <a href="https://t.me/HR_RRbot" target="_blank" rel="noreferrer" className="text-sky-305 underline">@HR_RRbot</a>
-                      </div>
-                      <button 
-                        type="button" 
-                        onClick={() => handleUpdateProfile({
-                          telegramId: telegramIdState,
-                          telegramPhoto,
-                          telegramFirstName,
-                          telegramLastName,
-                          telegramUsername: telegramUsernameState
-                        })}
-                        className="cursor-pointer bg-amber-500 hover:bg-amber-600 text-slate-900 font-black px-4 py-2 rounded-xl text-xs transition duration-150 shadow-md shrink-0"
-                      >
-                        {isProfileSaved ? "Сохранено! ✓" : "Сохранить TG"}
-                      </button>
-                    </div>
-
-                    {/* Phone block (request via bot) */}
-                    <div className="pt-3 mt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
-                      <div>
-                        <label className="text-slate-300 block mb-1 font-bold">Номер телефона из Telegram:</label>
-                        {telegramPhone ? (
-                          <a href={`tel:${telegramPhone}`} className="block w-full bg-emerald-950/40 border border-emerald-500/30 rounded-xl px-3 py-2 text-emerald-300 font-mono hover:bg-emerald-950/60 transition">
-                            {telegramPhone}
-                          </a>
-                        ) : (
-                          <div className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-slate-400 italic">
-                            Не привязан
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleRequestPhoneViaBot}
-                        disabled={isRequestingPhone}
-                        className="cursor-pointer bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white font-bold px-4 py-2 rounded-xl text-xs transition duration-150 shadow-md"
-                      >
-                        {isRequestingPhone ? "Отправка…" : telegramPhone ? "Обновить через бота" : "Запросить телефон через бота"}
-                      </button>
-                    </div>
-
-                    {/* Direct profile link fallback */}
-                    <div className="text-[10.5px] text-slate-400 font-mono pt-2">
-                      Прямая ссылка на профиль:&nbsp;
-                      {telegramUsernameState ? (
-                        <a href={`https://t.me/${telegramUsernameState.replace(/^@+/, "")}`} target="_blank" rel="noreferrer" className="text-sky-300 underline">
-                          t.me/{telegramUsernameState.replace(/^@+/, "")}
-                        </a>
-                      ) : telegramIdState ? (
-                        <a href={`tg://user?id=${telegramIdState}`} className="text-sky-300 underline">tg://user?id={telegramIdState}</a>
-                      ) : "—"}
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* REFERRAL SYSTEM SECTION INTEGRATION INSIDE PROFILE TAB */}
-              <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-6 shadow-xl space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl select-none">🎁</span>
-                    <div>
-                      <h3 className="font-extrabold text-white text-sm">Ваша персональная реферальная программа</h3>
-                      <p className="text-[11px] text-slate-300 leading-normal font-normal">
-                        Зарабатывайте рекрутинговые мили **1,000 RR** бонуса за каждого приглашенного HR-директора или работодателя!
-                      </p>
-                    </div>
-                  </div>
-                  <span className="bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 text-[10.5px] font-mono font-bold px-3 py-1 rounded-full uppercase">
-                    Награда 1000 RR
+              {/* GOOGLE PROFILE — read-only из аккаунта Google */}
+              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
+                    <Chrome className="w-4 h-4 text-sky-400" /> Аккаунт Google
+                  </h3>
+                  <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                    Google OAuth2 Verified
                   </span>
                 </div>
 
-                <p className="text-xs text-slate-200 leading-normal font-normal">
-                  Когда ваши коллеги регистрируют Личный Кабинет работодателя через Telegram по реферальной ссылке ниже, вашему кабинету начисляется <strong className="text-emerald-300">1000 RR</strong>, и вашему другу-работодателю также <strong className="text-emerald-300">1000 RR</strong> (поверх стартового бонуса +1000 RR).
-                </p>
-
-                <div className="grid grid-cols-2 gap-3 text-center text-xs font-mono">
-                  <div className="bg-emerald-950/30 border border-emerald-500/20 rounded-2xl p-3">
-                    <span className="block text-[10px] text-slate-400 uppercase">Приглашено</span>
-                    <strong className="text-emerald-300 text-lg">{referralStats.count}</strong>
-                  </div>
-                  <div className="bg-amber-950/30 border border-amber-500/20 rounded-2xl p-3">
-                    <span className="block text-[10px] text-slate-400 uppercase">Начислено RR</span>
-                    <strong className="text-[#E7C768] text-lg">{referralStats.rr}</strong>
+                <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
+                  <img
+                    src={googlePhoto}
+                    alt="Google avatar"
+                    referrerPolicy="no-referrer"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-sky-400 shadow-md shrink-0"
+                  />
+                  <div className="text-center sm:text-left min-w-0 flex-1 space-y-1">
+                    <h4 className="text-sm font-extrabold text-white truncate">{googleName}</h4>
+                    <p className="text-xs text-slate-300 font-mono truncate">{googleEmail}</p>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1 font-mono text-[10px]">
+                      <span className="bg-emerald-950/50 text-emerald-400 px-1.5 py-0.5 rounded font-bold border border-emerald-500/20">
+                        Google ID: {googleId}
+                      </span>
+                      <span className="bg-sky-950/40 text-sky-400 px-1.5 py-0.5 rounded border border-sky-500/20">
+                        Email подтверждён ✓
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                  <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🔗 Реферальная ссылка Telegram Mini App:</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
-                        className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = `https://hr-rr.online/auth?ref=emp${employerId}`;
-                          navigator.clipboard.writeText(url);
-                          addAuditEvent("success", "Реф-ссылка скопирована", "Telegram Mini App реф-ссылка скопирована в буфер обмена.");
-                          alert("Telegram реферальная ссылка скопирована!\n\n" + url);
-                        }}
-                        className="bg-white/10 hover:bg-white/15 text-[#E7C768] px-3.5 py-2.5 border border-white/5 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
-                      >
-                        Копировать
-                      </button>
-                    </div>
-                  </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Имя, email и фото подтягиваются автоматически из вашего аккаунта Google и не редактируются здесь.
+                  Чтобы их изменить — обновите данные в аккаунте Google.
+                </p>
+              </div>
 
-                  <div className="bg-black/25 p-4 rounded-2xl border border-white/5 space-y-2 text-xs text-left">
-                    <span className="text-[10px] text-slate-400 font-bold block uppercase font-mono tracking-wider">🌐 Альтернативная веб-ссылка (Login Widget):</span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
-                        className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=emp${employerId}`);
-                          addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
-                          alert("Веб-реф-ссылка скопирована!");
-                        }}
-                        className="bg-emerald-950/50 hover:bg-emerald-900/60 text-emerald-400 px-3.5 py-2.5 border border-emerald-500/20 text-[10.5px] uppercase font-bold rounded-xl cursor-pointer shrink-0"
+              {/* КОНТАКТЫ ДЛЯ КАНДИДАТОВ */}
+              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+                <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                  <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-amber-400" /> Контакты для кандидатов
+                  </h3>
+                  <span className="bg-amber-500/10 text-amber-300 border border-amber-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                    видно на лендинге вакансии
+                  </span>
+                </div>
+
+                <div className="bg-amber-950/30 border border-amber-500/25 rounded-2xl p-3 text-[11px] text-amber-100 leading-relaxed">
+                  ℹ️ Эти данные увидят соискатели на странице вашей вакансии — чтобы связаться напрямую, если останутся вопросы. Указывайте только публичные контакты.
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-slate-300 block mb-1 font-bold">Telegram (@username):</label>
+                    <input
+                      type="text"
+                      className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white font-mono focus:outline-none focus:border-amber-400"
+                      placeholder="например: hr_company"
+                      value={telegramUsernameState}
+                      onChange={(e) => setTelegramUsernameState(e.target.value.replace(/^@+/, ""))}
+                    />
+                    {telegramUsernameState && (
+                      <a
+                        href={`https://t.me/${telegramUsernameState.replace(/^@+/, "")}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-sky-300 underline mt-1 inline-block font-mono"
                       >
-                        Копировать
-                      </button>
-                    </div>
+                        t.me/{telegramUsernameState.replace(/^@+/, "")}
+                      </a>
+                    )}
                   </div>
+                  <div>
+                    <label className="text-slate-300 block mb-1 font-bold">Телефон:</label>
+                    <input
+                      type="tel"
+                      className="w-full bg-[#17344F]/70 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-400"
+                      placeholder="+7 (___) ___-__-__"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    {isProfileSaved ? "Контакты обновлены ✓" : "Заполните и сохраните"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) return;
+                        await supabase
+                          .from("employers")
+                          .update({
+                            contact_phone: profilePhone || null,
+                            contact_telegram: telegramUsernameState ? telegramUsernameState.replace(/^@+/, "") : null,
+                          })
+                          .eq("user_id", user.id);
+                        setIsProfileSaved(true);
+                        setTimeout(() => setIsProfileSaved(false), 2000);
+                      } catch (e) {
+                        console.error("save contacts failed", e);
+                      }
+                    }}
+                    className="cursor-pointer bg-amber-500 hover:bg-amber-600 text-slate-900 font-black px-4 py-2 rounded-xl text-xs transition shadow-md"
+                  >
+                    {isProfileSaved ? "Сохранено ✓" : "Сохранить контакты"}
+                  </button>
                 </div>
               </div>
 
               {/* Onboarding Next Step CTA */}
               <div className="bg-[#1E4468]/60 border border-[#E7C768]/30 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-left space-y-1">
-                  <h4 className="text-[#E7C768] font-bold text-sm">Профиль заполнен и проверен?</h4>
-                  <p className="text-xs text-slate-350">Переходите к следующему шагу — созданию вашей первой компании и ИИ-лендинга.</p>
+                  <h4 className="text-[#E7C768] font-bold text-sm">Профиль заполнен?</h4>
+                  <p className="text-xs text-slate-300">Переходите к следующему шагу — созданию компании и ИИ-лендинга вакансии.</p>
                 </div>
                 <button
                   onClick={() => navigate(`/emp${employerId}/companies`)}
-                  className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3.5 px-6 rounded-2xl flex items-center gap-1.5 transition-all text-center shrink-0 w-full sm:w-auto justify-center"
+                  className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3.5 px-6 rounded-2xl flex items-center gap-1.5 transition-all shrink-0 w-full sm:w-auto justify-center"
                 >
                   <span>Далее: Настройка компании</span>
                   <ChevronRight className="w-4 h-4" />
@@ -3564,6 +3307,7 @@ export default function EmployerPanel() {
 
             </div>
           )}
+
 
           {/* PAGE 6: EVENTS & LOGGER HISTORY LOG */}
           {activeTab === "events" && (
