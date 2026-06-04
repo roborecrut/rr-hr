@@ -264,25 +264,14 @@ export default function EmployerPanel() {
   const handleEnhanceSingleField = async (fieldName: string, currentVal: string) => {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
-      const res = await fetch("/api/enhance-single-field", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fieldName,
-          fieldVal: currentVal,
-          context: {
-            name: newCompanyName,
-            industry: newCompanyIndustry,
-            staff: newCompanyStaff,
-            description: newCompanyDesc,
-            site: newCompanySite,
-            missionText: newCompanyMissionText,
-          }
-        })
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const newVal = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: newCompanyName,
+        hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
       });
-      if (res.ok) {
-        const data = await res.json();
-        const newVal = data.value;
+      if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
         else if (fieldName === "description") setNewCompanyDesc(newVal);
@@ -303,6 +292,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
     }
@@ -312,17 +302,17 @@ export default function EmployerPanel() {
     setIsEnhancingAll(true);
     addAuditEvent("info", "ИИ Настройка", "ИИ-аналитик RR комплексно оформляет ваш бренд...");
     try {
-      const res = await fetch("/api/enhance-all-fields", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const enriched = await aiEnhanceAll({
+        mode: "all_company",
+        company_name: newCompanyName,
+        fields: {
           name: newCompanyName,
           industry: newCompanyIndustry,
           staff: newCompanyStaff,
           description: newCompanyDesc,
           sites: newCompanySite,
           logoUrl: newCompanyLogo,
-          files: newCompanyFiles,
           missionText: newCompanyMissionText,
           customWiki: newCompanyCustomWiki,
           salaryTerms: newCompanySalaryTerms,
@@ -333,10 +323,10 @@ export default function EmployerPanel() {
           statsLabelDialogs: newCompanyStatsLabelDialogs,
           statsValFounded: newCompanyStatsValFounded,
           statsLabelFounded: newCompanyStatsLabelFounded
-        })
+        },
+        hint: newCompanyFiles?.length ? `attached files: ${newCompanyFiles.join(", ")}` : undefined,
       });
-      if (res.ok) {
-        const enriched = await res.json();
+      if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
         if (enriched.staff) setNewCompanyStaff(enriched.staff);
@@ -358,6 +348,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
     }
@@ -367,13 +358,17 @@ export default function EmployerPanel() {
     setIsParsingFile(true);
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
-      const res = await fetch("/api/parse-company-file", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: filename })
+      const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const payload = await aiEnhanceAll({
+        mode: "all_company",
+        fields: {
+          name: newCompanyName, industry: newCompanyIndustry, staff: newCompanyStaff,
+          description: newCompanyDesc, sites: newCompanySite, logoUrl: newCompanyLogo,
+          missionText: newCompanyMissionText, customWiki: newCompanyCustomWiki,
+        },
+        hint: `parse_file:${filename}`,
       });
-      if (res.ok) {
-        const payload = await res.json();
+      if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
         if (payload.industry) setNewCompanyIndustry(payload.industry);
         if (payload.staff) setNewCompanyStaff(payload.staff);
@@ -395,6 +390,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
     }
