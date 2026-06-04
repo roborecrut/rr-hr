@@ -46,29 +46,34 @@ Deno.serve(async (req) => {
       (meta.full_name as string) || (meta.name as string) || null;
     const { data: existingProfile } = await admin
       .from("profiles")
-      .select("display_name, avatar_url, account_kinds")
+      .select("id, display_name, avatar_url, account_kinds, registered_via")
       .eq("id", user.id)
       .maybeSingle();
-    const profileUpdate: Record<string, unknown> = {
-      google_email: user.email ?? null,
-      email: user.email ?? null,
-      last_signup_intent: intent,
-    };
-    if (!existingProfile?.display_name && googleFullName) {
-      profileUpdate.display_name = googleFullName;
-    }
-    if (!existingProfile?.avatar_url && googleAvatar) {
-      profileUpdate.avatar_url = googleAvatar;
-    }
-    // registered_via only on first Google login (keep "telegram" if user signed up there first)
-    if (!existingProfile) {
-      profileUpdate.registered_via = "google";
-    }
-    // Merge account_kinds (additive; supports dual employer+candidate)
     const kinds = new Set<string>(Array.isArray(existingProfile?.account_kinds) ? existingProfile!.account_kinds as string[] : []);
     kinds.add(intent);
-    profileUpdate.account_kinds = Array.from(kinds);
-    await admin.from("profiles").update(profileUpdate).eq("id", user.id);
+    if (existingProfile) {
+      const profileUpdate: Record<string, unknown> = {
+        google_email: user.email ?? null,
+        email: user.email ?? null,
+        last_signup_intent: intent,
+        account_kinds: Array.from(kinds),
+      };
+      if (!existingProfile.display_name && googleFullName) profileUpdate.display_name = googleFullName;
+      if (!existingProfile.avatar_url && googleAvatar) profileUpdate.avatar_url = googleAvatar;
+      await admin.from("profiles").update(profileUpdate).eq("id", user.id);
+    } else {
+      // Trigger didn't fire (или intent отсутствовал) — создаём профиль здесь
+      await admin.from("profiles").insert({
+        id: user.id,
+        display_name: googleFullName || (user.email ? user.email.split("@")[0] : null),
+        avatar_url: googleAvatar,
+        email: user.email ?? null,
+        google_email: user.email ?? null,
+        registered_via: "google",
+        account_kinds: Array.from(kinds),
+        last_signup_intent: intent,
+      });
+    }
 
     // Always ensure role matching intent (do NOT delete other role — dual profiles allowed)
     await admin.from("user_roles").upsert(
