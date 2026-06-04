@@ -68,7 +68,7 @@ export default function AuthCallback() {
         try {
           await supabase.auth.updateUser({
             data: {
-              intent: pending.intent || "candidate",
+              intent: pending.intent || "employer",
               signup_context: pending.project_slug ? "vacancy_landing" : "main",
               company_slug: pending.company_slug || null,
               project_slug: pending.project_slug || null,
@@ -85,7 +85,7 @@ export default function AuthCallback() {
               Authorization: `Bearer ${session.access_token}`,
             },
             body: JSON.stringify({
-              intent: pending.intent || "candidate",
+              intent: pending.intent || "employer",
               ref: pending.ref || "",
               project_slug: pending.project_slug || "",
               company_slug: pending.company_slug || "",

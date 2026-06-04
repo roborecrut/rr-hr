@@ -72,7 +72,9 @@ export default function AuthRecover() {
         const intent = (meta.intent === "candidate" ? "candidate" : "employer");
         // Only on the main/landing routes — don't hijack other pages.
         if (pathname !== "/" && pathname !== "/main" && pathname !== "/auth") return;
-        window.location.replace(`/auth/callback?intent=${intent}&recover=1`);
+        // Only auto-recover when intent is employer; for candidate flow let user pick a vacancy.
+        if (intent !== "employer") return;
+        window.location.replace(`/auth/callback?intent=employer&recover=1`);
       } catch { /* ignore */ }
     })();
   }, []);
