@@ -34,10 +34,43 @@ export default function TelegramMiniAppBoot() {
         tg = (window as any)?.Telegram?.WebApp;
         initData = tg?.initData;
       }
+      // Fallback: extract tgWebAppData from launch params in hash/search.
+      // Telegram Mini Apps spec allows launch params via location.hash.
       if (!initData) {
-        // Not opened inside a real Telegram Mini App (initData empty) — bail silently.
-        // The telegram-web-app.js script is included on every page, so window.Telegram.WebApp
-        // always exists in the browser; we must NOT treat its presence as Mini App context.
+        try {
+          const hash = window.location.hash.replace(/^#/, "");
+          const search = window.location.search.replace(/^\?/, "");
+          const params = new URLSearchParams(hash || search);
+          const tgwad = params.get("tgWebAppData");
+          if (tgwad) initData = tgwad;
+        } catch { /* ignore */ }
+      }
+      // Detect whether we are actually inside Telegram, even without initData.
+      const ua = navigator.userAgent || "";
+      const insideTelegram =
+        /Telegram/i.test(ua) ||
+        !!(tg && (tg.platform && tg.platform !== "unknown")) ||
+        !!(tg && tg.initDataUnsafe && Object.keys(tg.initDataUnsafe).length);
+      if (!initData) {
+        if (insideTelegram) {
+          // Real Telegram context but no initData — log for diagnostics.
+          try {
+            await fetch(`${FN_URL}/log-client-error`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                source: "telegram-miniapp-boot",
+                message: "miniapp_no_init_data",
+                meta: {
+                  ua, platform: tg?.platform || null,
+                  host: window.location.host, path: window.location.pathname,
+                  hasTg: !!tg,
+                },
+              }),
+              keepalive: true,
+            });
+          } catch { /* ignore */ }
+        }
         return;
       }
       // ^ telegram-web-app.js script loads on every page, so window.Telegram.WebApp
