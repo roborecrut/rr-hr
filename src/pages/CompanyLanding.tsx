@@ -76,9 +76,12 @@ export default function CompanyLanding() {
   const { path, navigate, query } = useRouter();
   
   // Parse companySlug and vacancyId from path segments. Empty when route is "/".
+  // New URLs: /com{publicId}/vac{publicId}/...  Legacy: /{slug}/{slug}/...
   const segments = path.split("/").filter(Boolean);
-  const companySlug = segments[0] || "";
-  const vacancyId = segments[1] || "";
+  const rawCompany = segments[0] || "";
+  const rawVacancy = segments[1] || "";
+  const companySlug = rawCompany.replace(/^com/i, "");
+  const vacancyId = rawVacancy.replace(/^vac/i, "");
   const subTab = segments[2] || "company";
 
   // States
@@ -105,7 +108,7 @@ export default function CompanyLanding() {
     if (selectedVacancy && visibleTabs.length > 0) {
       const isCurrentTabVisible = visibleTabs.some(t => t.key === subTab);
       if (!isCurrentTabVisible) {
-        navigate(`/${companySlug}/${selectedVacancy.id}/${visibleTabs[0].key}`);
+        navigate(`/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}/${visibleTabs[0].key}`);
       }
     }
   }, [subTab, selectedVacancy?.id, visibleTabs.length, companySlug]);
@@ -393,7 +396,7 @@ export default function CompanyLanding() {
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
           <div className="flex items-center justify-between gap-4 py-2">
             {/* Logo field */}
-            <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate(selectedVacancy ? `/${companySlug}/${selectedVacancy.id}` : "/")}>
+            <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate(selectedVacancy ? `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}` : "/")}>
               <img
                 src={selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
                 alt="Logo"
@@ -410,7 +413,7 @@ export default function CompanyLanding() {
                   return (
                     <button
                       key={tb.key}
-                      onClick={() => navigate(`/${companySlug}/${selectedVacancy.id}/${tb.key}`)}
+                      onClick={() => navigate(`/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}/${tb.key}`)}
                       className={`transition px-3 py-1.5 text-xs font-bold rounded-lg border cursor-pointer whitespace-nowrap ${
                         isActive
                           ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow"
@@ -458,7 +461,7 @@ export default function CompanyLanding() {
                       key={tb.key}
                       onClick={() => {
                         setMenuOpen(false);
-                        navigate(`/${companySlug}/${selectedVacancy.id}/${tb.key}`);
+                        navigate(`/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}/${tb.key}`);
                       }}
                       className={`w-full text-left transition px-3.5 py-2.5 text-xs font-bold rounded-xl border flex items-center justify-between ${
                         isActive
@@ -666,7 +669,7 @@ export default function CompanyLanding() {
                 {vacancies.map((v) => (
                   <div
                     key={v.id}
-                    onClick={() => navigate(`/${companySlug}/${v.id}`)}
+                    onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)}
                     className={`cursor-pointer border p-4 rounded-2xl text-left transition ${
                       selectedVacancy?.id === v.id
                         ? "bg-[#E7C768]/15 border-[#E7C768]/70 ring-1 ring-[#E7C768]/50"

@@ -7,6 +7,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import {
   Users,
@@ -486,14 +487,13 @@ export default function EmployerPanel() {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: emp } = await supabase
         .from("employers")
-        .select("*, wallets(balance_rr)")
+        .select("*, wallets(units_balance)")
         .eq("public_id", employerId)
         .maybeSingle();
       if (emp) {
-        setBalance(Number((emp as any).wallets?.[0]?.balance_rr ?? (emp as any).wallets?.balance_rr ?? 0));
+        setBalance(Number((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance ?? 0));
         if (emp.contact_name) setProfileName(emp.contact_name);
         if (emp.contact_email) setProfileEmail(emp.contact_email);
-        if (emp.contact_tg) setTelegramUsernameState(emp.contact_tg);
       }
     } catch (err) {
       console.error("Error loading employer profile:", err);
@@ -657,7 +657,7 @@ export default function EmployerPanel() {
   }, [employerId]);
 
   useEffect(() => {
-    const pathIdMatch = path.match(/^\/employer([a-zA-Z0-9_-]+)/);
+    const pathIdMatch = path.match(/^\/(?:emp|employer)([a-zA-Z0-9_-]+)/);
     if (pathIdMatch && pathIdMatch[1] !== employerId) {
       setEmployerId(pathIdMatch[1]);
       localStorage.setItem("employer_session_id", pathIdMatch[1]);
@@ -699,7 +699,7 @@ export default function EmployerPanel() {
     return () => { cancelled = true; };
   }, [employerId]);
 
-  // Load real Telegram profile fields + referral stats for the authenticated user
+  // Load profile email for the authenticated user
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -708,54 +708,17 @@ export default function EmployerPanel() {
       if (!user || cancelled) return;
       const { data: prof } = await supabase
         .from("profiles")
-        .select("telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone, email")
+        .select("email")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled || !prof) return;
-      if (prof.telegram_id) setTelegramIdState(String(prof.telegram_id));
-      if (prof.telegram_username) setTelegramUsernameState(prof.telegram_username);
-      if (prof.telegram_first_name) setTelegramFirstName(prof.telegram_first_name);
-      if (prof.telegram_last_name) setTelegramLastName(prof.telegram_last_name);
-      if (prof.telegram_photo_url) setTelegramPhoto(prof.telegram_photo_url);
-      if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
       if (prof.email) setGoogleEmail(prof.email);
-
-      const { data: refs } = await supabase
-        .from("referrals")
-        .select("reward_rr")
-        .eq("owner_user_id", user.id);
-      if (!cancelled && refs) {
-        setReferralStats({
-          count: refs.length,
-          rr: refs.reduce((s, r: any) => s + Number(r.reward_rr || 0), 0),
-        });
-      }
     })();
     return () => { cancelled = true; };
   }, [employerId]);
 
   const handleRequestPhoneViaBot = async () => {
-    setIsRequestingPhone(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert("Войдите через Telegram, чтобы привязать номер.");
-        return;
-      }
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-request-contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Ошибка");
-      alert("Откройте чат с @HR_RRbot и нажмите кнопку «Поделиться номером». Номер появится здесь автоматически.");
-      window.open("https://t.me/HR_RRbot", "_blank");
-    } catch (e: any) {
-      alert("Не удалось отправить запрос: " + (e?.message || "ошибка"));
-    } finally {
-      setIsRequestingPhone(false);
-    }
+    /* Telegram removed */
   };
 
   const handleLogout = () => {
@@ -909,7 +872,7 @@ export default function EmployerPanel() {
 
       addAuditEvent("success", "ИИ-Блок онбординга собран", `Программа лекций, ситуационных вопросов создана для ${setupRoleName}`);
       setShowAddNewVacancy(false);
-      navigate(`/employer${employerId}/vacancies`);
+      navigate(`/emp${employerId}/vacancies`);
       fetchData();
     } catch (err: any) {
       alert("Ошибка при генерации: " + err.message);
@@ -1416,7 +1379,7 @@ export default function EmployerPanel() {
             {/* SIX REQUIRED PAGES */}
             <div className="space-y-1.5 pt-2 text-left">
               <button
-                onClick={() => navigate(`/employer${employerId}/profile`)}
+                onClick={() => navigate(`/emp${employerId}/profile`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "profile" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1426,7 +1389,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/companies`)}
+                onClick={() => navigate(`/emp${employerId}/companies`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "companies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1436,7 +1399,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                onClick={() => navigate(`/emp${employerId}/vacancies`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1446,7 +1409,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => { navigate(`/employer${employerId}/crm`); setCrmViewMode("kanban"); }}
+                onClick={() => { navigate(`/emp${employerId}/crm`); setCrmViewMode("kanban"); }}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "crm" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1456,7 +1419,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/tariff`)}
+                onClick={() => navigate(`/emp${employerId}/tariff`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "tariff" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1466,7 +1429,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/events`)}
+                onClick={() => navigate(`/emp${employerId}/events`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "events" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1553,7 +1516,7 @@ export default function EmployerPanel() {
               {/* Progress Stepper row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/profile`)}
+                  onClick={() => navigate(`/emp${employerId}/profile`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "profile"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -1570,7 +1533,7 @@ export default function EmployerPanel() {
                 </button>
 
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/companies`)}
+                  onClick={() => navigate(`/emp${employerId}/companies`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "companies"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -1587,7 +1550,7 @@ export default function EmployerPanel() {
                 </button>
 
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                  onClick={() => navigate(`/emp${employerId}/vacancies`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "vacancies"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -2245,7 +2208,7 @@ export default function EmployerPanel() {
                             href={`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`} 
                             className="cursor-pointer text-sky-300 font-mono text-[10.5px] hover:underline hover:text-sky-450 block truncate"
                           >
-                            https://hr-rr.online/{proj.companySlug || ""}/{(proj as any).slug || proj.id}
+                            https://hr-rr.online/com{proj.companySlug || ""}/vac{(proj as any).slug || proj.id}
                           </a>
                         </div>
                       </div>
@@ -2751,7 +2714,7 @@ export default function EmployerPanel() {
                       <div className="bg-black/20 border border-white/5 p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                         <div className="space-y-0.5">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">ИИ-Лендинг Компании для Кандидатов</span>
-                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/{comp.slug}</span>
+                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/com{comp.slug}</span>
                         </div>
                         <button
                           onClick={() => navigate(`/${comp.slug}`)}
@@ -2783,7 +2746,7 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-350">Переходите к финальному шагу онбординга — размещению вашей первой вакансии с ИИ-куратором.</p>
                 </div>
                 <button
-                  onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                  onClick={() => navigate(`/emp${employerId}/vacancies`)}
                   className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3 px-6 rounded-2xl flex items-center gap-1.5 transition-all text-center shrink-0 w-full sm:w-auto justify-center animate-pulse"
                 >
                   <span>Далее: Разместить вакансию</span>
@@ -2797,6 +2760,9 @@ export default function EmployerPanel() {
           {/* PAGE 4: BILLS & ACCOUNTS - DYNAMIC BALANCE & SHIELD */}
           {activeTab === "tariff" && (
             <div className="space-y-6 text-left">
+
+              {/* Hiring Calculator + new pricing */}
+              <HiringCalculator />
               
               {/* BALANCE SUMMARY PANEL CARD */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 font-medium">
@@ -3531,13 +3497,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://t.me/HR_RRbot/app?startapp=${employerId}`}
+                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `https://t.me/HR_RRbot/app?startapp=${employerId}`;
+                          const url = `https://hr-rr.online/auth?ref=emp${employerId}`;
                           navigator.clipboard.writeText(url);
                           addAuditEvent("success", "Реф-ссылка скопирована", "Telegram Mini App реф-ссылка скопирована в буфер обмена.");
                           alert("Telegram реферальная ссылка скопирована!\n\n" + url);
@@ -3555,13 +3521,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.online/auth?ref=${employerId}`}
+                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=${employerId}`);
+                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=emp${employerId}`);
                           addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
                           alert("Веб-реф-ссылка скопирована!");
                         }}
@@ -3581,7 +3547,7 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-350">Переходите к следующему шагу — созданию вашей первой компании и ИИ-лендинга.</p>
                 </div>
                 <button
-                  onClick={() => navigate(`/employer${employerId}/companies`)}
+                  onClick={() => navigate(`/emp${employerId}/companies`)}
                   className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3.5 px-6 rounded-2xl flex items-center gap-1.5 transition-all text-center shrink-0 w-full sm:w-auto justify-center"
                 >
                   <span>Далее: Настройка компании</span>
