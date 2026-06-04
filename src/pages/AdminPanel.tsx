@@ -594,6 +594,10 @@ export default function AdminPanel() {
           <TelegramMetrics />
         </div>
 
+        <div className="max-w-7xl mx-auto px-4 mt-6">
+          <ErrorLog />
+        </div>
+
       </main>
 
       {/* Elegant Footer */}
