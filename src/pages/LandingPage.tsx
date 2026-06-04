@@ -51,14 +51,31 @@ export default function LandingPage() {
     setIsAuthModalOpen(true);
   };
 
-  // States for Interactive Tariff Calculator
-  const [interviewsCount, setInterviewsCount] = useState(5);
-  const [trainingsCount, setTrainingsCount] = useState(5);
-  const [landingsCount, setLandingsCount] = useState(1);
-  const [interviewSystemsCount, setInterviewSystemsCount] = useState(1);
-  const [trainingSystemsCount, setTrainingSystemsCount] = useState(1);
-  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  // States for HR vs RR Calculator
+  const [candidatesCount, setCandidatesCount] = useState(50);
+  const [vacanciesCount, setVacanciesCount] = useState(1);
+  const [hrSalary, setHrSalary] = useState(60000); // ₽/мес за 1 HR
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
+
+  // Тарифная сетка: цена 1 юнита (RR) по объёму закупки
+  const unitPrice = (units: number): number => {
+    if (units >= 200) return 50;
+    if (units >= 50) return 100;
+    if (units >= 10) return 150;
+    return 200;
+  };
+  const unitsTotal = candidatesCount * 2; // 1 интервью + 1 обучение
+  const pricePerUnit = unitPrice(unitsTotal);
+  const rrCost = unitsTotal * pricePerUnit;
+  const rrMinutes = Math.round(candidatesCount * 1.5 + vacanciesCount * 10); // ~1.5 мин/канд + 10 мин на вакансию
+  // HR: 1 рекрутер ≈ 50 кандидатов/мес; 30 мин на кандидата + 2ч на вакансию
+  const hrCount = Math.max(1, Math.ceil(candidatesCount / 50));
+  const hrCost = hrCount * hrSalary;
+  const hrMinutes = Math.round(candidatesCount * 30 + vacanciesCount * 120);
+  const fmt = (n: number) => n.toLocaleString("ru-RU");
+  const fmtMin = (m: number) => m < 60 ? `${m} мин` : `${Math.round(m/60)} ч`;
+  const costRatio = rrCost > 0 ? (hrCost / rrCost).toFixed(1) : "—";
+  const timeRatio = rrMinutes > 0 ? (hrMinutes / rrMinutes).toFixed(0) : "—";
 
   // Если пользователь уже залогинен и у него есть employer-профиль — сразу
   // открываем кабинет вместо показа лендинга с кнопкой "Регистрация".
