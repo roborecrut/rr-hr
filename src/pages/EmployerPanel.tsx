@@ -4566,3 +4566,55 @@ export default function EmployerPanel() {
     </div>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Реферальная ссылка работодателя — Google-only, +1000 RR пригласившему */
+/* ------------------------------------------------------------------ */
+function ReferralLinkBlock({ employerPublicId }: { employerPublicId: string }) {
+  const [copied, setCopied] = React.useState(false);
+  const link = employerPublicId
+    ? `https://hr-rr.online/auth?ref=emp${employerPublicId}`
+    : "";
+
+  const handleCopy = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-emerald-950/40 to-[#1D3E5E]/70 border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-3 text-left">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-black text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+            🎁 Ваша реферальная ссылка
+          </h3>
+          <p className="text-[11px] text-slate-300 mt-1">
+            Приглашайте работодателей — получайте <strong className="text-white">+1000 RR</strong> за каждого, кто войдёт через Google.
+            Новичку 1000 RR начисляются автоматически.
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input
+          type="text"
+          readOnly
+          value={link}
+          className="flex-1 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5 text-white font-mono text-xs focus:outline-none focus:border-emerald-400 select-all"
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={!link}
+          className="cursor-pointer bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-[#0b2436] font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+        >
+          {copied ? (<><Check className="w-4 h-4" /> Скопировано</>) : (<><Copy className="w-4 h-4" /> Скопировать</>)}
+        </button>
+      </div>
+    </div>
+  );
+}
