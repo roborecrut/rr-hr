@@ -422,21 +422,18 @@ export default function LandingPage() {
               🔥 Стартовый капитал — без абонентки
             </span>
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              Дарим <span className="bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">500 RR</span> при Google-регистрации <br className="hidden md:block" />и ещё <span className="bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">+500 RR</span> за привязку Telegram
+              Дарим <span className="bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">1000 RR</span> при регистрации через Google
             </h2>
             <p className="text-slate-200 text-sm md:text-base leading-relaxed">
-              За эти деньги получаете лендинг компании и вакансии с ИИ-продажником без ограничений по сроку, а после привязки Telegram — полную систему ИИ-найма и ИИ-обучения.
+              За эти деньги получаете лендинг компании и вакансии с ИИ-продажником без ограничений по сроку, а также полную систему ИИ-найма и ИИ-обучения.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10 items-stretch">
-            
+          <div className="grid grid-cols-1 gap-8 relative z-10 items-stretch max-w-2xl mx-auto">
+
             {/* Card 1: Google Register Bonus (primary) */}
             <div className="bg-[#17344F]/80 p-6 rounded-3xl border-2 border-[#E7C768]/40 hover:border-[#E7C768]/80 transition-all duration-300 flex flex-col justify-between shadow-lg relative overflow-hidden group">
-              <div className="absolute top-0 right-0 bg-[#E7C768] text-[#17344F] text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider font-mono">
-                Шаг 1
-              </div>
-              
+
               <div className="space-y-5">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 bg-[#E7C768]/15 border border-[#E7C768]/30 text-[#E7C768] rounded-2xl flex items-center justify-center">
@@ -450,7 +447,7 @@ export default function LandingPage() {
 
                 <div className="bg-emerald-950/40 border border-emerald-500/20 rounded-2xl p-4 text-center">
                   <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Прибавка к балансу</span>
-                  <div className="text-3xl font-black text-emerald-300 font-mono mt-1">+500 RR на счёт</div>
+                  <div className="text-3xl font-black text-emerald-300 font-mono mt-1">+1000 RR на счёт</div>
                 </div>
 
                 <div className="space-y-2 text-xs text-slate-200 text-left">
@@ -459,6 +456,7 @@ export default function LandingPage() {
                   </p>
                   <ul className="space-y-1.5 pl-1 text-[11px] list-disc list-inside text-slate-300 font-normal">
                     <li><strong className="text-white">Лендинг компании и вакансии (500 RR)</strong> — без абонентки, на любой срок, с ИИ-продажником вакансии.</li>
+                    <li><strong className="text-white">Система интервью и обучения (500 RR)</strong> — чек-листы, скоринг и индивидуальный симулятор онбординга.</li>
                     <li><strong className="text-white">Заполняет ИИ</strong> — вы только проверяете и сохраняете.</li>
                   </ul>
                 </div>
@@ -472,55 +470,6 @@ export default function LandingPage() {
                 >
                   Зарегистрироваться через Google
                 </button>
-              </div>
-
-            </div>
-
-            {/* Card 2: Telegram link bonus (after registration) */}
-            <div className="bg-[#17344F]/50 p-6 rounded-3xl border border-white/10 hover:border-white/25 transition-all duration-300 flex flex-col justify-between shadow-lg relative">
-              <div className="absolute top-0 right-0 bg-emerald-500 text-slate-950 text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-wider font-mono">
-                Шаг 2
-              </div>
-
-              <div className="space-y-5">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white/5 border border-white/10 text-white rounded-2xl flex items-center justify-center">
-                    <Send className="w-6 h-6 text-[#D99E41]" />
-                  </div>
-                  <div>
-                    <h3 className="font-extrabold text-base text-white">Привязка Telegram</h3>
-                    <p className="text-[10px] text-slate-300">Делается из личного кабинета одной кнопкой</p>
-                  </div>
-                </div>
-
-                <div className="bg-emerald-950/20 border border-emerald-500/10 rounded-2xl p-4 text-center">
-                  <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">Дополнительный бонус</span>
-                  <div className="text-3xl font-black text-emerald-300/80 font-mono mt-1">+500 RR на счёт</div>
-                </div>
-
-                <div className="space-y-2 text-xs text-slate-200 text-left">
-                  <p className="font-semibold leading-relaxed">
-                    Хватит, чтобы создать ИИ-найм и ИИ-обучение под вакансию:
-                  </p>
-                  <ul className="space-y-1.5 pl-1 text-[11px] list-disc list-inside text-slate-300 font-normal">
-                    <li><strong className="text-white">Система интервью (200 RR)</strong> — чек-листы, скоринг и ситуативные тесты.</li>
-                    <li><strong className="text-white">Система обучения (300 RR)</strong> — индивидуальный симулятор онбординга.</li>
-                  </ul>
-                  <p className="text-[10.5px] text-slate-400 pt-2 border-t border-white/5 font-normal leading-relaxed">
-                    * Telegram даёт мгновенные уведомления о кандидатах прямо в личку. Откройте t.me/RoboRecrutBot/app — авторизация автоматическая.
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-6">
-                <a
-                  href="https://t.me/RoboRecrutBot/app"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="block w-full bg-white/5 hover:bg-white/10 text-white border border-white/15 font-bold py-3.5 px-4 rounded-xl text-center text-xs uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  Открыть RoboRecrut Mini App
-                </a>
               </div>
 
             </div>
@@ -646,7 +595,7 @@ export default function LandingPage() {
               </div>
               <button type="button" onClick={handleOpenCabinet}
                 className="inline-flex mt-2 bg-[#E7C768] hover:bg-[#F4EE8E] text-[#17344F] font-bold py-3 px-6 rounded-xl text-sm shadow-xl transition-all hover:scale-[1.02]">
-                🚀 Начать с +500&nbsp;RR в подарок
+                🚀 Начать с +1000&nbsp;RR в подарок
               </button>
             </div>
 
