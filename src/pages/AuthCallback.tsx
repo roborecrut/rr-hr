@@ -21,6 +21,7 @@ type Pending = {
   ref?: string;
   project_slug?: string;
   company_slug?: string;
+  project_id?: string;
   return_to?: string;
 };
 
@@ -55,6 +56,17 @@ export default function AuthCallback() {
         } catch { /* ignore */ }
 
         setStatus("Настраиваем кабинет…");
+        // Sync intent into user_metadata so future triggers/queries see it
+        try {
+          await supabase.auth.updateUser({
+            data: {
+              intent: pending.intent || "candidate",
+              signup_context: pending.project_slug ? "vacancy_landing" : "main",
+              company_slug: pending.company_slug || null,
+              project_slug: pending.project_slug || null,
+            },
+          });
+        } catch { /* non-blocking */ }
         let target = pending.return_to || "/";
         try {
           const res = await fetch(`${FN_URL}/auth-google-finalize`, {
@@ -68,6 +80,7 @@ export default function AuthCallback() {
               ref: pending.ref || "",
               project_slug: pending.project_slug || "",
               company_slug: pending.company_slug || "",
+              project_id: pending.project_id || "",
             }),
           });
           const data = await res.json().catch(() => ({}));
