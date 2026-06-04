@@ -1,122 +1,72 @@
-## 1. Калькулятор и прайс — переходим на RR
+## Цель
 
-Файл: `src/components/HiringCalculator.tsx`
+Убрать «юниты» и множитель ×100, перейти на единую валюту RR (1 RR = 1 ₽). Перестроить страницу «Счета» под 6 заявленных блоков. Ввести списания за генерации и за старт этапов кандидата.
 
-- Заменить везде символ `₽` на `RR` (внутренняя валюта, 1 RR = 1 ₽).
-- В UI нигде не использовать слово «единиц/units» — только **RR**.
-- Сделать коэффициенты «во сколько раз дешевле/быстрее» **динамическими** от значения слайдера `n`:
-  - `ratioMoney = hrCost / totalRR` (1 знак после запятой)
-  - `ratioTime  = (hrTotalH * 60) / totalMin` (целое)
-- Проверка: при `n = 5` должно выйти **×4 дешевле** (4800/1200) и **×27 быстрее** (48·60/107 ≈ 27).
-- Блок «Прайс пакетов»: 200/150/100/50 → подписать `RR`.
-- Разовые услуги: 500 RR / 200 RR / 300 RR.
+## 1. БД — единая валюта RR
 
-## 2. Тексты бонуса — везде «+1000 RR»
+Новая миграция:
 
-Файл: `src/components/AuthModal.tsx`
+- `wallets`: добавить `balance_rr NUMERIC(14,2)` (если ещё нет — он уже есть в первой миграции, но код его не использует), сделать его источником истины. Поле `units_balance` оставить для совместимости, но больше не читать/писать.
+- `apply_transaction(...)` переписать так, чтобы менялся `balance_rr` напрямую в RR (без ×100).
+- Триггер `grant_employer_bonus`: вместо `apply_transaction(_amount=10)` начислять **1000 RR** разово при создании employer; никаких бесплатных лендингов/интервью/обучений.
+- Реферальный бонус: `signup-bootstrap` и SQL — **+1000 RR** пригласившему (вместо 10 units).
+- Новые типы списаний в enum `tx_type` при необходимости: `spend_landing`, `spend_interview_setup`, `spend_training_setup`, `spend_interview_run`, `spend_training_run`, `purchase_interview_pack`, `purchase_training_pack`.
+- Новые счётчики «пакетных лимитов» (то, что покупается оптом и расходуется кандидатами):
+  - `employers.interview_credits INT DEFAULT 0`
+  - `employers.training_credits INT DEFAULT 0`
+- RPC `purchase_pack(_employer, _kind, _qty)`: считает цену по тарифной сетке (1–9=200, 10–49=150, 50–199=100, 200+=50 RR/шт), списывает с `balance_rr`, увеличивает соответствующий `*_credits`, пишет транзакцию.
+- RPC `spend_pack(_employer, _kind)`: −1 от соответствующего `*_credits` идемпотентно по `ref_id`; если кредитов нет — ошибка.
+- RPC `spend_fixed(_employer, _item)`: списывает фиксированную сумму (Лендинг 500, Система интервью 200, Система обучения 300) идемпотентно по `(ref_table, ref_id)`.
 
-- Заголовок: **«Бонус при регистрации: +1000 RR на счёт»**.
-- Под ним список:
-  > Этого хватит на полный AI-цикл найма в пару кликов:
-  > 🌐 ИИ-Лендинг вакансии — 500 RR (готовый сайт-визитка с умным чат-консультантом)
-  > ⚙️ ИИ-Система Интервью — 200 RR (сценарии, скоринг, ситуативные тесты)
-  > 🎓 ИИ-Система Обучения — 300 RR (индивидуальный симулятор онбординга)
-- Бейдж на кнопке Google: `+1000 RR` (вместо `+10 ед.`).
-- Success-баннер: «Начисляем +1000 RR и перенаправляем в кабинет…».
+## 2. Списания за генерацию (бэк)
 
-Файл: `src/pages/LandingPage.tsx`
+В edge-функциях, которые финализируют успешную генерацию:
+- `ai-generate-onboarding` (и аналоги для лендинга/интервью): после `200 OK` от LLM вызывать `spend_fixed` с правильным `_item` и `ref_id = projects.id` (одно списание на проект на тип).
 
-- В hero-секции упоминание бонуса → **«+1000 RR в подарок»** + тот же список из 3 услуг.
+## 3. Списание при старте этапа кандидата
 
-Хелпер: `src/lib/rr.ts` — `unitsToRR(u) = u * 100`. Используется во всех местах вывода баланса. БД-схема не меняется — `wallets.units_balance` хранит единицы, отображаем как RR.
+В клиенте кандидата (страница соискателя), кнопка «Приступить» к ИИ-интервью и к ИИ-обучению:
+- При нажатии вызывать `spend_pack(kind)` через RPC. При успехе — помечать прогресс «начато», кнопка превращается в «Продолжить». Идемпотентность: `candidate_training_progress` / `interviews.started_at` — если запись уже есть, повторно не списывать.
 
-## 3. Настройка Google OAuth + реферальная система
+## 4. Фронт — `src/lib/rr.ts` и `HiringCalculator`
 
-### Часть A. Что я (Lovable) делаю в коде
+- `rr.ts`: убрать `RR_PER_UNIT`/`unitsToRR`. Оставить только `formatRR`. Заменить все импорты на чтение `wallets.balance_rr`.
+- `HiringCalculator` уже корректный — оставить.
 
-1. На странице `/auth` и на лендинге читаю `?ref=emp100001` из URL → сохраняю в `localStorage('rr_ref')` **до** клика по Google (после редиректа query теряется).
-2. После возврата с Google (появилась `session`) — один раз вызываю edge-функцию `signup-bootstrap`:
-  - находит/создаёт строку в `employers` для текущего `auth.uid()`,
-  - если есть `rr_ref` и это **первая** регистрация юзера — начисляет **пригласившему** +10 units (= +1000 RR) через `apply_transaction`,
-  - идемпотентность через таблицу `referrals_emp(referrer_id, referred_id UNIQUE)`.
-3. Новичку бонус +1000 RR начисляет уже существующий триггер `grant_employer_bonus`.
-4. Реферальная ссылка в `EmployerPanel` — блок «Поделиться» с готовой ссылкой `https://hr-rr.online/auth?ref=emp{public_id}` и кнопкой «Скопировать».
-5. Редирект после Google-входа: `redirectTo: ${origin}/employer/profile` — уже стоит.
+## 5. `EmployerPanel.tsx` → страница «5. Тариф & Счета»
 
-### Часть B. Что **тебе** надо сделать руками
+Полностью переписать содержимое вкладки `tariff`. Новый порядок блоков:
 
-**Шаг 1. Google Cloud Console (5 минут)**
+1. **Калькулятор выгоды** — встроить компонент `<HiringCalculator />` тот же, что на лендинге.
+2. **Покупка фиксированных услуг за RR** (как сейчас, но без «лимитов ИИ услуг»): карточки
+   - ИИ-Лендинг вакансии — 500 RR
+   - ИИ-Система Интервью — 200 RR
+   - ИИ-Система Обучения — 300 RR
+   С описанием и кнопкой «Купить» (создаёт «черновой» слот, готовый к привязке к новой вакансии).
+3. **Пополнение пакетных лимитов** (интервью / обучения) с тарифной сеткой 1–9 / 10–49 / 50–199 / 200+ RR за штуку. Поле ввода количества → расчёт итоговой цены и кнопка «Купить пакет». Показ текущих остатков (`interview_credits`, `training_credits`).
+4. **Покупка RR за рубли** — текущий калькулятор пополнения (1 ₽ = 1 RR, мин. 100 ₽), пресеты 100/500/1000, кнопка «Оплатить».
+5. **Реферальный код**:
+   - Кем приглашён: контакт пригласившего (имя, email, телефон/телеграм из его профиля) — JOIN `referrals_emp` → `employers` → `profiles`.
+   - Список приглашённых (по `referrals_emp.referrer_employer_id = me`) с датой и начисленным бонусом.
+   - Реферальная ссылка `/auth?ref=emp{public_id}`.
+6. **История операций** — таблица всех `transactions` по этому кошельку: дата, тип, сумма (+/−), описание, ссылка на объект (проект/кандидат).
 
-1. Открой [https://console.cloud.google.com](https://console.cloud.google.com) → создай проект «HR-RR» (если ещё нет).
-2. Слева **APIs & Services → OAuth consent screen**:
-  - User type: **External** → Create.
-  - App name: `HR Robot Рекрутер`, support email — твой gmail.
-  - Authorized domains: `supabase.co`, `hr-rr.online`, `hr-rr.ru`, `lovable.app`.
-  - Шаг **Scopes** — просто нажми **Save and Continue**, ничего не добавляй (openid/email/profile выдаются автоматически).
-  - Test users → добавь свой gmail → Save.
-3. **APIs & Services → Credentials → + Create credentials → OAuth client ID**:
-  - Application type: **Web application**.
-  - Name: `HR-RR Web`.
-  - **Authorized JavaScript origins** — добавь все:
-    ```
-    https://hr-rr.online
-    https://www.hr-rr.online
-    https://hr-rr.ru
-    https://www.hr-rr.ru
-    https://hr-rr.lovable.app
-    https://id-preview--86998fcc-a4e0-4bf6-8ae7-d8b67afa546d.lovable.app
-    http://localhost:5173
-    ```
-  - **Authorized redirect URIs** — ровно одна строка:
-    ```
-    https://rjhtauzookkvlipvqpvr.supabase.co/auth/v1/callback
-    ```
-  - Create → скопируй **Client ID** и **Client Secret**.
+Убрать из текущей вкладки: блок «Текущие ИИ-Лимиты на балансе» (шт интервью/обучений/лендингов/систем) — заменяется на остатки `interview_credits`/`training_credits` внутри блока 3, а остальные шт. вообще не нужны (они теперь покупаются по факту за фикс-сумму).
 
-**Шаг 2. Supabase Dashboard (2 минуты)**
+В сайдбаре в чипе вместо «{balance} RR» (где balance был units) показывать настоящий `balance_rr`.
 
-1. Открой [https://supabase.com/dashboard/project/rjhtauzookkvlipvqpvr/auth/providers](https://supabase.com/dashboard/project/rjhtauzookkvlipvqpvr/auth/providers)
-2. Найди **Google** → Enable → вставь Client ID и Client Secret → Save.
-3. Слева **Authentication → URL Configuration**:
-  - **Site URL**: `https://hr-rr.online`
-  - **Redirect URLs** (по одной на строку):
-    ```
-    https://hr-rr.online/**
-    https://www.hr-rr.online/**
-    https://hr-rr.ru/**
-    https://www.hr-rr.ru/**
-    https://hr-rr.lovable.app/**
-    https://id-preview--86998fcc-a4e0-4bf6-8ae7-d8b67afa546d.lovable.app/**
-    http://localhost:5173/**
-    ```
-  - Save.
+## 6. Технические детали
 
-**Шаг 3. Проверка**
+- Все денежные значения хранятся как `NUMERIC(14,2)` в RR. Никаких ×100/÷100.
+- Идемпотентность списания за старт этапа: уникальный индекс `(candidate_id, kind)` в новой таблице `stage_starts(candidate_id, kind, created_at, tx_id)` или использовать существующие `interviews.started_at IS NOT NULL` / `candidate_training_progress`.
+- RLS: новые RPC `SECURITY DEFINER`, проверяют что вызывающий — владелец employer (для fixed/pack) или сам кандидат (для spend_pack при старте этапа).
+- Миграция данных: одноразово `UPDATE wallets SET balance_rr = units_balance * 100` для существующих кошельков, чтобы текущие пользователи не потеряли баланс.
 
-1. Инкогнито → `https://hr-rr.online` → «Войти через Google».
-2. Должен вернуть на `/employer/profile`.
-3. Supabase → Authentication → Users — появилась запись.
-4. Таблица `employers` — строка с твоим `user_id` и `public_id` 100xxx.
-5. Таблица `wallets` — `units_balance = 10` (= 1000 RR).
+## Файлы
 
-**Шаг 4. Тест реферальной ссылки**
-
-1. В кабинете возьми ссылку `https://hr-rr.online/auth?ref=emp{твой_public_id}`.
-2. В инкогнито (другой gmail) перейди → войди через Google.
-3. У нового юзера: 1000 RR (триггер).
-4. У тебя: ещё +1000 RR (edge-функция). Проверь в `wallets` и `transactions`.
-
-**Шаг 5. Прод-режим**
-
-OAuth consent screen → **Publish app** (выйти из Testing), иначе максимум 100 тестовых юзеров и предупреждение «unverified app».
-
-### Технические детали (для меня)
-
-- Новая таблица `referrals_emp(referrer_employer_id, referred_employer_id UNIQUE, created_at)` + GRANTs + RLS (только select своих).
-- Edge-функция `signup-bootstrap` (`verify_jwt = false`, JWT валидируется в коде):
-  - вход: `{ ref?: string }`,
-  - читает `auth.uid()`,
-  - находит/создаёт `employers` row,
-  - если `ref` валиден (`emp\d+`) и `INSERT ... ON CONFLICT DO NOTHING RETURNING` вставил строку → `apply_transaction(referrer, 'bonus', 10, 'referrals_emp', referral_id, 'Referral bonus')`.
-- Конвертер `units → RR` в `src/lib/rr.ts`.
-- Калькулятор — чистая клиентская математика, без БД.
+- Новая миграция: `supabase/migrations/<ts>_rr_unified_currency.sql`
+- `supabase/functions/signup-bootstrap/index.ts` — бонус 1000 RR
+- `supabase/functions/ai-generate-onboarding/index.ts` и аналогичные — добавить `spend_fixed`
+- `src/lib/rr.ts` — упростить
+- `src/pages/EmployerPanel.tsx` — переписать вкладку `tariff`
+- `src/pages/CandidateFlow.tsx` — на «Приступить» вызвать `spend_pack`, переключить кнопку на «Продолжить»
