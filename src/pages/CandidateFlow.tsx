@@ -1029,7 +1029,7 @@ export default function CandidateFlow() {
   // Списать 1 лимит интервью/обучения работодателю — идемпотентно.
   const spendStagePack = async (kind: "interview" | "training") => {
     try {
-      const pubId = candidate?.publicId || (candidate?.id || "").replace(/^candidate/, "");
+      const pubId = (candidate as any)?.publicId || (candidate?.id || "").replace(/^candidate/, "");
       if (!pubId) return;
       const { data: cand } = await supabase
         .from("candidates")
