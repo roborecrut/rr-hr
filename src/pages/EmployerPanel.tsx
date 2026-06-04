@@ -126,11 +126,11 @@ export default function EmployerPanel() {
   const [googleId, setGoogleId] = useState("g-1094857293049182743");
   const [googleVerified, setGoogleVerified] = useState(true);
 
-  const [telegramIdState, setTelegramIdState] = useState("59384591");
-  const [telegramPhoto, setTelegramPhoto] = useState("https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=facearea&facepad=2.2&w=256&h=256&q=80");
-  const [telegramFirstName, setTelegramFirstName] = useState("Сергей");
-  const [telegramLastName, setTelegramLastName] = useState("Ковалев");
-  const [telegramUsernameState, setTelegramUsernameState] = useState("cowal_sales");
+  const [telegramIdState, setTelegramIdState] = useState("");
+  const [telegramPhoto, setTelegramPhoto] = useState("");
+  const [telegramFirstName, setTelegramFirstName] = useState("");
+  const [telegramLastName, setTelegramLastName] = useState("");
+  const [telegramUsernameState, setTelegramUsernameState] = useState("");
   const [telegramPhone, setTelegramPhone] = useState<string>("");
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
