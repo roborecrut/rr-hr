@@ -1362,18 +1362,24 @@ export default function EmployerPanel() {
           </div>
 
           <nav className="hidden md:flex items-center justify-center gap-2 md:gap-4 text-xs md:text-sm font-semibold">
-            <button onClick={() => navigate("/main")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Главная
-            </button>
-            <button onClick={() => navigate("/vacancy")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">
-              Каталог Профессий
-            </button>
-            <button onClick={() => navigate("/employer/crm")} className="transition px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">
-              Панель Работодателя 💼
-            </button>
-            <button onClick={() => navigate("/candidate")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 bg-white/5 border border-white/10">
-              Кабинет Соискателя 🎓
-            </button>
+            {[
+              { tab: "profile",   label: "Профиль",  slug: "profile" },
+              { tab: "companies", label: "Компании", slug: "companies" },
+              { tab: "vacancies", label: "Вакансии", slug: "vacancies" },
+              { tab: "vacancies", label: "Чек-листы", slug: "vacancies#checklists" },
+              { tab: "vacancies", label: "Тесты",    slug: "vacancies#tests" },
+              { tab: "crm",       label: "CRM",      slug: "crm" },
+              { tab: "tariff",    label: "Тариф",    slug: "tariff" },
+              { tab: "events",    label: "События",  slug: "events" },
+            ].map((it) => (
+              <button
+                key={it.label}
+                onClick={() => navigate(`/employer${employerId}/${it.slug.split("#")[0]}`)}
+                className={`transition px-3 py-2 rounded-xl ${activeTab === it.tab ? "text-[#E7C768] bg-white/10 border border-[#E7C768]/30" : "text-slate-300 hover:text-white hover:bg-white/10"}`}
+              >
+                {it.label}
+              </button>
+            ))}
           </nav>
 
           <div className="hidden md:flex items-center gap-3">
@@ -1394,10 +1400,24 @@ export default function EmployerPanel() {
         {/* Mobile Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 pt-4 border-t border-white/10 flex flex-col gap-3 font-semibold">
-            <button onClick={() => { navigate("/main"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Главная</button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Каталог Профессий</button>
-            <button onClick={() => { navigate("/employer/crm"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-[#E7C768] bg-white/10">Панель Работодателя</button>
-            <button onClick={() => { navigate("/candidate"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-slate-300 hover:text-white hover:bg-white/5">Кабинет Соискателя</button>
+            {[
+              { tab: "profile",   label: "Профиль",   slug: "profile" },
+              { tab: "companies", label: "Компании",  slug: "companies" },
+              { tab: "vacancies", label: "Вакансии",  slug: "vacancies" },
+              { tab: "vacancies", label: "Чек-листы", slug: "vacancies" },
+              { tab: "vacancies", label: "Тесты",     slug: "vacancies" },
+              { tab: "crm",       label: "CRM",       slug: "crm" },
+              { tab: "tariff",    label: "Тариф",     slug: "tariff" },
+              { tab: "events",    label: "События",   slug: "events" },
+            ].map((it) => (
+              <button
+                key={it.label}
+                onClick={() => { navigate(`/employer${employerId}/${it.slug}`); setMobileMenuOpen(false); }}
+                className={`transition text-left w-full px-4 py-3 rounded-xl ${activeTab === it.tab ? "text-[#E7C768] bg-white/10" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
+              >
+                {it.label}
+              </button>
+            ))}
             <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 rounded-xl text-red-300 hover:bg-red-950/25">Выйти из кабинета</button>
           </div>
         )}
