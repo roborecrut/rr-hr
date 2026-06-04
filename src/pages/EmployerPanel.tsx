@@ -45,7 +45,11 @@ import {
   Award,
   Sparkles,
   ChevronRight,
-  Phone
+  Phone,
+  MessageSquare,
+  GraduationCap,
+  Upload,
+  Wand2
 } from "lucide-react";
 import {
   VacancyView,
