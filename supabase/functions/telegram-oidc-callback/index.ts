@@ -164,9 +164,11 @@ Deno.serve(async (req) => {
     });
     tokenJson = await tr.json();
     if (!tr.ok || !tokenJson.id_token) {
+      await logEvent({ kind: "callback_failed", source: "callback", reason: "token_exchange_failed", intent: st.intent as string, meta: { status: tr.status, body: tokenJson } });
       return fallbackDone(redirectBase, `error=${encodeURIComponent("token_exchange_failed: " + JSON.stringify(tokenJson))}`);
     }
   } catch (e: any) {
+    await logEvent({ kind: "callback_failed", source: "callback", reason: "token_request_failed", intent: st.intent as string, meta: { msg: e?.message } });
     return fallbackDone(redirectBase, `error=${encodeURIComponent("token_request_failed: " + e.message)}`);
   }
 
@@ -175,6 +177,7 @@ Deno.serve(async (req) => {
   try {
     claims = await verifyIdToken(tokenJson.id_token);
   } catch (e: any) {
+    await logEvent({ kind: "callback_failed", source: "callback", reason: "id_token_invalid", intent: st.intent as string, meta: { msg: e?.message } });
     return fallbackDone(redirectBase, `error=${encodeURIComponent("id_token_invalid: " + e.message)}`);
   }
 
