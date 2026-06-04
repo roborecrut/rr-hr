@@ -1111,6 +1111,8 @@ export type Database = {
           id: string
           is_published: boolean
           logo_url: string | null
+          max_interviews: number | null
+          max_trainings: number | null
           mission_text: string | null
           motivation_text: string | null
           motivation_text_detail: string | null
@@ -1143,6 +1145,8 @@ export type Database = {
           id?: string
           is_published?: boolean
           logo_url?: string | null
+          max_interviews?: number | null
+          max_trainings?: number | null
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
@@ -1175,6 +1179,8 @@ export type Database = {
           id?: string
           is_published?: boolean
           logo_url?: string | null
+          max_interviews?: number | null
+          max_trainings?: number | null
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
@@ -1833,6 +1839,7 @@ export type Database = {
         Returns: boolean
       }
       slugify_ru: { Args: { _input: string }; Returns: string }
+      spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
