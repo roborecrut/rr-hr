@@ -758,28 +758,20 @@ export default function EmployerPanel() {
     navigate("/main");
   };
 
-  // Action: Buy Service Limits via Balance RR
-  const handlePurchaseItem = async (itemType: "interview" | "training" | "landing" | "system_interview" | "system_training") => {
+  // Покупка пакета лимитов интервью/обучения по тарифной сетке (RR → лимит шт.)
+  const handleBuyPack = async (kind: "interview" | "training") => {
     setPurchaseError("");
-    setIsBuying(itemType);
+    setPackBusy(kind);
     try {
-      const res = await fetch(`/api/employers/${employerId}/purchase`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemType })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Ошибка при списании баланса.");
-      }
-      setBalance(data.balance);
-      if (data.limits) setLimits(data.limits);
-      addAuditEvent("success", "Услуга приобретена", `Успешно куплено: ${itemType}`);
-      fetchData();
+      const qty = Math.max(1, Math.floor(packQty[kind] || 0));
+      const { error } = await supabase.rpc("purchase_pack", { _kind: kind, _qty: qty });
+      if (error) throw new Error(error.message || "Ошибка покупки пакета");
+      addAuditEvent("success", "Пакет приобретён", `${kind === "interview" ? "Интервью" : "Обучение"}: +${qty} шт.`);
+      await fetchBillingState();
     } catch (err: any) {
-      setPurchaseError(err.message);
+      setPurchaseError(translateBillingError(err.message));
     } finally {
-      setIsBuying(null);
+      setPackBusy(null);
     }
   };
 
@@ -792,20 +784,12 @@ export default function EmployerPanel() {
     }
     setIsToppingUp(true);
     try {
-      const res = await fetch(`/api/employers/${employerId}/topup`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountRubles: topupAmountRub })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Не удалось пополнить баланс.");
-      }
-      setBalance(data.balance);
+      const { error } = await supabase.rpc("topup_rr", { _amount_rub: topupAmountRub });
+      if (error) throw new Error(error.message || "Не удалось пополнить баланс");
       addAuditEvent("success", "Баланс пополнен", `Зачислено: +${topupAmountRub} RR`);
-      fetchData();
+      await fetchBillingState();
     } catch (err: any) {
-      alert(err.message);
+      alert(translateBillingError(err.message));
     } finally {
       setIsToppingUp(false);
     }
