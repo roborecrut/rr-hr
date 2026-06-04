@@ -26,21 +26,48 @@ export default function SessionBootstrap() {
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event !== "SIGNED_IN" || !session?.user) return;
       const doneKey = `${DONE_KEY}:${session.user.id}`;
-      if (localStorage.getItem(doneKey)) return;
-
+      const alreadyDone = !!localStorage.getItem(doneKey);
       const ref = localStorage.getItem(REF_KEY) || undefined;
-      // Defer to next tick so React/Router doesn't fight us
-      setTimeout(async () => {
+
+      const redirectToEmployerProfile = async () => {
         try {
-          await supabase.functions.invoke("signup-bootstrap", {
-            body: { ref },
-          });
+          const { data: emp } = await supabase
+            .from("employers")
+            .select("public_id")
+            .eq("user_id", session.user.id)
+            .maybeSingle();
+          if (emp?.public_id) {
+            const target = `/emp${emp.public_id}/profile`;
+            const here = window.location.pathname;
+            // Only auto-redirect from the auth/landing/legacy paths
+            if (
+              here === "/" ||
+              here === "/main" ||
+              here === "/auth" ||
+              here.startsWith("/employer")
+            ) {
+              window.history.replaceState({}, "", target);
+              // Trigger router update
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }
+          }
         } catch (e) {
-          console.warn("[signup-bootstrap] failed", e);
-        } finally {
-          localStorage.setItem(doneKey, "1");
-          localStorage.removeItem(REF_KEY);
+          console.warn("[redirect] failed", e);
         }
+      };
+
+      setTimeout(async () => {
+        if (!alreadyDone) {
+          try {
+            await supabase.functions.invoke("signup-bootstrap", { body: { ref } });
+          } catch (e) {
+            console.warn("[signup-bootstrap] failed", e);
+          } finally {
+            localStorage.setItem(doneKey, "1");
+            localStorage.removeItem(REF_KEY);
+          }
+        }
+        await redirectToEmployerProfile();
       }, 0);
     });
 
