@@ -2600,6 +2600,7 @@ export default function CandidateFlow() {
               onClick={() => {
                 updateStageOnBackend("training");
                 setActiveTab("training");
+                spendStagePack("training");
               }}
               className="cursor-pointer w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold py-3.5 rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2"
             >
