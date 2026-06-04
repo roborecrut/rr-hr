@@ -115,10 +115,13 @@ export default function CompanyLanding() {
     if (selectedVacancy && visibleTabs.length > 0) {
       const isCurrentTabVisible = visibleTabs.some(t => t.key === subTab);
       if (!isCurrentTabVisible) {
-        navigate(`/${companySlug}/${selectedVacancy.id}/${visibleTabs[0].key}`);
+        const base = companyPublicId
+          ? `/com${companyPublicId}${vacancyPublicId ? `/vac${vacancyPublicId}` : ""}`
+          : `/${companySlug}/${selectedVacancy.id}`;
+        navigate(`${base}/${visibleTabs[0].key}`);
       }
     }
-  }, [subTab, selectedVacancy?.id, visibleTabs.length, companySlug]);
+  }, [subTab, selectedVacancy?.id, visibleTabs.length, companySlug, companyPublicId, vacancyPublicId]);
 
   // Consultant chatbot conversation state
   const [messages, setMessages] = useState<Message[]>([]);
