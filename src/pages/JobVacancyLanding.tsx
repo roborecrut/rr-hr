@@ -191,6 +191,61 @@ export default function JobVacancyLanding() {
     }
   };
 
+  // Real candidate OAuth: registers as employee bound to this employer/vacancy.
+  const triggerOneClickRegister = async (method: "google" | "telegram") => {
+    if (submitting || !project) return;
+    setSubmitting(true);
+    try {
+      const ctx = {
+        intent: "candidate" as const,
+        company_slug: (project as any).companySlug || "",
+        project_slug: (project as any).slug || "",
+        project_id: project.id,
+        return_to: window.location.pathname + window.location.search,
+      };
+      if (method === "google") {
+        sessionStorage.setItem("pendingGoogleAuth", JSON.stringify(ctx));
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: `${window.location.origin}/auth/callback` },
+        });
+        if (error) throw error;
+      } else {
+        const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+        const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...ctx,
+            origin: window.location.origin,
+            redirect_to: window.location.origin + window.location.pathname + window.location.search,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.url) {
+          try {
+            fetch(`${FN_URL}/log-client-error`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                source: "telegram-oidc-start",
+                message: `${res.status} ${data?.error || "unknown"}`,
+                meta: { status: res.status, body: data, intent: "candidate", project_id: project.id },
+              }),
+              keepalive: true,
+            });
+          } catch { /* ignore */ }
+          throw new Error(`Telegram: ${data?.error || data?.reason || res.status}`);
+        }
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.error("OneClick register failed:", err);
+      alert(err?.message || "Не удалось начать регистрацию");
+      setSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="bg-[#17344F] min-h-screen text-white flex items-center justify-center font-sans">
