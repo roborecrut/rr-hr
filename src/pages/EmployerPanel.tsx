@@ -2208,7 +2208,7 @@ export default function EmployerPanel() {
                             href={`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`} 
                             className="cursor-pointer text-sky-300 font-mono text-[10.5px] hover:underline hover:text-sky-450 block truncate"
                           >
-                            https://hr-rr.online/{proj.companySlug || ""}/{(proj as any).slug || proj.id}
+                            https://hr-rr.online/com{proj.companySlug || ""}/vac{(proj as any).slug || proj.id}
                           </a>
                         </div>
                       </div>
@@ -2714,7 +2714,7 @@ export default function EmployerPanel() {
                       <div className="bg-black/20 border border-white/5 p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                         <div className="space-y-0.5">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">ИИ-Лендинг Компании для Кандидатов</span>
-                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/{comp.slug}</span>
+                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/com{comp.slug}</span>
                         </div>
                         <button
                           onClick={() => navigate(`/${comp.slug}`)}
@@ -3497,13 +3497,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://t.me/HR_RRbot/app?startapp=${employerId}`}
+                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-[#E7C768] text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          const url = `https://t.me/HR_RRbot/app?startapp=${employerId}`;
+                          const url = `https://hr-rr.online/auth?ref=emp${employerId}`;
                           navigator.clipboard.writeText(url);
                           addAuditEvent("success", "Реф-ссылка скопирована", "Telegram Mini App реф-ссылка скопирована в буфер обмена.");
                           alert("Telegram реферальная ссылка скопирована!\n\n" + url);
@@ -3521,13 +3521,13 @@ export default function EmployerPanel() {
                       <input
                         type="text"
                         readOnly
-                        value={`https://hr-rr.online/auth?ref=${employerId}`}
+                        value={`https://hr-rr.online/auth?ref=emp${employerId}`}
                         className="bg-black/40 w-full select-all font-mono font-normal text-emerald-400 text-[11px] border border-white/10 p-2 rounded-xl focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => {
-                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=${employerId}`);
+                          navigator.clipboard.writeText(`https://hr-rr.online/auth?ref=emp${employerId}`);
                           addAuditEvent("success", "Web реф-ссылка скопирована", "Веб-реф-ссылка скопирована в буфер обмена.");
                           alert("Веб-реф-ссылка скопирована!");
                         }}
