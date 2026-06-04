@@ -593,22 +593,16 @@ export default function CandidateFlow() {
     setAssistLoading(true);
 
     try {
-      const res = await fetch("/api/candidate-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId: candidate?.id || "",
-          userQuestion: userText,
-          contextTab: activeTab,
-          contextSubTab: activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")
-        })
+      const { aiChat } = await import("@/lib/aiClient");
+      const contextLine = `Раздел: ${activeTab}; Подраздел: ${activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")}`;
+      const reply = await aiChat({
+        kind: "candidate",
+        candidate_id: candidate?.id,
+        project_id: candidate?.projectId,
+        context: contextLine,
+        messages: [{ role: "user", content: userText }],
       });
-      if (res.ok) {
-        const data = await res.json();
-        setAssistHistory(prev => [...prev, { sender: "ai", text: data.reply }]);
-      } else {
-        setAssistHistory(prev => [...prev, { sender: "ai", text: "Прошу прощения, произошла небольшая ошибка. Давайте попробуем еще раз!" }]);
-      }
+      setAssistHistory(prev => [...prev, { sender: "ai", text: reply || "Я задумался… попробуйте задать вопрос иначе." }]);
     } catch (err) {
       console.error(err);
       setAssistHistory(prev => [...prev, { sender: "ai", text: "Не удалось отправить сообщение. Пожалуйста, проверьте интернет-соединение." }]);
@@ -1055,20 +1049,19 @@ export default function CandidateFlow() {
     if (!candidate) return;
     setResumeAnalysing(true);
     try {
-      const payload = {
-        candidateId: candidate.id,
-        resumeText: resumeTextEntry + (resumeFile ? ` [Файл: ${resumeFile.name}]` : "")
-      };
-      const res = await fetch("/api/evaluate-resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "resume",
+        candidate_id: candidate.id,
+        project_id: candidate.projectId,
+        payload: {
+          role_name: candidate.roleName,
+          resume: resumeTextEntry + (resumeFile ? ` [Файл: ${resumeFile.name}]` : ""),
+        },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setResumeFeedback(data.feedback);
-        await refreshCandidate();
-      }
+      const feedback = result?.summary || `Сильные стороны: ${(result?.strengths || []).join(", ")}\nПробелы: ${(result?.gaps || []).join(", ")}`;
+      setResumeFeedback(feedback);
+      await refreshCandidate();
     } catch (e) {
       console.error(e);
     } finally {
@@ -1085,24 +1078,21 @@ export default function CandidateFlow() {
       setChecklistAnalysing(true);
     }
     try {
-      const res = await fetch("/api/evaluate-checklist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId: candidate.id,
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "checklist",
+        candidate_id: candidate.id,
+        project_id: candidate.projectId,
+        payload: {
+          is_system: isSys,
           answers: isSys ? checklistSysAnswers : checklistAnswers,
-          isSystem: isSys
-        })
+        },
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (isSys) {
-          setChecklistSysFeedback(data.feedback);
-        } else {
-          setChecklistFeedback(data.feedback);
-        }
-        await refreshCandidate();
-      }
+      const feedback = `Итог: ${result?.total ?? "—"}/100\n` +
+        (result?.items || []).map((it: any, i: number) => `${i+1}. ${it.feedback || ""}`).join("\n");
+      if (isSys) setChecklistSysFeedback(feedback);
+      else setChecklistFeedback(feedback);
+      await refreshCandidate();
     } catch (e) {
       console.error(e);
     } finally {
@@ -1124,21 +1114,16 @@ export default function CandidateFlow() {
 
     setSitEvaluatingId(targetSit.id);
     try {
-      const res = await fetch("/api/evaluate-situations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId: candidate?.id || "",
-          answers: [
-            { question: targetSit.title || targetSit.desc, answer: userMsgText }
-          ]
-        })
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "situations",
+        candidate_id: candidate?.id,
+        project_id: candidate?.projectId,
+        payload: { answers: [{ question: targetSit.title || targetSit.desc, answer: userMsgText }] },
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        targetSit.score = data.situationsScore || 85;
-        targetSit.feedback = data.feedback || "Прекрасно обыграли ситуацию!";
+      {
+        targetSit.score = result?.total ?? result?.items?.[0]?.score ?? 85;
+        targetSit.feedback = result?.advice || result?.items?.[0]?.feedback || "Прекрасно обыграли ситуацию!";
         targetSit.transcript.push({
           sender: "bot",
           text: `🎯 Оценка за кейс: ${targetSit.score} / 100 баллов.\n\nРазбор Робота:\n${targetSit.feedback}`
@@ -1164,19 +1149,16 @@ export default function CandidateFlow() {
         question: sit.title,
         answer: sit.transcript.map((t: any) => `${t.sender === "user" ? "Вы" : "Робот"}: ${t.text}`).join("\n")
       }));
-      const res = await fetch("/api/evaluate-situations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId: candidate.id,
-          answers: formattedCaseAnswers
-        })
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      await aiEvaluate({
+        mode: "situations",
+        candidate_id: candidate.id,
+        project_id: candidate.projectId,
+        payload: { answers: formattedCaseAnswers },
       });
-      if (res.ok) {
-        await refreshCandidate();
-        await updateStageOnBackend("scoring");
-        setActiveTab("scoring");
-      }
+      await refreshCandidate();
+      await updateStageOnBackend("scoring");
+      setActiveTab("scoring");
     } catch (e) {
       console.error(e);
     } finally {
@@ -1262,22 +1244,17 @@ export default function CandidateFlow() {
     setTrainingExamAnalysing(true);
     try {
       const bIdx = getTrainingBlockIdx();
-      const res = await fetch("/api/evaluate-training-block", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          candidateId: candidate.id,
-          blockIndex: bIdx,
-          answers: trainingAnswers
-        })
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "training_block",
+        candidate_id: candidate.id,
+        project_id: candidate.projectId,
+        payload: { block_index: bIdx, answers: trainingAnswers },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setTrainingExamScore(data.overallScore);
-        setTrainingExamFeedback(data.feedback);
-        setTrainingExamSubmitted(true);
-        await refreshCandidate();
-      }
+      setTrainingExamScore(result?.block_score ?? 0);
+      setTrainingExamFeedback(result?.summary || "");
+      setTrainingExamSubmitted(true);
+      await refreshCandidate();
     } catch (e) {
       console.error(e);
     } finally {
