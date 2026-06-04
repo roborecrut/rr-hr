@@ -28,7 +28,6 @@ import {
   Heart,
   Menu,
   X,
-  Send,
   Chrome
 } from "lucide-react";
 
