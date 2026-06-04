@@ -704,9 +704,31 @@ export default function EmployerPanel() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { supabase } = await import("@/integrations/supabase/client");
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || cancelled) return;
+
+      // Pull real Google identity from auth user_metadata
+      const meta: any = user.user_metadata || {};
+      const fullName = meta.full_name || meta.name || meta.display_name || "";
+      const picture = meta.avatar_url || meta.picture || "";
+      const sub = meta.sub || meta.provider_id || user.id;
+      if (fullName) { setGoogleName(fullName); setProfileName(fullName); }
+      if (picture) setGooglePhoto(picture);
+      if (sub) setGoogleId(String(sub));
+      if (user.email) { setGoogleEmail(user.email); setProfileEmail(user.email); }
+      setGoogleVerified(true);
+
+      // Pull saved contact details from employers row
+      const { data: emp } = await supabase
+        .from("employers")
+        .select("contact_phone, contact_telegram")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cancelled && emp) {
+        if ((emp as any).contact_phone) setProfilePhone((emp as any).contact_phone);
+        if ((emp as any).contact_telegram) setTelegramUsernameState((emp as any).contact_telegram.replace(/^@/, ""));
+      }
+
       const { data: prof } = await supabase
         .from("profiles")
         .select("email")
