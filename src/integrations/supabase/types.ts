@@ -350,7 +350,6 @@ export type Database = {
           project_id: string | null
           public_id: string | null
           ref_source: string | null
-          referrer_employer_id: string | null
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -368,7 +367,6 @@ export type Database = {
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
-          referrer_employer_id?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -386,7 +384,6 @@ export type Database = {
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
-          referrer_employer_id?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
@@ -402,13 +399,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidates_referrer_employer_id_fkey"
-            columns: ["referrer_employer_id"]
-            isOneToOne: false
-            referencedRelation: "employers"
             referencedColumns: ["id"]
           },
         ]
@@ -455,33 +445,6 @@ export type Database = {
           },
         ]
       }
-      client_errors: {
-        Row: {
-          created_at: string
-          id: string
-          message: string
-          meta: Json
-          source: string
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message: string
-          meta?: Json
-          source: string
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message?: string
-          meta?: Json
-          source?: string
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       companies: {
         Row: {
           about_text: string | null
@@ -493,7 +456,6 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text: string | null
-          public_id: string | null
           schedule_text: string | null
           slug: string | null
           stats: Json
@@ -511,7 +473,6 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text?: string | null
-          public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
@@ -529,7 +490,6 @@ export type Database = {
           name?: string
           owner_employer_id?: string
           payouts_text?: string | null
-          public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
@@ -630,7 +590,6 @@ export type Database = {
           public_id: string | null
           ref_by: string | null
           status: string | null
-          telegram_bonus_granted: boolean
           updated_at: string
           user_id: string | null
         }
@@ -646,7 +605,6 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
-          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -662,7 +620,6 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
-          telegram_bonus_granted?: boolean
           updated_at?: string
           user_id?: string | null
         }
@@ -707,7 +664,6 @@ export type Database = {
           finished_at: string | null
           id: string
           project_id: string | null
-          public_id: string | null
           started_at: string
           status: string
           transcript_text: string | null
@@ -719,7 +675,6 @@ export type Database = {
           finished_at?: string | null
           id?: string
           project_id?: string | null
-          public_id?: string | null
           started_at?: string
           status?: string
           transcript_text?: string | null
@@ -731,7 +686,6 @@ export type Database = {
           finished_at?: string | null
           id?: string
           project_id?: string | null
-          public_id?: string | null
           started_at?: string
           status?: string
           transcript_text?: string | null
@@ -786,45 +740,6 @@ export type Database = {
           },
         ]
       }
-      oauth_states: {
-        Row: {
-          code_verifier: string
-          company_slug: string | null
-          created_at: string
-          intent: string
-          project_id: string | null
-          project_slug: string | null
-          provider: string
-          redirect_to: string | null
-          ref: string | null
-          state: string
-        }
-        Insert: {
-          code_verifier: string
-          company_slug?: string | null
-          created_at?: string
-          intent: string
-          project_id?: string | null
-          project_slug?: string | null
-          provider?: string
-          redirect_to?: string | null
-          ref?: string | null
-          state: string
-        }
-        Update: {
-          code_verifier?: string
-          company_slug?: string | null
-          created_at?: string
-          intent?: string
-          project_id?: string | null
-          project_slug?: string | null
-          provider?: string
-          redirect_to?: string | null
-          ref?: string | null
-          state?: string
-        }
-        Relationships: []
-      }
       payments: {
         Row: {
           amount: number
@@ -874,14 +789,12 @@ export type Database = {
       }
       profiles: {
         Row: {
-          account_kinds: string[]
           avatar_url: string | null
           created_at: string
           display_name: string | null
           email: string | null
           google_email: string | null
           id: string
-          last_signup_intent: string | null
           locale: string | null
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
@@ -895,14 +808,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_kinds?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           google_email?: string | null
           id: string
-          last_signup_intent?: string | null
           locale?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
@@ -916,14 +827,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_kinds?: string[]
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           email?: string | null
           google_email?: string | null
           id?: string
-          last_signup_intent?: string | null
           locale?: string | null
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
@@ -1111,14 +1020,11 @@ export type Database = {
           id: string
           is_published: boolean
           logo_url: string | null
-          max_interviews: number | null
-          max_trainings: number | null
           mission_text: string | null
           motivation_text: string | null
           motivation_text_detail: string | null
           onboarding_text: string | null
           payouts_text: string | null
-          public_id: string | null
           role_name: string
           salary_terms: string | null
           schedule_terms: string | null
@@ -1145,14 +1051,11 @@ export type Database = {
           id?: string
           is_published?: boolean
           logo_url?: string | null
-          max_interviews?: number | null
-          max_trainings?: number | null
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           payouts_text?: string | null
-          public_id?: string | null
           role_name: string
           salary_terms?: string | null
           schedule_terms?: string | null
@@ -1179,14 +1082,11 @@ export type Database = {
           id?: string
           is_published?: boolean
           logo_url?: string | null
-          max_interviews?: number | null
-          max_trainings?: number | null
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           payouts_text?: string | null
-          public_id?: string | null
           role_name?: string
           salary_terms?: string | null
           schedule_terms?: string | null
@@ -1219,105 +1119,33 @@ export type Database = {
           },
         ]
       }
-      rate_limits: {
-        Row: {
-          count: number
-          key: string
-          window_start: string
-        }
-        Insert: {
-          count?: number
-          key: string
-          window_start?: string
-        }
-        Update: {
-          count?: number
-          key?: string
-          window_start?: string
-        }
-        Relationships: []
-      }
       referrals: {
         Row: {
           created_at: string
           id: string
-          intent: string | null
           owner_user_id: string
           redeemed_at: string | null
           ref_code: string
-          referee_kind: string
           reward_rr: number | null
           used_by_user_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
-          intent?: string | null
           owner_user_id: string
           redeemed_at?: string | null
           ref_code: string
-          referee_kind?: string
           reward_rr?: number | null
           used_by_user_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
-          intent?: string | null
           owner_user_id?: string
           redeemed_at?: string | null
           ref_code?: string
-          referee_kind?: string
           reward_rr?: number | null
           used_by_user_id?: string | null
-        }
-        Relationships: []
-      }
-      telegram_events: {
-        Row: {
-          created_at: string
-          host: string | null
-          id: string
-          intent: string | null
-          ip_hash: string | null
-          kind: string
-          meta: Json
-          next_path: string | null
-          path: string | null
-          reason: string | null
-          source: string | null
-          ua_hash: string | null
-          vacancy_count: number | null
-        }
-        Insert: {
-          created_at?: string
-          host?: string | null
-          id?: string
-          intent?: string | null
-          ip_hash?: string | null
-          kind: string
-          meta?: Json
-          next_path?: string | null
-          path?: string | null
-          reason?: string | null
-          source?: string | null
-          ua_hash?: string | null
-          vacancy_count?: number | null
-        }
-        Update: {
-          created_at?: string
-          host?: string | null
-          id?: string
-          intent?: string | null
-          ip_hash?: string | null
-          kind?: string
-          meta?: Json
-          next_path?: string | null
-          path?: string | null
-          reason?: string | null
-          source?: string | null
-          ua_hash?: string | null
-          vacancy_count?: number | null
         }
         Relationships: []
       }
@@ -1439,7 +1267,6 @@ export type Database = {
           id: string
           order_index: number
           project_id: string
-          public_id: string | null
           title: string
         }
         Insert: {
@@ -1448,7 +1275,6 @@ export type Database = {
           id?: string
           order_index?: number
           project_id: string
-          public_id?: string | null
           title: string
         }
         Update: {
@@ -1457,7 +1283,6 @@ export type Database = {
           id?: string
           order_index?: number
           project_id?: string
-          public_id?: string | null
           title?: string
         }
         Relationships: [
@@ -1618,7 +1443,6 @@ export type Database = {
           employer_id: string
           hold_rr: number
           id: string
-          units_balance: number
           updated_at: string
         }
         Insert: {
@@ -1627,7 +1451,6 @@ export type Database = {
           employer_id: string
           hold_rr?: number
           id?: string
-          units_balance?: number
           updated_at?: string
         }
         Update: {
@@ -1636,7 +1459,6 @@ export type Database = {
           employer_id?: string
           hold_rr?: number
           id?: string
-          units_balance?: number
           updated_at?: string
         }
         Relationships: [
@@ -1720,20 +1542,10 @@ export type Database = {
       }
     }
     Functions: {
-      admin_telegram_metrics: { Args: { _hours?: number }; Returns: Json }
-      apply_referral_bonus:
-        | {
-            Args: { _new_user: string; _referrer_public_id: string }
-            Returns: undefined
-          }
-        | {
-            Args: {
-              _intent?: string
-              _new_user: string
-              _referrer_public_id: string
-            }
-            Returns: undefined
-          }
+      apply_referral_bonus: {
+        Args: { _new_user: string; _referrer_public_id: string }
+        Returns: undefined
+      }
       apply_transaction: {
         Args: {
           _amount: number
@@ -1761,49 +1573,6 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
-      get_my_referees: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          created_at: string
-          display_name: string
-          email: string
-          google_email: string
-          intent: string
-          referee_kind: string
-          registered_via: string
-          reward_rr: number
-          telegram_first_name: string
-          telegram_last_name: string
-          telegram_photo_url: string
-          telegram_username: string
-          used_by_user_id: string
-        }[]
-      }
-      get_my_referrer: {
-        Args: never
-        Returns: {
-          avatar_url: string
-          created_at: string
-          display_name: string
-          email: string
-          google_email: string
-          intent: string
-          owner_public_id: string
-          owner_user_id: string
-          ref_code: string
-          referee_kind: string
-          registered_via: string
-          telegram_first_name: string
-          telegram_last_name: string
-          telegram_photo_url: string
-          telegram_username: string
-        }[]
-      }
-      grant_telegram_link_bonus: {
-        Args: { _employer: string }
-        Returns: boolean
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1813,20 +1582,6 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
-      log_telegram_event: {
-        Args: {
-          _host?: string
-          _intent?: string
-          _kind: string
-          _meta?: Json
-          _next_path?: string
-          _path?: string
-          _reason?: string
-          _source?: string
-          _vacancy_count?: number
-        }
-        Returns: undefined
-      }
       referral_lookup: {
         Args: { _code: string }
         Returns: {
@@ -1834,12 +1589,7 @@ export type Database = {
           ref_code: string
         }[]
       }
-      rl_hit: {
-        Args: { _key: string; _limit: number; _window_sec: number }
-        Returns: boolean
-      }
       slugify_ru: { Args: { _input: string }; Returns: string }
-      spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
