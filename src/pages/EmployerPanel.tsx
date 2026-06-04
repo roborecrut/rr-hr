@@ -872,7 +872,7 @@ export default function EmployerPanel() {
 
       addAuditEvent("success", "ИИ-Блок онбординга собран", `Программа лекций, ситуационных вопросов создана для ${setupRoleName}`);
       setShowAddNewVacancy(false);
-      navigate(`/employer${employerId}/vacancies`);
+      navigate(`/emp${employerId}/vacancies`);
       fetchData();
     } catch (err: any) {
       alert("Ошибка при генерации: " + err.message);
@@ -1379,7 +1379,7 @@ export default function EmployerPanel() {
             {/* SIX REQUIRED PAGES */}
             <div className="space-y-1.5 pt-2 text-left">
               <button
-                onClick={() => navigate(`/employer${employerId}/profile`)}
+                onClick={() => navigate(`/emp${employerId}/profile`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "profile" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1389,7 +1389,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/companies`)}
+                onClick={() => navigate(`/emp${employerId}/companies`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "companies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1399,7 +1399,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                onClick={() => navigate(`/emp${employerId}/vacancies`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1409,7 +1409,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => { navigate(`/employer${employerId}/crm`); setCrmViewMode("kanban"); }}
+                onClick={() => { navigate(`/emp${employerId}/crm`); setCrmViewMode("kanban"); }}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "crm" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1419,7 +1419,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/tariff`)}
+                onClick={() => navigate(`/emp${employerId}/tariff`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "tariff" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1429,7 +1429,7 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/employer${employerId}/events`)}
+                onClick={() => navigate(`/emp${employerId}/events`)}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "events" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -1516,7 +1516,7 @@ export default function EmployerPanel() {
               {/* Progress Stepper row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/profile`)}
+                  onClick={() => navigate(`/emp${employerId}/profile`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "profile"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -1533,7 +1533,7 @@ export default function EmployerPanel() {
                 </button>
 
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/companies`)}
+                  onClick={() => navigate(`/emp${employerId}/companies`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "companies"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -1550,7 +1550,7 @@ export default function EmployerPanel() {
                 </button>
 
                 <button 
-                  onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                  onClick={() => navigate(`/emp${employerId}/vacancies`)}
                   className={`text-left border p-3 rounded-2xl flex items-center gap-3 transition cursor-pointer ${
                     activeTab === "vacancies"
                       ? "bg-[#1E4468] border-[#E7C768] text-[#E7C768] shadow"
@@ -2746,7 +2746,7 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-350">Переходите к финальному шагу онбординга — размещению вашей первой вакансии с ИИ-куратором.</p>
                 </div>
                 <button
-                  onClick={() => navigate(`/employer${employerId}/vacancies`)}
+                  onClick={() => navigate(`/emp${employerId}/vacancies`)}
                   className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3 px-6 rounded-2xl flex items-center gap-1.5 transition-all text-center shrink-0 w-full sm:w-auto justify-center animate-pulse"
                 >
                   <span>Далее: Разместить вакансию</span>
@@ -3547,7 +3547,7 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-350">Переходите к следующему шагу — созданию вашей первой компании и ИИ-лендинга.</p>
                 </div>
                 <button
-                  onClick={() => navigate(`/employer${employerId}/companies`)}
+                  onClick={() => navigate(`/emp${employerId}/companies`)}
                   className="cursor-pointer bg-gradient-to-r from-amber-500 to-orange-600 hover:scale-102 hover:shadow-lg text-white font-black text-xs py-3.5 px-6 rounded-2xl flex items-center gap-1.5 transition-all text-center shrink-0 w-full sm:w-auto justify-center"
                 >
                   <span>Далее: Настройка компании</span>
