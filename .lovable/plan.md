@@ -1,120 +1,91 @@
-# План: переход на Mini App + новая модель ID, тарифов и реферальной системы
+## Что подтвердилось по диагностике
 
-Большая работа, разобью на 6 блоков. Каждый блок — отдельная атомарная миграция/правка, чтобы можно было откатить.
+- В БД у свежих пользователей есть только роль `candidate`, `employers_count = 0`, `account_kinds = []`, `last_signup_intent = null` — то есть финализация регистрации работодателя не отработала.
+- В проекте есть функция `handle_new_user`, но в текущей БД нет активного auth-trigger, поэтому новые auth-пользователи не получают корректный профиль автоматически.
+- `AuthCallback` сейчас может молча проглотить ошибку `auth-google-finalize` и вернуть пользователя на исходный лендинг — поэтому после Google входа вы видите ту же страницу вместо профиля.
+- `TelegramMiniAppBoot` запускается на каждой странице. В обычном браузере `window.Telegram.WebApp` может существовать из-за подключенного скрипта, но `initData` пустой — это не Mini App, и запись `miniapp_no_init_data` сейчас является шумом.
+- В кабинете работодателя Telegram-профиль имеет дефолтные заглушки в state (`Сергей`, `cowal_sales`, fake ID/avatar), поэтому UI может выглядеть как привязанный Telegram даже без реальной записи.
 
-## 1. Новый бот и удаление OAuth-флоу Telegram
+## План правок
 
-- Обновить секреты: `TELEGRAM_BOT_TOKEN` = `8969850170:AAEQLiyXNTJvoXCXElzmCndGjnC-e9t00mQ`, `TELEGRAM_BOT_USERNAME` = `RoboRecrutBot`. Удалить `TELEGRAM_OIDC_CLIENT_ID` / `TELEGRAM_OIDC_CLIENT_SECRET`.
-- Удалить edge-функции `telegram-oidc-start`, `telegram-oidc-callback`, `telegram-auth` (Login Widget), страницу `AuthTelegramDone`, кнопку «Войти через Telegram» в `AuthModal` и на лендинге.
-- В `AuthModal` оставить только Google и (опционально) email. Регистрация через Telegram больше не предлагается — только привязка из ЛК.
+### 1. Починить базовую auth-схему и текущую ошибочную регистрацию
 
-## 2. Mini App — единственный путь Telegram-входа
+- Добавить миграцию, которая восстановит trigger на `auth.users` для `public.handle_new_user`.
+- Изменить `handle_new_user`, чтобы он не назначал `candidate` по умолчанию для OAuth-пользователей без явного intent. Роль должен окончательно назначать finalize-flow.
+- Для текущего админ/рабочего аккаунта сделать repair: добавить `employer` роль и запись в `employers`, если кандидатской записи нет и регистрация была фактически как работодатель.
+- Убедиться, что `profiles.account_kinds` и `profiles.last_signup_intent` заполняются при каждой финализации регистрации.
 
-Поток (`/?tgWebAppData=...` или прямой запуск из t.me/RoboRecrutBot/app):
+### 2. Сделать Google OAuth устойчивым к потере intent
 
-```text
-TelegramMiniAppBoot
-  └─ читает initData (SDK + fallback hash/search)
-  └─ POST /telegram-miniapp-auth { initData, startParam }
-        backend:
-          1. HMAC-валидация initData по BOT_TOKEN
-          2. Парсит startParam:
-               emp{N}                       → intent=employer, ref=N
-               emp{N}com{C}vac{V}           → intent=candidate, employer/company/vacancy
-               (пусто)                      → intent=candidate, без привязки
-          3. По telegram_id ищет существующего user_id:
-               есть  → magiclink → redirect в /employer{id}/profile или /candidate{id}/profile
-               нет   → createUser + profile (имя, фамилия, @username, photo_url),
-                       создаёт employer или candidate-запись,
-                       если employer и первый раз → начислить 500 RR бонус,
-                       magiclink → redirect в профиль
-- На фронте `TelegramMiniAppBoot` логирует каждый шаг в `telegram_events` / `client_errors`.
-- В `AuthCallback` ничего телеграмного больше не обрабатываем.
+- В `AuthModal` передавать intent/context не только через `sessionStorage`, но и через query-параметры callback URL:
+  - `intent=employer|candidate`
+  - `company_slug`
+  - `project_slug`
+  - `project_id`
+  - `return_to`
+- В `AuthCallback` читать context сначала из URL, затем из storage.
+- Убрать текущую логику, где при ошибке `auth-google-finalize` пользователь просто возвращается на исходную страницу.
+- Если finalize не создал нужный профиль/роль — показывать ошибку и писать ее в `client_errors`, а не делать вид, что вход успешен.
+- После успешного Google входа всегда переходить на target из `auth-google-finalize`, а не на `return_to`, если это регистрационный сценарий.
 
-## 3. Новая схема ID (порядковые с префиксом)
+### 3. Усилить `auth-google-finalize`
 
-Заменить `public_id` для employers/candidates и добавить публичные ID для companies/projects/interviews/trainings:
+- Делать `upsert` профиля, а не только `update`, потому что trigger мог не создать профиль.
+- Всегда добавлять роль по intent аддитивно: `employer` не удаляет `candidate`, `candidate` не удаляет `employer`.
+- Для intent `employer` гарантированно создавать строку в `employers` и возвращать `/employer{public_id}/profile`; если insert не удался — возвращать понятную ошибку.
+- Для intent `candidate` с vacancy/company context создавать или находить `candidates` по `(user_id, project_id)`, записывать `referrer_employer_id`, возвращать профиль кандидата именно по этой вакансии.
 
-| Сущность   | Префикс | Старт   |
-|------------|---------|---------|
-| employer   | 1       | 100001  |
-| candidate  | 2       | 200001  |
-| company    | 3       | 300001  |
-| vacancy    | 4       | 400001  |
-| interview  | 5       | 500001  |
-| training   | 6       | 600001  |
+### 4. Починить Telegram OIDC кнопку и журнал ошибок
 
-Миграция:
-- Добавить sequence `public.seq_employer_pid` … `seq_training_pid` со стартом `100001` и т.д.
-- Триггеры `BEFORE INSERT` заменяют рандомный `public_id` на `nextval(seq)`.
-- Бэкфилл существующих строк по порядку `created_at`.
-- Для companies/projects добавить колонки `public_id` (text) если их нет.
+- В `AuthModal` и кнопке привязки Telegram в кабинете логировать ошибки не только когда ответ пришел с HTTP-статусом, но и когда `fetch` упал до ответа.
+- Для Turnstile убрать блокировку Telegram OIDC, если на фронте нет публичного `VITE_TURNSTILE_SITE_KEY`, но на Edge есть `TURNSTILE_SECRET_KEY`; оставить rate limit как защиту. Иначе текущая конфигурация дает 403 без возможности пройти проверку.
+- Возвращать пользователю точные сообщения: `turnstile_required`, `redirect_rejected`, `state_persist_failed`, `env_missing`, а не общий текст “Не удалось начать вход через Telegram”.
+- Проверить/добавить `GRANT EXECUTE` для `admin_telegram_metrics` authenticated/admin flow, чтобы “forbidden” в метриках означал именно отсутствие admin-роли, а не проблему доступа к RPC.
 
-## 4. Новые URL-схемы (без транслитерации)
+### 5. Вынести Mini App авторегистрацию в отдельный hook
 
-- Компания: `/com{300001}` (страница `CompanyLanding` — резолв по public_id).
-- Вакансия: `/com{300001}/vac{400001}` (страница `JobVacancyLanding`).
-- Кандидат: `/candidate{200001}/...` (как сейчас).
-- Работодатель: `/employer{100001}/...` (как сейчас).
-- Реферальная ссылка: `/auth?ref=emp100001`.
-- Mini App ссылки в ЛК:
-  - employer: `https://t.me/RoboRecrutBot/app?startapp=emp{N}` (кнопка «Привязать Telegram» в профиле).
-  - candidate vacancy: `https://t.me/RoboRecrutBot/app?startapp=emp{E}com{C}vac{V}` (в карточке вакансии).
-- Обновить `src/lib/links.ts` (builders + resolvers), все ссылки и роуты в `App.tsx`, удалить `companySlug/projectSlug` логику из навигации (slug оставим в БД на чтение, но генерация новых ссылок — по public_id).
+- Создать `src/hooks/useTelegramMiniAppAuth.ts` и перенести туда определение Telegram Mini App.
+- `TelegramMiniAppBoot` оставить тонким компонентом, который вызывает hook.
+- Не писать `miniapp_no_init_data` в обычном браузере, даже если `window.Telegram.WebApp` существует из-за подключенного SDK.
+- Ждать готовности Telegram SDK и `initData` несколько попыток, не завершать flow навсегда после первой пустой проверки.
+- Если Mini App действительно открыт внутри Telegram:
+  - вызвать `telegram-miniapp-auth`;
+  - автоматически создать/найти пользователя;
+  - назначить правильную роль;
+  - создать candidate/employer profile при необходимости;
+  - сразу перенаправить в профиль.
 
-## 5. Тарифы, бонусы, реферальная программа
+### 6. Доработать `telegram-miniapp-auth`
 
-- Бонусы:
-  - Регистрация Google → 500 RR (сейчас 1000) — правка `grant_employer_bonus`.
-  - Привязка Telegram впервые (employer) → +500 RR — новая функция `apply_telegram_link_bonus`, вызывается из `telegram-miniapp-auth`.
-- Реферальная программа: оставляем только для Google-регистраций работодателей. Из `apply_referral_bonus` убрать любые Telegram-ветки. Mini App не вызывает её.
-- Прайс (новая таблица `pricing_tiers` или хардкод-конст в `src/lib/pricing.ts`):
-  - Лендинг (разовая активация employer): 500 RR (уже включён бонусом).
-  - Система интервью: 200 RR.
-  - Система обучения: 300 RR.
-  - Единый пакет «интервью/обучение»:
-    - 1–9 → 200 RR/шт
-    - 10–99 → 150 RR/шт
-    - 100–999 → 100 RR/шт
-    - 1000–9999 → 50 RR/шт
-- Списание: при создании interview ИЛИ training-сессии берём 1 единицу из общего «пакета». Обновить триггеры/edge-функции, которые сейчас списывают раздельно.
+- Для уже привязанного Telegram пользователя определять target по существующим ролям/профилям.
+- Для нового пользователя по умолчанию создавать candidate-профиль, если нет employer context.
+- Если `start_param` содержит employer/project context — привязать кандидата к работодателю/вакансии.
+- Возвращать target в формате профиля, а не `/main`, когда профиль создан.
+- Логировать `bad_signature`, `create_user_failed`, `link_failed`, `target_resolution_failed` в `telegram_events`/`client_errors`.
 
-## 6. Новый калькулятор найма (вместо текущего)
+### 7. Исправить кабинет работодателя: Telegram без заглушек
 
-Компонент `HiringCalculator`:
-- Input: «Сколько сотрудников нужно».
-- Воронка (фиксированные коэффициенты):
-  ```text
-  выход / 5 = шаг
-  Регистрации = need * 10
-  Интервью    = need * 6
-  Успешные    = need * 2.4
-  Обучение    = need * 2
-  Прошли      = need
-  ```
-- Покупаемых единиц = Интервью + Обучение, цена за единицу из тиров.
-- Отрисовать **две колонки рядом**: «HR-сотрудник» (4800 ₽/чел, 48 ч) vs «RoboRecrut» (рассчитанная цена, ~2 ч).
-- Внизу баннер: «в 6 раз дешевле, в 20 раз быстрее».
-- Использовать:
-  - на лендинге работодателя (`LandingPage`) — заменяет текущий калькулятор.
-  - в ЛК работодателя на странице «Тарифы».
+- Убрать дефолтные Telegram-значения из state:
+  - fake ID `59384591`
+  - `Сергей Ковалев`
+  - `cowal_sales`
+  - fake avatar
+- Если `profiles.telegram_id` пустой — показывать только статус “Не привязан” и кнопку “Привязать Telegram”.
+- Не показывать блок avatar/username/ID/“Уведомления ВКЛ” без реальной Telegram-привязки.
+- После успешной Telegram-привязки обновлять данные из `profiles`, а не из localStorage/mock API.
 
-## 7. Лендинг работодателя — новый блок «Почему это выгодно»
+### 8. Исправить UX для уже вошедшего пользователя
 
-Добавить секцию с разбором: лендинг 750 ₽/мес vs 500 ₽ без абонентки, чек-лист от 1500 ₽ vs 200 ₽, обучение 5000 ₽+ vs 300 ₽, час HR 800 ₽ vs 100 ₽. Плюс вывод про кадровые агентства (×10 наценка → 8000 ₽/голова).
+- При открытии основного лендинга проверять текущую Supabase-сессию.
+- Если пользователь уже имеет employer profile — сразу переводить в `/employer{public_id}/profile` или показывать кнопку “Открыть кабинет” вместо регистрации.
+- Если пользователь уже имеет candidate profile и находится на vacancy landing — переводить в профиль кандидата по этой вакансии или показывать “Продолжить собеседование”.
+- Если пользователь вошел Google, но хочет добавить второй профиль работодателя/кандидата — не просить повторную OAuth-регистрацию, а вызвать finalize/ensure-profile для текущей сессии.
 
-## Технические детали
+## Проверка после внедрения
 
-- Edge functions: переписываем `telegram-miniapp-auth`; удаляем 3 функции; добавляем `apply-telegram-bonus` (или inline в miniapp-auth).
-- БД-миграции: (a) sequences + триггеры public_id, бэкфилл; (b) изменение `grant_employer_bonus` (1000→500); (c) `apply_telegram_link_bonus`; (d) удаление Telegram-веток из `apply_referral_bonus`; (e) новая таблица `interview_training_units` для единого баланса (если решим хранить в БД, а не считать из transactions).
-- Фронт: `links.ts`, `AuthModal.tsx`, `LandingPage.tsx`, `EmployerPanel.tsx` (кнопка «Привязать Telegram», страница «Тарифы»), `CompanyLanding.tsx`, `JobVacancyLanding.tsx`, `App.tsx` (новые роуты `/com:id`, `/com:id/vac:id`), удаление `AuthTelegramDone`, `TelegramMiniAppBoot` упрощается под единственный сценарий.
-- `secrets`: обновить `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`; удалить два OIDC-секрета.
-
-## Вопросы перед стартом
-
-1. **Старые ссылки (`/{companySlug}/{projectSlug}/...`)** — оставить как 301-редиректы на новые `/com{id}/vac{id}`, или просто отключить? Старые ссылки уже могли быть расшарены.
-2. **Бэкфилл public_id**: пересоздавать ID у уже зарегистрированных employer/candidate (поменяет их URL) или назначать новые ID только новым записям?
-3. **Единый «пакет интервью/обучение»** — хранить остаток как отдельный счётчик в `wallets` (например `units_balance`) или продолжать считать через `transactions`? Первое проще, второе — аудит.
-4. **Кнопка «Telegram-вход» на лендинге** — полностью убираем, или оставляем как «Открыть в Telegram» (deeplink на `t.me/RoboRecrutBot/app`) для UX?
-
-После ответов начну с блока 1+2 (бот + Mini App), потом ID, потом тарифы/калькулятор.
+- Google с главного лендинга создает `profiles.account_kinds = ['employer']`, роль `employer`, строку `employers`, редиректит в профиль работодателя.
+- Google с лендинга вакансии создает/находит `candidate`, ставит роль `candidate`, записывает `project_id` и `referrer_employer_id`, редиректит в профиль кандидата.
+- Один auth-аккаунт может иметь обе роли и оба профиля.
+- Telegram OIDC больше не падает без понятного лога.
+- Mini App в Telegram выполняет авторегистрацию и редиректит в кабинет; обычный браузер не создает ложный `miniapp_no_init_data`.
+- Кабинет работодателя не показывает Telegram-заглушки без реальной Telegram-привязки.

@@ -1,0 +1,137 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Telegram OIDC landing page — reads token_hash from the URL fragment,
+ * exchanges it for a Supabase session via verifyOtp, then routes
+ * the user into their profile (employer or candidate).
+ */
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { resolveProfilePathForUser } from "@/lib/links";
+import { useRouter } from "@/components/RouterContext";
+import { safeNextPathStrict, chooseCandidateTarget } from "@/lib/telegramRoute";
+
+export default function AuthTelegramDone() {
+  const { navigate } = useRouter();
+  const [error, setError] = useState<string>("");
+  const [status, setStatus] = useState("Завершаем вход…");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const hash = window.location.hash.replace(/^#/, "");
+        const search = window.location.search.replace(/^\?/, "");
+        const params = new URLSearchParams(hash || search);
+        const errParam = params.get("error");
+        if (errParam) throw new Error(errParam);
+
+        const tokenHash = params.get("token_hash") || "";
+        const intent = (params.get("intent") as "employer" | "candidate") || "candidate";
+        const rawNext = params.get("next");
+        const nextRes = safeNextPathStrict(rawNext, window.location.origin);
+        const nextPath = nextRes.value;
+        if (nextRes.rejected && rawNext) {
+          console.warn("[auth/telegram/done] next rejected", nextRes.reason, rawNext);
+          try {
+            await supabase.rpc("log_telegram_event", {
+              _kind: "next_reject",
+              _source: "done",
+              _reason: nextRes.reason ?? undefined,
+              _intent: intent,
+              _next_path: rawNext.slice(0, 1024),
+            });
+          } catch { /* ignore */ }
+        }
+        if (!tokenHash) throw new Error("token_hash отсутствует");
+
+        setStatus("Создаём сессию…");
+        const { error: vErr } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: tokenHash,
+        });
+        if (vErr) throw vErr;
+
+        setStatus("Перенаправляем в кабинет…");
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error("Сессия не создана");
+
+        // Resolve target
+        let target = "/main";
+        let reason = "default";
+        if (intent === "employer") {
+          try {
+            target = await resolveProfilePathForUser(user.id);
+            reason = "employer_profile";
+          } catch {
+            target = "/employer/profile";
+            reason = "employer_fallback";
+          }
+        } else {
+          const { data: rows } = await supabase
+            .from("candidates")
+            .select("id, public_id")
+            .eq("user_id", user.id);
+          let fallback = "/main";
+          try {
+            fallback = await resolveProfilePathForUser(user.id);
+          } catch { /* keep /main */ }
+          const decision = chooseCandidateTarget({
+            vacancyCount: rows?.length || 0,
+            firstPublicId: rows?.[0]?.public_id ?? null,
+            nextPath,
+            profileFallback: fallback,
+          });
+          target = decision.target;
+          reason = decision.reason;
+        }
+        console.log("[auth/telegram/done] route", { intent, nextPath, target, reason });
+        try {
+          await supabase.rpc("log_telegram_event", {
+            _kind: "route_decision",
+            _source: "done",
+            _reason: reason,
+            _intent: intent,
+            _path: target.slice(0, 512),
+            _next_path: nextPath ? nextPath.slice(0, 1024) : undefined,
+          });
+        } catch { /* ignore */ }
+
+        window.history.replaceState({}, "", window.location.pathname);
+        navigate(target);
+      } catch (e: any) {
+        setError(e?.message || "Ошибка авторизации");
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-[#0F1F33] text-white p-6">
+      <div className="max-w-md w-full bg-[#1D3E5E] border border-[#E7C768]/30 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+        <h1 className="text-2xl font-black text-[#E7C768]">Вход через Telegram</h1>
+        {!error ? (
+          <>
+            <div className="animate-pulse text-slate-200">{status}</div>
+            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-[#E7C768] animate-pulse" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="bg-[#FF4C4C]/10 border-l-4 border-[#FF4C4C] p-3 text-sm text-[#FF4C4C] rounded-xl font-semibold text-left">
+              ⚠️ {error}
+            </div>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full bg-[#E7C768] hover:bg-[#d6b75c] text-[#0F1F33] font-black py-3 rounded-2xl transition"
+            >
+              Вернуться на главную
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

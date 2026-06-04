@@ -10,7 +10,6 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import ReferralsList from "../components/ReferralsList";
 import ReferredByCard from "../components/ReferredByCard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Users,
   Smartphone,
@@ -3444,17 +3443,23 @@ export default function EmployerPanel() {
                       <button
                         type="button"
                         onClick={async () => {
-                          // Build deeplink to RoboRecrutBot Mini App with employer public_id.
                           try {
-                            const { data: { user } } = await supabase.auth.getUser();
-                            if (!user) { alert("Сначала войдите в систему"); return; }
-                            const { data: emp } = await supabase.from("employers")
-                              .select("public_id").eq("user_id", user.id).maybeSingle();
-                            const pid = (emp as any)?.public_id || "";
-                            const url = pid
-                              ? `https://t.me/RoboRecrutBot/app?startapp=emp${pid}`
-                              : `https://t.me/RoboRecrutBot/app`;
-                            window.open(url, "_blank");
+                            const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+                            const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                intent: "employer",
+                                origin: window.location.origin,
+                                redirect_to: window.location.origin + window.location.pathname,
+                              }),
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (!res.ok || !data.url) {
+                              alert(`Telegram: ${data?.error || data?.reason || res.status}`);
+                              return;
+                            }
+                            window.location.href = data.url;
                           } catch (e: any) {
                             alert(e?.message || "Telegram error");
                           }
