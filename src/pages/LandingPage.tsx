@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import { BASIC_SPECIALTIES } from "../types";
@@ -59,6 +59,24 @@ export default function LandingPage() {
   const [trainingSystemsCount, setTrainingSystemsCount] = useState(1);
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
+
+  // Если пользователь уже залогинен и у него есть employer-профиль — сразу
+  // открываем кабинет вместо показа лендинга с кнопкой "Регистрация".
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || cancelled) return;
+        const target = await resolveProfilePathForUser(user.id);
+        if (!cancelled && target && target.startsWith("/employer")) {
+          navigate(target);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#1A1A1A] flex flex-col justify-between">

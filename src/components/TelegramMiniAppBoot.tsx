@@ -35,21 +35,13 @@ export default function TelegramMiniAppBoot() {
         initData = tg?.initData;
       }
       if (!initData) {
-        // Not opened inside Telegram Mini App — log once for diagnostics, then bail.
-        try {
-          await fetch(`${FN_URL}/log-client-error`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              source: "telegram-miniapp-boot",
-              message: "miniapp_no_init_data",
-              meta: { host: window.location.host, path: window.location.pathname, hasTg: !!(window as any)?.Telegram },
-            }),
-            keepalive: true,
-          });
-        } catch { /* ignore */ }
+        // Not opened inside a real Telegram Mini App (initData empty) — bail silently.
+        // The telegram-web-app.js script is included on every page, so window.Telegram.WebApp
+        // always exists in the browser; we must NOT treat its presence as Mini App context.
         return;
       }
+      // ^ telegram-web-app.js script loads on every page, so window.Telegram.WebApp
+      // always exists. We only act when initData is present (real Mini App context).
 
       try { tg.ready?.(); tg.expand?.(); } catch { /* noop */ }
 

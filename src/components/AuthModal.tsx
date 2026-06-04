@@ -60,18 +60,36 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
       }
       const fullUrl =
         window.location.origin + window.location.pathname + window.location.search;
-      const res = await fetch(`${FN_URL}/telegram-oidc-start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent,
-          ref: query.ref || "",
-          origin: window.location.origin,
-          redirect_to: fullUrl,
-          turnstile_token: turnstileToken || undefined,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
+      let res: Response;
+      let data: any = {};
+      try {
+        res = await fetch(`${FN_URL}/telegram-oidc-start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            intent,
+            ref: query.ref || "",
+            origin: window.location.origin,
+            redirect_to: fullUrl,
+            turnstile_token: turnstileToken || undefined,
+          }),
+        });
+        data = await res.json().catch(() => ({}));
+      } catch (netErr: any) {
+        try {
+          fetch(`${FN_URL}/log-client-error`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              source: "telegram-oidc-start",
+              message: `network_error: ${netErr?.message || "unknown"}`,
+              meta: { intent, origin: window.location.origin, path: window.location.pathname },
+            }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch { /* ignore */ }
+        throw new Error(`Telegram: сеть недоступна (${netErr?.message || "fetch failed"})`);
+      }
       if (!res.ok || !data.url) {
         try { tsRef.current?.reset(); } catch { /* ignore */ }
         setTurnstileToken("");
@@ -90,9 +108,11 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         } catch { /* ignore */ }
         console.error("[telegram-start]", { status: res.status, data });
         if (res.status === 429) throw new Error("Слишком много попыток. Подождите минуту и попробуйте снова.");
-        if (res.status === 403) throw new Error("Не удалось пройти проверку Turnstile. Попробуйте ещё раз.");
         const detail = [data?.error, data?.reason, data?.details].filter(Boolean).join(" / ");
-        throw new Error(detail ? `Telegram: ${detail}` : "Не удалось начать вход через Telegram");
+        if (res.status === 403 && /turnstile/i.test(detail)) {
+          throw new Error("Не удалось пройти проверку Turnstile. Попробуйте ещё раз.");
+        }
+        throw new Error(detail ? `Telegram: ${detail}` : `Telegram: ошибка ${res.status}`);
       }
       window.location.href = data.url;
     } catch (e: any) {
@@ -125,10 +145,13 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           return_to: window.location.pathname + window.location.search,
         }));
       } catch { /* ignore */ }
+      // Also encode intent in callback URL — sessionStorage may be lost (Safari ITP, new tab)
+      const cbParams = new URLSearchParams({ intent });
+      if (query.ref) cbParams.set("ref", String(query.ref));
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?${cbParams.toString()}`,
         },
       });
       if (error) throw error;
