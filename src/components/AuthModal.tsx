@@ -87,11 +87,16 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         <div className="bg-emerald-950/40 border border-emerald-500/25 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2 text-[#E7C768] font-bold text-xs uppercase tracking-wider">
             <Gift className="w-4 h-4 text-emerald-400" />
-            <span>Бонус при регистрации: +10 единиц на баланс!</span>
+            <span>Бонус при регистрации: +1000 RR на счёт!</span>
           </div>
           <p className="text-[12px] text-slate-200 leading-relaxed">
-            Хватит на <strong className="text-white">5 ИИ-собеседований + 5 ИИ-обучений</strong> или комбинацию из 10 операций. 1 единица списывается за каждое интервью или обучение.
+            Этого хватит на полный AI-цикл найма в пару кликов:
           </p>
+          <ul className="text-[12px] text-slate-200 space-y-1.5 leading-relaxed">
+            <li>🌐 <strong className="text-white">ИИ-Лендинг вакансии</strong> — 500 RR (готовый сайт-визитка с умным чат-консультантом)</li>
+            <li>⚙️ <strong className="text-white">ИИ-Система Интервью</strong> — 200 RR (сценарии, скоринг, ситуативные тесты)</li>
+            <li>🎓 <strong className="text-white">ИИ-Система Обучения</strong> — 300 RR (индивидуальный симулятор онбординга)</li>
+          </ul>
         </div>
 
         {/* 1-Click Action Buttons Container */}
@@ -113,7 +118,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
               </div>
             </div>
             <span className="bg-emerald-900 border border-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
-              +10 ед.
+              +1000 RR
             </span>
           </button>
         </div>
@@ -127,7 +132,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
 
         {isSuccess && (
           <div className="bg-emerald-950/45 border-l-4 border-emerald-400 p-3 text-xs text-emerald-300 rounded-xl animate-pulse font-semibold">
-            ✅ Вход через Google выполнен успешно! Начисляем +10 единиц и перенаправляем в кабинет...
+            ✅ Вход через Google выполнен успешно! Начисляем +1000 RR и перенаправляем в кабинет...
           </div>
         )}
 

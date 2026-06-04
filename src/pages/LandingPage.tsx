@@ -96,7 +96,7 @@ export default function LandingPage() {
             <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-2xl p-5 space-y-3 max-w-2xl">
               <div className="flex items-center gap-2 text-emerald-300 font-bold">
                 <Gift className="w-5 h-5" />
-                <span>1 000 RR (10 единиц) на счёт при регистрации через Google</span>
+                <span>+1000 RR в подарок при регистрации через Google</span>
               </div>
               <p className="text-sm text-slate-200 leading-relaxed">
                 Этого хватит на полный AI-цикл найма в пару кликов:
@@ -113,7 +113,7 @@ export default function LandingPage() {
                 onClick={() => setIsAuthModalOpen(true)}
                 className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2"
               >
-                <Chrome className="w-5 h-5" /> Войти через Google · +10 ед.
+                <Chrome className="w-5 h-5" /> Войти через Google · +1000 RR
               </button>
               <button
                 onClick={() => navigate("/vacancy")}
@@ -188,7 +188,7 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
         <h2 className="text-3xl md:text-4xl font-bold">Готовы автоматизировать найм?</h2>
-        <p className="text-slate-300">Регистрация через Google — 1 клик. Бонус 1 000 RR (10 единиц) уже на счёте.</p>
+        <p className="text-slate-300">Регистрация через Google — 1 клик. Бонус +1000 RR уже на счёте.</p>
         <button
           onClick={() => setIsAuthModalOpen(true)}
           className="cursor-pointer inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"

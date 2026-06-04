@@ -4,8 +4,8 @@
  */
 import { useState } from "react";
 
-const PRICE_PER_UNIT = 150; // средняя цена за интервью/обучение в рублях
-const HR_HOURLY = 80000 / 160; // 500 ₽/час
+const PRICE_PER_UNIT = 150; // средняя цена в RR за одно интервью или обучение
+const HR_HOURLY = 80000 / 160; // 500 RR/час
 
 function round(n: number, d = 0) {
   const f = Math.pow(10, d);
@@ -82,18 +82,18 @@ export default function HiringCalculator() {
             🤖 Робот RR
           </div>
           <Row label="Зарегистрировалось" value={`${regCount}`} sub={`${regCount} мин`} />
-          <Row label="Прошло интервью" value={`${intCount}`} sub={`${intRR.toLocaleString()} ₽ · ${intCount} мин`} />
+          <Row label="Прошло интервью" value={`${intCount}`} sub={`${intRR.toLocaleString()} RR · ${intCount} мин`} />
           <Row label="Успешно" value={`${okCount}`} />
-          <Row label="Вышли на обучение" value={`${trnCount}`} sub={`${trnRR.toLocaleString()} ₽ · ${trnCount} мин`} />
+          <Row label="Вышли на обучение" value={`${trnCount}`} sub={`${trnRR.toLocaleString()} RR · ${trnCount} мин`} />
           <Row label="Прошли обучение" value={`${passCount}`} sub={`${passCount} мин`} />
           <div className="pt-3 mt-2 border-t border-emerald-500/30 space-y-1">
             <div className="flex justify-between text-emerald-300 font-bold">
               <span>Итого:</span>
-              <span className="font-mono">{totalRR.toLocaleString()} ₽ · {totalMin} мин</span>
+              <span className="font-mono">{totalRR.toLocaleString()} RR · {totalMin} мин</span>
             </div>
             <div className="flex justify-between text-xs text-emerald-200">
               <span>За одного готового сотрудника:</span>
-              <span className="font-mono font-bold">{perUnitRR.toLocaleString()} ₽</span>
+              <span className="font-mono font-bold">{perUnitRR.toLocaleString()} RR</span>
             </div>
           </div>
         </div>
@@ -111,14 +111,14 @@ export default function HiringCalculator() {
           <div className="pt-3 mt-2 border-t border-rose-500/30 space-y-1">
             <div className="flex justify-between text-rose-300 font-bold">
               <span>Итого:</span>
-              <span className="font-mono">{hrTotalH} ч · {hrCost.toLocaleString()} ₽</span>
+              <span className="font-mono">{hrTotalH} ч · {hrCost.toLocaleString()} RR</span>
             </div>
             <div className="flex justify-between text-xs text-rose-200">
               <span>За одного готового сотрудника:</span>
-              <span className="font-mono font-bold">{hrPerUnit.toLocaleString()} ₽</span>
+              <span className="font-mono font-bold">{hrPerUnit.toLocaleString()} RR</span>
             </div>
             <div className="text-[10px] text-rose-200/70 pt-1">
-              * HR со средней зарплатой 80&nbsp;000 ₽ за 160 часов в месяц
+              * HR со средней зарплатой 80&nbsp;000 RR за 160 часов в месяц
             </div>
           </div>
         </div>
@@ -136,7 +136,7 @@ export default function HiringCalculator() {
         <p className="text-xs text-slate-300 leading-relaxed pt-1">
           HR может вырасти в производительности до <strong className="text-white">×{ratioTime}</strong>, а за ту же зарплату приводить
           в <strong className="text-white">×{ratioMoney}</strong> больше людей. Кадровые агентства снижают стоимость найма
-          в {ratioMoney} раз и могут продавать готовых сотрудников с маржой ×10 — за {(perUnitRR * 10).toLocaleString()} ₽ за голову.
+          в {ratioMoney} раз и могут продавать готовых сотрудников с маржой ×10 — за {(perUnitRR * 10).toLocaleString()} RR за голову.
         </p>
       </div>
 
@@ -146,7 +146,7 @@ export default function HiringCalculator() {
           Прайс пакетов — оптом дешевле
         </div>
         <p className="text-xs text-slate-300">
-          1 единица = 1 ИИ-интервью <strong>или</strong> 1 ИИ-обучение. Единый баланс — бот сам считает.
+          Стоимость 1 ИИ-интервью <strong>или</strong> 1 ИИ-обучения. Чем больше пакет — тем дешевле за штуку.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
           {[
@@ -157,16 +157,16 @@ export default function HiringCalculator() {
           ].map((t) => (
             <div key={t.range} className="bg-black/30 rounded-xl p-3 border border-white/10 text-center">
               <div className="text-slate-300">{t.range} шт</div>
-              <div className="text-lg font-bold font-mono text-[#E7C768]">{t.price} ₽</div>
+              <div className="text-lg font-bold font-mono text-[#E7C768]">{t.price} RR</div>
               <div className="text-[10px] text-slate-400">за единицу</div>
             </div>
           ))}
         </div>
         <div className="pt-2 border-t border-white/10 space-y-1 text-xs text-slate-300">
           <div className="font-bold text-white mb-1">Разовые услуги при создании вакансии:</div>
-          <div className="flex justify-between"><span>🌐 ИИ-Лендинг вакансии</span><span className="font-mono text-white">500 ₽</span></div>
-          <div className="flex justify-between"><span>⚙️ ИИ-Система Интервью</span><span className="font-mono text-white">200 ₽</span></div>
-          <div className="flex justify-between"><span>🎓 ИИ-Система Обучения</span><span className="font-mono text-white">300 ₽</span></div>
+          <div className="flex justify-between"><span>🌐 ИИ-Лендинг вакансии</span><span className="font-mono text-white">500 RR</span></div>
+          <div className="flex justify-between"><span>⚙️ ИИ-Система Интервью</span><span className="font-mono text-white">200 RR</span></div>
+          <div className="flex justify-between"><span>🎓 ИИ-Система Обучения</span><span className="font-mono text-white">300 RR</span></div>
         </div>
       </div>
     </div>

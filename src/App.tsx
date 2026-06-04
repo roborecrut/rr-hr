@@ -13,10 +13,12 @@ import JobVacancyLanding from "./pages/JobVacancyLanding";
 import CompanyLanding from "./pages/CompanyLanding";
 import NotFoundPage from "./pages/NotFoundPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
+import SessionBootstrap from "./components/SessionBootstrap";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <SessionBootstrap />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
