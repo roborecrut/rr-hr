@@ -86,9 +86,20 @@ export default function LandingPage() {
             <button onClick={handleOpenCabinet} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Кабинет</button>
           </nav>
 
-          <button onClick={() => setIsAuthModalOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
-            <Chrome className="w-4 h-4" /> Войти через Google
-          </button>
+          {isAuthed ? (
+            <div className="hidden md:flex items-center gap-2">
+              <button onClick={() => navigate(profilePath)} className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+                <LayoutDashboard className="w-4 h-4" /> Кабинет
+              </button>
+              <button onClick={handleLogout} className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-4 py-2 rounded-xl transition">
+                <LogOut className="w-4 h-4" /> Выйти
+              </button>
+            </div>
+          ) : (
+            <button onClick={() => setIsAuthModalOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+              <Chrome className="w-4 h-4" /> Войти через Google
+            </button>
+          )}
 
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -99,7 +110,14 @@ export default function LandingPage() {
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
             <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Каталог</button>
-            <button onClick={() => { setIsAuthModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] font-bold">Войти через Google</button>
+            {isAuthed ? (
+              <>
+                <button onClick={() => { navigate(profilePath); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-[#E7C768] text-[#17344F] font-bold">Кабинет</button>
+                <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-white/10 border border-white/20 font-semibold">Выйти</button>
+              </>
+            ) : (
+              <button onClick={() => { setIsAuthModalOpen(true); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] font-bold">Войти через Google</button>
+            )}
           </div>
         )}
       </header>
