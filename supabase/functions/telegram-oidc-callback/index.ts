@@ -164,9 +164,11 @@ Deno.serve(async (req) => {
     });
     tokenJson = await tr.json();
     if (!tr.ok || !tokenJson.id_token) {
+      await logEvent({ kind: "callback_failed", source: "callback", reason: "token_exchange_failed", intent: st.intent as string, meta: { status: tr.status, body: tokenJson } });
       return fallbackDone(redirectBase, `error=${encodeURIComponent("token_exchange_failed: " + JSON.stringify(tokenJson))}`);
     }
   } catch (e: any) {
+    await logEvent({ kind: "callback_failed", source: "callback", reason: "token_request_failed", intent: st.intent as string, meta: { msg: e?.message } });
     return fallbackDone(redirectBase, `error=${encodeURIComponent("token_request_failed: " + e.message)}`);
   }
 
@@ -175,6 +177,7 @@ Deno.serve(async (req) => {
   try {
     claims = await verifyIdToken(tokenJson.id_token);
   } catch (e: any) {
+    await logEvent({ kind: "callback_failed", source: "callback", reason: "id_token_invalid", intent: st.intent as string, meta: { msg: e?.message } });
     return fallbackDone(redirectBase, `error=${encodeURIComponent("id_token_invalid: " + e.message)}`);
   }
 
@@ -189,21 +192,24 @@ Deno.serve(async (req) => {
   // Cleanup state
   await admin.from("oauth_states").delete().eq("state", state);
 
-  const intent = st.intent as "employer" | "candidate";
+  const requestedIntent = st.intent as "employer" | "candidate";
   const refCode = st.ref as string | null;
   const companySlugCtx = (st.company_slug as string | null) || null;
   const projectSlugCtx = (st.project_slug as string | null) || null;
   const projectIdCtx = (st.project_id as string | null) || null;
 
-  // Lookup existing link
+  // Look up ANY existing link for this telegram_id (regardless of intent).
+  // Telegram identity is one — the user keeps the role they registered with.
   const { data: existingLink } = await admin
     .from("telegram_links")
-    .select("user_id")
+    .select("user_id, intent")
     .eq("telegram_id", tgId)
-    .eq("intent", intent)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   let userId = existingLink?.user_id as string | undefined;
+  const intent = (existingLink?.intent as "employer" | "candidate" | undefined) || requestedIntent;
   const email = `tg_${tgId}_${intent}@rrhr.local`;
 
   if (!userId) {
@@ -220,7 +226,10 @@ Deno.serve(async (req) => {
         name: firstName || null,
       },
     });
-    if (createErr) return fallbackDone(redirectBase, `error=${encodeURIComponent("create_user_failed: " + createErr.message)}`);
+    if (createErr) {
+      await logEvent({ kind: "callback_failed", source: "callback", reason: "create_user_failed", intent, meta: { msg: createErr.message } });
+      return fallbackDone(redirectBase, `error=${encodeURIComponent("create_user_failed: " + createErr.message)}`);
+    }
     userId = created.user!.id;
 
     await admin.from("telegram_links").insert({
@@ -321,7 +330,10 @@ Deno.serve(async (req) => {
     type: "magiclink",
     email,
   });
-  if (linkErr) return fallbackDone(redirectBase, `error=${encodeURIComponent("magiclink_failed: " + linkErr.message)}`);
+  if (linkErr) {
+    await logEvent({ kind: "callback_failed", source: "callback", reason: "magiclink_failed", intent, meta: { msg: linkErr.message } });
+    return fallbackDone(redirectBase, `error=${encodeURIComponent("magiclink_failed: " + linkErr.message)}`);
+  }
 
   const tokenHash = linkData.properties?.hashed_token;
   const effectiveNext = candidateRedirectPath || nextPath;

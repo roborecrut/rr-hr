@@ -60,6 +60,19 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
       }
       const fullUrl =
         window.location.origin + window.location.pathname + window.location.search;
+      // Log the click attempt for diagnostics
+      try {
+        fetch(`${FN_URL}/log-client-error`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            source: "telegram-oidc-click",
+            message: `intent=${intent}`,
+            meta: { intent, origin: window.location.origin, path: window.location.pathname, ref: query.ref || null },
+          }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch { /* ignore */ }
       let res: Response;
       let data: any = {};
       try {
@@ -111,6 +124,12 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         const detail = [data?.error, data?.reason, data?.details].filter(Boolean).join(" / ");
         if (res.status === 403 && /turnstile/i.test(detail)) {
           throw new Error("Не удалось пройти проверку Turnstile. Попробуйте ещё раз.");
+        }
+        if (/redirect_rejected|host_not_allowed/i.test(detail)) {
+          throw new Error("Telegram: домен сайта не разрешён в настройках бота. Добавьте URL в @BotFather → Bot Settings → Web Login → Allowed URLs.");
+        }
+        if (res.status === 200 || !res.status) {
+          throw new Error("Telegram: не удалось получить ссылку входа. Проверьте, что в @BotFather указан Client ID/Secret для Web Login и добавлены Allowed URLs.");
         }
         throw new Error(detail ? `Telegram: ${detail}` : `Telegram: ошибка ${res.status}`);
       }
