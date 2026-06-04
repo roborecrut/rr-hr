@@ -50,6 +50,8 @@ export default function TelegramMiniAppBoot() {
         } catch { /* ignore */ }
         return;
       }
+      // ^ telegram-web-app.js script loads on every page, so window.Telegram.WebApp
+      // always exists. We only act when initData is present (real Mini App context).
 
       try { tg.ready?.(); tg.expand?.(); } catch { /* noop */ }
 
