@@ -11,7 +11,6 @@ import ReferralsList from "../components/ReferralsList";
 import ReferredByCard from "../components/ReferredByCard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { supabase } from "@/integrations/supabase/client";
-import { signOutEverywhere } from "@/lib/auth";
 import {
   Users,
   Smartphone,
@@ -816,8 +815,9 @@ export default function EmployerPanel() {
     }
   };
 
-  const handleLogout = async () => {
-    await signOutEverywhere("/main");
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/main");
   };
 
   // Action: Buy Service Limits via Balance RR

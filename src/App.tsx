@@ -5,7 +5,6 @@
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import TelegramMiniAppBoot from "./components/TelegramMiniAppBoot";
-import AuthRecover from "./components/AuthRecover";
 import LandingPage from "./pages/LandingPage";
 import MainCatalogPage from "./pages/MainCatalogPage";
 import EmployerPanel from "./pages/EmployerPanel";
@@ -22,7 +21,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <TelegramMiniAppBoot />
-      <AuthRecover />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />

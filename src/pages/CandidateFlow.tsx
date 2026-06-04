@@ -10,7 +10,6 @@ import ReferredByCard from "../components/ReferredByCard";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
-import { signOutEverywhere } from "@/lib/auth";
 import {
   FileText,
   Upload,
@@ -1395,7 +1394,9 @@ export default function CandidateFlow() {
             <button
               type="button"
               onClick={() => {
-                signOutEverywhere("/main");
+                localStorage.removeItem("cand_session_id");
+                localStorage.removeItem("cand_role");
+                navigate("/main");
               }}
               className="cursor-pointer bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/20 hover:border-red-500/35 px-3.5 py-2 rounded-xl font-bold transition text-xs flex items-center gap-1.5"
               title="Выйти из кабинета"
@@ -1450,8 +1451,10 @@ export default function CandidateFlow() {
             <button
               type="button"
               onClick={() => {
+                localStorage.removeItem("cand_session_id");
+                localStorage.removeItem("cand_role");
                 setMobileMenuOpen(false);
-                signOutEverywhere("/main");
+                navigate("/main");
               }}
               className="cursor-pointer text-left w-full px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-300 font-bold transition flex items-center gap-2"
             >
@@ -2933,7 +2936,8 @@ export default function CandidateFlow() {
 
               <button
                 onClick={() => {
-                  signOutEverywhere("/main");
+                  localStorage.clear();
+                  navigate("/main");
                 }}
                 className="cursor-pointer w-full bg-white/5 border border-white/10 text-white font-bold py-2.5 rounded-xl text-center text-xs transition hover:bg-white/10"
               >

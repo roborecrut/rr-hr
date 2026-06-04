@@ -102,22 +102,20 @@ export default function AuthCallback() {
           finalizeError = `finalize_network: ${e?.message || "fetch failed"}`;
         }
 
-        // Treat "/" same as no target — try profile-based resolution first
-        if (!target || target === "/") {
+        if (!target) {
           try {
             fetch(`${FN_URL}/log-client-error`, {
               method: "POST",
               headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
               body: JSON.stringify({
                 source: "auth-google-finalize",
-                message: finalizeError || "no_target_or_root",
+                message: finalizeError || "no_target",
                 meta: { intent: pending.intent, project_slug: pending.project_slug, company_slug: pending.company_slug },
               }),
               keepalive: true,
             }).catch(() => {});
           } catch { /* ignore */ }
-          // Soft fallback by existing profile — у уже зарегистрированных пользователей
-          // это всегда даст путь в их кабинет.
+          // Try a soft fallback by existing profile, but surface error if нет
           try {
             const { data: { user } } = await supabase.auth.getUser();
             if (user) target = await resolveProfilePathForUser(user.id);
@@ -125,8 +123,7 @@ export default function AuthCallback() {
         }
 
         if (!target || target === "/") {
-          // Последний шанс — отправим на главную, не показывая страшную ошибку
-          target = "/main";
+          throw new Error(finalizeError || "Не удалось завершить регистрацию. Профиль не создан.");
         }
 
         navigate(target);
