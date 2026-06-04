@@ -51,31 +51,47 @@ export default function LandingPage() {
     setIsAuthModalOpen(true);
   };
 
-  // States for HR vs RR Calculator
-  const [candidatesCount, setCandidatesCount] = useState(50);
-  const [vacanciesCount, setVacanciesCount] = useState(1);
-  const [hrSalary, setHrSalary] = useState(60000); // ₽/мес за 1 HR
+  // Калькулятор: сколько готовых сотрудников нужно (прошли найм + обучение)
+  const [hiresNeeded, setHiresNeeded] = useState(5);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
 
-  // Тарифная сетка: цена 1 юнита (RR) по объёму закупки
-  const unitPrice = (units: number): number => {
-    if (units >= 200) return 50;
-    if (units >= 50) return 100;
-    if (units >= 10) return 150;
+  // Цена за 1 интервью ИЛИ 1 обучение (RR) в зависимости от объёма
+  const unitPrice = (qty: number): number => {
+    if (qty >= 200) return 50;
+    if (qty >= 50) return 100;
+    if (qty >= 10) return 150;
     return 200;
   };
-  const unitsTotal = candidatesCount * 2; // 1 интервью + 1 обучение
-  const pricePerUnit = unitPrice(unitsTotal);
-  const rrCost = unitsTotal * pricePerUnit;
-  const rrMinutes = Math.round(candidatesCount * 1.5 + vacanciesCount * 10); // ~1.5 мин/канд + 10 мин на вакансию
-  // HR: 1 рекрутер ≈ 50 кандидатов/мес; 30 мин на кандидата + 2ч на вакансию
-  const hrCount = Math.max(1, Math.ceil(candidatesCount / 50));
-  const hrCost = hrCount * hrSalary;
-  const hrMinutes = Math.round(candidatesCount * 30 + vacanciesCount * 120);
+  // Воронка RR
+  const N = Math.max(1, Math.min(50, hiresNeeded));
+  const rrRegistered = N * 10;
+  const rrInterviews = N * 6;
+  const rrSuccess = +(N * 2.4).toFixed(1);
+  const rrTrainings = N * 2;
+  const rrPassed = N;
+  const priceInterview = unitPrice(rrInterviews);
+  const priceTraining = unitPrice(rrTrainings);
+  const rrCost = rrInterviews * priceInterview + rrTrainings * priceTraining;
+  const rrPerHire = Math.round(rrCost / N);
+  const rrMinutes = rrRegistered + rrInterviews + Math.round(rrSuccess) + rrTrainings + rrPassed;
+  // Воронка HR (часы)
+  const hrInvited = N * 12;        // 3ч на N=5
+  const hrInvitedH = +(hrInvited * 0.05).toFixed(1);
+  const hrCame = N * 6;            // 30ч на N=5
+  const hrCameH = hrCame * 1;
+  const hrSuccess = +(N * 2.4).toFixed(1);
+  const hrTrainings = N * 2;       // 10ч на N=5
+  const hrTrainingsH = hrTrainings * 1;
+  const hrPassed = N;              // 5ч на N=5
+  const hrPassedH = hrPassed * 1;
+  const hrHours = hrInvitedH + hrCameH + hrTrainingsH + hrPassedH;
+  const hrSalary = 80000;
+  const hrRate = hrSalary / 160;   // ₽/час
+  const hrCost = Math.round(hrHours * hrRate);
+  const hrPerHire = Math.round(hrCost / N);
   const fmt = (n: number) => n.toLocaleString("ru-RU");
-  const fmtMin = (m: number) => m < 60 ? `${m} мин` : `${Math.round(m/60)} ч`;
-  const costRatio = rrCost > 0 ? (hrCost / rrCost).toFixed(1) : "—";
-  const timeRatio = rrMinutes > 0 ? (hrMinutes / rrMinutes).toFixed(0) : "—";
+  const costRatio = rrPerHire > 0 ? (hrPerHire / rrPerHire).toFixed(1) : "—";
+  const timeRatio = rrMinutes > 0 ? Math.round((hrHours * 60) / rrMinutes) : 0;
 
   // Если пользователь уже залогинен и у него есть employer-профиль — сразу
   // открываем кабинет вместо показа лендинга с кнопкой "Регистрация".
@@ -528,98 +544,139 @@ export default function LandingPage() {
               HR-отдел vs Робот&nbsp;Рекрутер
             </h2>
             <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto leading-relaxed">
-              Внутренняя валюта <strong className="text-[#E7C768]">RR</strong> (1&nbsp;RR&nbsp;=&nbsp;1&nbsp;₽). Чем больше объём — тем дешевле юнит:
-              <span className="block mt-1 text-xs text-slate-300">1–9 шт · <b className="text-white">200 RR</b> · 10–49 · <b className="text-white">150 RR</b> · 50–199 · <b className="text-white">100 RR</b> · 200+ · <b className="text-emerald-300">50 RR</b></span>
+              Внутренняя валюта <strong className="text-[#E7C768]">RR</strong> (1&nbsp;RR&nbsp;=&nbsp;1&nbsp;₽). Сравните полную воронку найма: что делает HR вручную — RR делает за вас.
             </p>
           </div>
 
-          {/* Sliders */}
+          {/* Калькулятор */}
           <div className="bg-[#1D3E5E]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                  <span>👥 Кандидатов в найме / месяц</span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] px-2 py-0.5 rounded-lg font-mono">{candidatesCount}</span>
-                </div>
-                <input type="range" min="1" max="500" step="1" value={candidatesCount}
-                  onChange={(e) => setCandidatesCount(Number(e.target.value))}
-                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm font-bold text-slate-100">
+                <span>🎯 Сколько готовых сотрудников нужно (прошли найм и обучение)</span>
+                <span className="bg-[#E7C768]/10 text-[#E7C768] px-3 py-1 rounded-lg font-mono text-base">{N}</span>
               </div>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                  <span>💼 Открытых вакансий</span>
-                  <span className="bg-[#E7C768]/10 text-[#E7C768] px-2 py-0.5 rounded-lg font-mono">{vacanciesCount}</span>
-                </div>
-                <input type="range" min="1" max="50" step="1" value={vacanciesCount}
-                  onChange={(e) => setVacanciesCount(Number(e.target.value))}
-                  className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <div className="flex justify-between items-center text-xs font-bold text-slate-200">
-                  <span>💰 Зарплата одного HR (₽/мес)</span>
-                  <span className="bg-white/10 text-white px-2 py-0.5 rounded-lg font-mono">{fmt(hrSalary)}</span>
-                </div>
-                <input type="range" min="30000" max="200000" step="5000" value={hrSalary}
-                  onChange={(e) => setHrSalary(Number(e.target.value))}
-                  className="w-full accent-rose-400 cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
+              <input type="range" min={1} max={50} step={1} value={hiresNeeded}
+                onChange={(e) => setHiresNeeded(Number(e.target.value))}
+                className="w-full accent-[#E7C768] cursor-pointer bg-white/10 h-1.5 rounded-lg appearance-none" />
+              <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+                <span>1</span><span>25</span><span>50</span>
               </div>
             </div>
 
-            {/* Two columns: HR vs RR */}
+            {/* Колонки RR vs HR */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-              {/* HR column */}
+              {/* RR — слева */}
+              <div className="bg-emerald-500/5 border-2 border-emerald-400/40 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🤖</span>
+                  <h3 className="text-lg font-bold text-emerald-200">Робот RR</h3>
+                </div>
+                <div className="space-y-2 text-xs text-slate-200">
+                  <div className="flex justify-between gap-3"><span>Зарегистрировалось:</span>
+                    <span className="font-mono text-white">{rrRegistered} <span className="text-slate-400">({rrRegistered} мин)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Прошло интервью:</span>
+                    <span className="font-mono text-white">{rrInterviews} = <b className="text-[#E7C768]">{fmt(rrInterviews * priceInterview)} RR</b> <span className="text-slate-400">({rrInterviews} мин)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Успешно:</span>
+                    <span className="font-mono text-white">{rrSuccess} <span className="text-slate-400">({Math.round(rrSuccess)} мин)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Вышли на обучение:</span>
+                    <span className="font-mono text-white">{rrTrainings} = <b className="text-[#E7C768]">{fmt(rrTrainings * priceTraining)} RR</b> <span className="text-slate-400">({rrTrainings} мин)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Прошли обучение:</span>
+                    <span className="font-mono text-white">{rrPassed} <span className="text-slate-400">({rrPassed} мин)</span></span></div>
+                </div>
+                <div className="pt-3 border-t border-emerald-400/20 space-y-1.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs text-slate-300">Итого:</span>
+                    <span className="text-xl font-extrabold text-emerald-300 font-mono">{fmt(rrCost)} RR</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>За готового сотрудника:</span>
+                    <span className="font-mono text-emerald-200 font-bold">{fmt(rrPerHire)} RR</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Времени затрачено:</span>
+                    <span className="font-mono text-emerald-200 font-bold">{rrMinutes} мин</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* HR — справа */}
               <div className="bg-rose-500/5 border-2 border-rose-400/30 rounded-2xl p-5 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">🧑‍💼</span>
-                  <h3 className="text-lg font-bold text-rose-200">Традиционный HR</h3>
+                  <h3 className="text-lg font-bold text-rose-200">Человек HR</h3>
                 </div>
-                <div className="space-y-2 text-xs text-slate-300">
-                  <div className="flex justify-between"><span>Нужно HR-специалистов:</span><span className="font-mono text-white">{hrCount}</span></div>
-                  <div className="flex justify-between"><span>~30 мин на кандидата:</span><span className="font-mono text-white">{fmtMin(candidatesCount * 30)}</span></div>
-                  <div className="flex justify-between"><span>~2 ч на вакансию:</span><span className="font-mono text-white">{fmtMin(vacanciesCount * 120)}</span></div>
+                <div className="space-y-2 text-xs text-slate-200">
+                  <div className="flex justify-between gap-3"><span>Пригласили на интервью:</span>
+                    <span className="font-mono text-white">{hrInvited} <span className="text-slate-400">({hrInvitedH} ч)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Пришло на интервью:</span>
+                    <span className="font-mono text-white">{hrCame} <span className="text-slate-400">({hrCameH} ч)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Успешно:</span>
+                    <span className="font-mono text-white">{hrSuccess}</span></div>
+                  <div className="flex justify-between gap-3"><span>Вышли на обучение:</span>
+                    <span className="font-mono text-white">{hrTrainings} <span className="text-slate-400">({hrTrainingsH} ч)</span></span></div>
+                  <div className="flex justify-between gap-3"><span>Прошли обучение:</span>
+                    <span className="font-mono text-white">{hrPassed} <span className="text-slate-400">({hrPassedH} ч)</span></span></div>
                 </div>
-                <div className="pt-3 border-t border-rose-400/20 space-y-1">
-                  <div className="flex justify-between text-xs text-slate-300"><span>Время работы:</span>
-                    <span className="font-mono text-rose-200 font-bold">{fmtMin(hrMinutes)}</span></div>
+                <div className="pt-3 border-t border-rose-400/20 space-y-1.5">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-xs text-slate-300">Стоимость в месяц:</span>
-                    <span className="text-2xl font-extrabold text-rose-300 font-mono">{fmt(hrCost)} ₽</span>
+                    <span className="text-xs text-slate-300">Итого работы HR:</span>
+                    <span className="text-xl font-extrabold text-rose-300 font-mono">{hrHours} ч</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>При зарплате 80&nbsp;000₽ / 160ч:</span>
+                    <span className="font-mono text-rose-200 font-bold">{fmt(hrCost)} ₽</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>За готового сотрудника:</span>
+                    <span className="font-mono text-rose-200 font-bold">{fmt(hrPerHire)} ₽</span>
                   </div>
                 </div>
-              </div>
-
-              {/* RR column */}
-              <div className="bg-emerald-500/5 border-2 border-emerald-400/40 rounded-2xl p-5 space-y-3 relative">
-                <div className="absolute -top-3 right-4 bg-[#E7C768] text-[#17344F] text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  выгода в {costRatio}× по деньгам · в {timeRatio}× по времени
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">🤖</span>
-                  <h3 className="text-lg font-bold text-emerald-200">Робот Рекрутер</h3>
-                </div>
-                <div className="space-y-2 text-xs text-slate-300">
-                  <div className="flex justify-between"><span>Интервью + Обучение:</span><span className="font-mono text-white">{fmt(unitsTotal)} юн</span></div>
-                  <div className="flex justify-between"><span>Цена за юнит:</span><span className="font-mono text-[#E7C768] font-bold">{pricePerUnit} RR</span></div>
-                  <div className="flex justify-between"><span>~1.5 мин на кандидата:</span><span className="font-mono text-white">{fmtMin(candidatesCount * 1.5)}</span></div>
-                </div>
-                <div className="pt-3 border-t border-emerald-400/20 space-y-1">
-                  <div className="flex justify-between text-xs text-slate-300"><span>Ваше время:</span>
-                    <span className="font-mono text-emerald-200 font-bold">{fmtMin(rrMinutes)}</span></div>
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-xs text-slate-300">Стоимость в месяц:</span>
-                    <span className="text-2xl font-extrabold text-emerald-300 font-mono">{fmt(rrCost)} RR</span>
-                  </div>
-                </div>
-                <button type="button" onClick={handleOpenCabinet}
-                  className="w-full mt-2 bg-[#E7C768] hover:bg-[#F4EE8E] text-[#17344F] font-bold py-3 px-4 rounded-xl text-sm shadow-xl transition-all hover:scale-[1.02]">
-                  🚀 Начать с +500&nbsp;RR в подарок
-                </button>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-400 text-center leading-relaxed pt-2">
-              HR-агентства зарабатывают на разнице: при наценке ×10 готовый кадр обходится клиенту в {fmt(pricePerUnit * 2 * 10)} ₽, тогда как настоящая себестоимость через RR — всего {fmt(rrCost / Math.max(1,candidatesCount))} ₽ за подобранного кандидата.
-            </p>
+            {/* Итог выгоды */}
+            <div className="bg-gradient-to-r from-[#E7C768]/15 to-emerald-500/10 border-2 border-[#E7C768]/40 rounded-2xl p-5 text-center space-y-2">
+              <div className="text-sm text-slate-200">
+                {fmt(hrPerHire)}₽ / {fmt(rrPerHire)}RR = <b className="text-[#E7C768] text-lg">×{costRatio}</b> по деньгам
+                <span className="mx-2 text-slate-500">·</span>
+                {hrHours}×60 / {rrMinutes} = <b className="text-emerald-300 text-lg">×{timeRatio}</b> по времени
+              </div>
+              <div className="text-xl md:text-2xl font-extrabold text-white">
+                В <span className="text-[#E7C768]">{costRatio}</span> раза дешевле и в <span className="text-emerald-300">{timeRatio}</span> раз производительнее
+              </div>
+              <button type="button" onClick={handleOpenCabinet}
+                className="inline-flex mt-2 bg-[#E7C768] hover:bg-[#F4EE8E] text-[#17344F] font-bold py-3 px-6 rounded-xl text-sm shadow-xl transition-all hover:scale-[1.02]">
+                🚀 Начать с +500&nbsp;RR в подарок
+              </button>
+            </div>
+
+            {/* Тарифы — столбцом */}
+            <div className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3">
+              <div className="text-sm font-bold text-[#E7C768] text-center">
+                Тарифы — цена за каждое интервью или обучение
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                <div className="flex justify-between bg-white/5 px-4 py-2.5 rounded-xl">
+                  <span className="text-slate-300">1–9 шт</span>
+                  <span className="font-mono font-bold text-white">200 RR</span>
+                </div>
+                <div className="flex justify-between bg-white/5 px-4 py-2.5 rounded-xl">
+                  <span className="text-slate-300">10–49 шт</span>
+                  <span className="font-mono font-bold text-white">150 RR</span>
+                </div>
+                <div className="flex justify-between bg-white/5 px-4 py-2.5 rounded-xl">
+                  <span className="text-slate-300">50–199 шт</span>
+                  <span className="font-mono font-bold text-white">100 RR</span>
+                </div>
+                <div className="flex justify-between bg-emerald-500/10 border border-emerald-400/30 px-4 py-2.5 rounded-xl">
+                  <span className="text-emerald-200">200+ шт</span>
+                  <span className="font-mono font-bold text-emerald-300">50 RR</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-400 text-center">
+                1&nbsp;RR&nbsp;=&nbsp;1&nbsp;₽. Списание происходит при старте интервью или старте обучения. Лимиты задаются в настройках вакансии.
+              </p>
+            </div>
           </div>
 
         </div>
