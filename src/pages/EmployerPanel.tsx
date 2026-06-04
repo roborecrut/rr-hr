@@ -486,14 +486,13 @@ export default function EmployerPanel() {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: emp } = await supabase
         .from("employers")
-        .select("*, wallets(balance_rr)")
+        .select("*, wallets(units_balance)")
         .eq("public_id", employerId)
         .maybeSingle();
       if (emp) {
-        setBalance(Number((emp as any).wallets?.[0]?.balance_rr ?? (emp as any).wallets?.balance_rr ?? 0));
+        setBalance(Number((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance ?? 0));
         if (emp.contact_name) setProfileName(emp.contact_name);
         if (emp.contact_email) setProfileEmail(emp.contact_email);
-        if (emp.contact_tg) setTelegramUsernameState(emp.contact_tg);
       }
     } catch (err) {
       console.error("Error loading employer profile:", err);
@@ -699,7 +698,7 @@ export default function EmployerPanel() {
     return () => { cancelled = true; };
   }, [employerId]);
 
-  // Load real Telegram profile fields + referral stats for the authenticated user
+  // Load profile email for the authenticated user
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -708,54 +707,17 @@ export default function EmployerPanel() {
       if (!user || cancelled) return;
       const { data: prof } = await supabase
         .from("profiles")
-        .select("telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone, email")
+        .select("email")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled || !prof) return;
-      if (prof.telegram_id) setTelegramIdState(String(prof.telegram_id));
-      if (prof.telegram_username) setTelegramUsernameState(prof.telegram_username);
-      if (prof.telegram_first_name) setTelegramFirstName(prof.telegram_first_name);
-      if (prof.telegram_last_name) setTelegramLastName(prof.telegram_last_name);
-      if (prof.telegram_photo_url) setTelegramPhoto(prof.telegram_photo_url);
-      if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
       if (prof.email) setGoogleEmail(prof.email);
-
-      const { data: refs } = await supabase
-        .from("referrals")
-        .select("reward_rr")
-        .eq("owner_user_id", user.id);
-      if (!cancelled && refs) {
-        setReferralStats({
-          count: refs.length,
-          rr: refs.reduce((s, r: any) => s + Number(r.reward_rr || 0), 0),
-        });
-      }
     })();
     return () => { cancelled = true; };
   }, [employerId]);
 
   const handleRequestPhoneViaBot = async () => {
-    setIsRequestingPhone(true);
-    try {
-      const { supabase } = await import("@/integrations/supabase/client");
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        alert("Войдите через Telegram, чтобы привязать номер.");
-        return;
-      }
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/telegram-request-contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || "Ошибка");
-      alert("Откройте чат с @HR_RRbot и нажмите кнопку «Поделиться номером». Номер появится здесь автоматически.");
-      window.open("https://t.me/HR_RRbot", "_blank");
-    } catch (e: any) {
-      alert("Не удалось отправить запрос: " + (e?.message || "ошибка"));
-    } finally {
-      setIsRequestingPhone(false);
-    }
+    /* Telegram removed */
   };
 
   const handleLogout = () => {
