@@ -632,6 +632,8 @@ export type Database = {
           company_name: string | null
           contact_email: string | null
           contact_name: string | null
+          contact_phone: string | null
+          contact_telegram: string | null
           created_at: string
           id: string
           legacy_public_id: string | null
@@ -647,6 +649,8 @@ export type Database = {
           company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
+          contact_telegram?: string | null
           created_at?: string
           id?: string
           legacy_public_id?: string | null
@@ -662,6 +666,8 @@ export type Database = {
           company_name?: string | null
           contact_email?: string | null
           contact_name?: string | null
+          contact_phone?: string | null
+          contact_telegram?: string | null
           created_at?: string
           id?: string
           legacy_public_id?: string | null
