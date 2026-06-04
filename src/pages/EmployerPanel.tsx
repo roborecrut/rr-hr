@@ -63,7 +63,7 @@ export default function EmployerPanel() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Derive active tab from subroute PATH
-  let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" = "crm";
+  let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" | "interviews" | "training" = "crm";
   if (path.includes("/vacancies")) {
     activeTab = "vacancies";
   } else if (path.includes("/companies")) {
@@ -74,6 +74,10 @@ export default function EmployerPanel() {
     activeTab = "profile";
   } else if (path.includes("/events")) {
     activeTab = "events";
+  } else if (path.includes("/interviews")) {
+    activeTab = "interviews";
+  } else if (path.includes("/training")) {
+    activeTab = "training";
   } else {
     activeTab = "crm";
   }
