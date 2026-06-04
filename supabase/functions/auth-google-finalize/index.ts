@@ -29,8 +29,9 @@ Deno.serve(async (req) => {
     const user = userRes.user;
 
     const body = await req.json().catch(() => ({}));
+    // Default to employer — главный сайт ориентирован на работодателя.
     const intent: "employer" | "candidate" =
-      body?.intent === "employer" ? "employer" : "candidate";
+      body?.intent === "candidate" ? "candidate" : "employer";
     const ref: string | null = (body?.ref || "").toString().trim() || null;
     const projectSlug: string | null = (body?.project_slug || "").toString().trim() || null;
     const companySlug: string | null = (body?.company_slug || "").toString().trim() || null;
