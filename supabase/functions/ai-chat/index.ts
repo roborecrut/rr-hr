@@ -1,7 +1,14 @@
-// Unified AI chat assistant: employer-assist | candidate-assist | vacancy-consultant-chat
+// Unified AI chat assistant via ProTalk (OpenAI-compatible, stream=true).
+// kinds: employer | candidate | vacancy_consultant
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { aiChat, type AIMessage } from "../_shared/ai.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  callProTalk,
+  type ChatMessage,
+  buildChatId,
+  buildSocialId,
+  getUserFromAuthHeader,
+  logToDb,
+} from "../_shared/protalk.ts";
 
 const SYSTEMS: Record<string, string> = {
   employer:
@@ -18,44 +25,58 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => null) as null | {
     kind: "employer" | "candidate" | "vacancy_consultant";
-    messages: AIMessage[];
+    messages: ChatMessage[];
     context?: string;
     project_id?: string;
     candidate_id?: string;
     employer_id?: string;
+    userInfo?: {
+      telegram_id?: number | string;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
   };
   if (!body?.kind || !Array.isArray(body.messages)) return jsonResponse({ error: "bad_body" }, 400);
 
+  const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
+  const chatId = buildChatId({ telegramId: body.userInfo?.telegram_id, userId: user?.id });
+  const socialId = buildSocialId({ ...(body.userInfo || {}), user_id: user?.id });
+
   const system = SYSTEMS[body.kind] ?? SYSTEMS.employer;
-  const ctxMsg: AIMessage[] = body.context ? [{ role: "system", content: `Контекст: ${body.context}` }] : [];
+  const ctxMsg: ChatMessage[] = body.context ? [{ role: "system", content: `Контекст: ${body.context}` }] : [];
+  const messages: ChatMessage[] = [{ role: "system", content: system }, ...ctxMsg, ...body.messages];
+
+  const lastUser = [...body.messages].reverse().find((m) => m.role === "user")?.content || "";
 
   try {
-    const { text, raw } = await aiChat({
-      messages: [{ role: "system", content: system }, ...ctxMsg, ...body.messages],
+    const { text, raw } = await callProTalk({ messages });
+    await logToDb({
+      user_message: lastUser,
+      bot_reply: text,
+      channel_id: chatId,
+      user_social_id: socialId,
+      channel_name: `ai-chat:${body.kind}`,
+      server_name: "ai-chat",
+      function_call_params: JSON.stringify({
+        project_id: body.project_id, candidate_id: body.candidate_id, employer_id: body.employer_id,
+      }),
+      tokens_in_source: raw?.usage?.prompt_tokens ?? null,
+      tokens_out_source: raw?.usage?.completion_tokens ?? null,
+      tokens_total: raw?.usage?.total_tokens ?? null,
     });
-
-    // best-effort log (don't fail the request if logging fails)
-    try {
-      const url = Deno.env.get("SUPABASE_URL");
-      const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-      if (url && svc) {
-        const admin = createClient(url, svc);
-        await admin.from("ai_runs").insert({
-          endpoint: `ai-chat/${body.kind}`,
-          model: raw?.model ?? "google/gemini-2.5-flash",
-          input: { messages: body.messages, context: body.context },
-          output: { text },
-          tokens_in: raw?.usage?.prompt_tokens ?? null,
-          tokens_out: raw?.usage?.completion_tokens ?? null,
-          candidate_id: body.candidate_id ?? null,
-          project_id: body.project_id ?? null,
-          employer_id: body.employer_id ?? null,
-        });
-      }
-    } catch (_) { /* ignore */ }
-
     return jsonResponse({ reply: text });
   } catch (e) {
-    return jsonResponse({ error: String((e as Error).message) }, 500);
+    const err = String((e as Error).message);
+    await logToDb({
+      user_message: lastUser,
+      bot_reply: "",
+      channel_id: chatId,
+      user_social_id: socialId,
+      channel_name: `ai-chat:${body.kind}`,
+      server_name: "ai-chat",
+      function_error: err,
+    });
+    return jsonResponse({ error: err }, 500);
   }
 });
