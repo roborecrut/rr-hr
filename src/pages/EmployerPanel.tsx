@@ -1496,31 +1496,19 @@ export default function EmployerPanel() {
 
           {/* Quick Realtime Limit Monitor Tracker Widget */}
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-4 shadow-xl text-xs space-y-2 text-left">
-            <span className="text-[#E7C768] font-bold block uppercase tracking-wider font-mono text-[9px]">Текущие ИИ-Лимиты</span>
+            <span className="text-[#E7C768] font-bold block uppercase tracking-wider font-mono text-[9px]">Баланс и лимиты</span>
             <div className="space-y-1.5">
               <div className="text-[11px] flex justify-between border-b border-white/5 pb-1 mb-1">
                 <span className="text-slate-300 font-bold">Баланс RR:</span>
                 <span className="font-mono text-[#E7C768] font-black">{balance} RR</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">ИИ-Интервью:</span>
-                <span className="font-mono text-white font-bold">{limits.interviews} шт</span>
+                <span className="text-slate-305">Лимит интервью:</span>
+                <span className="font-mono text-white font-bold">{interviewCredits} шт</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">ИИ-Обучение:</span>
-                <span className="font-mono text-white font-bold">{limits.trainings} шт</span>
-              </div>
-              <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">ИИ-Лендинги:</span>
-                <span className="font-mono text-white font-bold">{limits.landings} шт</span>
-              </div>
-              <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Систем интервью:</span>
-                <span className="font-mono text-white font-bold">{limits.interviewSystems} шт</span>
-              </div>
-              <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Систем Обучения:</span>
-                <span className="font-mono text-white font-bold">{limits.trainingSystems} шт</span>
+                <span className="text-slate-305">Лимит обучений:</span>
+                <span className="font-mono text-white font-bold">{trainingCredits} шт</span>
               </div>
             </div>
           </div>
