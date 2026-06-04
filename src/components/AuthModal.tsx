@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import Mascot from "./Mascot";
 import { X, Chrome, Gift, Send } from "lucide-react";
+import { isTelegramMiniApp } from "@/lib/miniapp";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const [errorText, setErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const inMiniApp = isTelegramMiniApp();
 
   if (!isOpen) return null;
 
@@ -122,7 +124,8 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
 
         {/* 1-Click Action Buttons Container */}
         <div className="space-y-4 pt-2">
-          {/* Google Login Button */}
+          {/* Google Login Button — hidden inside Telegram Mini App (OAuth doesn't work in WebView) */}
+          {!inMiniApp && (
           <button
             type="button"
             disabled={isLoading}
@@ -144,6 +147,19 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
               +500 RR
             </span>
           </button>
+          )}
+
+          {inMiniApp && (
+            <div className="bg-emerald-950/40 border border-emerald-500/25 rounded-2xl p-4 text-center space-y-2">
+              <div className="text-xs uppercase tracking-wider font-mono text-emerald-300/80">Telegram Mini App</div>
+              <div className="text-sm font-extrabold text-white">Подождите, выполняем вход автоматически…</div>
+              <div className="flex justify-center gap-1.5 pt-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 text-[11px] text-slate-400 leading-snug pt-1">
             <Send className="w-3.5 h-3.5 text-[#E7C768]/80 shrink-0" />
