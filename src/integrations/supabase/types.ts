@@ -1195,6 +1195,45 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals_emp: {
+        Row: {
+          bonus_units: number
+          created_at: string
+          id: string
+          referred_employer_id: string
+          referrer_employer_id: string
+        }
+        Insert: {
+          bonus_units?: number
+          created_at?: string
+          id?: string
+          referred_employer_id: string
+          referrer_employer_id: string
+        }
+        Update: {
+          bonus_units?: number
+          created_at?: string
+          id?: string
+          referred_employer_id?: string
+          referrer_employer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_emp_referred_employer_id_fkey"
+            columns: ["referred_employer_id"]
+            isOneToOne: true
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_emp_referrer_employer_id_fkey"
+            columns: ["referrer_employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       test_connection: {
         Row: {
           created_at: string
