@@ -3167,6 +3167,9 @@ export default function EmployerPanel() {
                 </div>
               </div>
 
+              {/* REFERRAL LINK BLOCK */}
+              <ReferralLinkBlock employerPublicId={employerId} />
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* GOOGLE PROFILE ACCOUNT BLOCK */}
