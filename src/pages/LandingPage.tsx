@@ -51,31 +51,47 @@ export default function LandingPage() {
     setIsAuthModalOpen(true);
   };
 
-  // States for HR vs RR Calculator
-  const [candidatesCount, setCandidatesCount] = useState(50);
-  const [vacanciesCount, setVacanciesCount] = useState(1);
-  const [hrSalary, setHrSalary] = useState(60000); // ₽/мес за 1 HR
+  // Калькулятор: сколько готовых сотрудников нужно (прошли найм + обучение)
+  const [hiresNeeded, setHiresNeeded] = useState(5);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
 
-  // Тарифная сетка: цена 1 юнита (RR) по объёму закупки
-  const unitPrice = (units: number): number => {
-    if (units >= 200) return 50;
-    if (units >= 50) return 100;
-    if (units >= 10) return 150;
+  // Цена за 1 интервью ИЛИ 1 обучение (RR) в зависимости от объёма
+  const unitPrice = (qty: number): number => {
+    if (qty >= 200) return 50;
+    if (qty >= 50) return 100;
+    if (qty >= 10) return 150;
     return 200;
   };
-  const unitsTotal = candidatesCount * 2; // 1 интервью + 1 обучение
-  const pricePerUnit = unitPrice(unitsTotal);
-  const rrCost = unitsTotal * pricePerUnit;
-  const rrMinutes = Math.round(candidatesCount * 1.5 + vacanciesCount * 10); // ~1.5 мин/канд + 10 мин на вакансию
-  // HR: 1 рекрутер ≈ 50 кандидатов/мес; 30 мин на кандидата + 2ч на вакансию
-  const hrCount = Math.max(1, Math.ceil(candidatesCount / 50));
-  const hrCost = hrCount * hrSalary;
-  const hrMinutes = Math.round(candidatesCount * 30 + vacanciesCount * 120);
+  // Воронка RR
+  const N = Math.max(1, Math.min(50, hiresNeeded));
+  const rrRegistered = N * 10;
+  const rrInterviews = N * 6;
+  const rrSuccess = +(N * 2.4).toFixed(1);
+  const rrTrainings = N * 2;
+  const rrPassed = N;
+  const priceInterview = unitPrice(rrInterviews);
+  const priceTraining = unitPrice(rrTrainings);
+  const rrCost = rrInterviews * priceInterview + rrTrainings * priceTraining;
+  const rrPerHire = Math.round(rrCost / N);
+  const rrMinutes = rrRegistered + rrInterviews + Math.round(rrSuccess) + rrTrainings + rrPassed;
+  // Воронка HR (часы)
+  const hrInvited = N * 12;        // 3ч на N=5
+  const hrInvitedH = +(hrInvited * 0.05).toFixed(1);
+  const hrCame = N * 6;            // 30ч на N=5
+  const hrCameH = hrCame * 1;
+  const hrSuccess = +(N * 2.4).toFixed(1);
+  const hrTrainings = N * 2;       // 10ч на N=5
+  const hrTrainingsH = hrTrainings * 1;
+  const hrPassed = N;              // 5ч на N=5
+  const hrPassedH = hrPassed * 1;
+  const hrHours = hrInvitedH + hrCameH + hrTrainingsH + hrPassedH;
+  const hrSalary = 80000;
+  const hrRate = hrSalary / 160;   // ₽/час
+  const hrCost = Math.round(hrHours * hrRate);
+  const hrPerHire = Math.round(hrCost / N);
   const fmt = (n: number) => n.toLocaleString("ru-RU");
-  const fmtMin = (m: number) => m < 60 ? `${m} мин` : `${Math.round(m/60)} ч`;
-  const costRatio = rrCost > 0 ? (hrCost / rrCost).toFixed(1) : "—";
-  const timeRatio = rrMinutes > 0 ? (hrMinutes / rrMinutes).toFixed(0) : "—";
+  const costRatio = rrPerHire > 0 ? (hrPerHire / rrPerHire).toFixed(1) : "—";
+  const timeRatio = rrMinutes > 0 ? Math.round((hrHours * 60) / rrMinutes) : 0;
 
   // Если пользователь уже залогинен и у него есть employer-профиль — сразу
   // открываем кабинет вместо показа лендинга с кнопкой "Регистрация".
