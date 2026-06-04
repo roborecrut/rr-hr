@@ -2759,6 +2759,9 @@ export default function EmployerPanel() {
           {/* PAGE 4: BILLS & ACCOUNTS - DYNAMIC BALANCE & SHIELD */}
           {activeTab === "tariff" && (
             <div className="space-y-6 text-left">
+
+              {/* Hiring Calculator + new pricing */}
+              <HiringCalculator />
               
               {/* BALANCE SUMMARY PANEL CARD */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6 font-medium">
