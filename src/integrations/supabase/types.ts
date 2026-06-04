@@ -445,6 +445,33 @@ export type Database = {
           },
         ]
       }
+      client_errors: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          meta: Json
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          meta?: Json
+          source: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          meta?: Json
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           about_text: string | null
