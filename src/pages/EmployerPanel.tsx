@@ -3419,10 +3419,8 @@ export default function EmployerPanel() {
             <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
           </div>
 
-          <div className="flex gap-4 text-xs text-slate-400 font-semibold">
-            <button onClick={() => navigate("/main")} className="hover:text-white transition">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="hover:text-white transition">Каталог</button>
-            <button onClick={() => navigate("/employer/crm")} className="hover:text-white transition">Панель CRM</button>
+          <div className="text-xs text-slate-400 font-semibold">
+            Безоговорочная роботизация подбора персонала
           </div>
         </div>
       </footer>
