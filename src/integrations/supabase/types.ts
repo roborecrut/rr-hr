@@ -775,6 +775,66 @@ export type Database = {
           },
         ]
       }
+      logs: {
+        Row: {
+          api_key: string | null
+          bot_id: string | null
+          bot_reply: string | null
+          channel_id: string | null
+          channel_name: string | null
+          created_at: string | null
+          function_call_params: string | null
+          function_error: string | null
+          id: number
+          llm: string | null
+          server_name: string | null
+          tokens_in_source: number | null
+          tokens_out_source: number | null
+          tokens_total: number | null
+          tokens_user: number | null
+          user_message: string | null
+          user_social_id: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          bot_id?: string | null
+          bot_reply?: string | null
+          channel_id?: string | null
+          channel_name?: string | null
+          created_at?: string | null
+          function_call_params?: string | null
+          function_error?: string | null
+          id?: never
+          llm?: string | null
+          server_name?: string | null
+          tokens_in_source?: number | null
+          tokens_out_source?: number | null
+          tokens_total?: number | null
+          tokens_user?: number | null
+          user_message?: string | null
+          user_social_id?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          bot_id?: string | null
+          bot_reply?: string | null
+          channel_id?: string | null
+          channel_name?: string | null
+          created_at?: string | null
+          function_call_params?: string | null
+          function_error?: string | null
+          id?: never
+          llm?: string | null
+          server_name?: string | null
+          tokens_in_source?: number | null
+          tokens_out_source?: number | null
+          tokens_total?: number | null
+          tokens_user?: number | null
+          user_message?: string | null
+          user_social_id?: string | null
+        }
+        Relationships: []
+      }
       messages_recruiter: {
         Row: {
           candidate_id: string
