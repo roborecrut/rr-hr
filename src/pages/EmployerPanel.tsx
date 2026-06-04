@@ -135,6 +135,10 @@ export default function EmployerPanel() {
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
 
+  // Linked providers — controls "connect" CTAs
+  const [hasGoogle, setHasGoogle] = useState<boolean>(false);
+  const [hasTelegram, setHasTelegram] = useState<boolean>(false);
+
   // Billing & Tariff States
   const [employerId, setEmployerId] = useState<string>(
     () => localStorage.getItem("employer_session_id") || "",
@@ -710,17 +714,67 @@ export default function EmployerPanel() {
       if (!user || cancelled) return;
       const { data: prof } = await supabase
         .from("profiles")
-        .select("telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone, email")
+        .select("display_name, avatar_url, email, google_email, registered_via, telegram_id, telegram_username, telegram_first_name, telegram_last_name, telegram_photo_url, telegram_phone")
         .eq("id", user.id)
         .maybeSingle();
       if (cancelled || !prof) return;
-      if (prof.telegram_id) setTelegramIdState(String(prof.telegram_id));
-      if (prof.telegram_username) setTelegramUsernameState(prof.telegram_username);
-      if (prof.telegram_first_name) setTelegramFirstName(prof.telegram_first_name);
-      if (prof.telegram_last_name) setTelegramLastName(prof.telegram_last_name);
-      if (prof.telegram_photo_url) setTelegramPhoto(prof.telegram_photo_url);
-      if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
-      if (prof.email) setGoogleEmail(prof.email);
+      // ---- Telegram ----
+      const tgLinked = !!prof.telegram_id;
+      setHasTelegram(tgLinked);
+      if (tgLinked) {
+        setTelegramIdState(String(prof.telegram_id));
+        setTelegramUsernameState(prof.telegram_username || "");
+        setTelegramFirstName(prof.telegram_first_name || "");
+        setTelegramLastName(prof.telegram_last_name || "");
+        setTelegramPhoto(prof.telegram_photo_url || "");
+        if (prof.telegram_phone) setTelegramPhone(prof.telegram_phone);
+      } else {
+        // clear placeholders so the UI shows "не привязан"
+        setTelegramIdState("");
+        setTelegramUsernameState("");
+        setTelegramFirstName("");
+        setTelegramLastName("");
+        setTelegramPhoto("");
+      }
+
+      // ---- Google / general profile ----
+      const meta = (user.user_metadata || {}) as Record<string, any>;
+      const identities = (user.identities || []) as Array<{ provider: string; identity_data?: any }>;
+      const googleIdentity = identities.find((i) => i.provider === "google");
+      const googleLinked = !!googleIdentity || !!prof.google_email || prof.registered_via === "google";
+      setHasGoogle(googleLinked);
+
+      const fullName: string =
+        prof.display_name ||
+        meta.full_name || meta.name ||
+        [prof.telegram_first_name, prof.telegram_last_name].filter(Boolean).join(" ") ||
+        "";
+      const email: string = prof.google_email || prof.email || user.email || "";
+      const avatar: string =
+        prof.avatar_url ||
+        meta.avatar_url || meta.picture ||
+        (googleIdentity?.identity_data?.avatar_url as string) || "";
+      const googleSub: string =
+        (googleIdentity?.identity_data?.sub as string) ||
+        (meta.sub as string) || "";
+
+      if (fullName) {
+        setProfileName(fullName);
+        setGoogleName(fullName);
+      }
+      if (email) {
+        setProfileEmail(email);
+        setGoogleEmail(email);
+      }
+      if (googleLinked) {
+        setGooglePhoto(avatar || "");
+        setGoogleId(googleSub || "");
+        setGoogleVerified(true);
+      } else {
+        setGooglePhoto("");
+        setGoogleId("");
+        setGoogleVerified(false);
+      }
 
       const { data: refs } = await supabase
         .from("referrals")
