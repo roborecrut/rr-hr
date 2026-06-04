@@ -8,6 +8,7 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import { BASIC_SPECIALTIES } from "../types";
 import AuthModal from "../components/AuthModal";
+import HiringCalculator from "../components/HiringCalculator";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
@@ -52,12 +53,6 @@ export default function LandingPage() {
   };
 
   // States for Interactive Tariff Calculator
-  const [interviewsCount, setInterviewsCount] = useState(5);
-  const [trainingsCount, setTrainingsCount] = useState(5);
-  const [landingsCount, setLandingsCount] = useState(1);
-  const [interviewSystemsCount, setInterviewSystemsCount] = useState(1);
-  const [trainingSystemsCount, setTrainingSystemsCount] = useState(1);
-  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
 
   return (
