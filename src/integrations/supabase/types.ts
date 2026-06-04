@@ -1602,6 +1602,7 @@ export type Database = {
       spend_fixed: { Args: { _item: string; _project: string }; Returns: Json }
       spend_pack: { Args: { _candidate: string; _kind: string }; Returns: Json }
       spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
+      topup_rr: { Args: { _amount_rub: number }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "employer" | "candidate"
