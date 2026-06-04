@@ -3471,7 +3471,7 @@ export default function EmployerPanel() {
                     </div>
                   )}
 
-                  {hasTelegram && (
+                  {hasTelegram && (<>
                   <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
                     <div className="relative shrink-0">
                       <img 
