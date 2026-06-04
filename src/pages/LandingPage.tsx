@@ -2,7 +2,7 @@
  * Лендинг работодателя — Google-only регистрация, бонус 1000 RR (10 ед.),
  * три карточки услуг и калькулятор Робот vs HR.
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import AuthModal from "../components/AuthModal";
@@ -20,12 +20,41 @@ import {
   Menu,
   X,
   Gift,
+  LogOut,
+  LayoutDashboard,
 } from "lucide-react";
 
 export default function LandingPage() {
   const { navigate, path } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(path === "/auth");
+  const [authedUserId, setAuthedUserId] = useState<string | null>(null);
+  const [profilePath, setProfilePath] = useState<string>("/");
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setAuthedUserId(user?.id ?? null);
+      if (user) {
+        const p = await resolveProfilePathForUser(user.id);
+        if (!cancelled) setProfilePath(p);
+      } else {
+        setProfilePath("/");
+      }
+    };
+    refresh();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => refresh());
+    return () => { cancelled = true; sub.subscription.unsubscribe(); };
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setAuthedUserId(null);
+    setProfilePath("/");
+  };
+  const isAuthed = !!authedUserId;
 
   const handleOpenCabinet = async () => {
     try {
