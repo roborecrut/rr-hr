@@ -1,5 +1,10 @@
 // Telegram Mini App — verify initData and issue a Supabase session.
 // initData is a URL-encoded query string from window.Telegram.WebApp.initData.
+//
+// startParam encodings (from t.me/<bot>/app?startapp=<value>):
+//   emp{empPid}                                 → employer attach/login (intent=employer)
+//   emp{empPid}com{companyPid}vac{vacancyPid}   → candidate registering for vacancy (intent=candidate)
+//   (empty)                                     → candidate, no project link
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
@@ -24,11 +29,9 @@ Deno.serve(async (req) => {
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!BOT_TOKEN || !SUPABASE_URL || !SERVICE_KEY) return jsonResponse({ error: "env_missing" }, 500);
 
-  let body: { initData?: string; intent?: string; ref?: string } = {};
+  let body: { initData?: string; ref?: string } = {};
   try { body = await req.json(); } catch { return jsonResponse({ error: "bad_json" }, 400); }
   if (!body.initData) return jsonResponse({ error: "init_data_missing" }, 400);
-
-  const requestedIntent = body.intent === "employer" ? "employer" : "candidate";
 
   // Parse initData
   const params = new URLSearchParams(body.initData);
@@ -53,6 +56,25 @@ Deno.serve(async (req) => {
   // start_param comes from t.me/<bot>/app?startapp=<value> deep link
   const startParam = (params.get("start_param") || body.ref || "").trim();
 
+  // ----- Parse startParam -----
+  let parsedIntent: "employer" | "candidate" = "candidate";
+  let empRef: string | null = null;
+  let comRef: string | null = null;
+  let vacRef: string | null = null;
+  if (startParam) {
+    let m = startParam.match(/^emp(\d+)com(\d+)vac(\d+)$/);
+    if (m) {
+      parsedIntent = "candidate";
+      empRef = m[1]; comRef = m[2]; vacRef = m[3];
+    } else {
+      m = startParam.match(/^emp(\d+)$/);
+      if (m) {
+        parsedIntent = "employer";
+        empRef = m[1];
+      }
+    }
+  }
+
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
   // Reuse an existing link for this telegram_id regardless of intent — the
@@ -63,9 +85,10 @@ Deno.serve(async (req) => {
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
-  const intent = (anyLink?.intent as "employer" | "candidate" | undefined) || requestedIntent;
+  const intent = (anyLink?.intent as "employer" | "candidate" | undefined) || parsedIntent;
   const email = `tg_${tgUser.id}_${intent}@rrhr.local`;
   let userId = anyLink?.user_id as string | undefined;
+  const isNewUser = !userId;
 
   if (!userId) {
     const { data: created, error } = await admin.auth.admin.createUser({
@@ -88,13 +111,43 @@ Deno.serve(async (req) => {
     });
 
     if (intent === "employer") {
+      // grant_employer_bonus trigger gives +500 RR on insert
       await admin.from("employers").insert({
         user_id: userId, contact_name: tgUser.first_name ?? null, contact_tg: tgUser.username ?? null,
       });
+    } else if (intent === "candidate") {
+      // Candidate registration tied to vacancy (if startParam provided full triple)
+      let project_id: string | null = null;
+      let referrer_employer_id: string | null = null;
+      let role_name: string | null = null;
+      if (vacRef) {
+        const { data: proj } = await admin.from("projects")
+          .select("id, employer_id, role_name")
+          .eq("public_id", vacRef)
+          .maybeSingle();
+        if (proj) {
+          project_id = proj.id;
+          role_name = proj.role_name ?? null;
+          referrer_employer_id = proj.employer_id ?? null;
+        }
+      }
+      await admin.from("candidates").insert({
+        user_id: userId,
+        project_id,
+        referrer_employer_id,
+        role_name,
+        registered_via: "telegram",
+        current_stage: "terms",
+      });
     }
-
-    if (startParam && intent === "employer") {
-      await admin.rpc("apply_referral_bonus", { _referrer_public_id: startParam, _new_user: userId });
+  } else if (intent === "employer") {
+    // Existing employer linking Telegram → one-time +500 RR
+    const { data: emp } = await admin.from("employers")
+      .select("id, telegram_bonus_granted")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (emp && !emp.telegram_bonus_granted) {
+      await admin.rpc("grant_telegram_link_bonus", { _employer: emp.id });
     }
   }
 
@@ -136,7 +189,7 @@ Deno.serve(async (req) => {
   if (linkErr) return jsonResponse({ error: "link_failed", details: linkErr.message }, 500);
 
   return jsonResponse({
-    ok: true, user_id: userId, email,
+    ok: true, user_id: userId, email, intent, is_new_user: isNewUser,
     token_hash: linkData.properties?.hashed_token,
     verification_type: "magiclink",
     target,
