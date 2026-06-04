@@ -3637,7 +3637,7 @@ export default function EmployerPanel() {
                     </div>
                   </div>
                 </div>
-                  )}
+                  </>)}
 
               </div>
 
