@@ -1177,83 +1177,69 @@ export default function EmployerPanel() {
   const handleAddCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCompanyName) return;
-
-    // Transliterate to generate slug as requested: "Лендинг будет иметь адрес /ooo-roga-i-kopyta"
-    const rus = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
-    const lat = ["a","b","v","g","d","e","yo","zh","z","i","y","k","l","m","n","o","p","r","s","t","u","f","kh","ts","ch","sh","shch","","y","","e","yu","ya"];
-    const slug = newCompanyName.toLowerCase()
-      .replace(/[^а-яёa-z0-9\s-]/gi, "")
-      .trim()
-      .split("")
-      .map(char => {
-        const idx = rus.indexOf(char);
-        return idx > -1 ? lat[idx] : char;
-      })
-      .join("")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-");
-
-    const payload = {
-      name: newCompanyName,
-      slug,
-      industry: newCompanyIndustry || "Производство",
-      staff: newCompanyStaff,
-      description: newCompanyDesc || "Компания осуществляет подбор перспективных кадров.",
-      sites: newCompanySite || "",
-      logoUrl: newCompanyLogo || "",
-      files: newCompanyFiles || "",
-      employerId,
-      missionText: newCompanyMissionText,
-      customWiki: newCompanyCustomWiki,
-      salaryTerms: newCompanySalaryTerms,
-      scheduleTerms: newCompanyScheduleTerms,
-      statsValClients: newCompanyStatsValClients,
-      statsLabelClients: newCompanyStatsLabelClients,
-      statsValDialogs: newCompanyStatsValDialogs,
-      statsLabelDialogs: newCompanyStatsLabelDialogs,
-      statsValFounded: newCompanyStatsValFounded,
-      statsLabelFounded: newCompanyStatsLabelFounded
-    };
-
+    if (!draftCompanyId) {
+      addAuditEvent("warning", "Нет черновика", "Откройте мастер через «+ Добавить Компанию».");
+      return;
+    }
     try {
-      const res = await fetch("/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const saved = await res.json();
-        setCompaniesList(prev => {
-          // If already exists, replace it, otherwise append
-          const exists = prev.some(c => c.slug === saved.slug);
-          if (exists) {
-            return prev.map(c => c.slug === saved.slug ? saved : c);
+      const stats = {
+        founded_year: newCompanyStatsValFounded || null,
+        employees: newCompanyStatsValClients || null,
+        turnover: newCompanyStatsValDialogs || null,
+        labels: {
+          founded: newCompanyStatsLabelFounded || null,
+          employees: newCompanyStatsLabelClients || null,
+          turnover: newCompanyStatsLabelDialogs || null,
+        },
+      };
+      const patch = {
+        name: newCompanyName,
+        logo_url: newCompanyLogo || null,
+        description_text: newCompanyDescription || null,
+        products_text: newCompanyProducts || null,
+        mission_text: newCompanyMissionText || null,
+        about_text: newCompanyDesc || null,
+        team_text: null,
+        payouts_text: newCompanySalaryTerms || null,
+        schedule_text: newCompanyScheduleTerms || null,
+        system_text: newCompanyCustomWiki || null,
+        stats,
+      };
+      const upd = await supabase.rpc("company_update", { _id: draftCompanyId, _patch: patch as any });
+      if (upd.error) throw upd.error;
+      const fin = await supabase.rpc("company_finalize", { _id: draftCompanyId });
+      if (fin.error) throw fin.error;
+      const pid = (fin.data as any)?.public_id || draftCompanyPublicId;
+
+      // Cleanup uploaded files for this company
+      if (draftFilePath) {
+        try {
+          const folder = draftFilePath.split("/").slice(0, -1).join("/");
+          const list = await supabase.storage.from("company-uploads").list(folder);
+          if (list.data?.length) {
+            await supabase.storage.from("company-uploads").remove(list.data.map((f) => `${folder}/${f.name}`));
           }
-          return [...prev, saved];
-        });
-        addAuditEvent("success", "Компания зарегистрирована", `Бренд "${newCompanyName}" сохранен со всеми ИИ-сведениями.`);
-        
-        // Reset inputs
-        setNewCompanyName("");
-        setNewCompanyDesc("");
-        setNewCompanyIndustry("");
-        setNewCompanySite("");
-        setNewCompanyLogo("");
-        setNewCompanyFiles("");
-        setNewCompanyMissionText("");
-        setNewCompanyCustomWiki("");
-        setNewCompanySalaryTerms("");
-        setNewCompanyScheduleTerms("");
-        setNewCompanyStatsValClients("");
-        setNewCompanyStatsLabelClients("");
-        setNewCompanyStatsValDialogs("");
-        setNewCompanyStatsLabelDialogs("");
-        setNewCompanyStatsValFounded("");
-        setNewCompanyStatsLabelFounded("");
-        setShowAddCompany(false);
+        } catch (e) { console.warn("cleanup error", e); }
       }
-    } catch (err) {
-      console.error("Failed to add company on server:", err);
+
+      addAuditEvent("success", "Компания опубликована", `Лендинг доступен: /com${pid}`);
+      // Reload list from Supabase
+      const r = await supabase.from("companies").select("*").eq("owner_employer_id", (await supabase.from("employers").select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle()).data?.id || "");
+      if (r.data) setCompaniesList(r.data);
+
+      // Reset wizard
+      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanySite("");
+      setNewCompanyLogo(""); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
+      setNewCompanySalaryTerms(""); setNewCompanyScheduleTerms("");
+      setNewCompanyStatsValClients(""); setNewCompanyStatsLabelClients("");
+      setNewCompanyStatsValDialogs(""); setNewCompanyStatsLabelDialogs("");
+      setNewCompanyStatsValFounded(""); setNewCompanyStatsLabelFounded("");
+      setNewCompanyDescription(""); setNewCompanyProducts("");
+      setDraftCompanyId(null); setDraftCompanyPublicId(null); setDraftFilePath(null);
+      setShowAddCompany(false);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка сохранения", err?.message || "supabase error");
     }
   };
 
