@@ -2287,9 +2287,30 @@ export default function EmployerPanel() {
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
                 <div className="bg-[#1D3E5E]/95 border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                    <span className="text-xs font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Конструктор вакансии с поддержкой Gemini API</span>
-                    <button onClick={() => setShowAddNewVacancy(false)} className="text-slate-400 hover:text-white">✕ Close</button>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Панель вакансии RR</span>
+                      <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBeautifyNewVacancyWithAI}
+                        disabled={isGenerating || isParsingFile}
+                        className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+                        {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelAddVacancyWizard}
+                        className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5"
+                        title="Закрыть мастер"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* File intelligent import block */}
