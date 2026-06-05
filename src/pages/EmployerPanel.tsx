@@ -279,12 +279,14 @@ export default function EmployerPanel() {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      pushAILog("ai-enhance:single", "request", { field: fieldName, value: currentVal, company_id: draftCompanyId });
       const newVal = await aiEnhanceSingle({
         field: fieldName,
         value: currentVal,
         company_name: newCompanyName,
         hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
       });
+      pushAILog("ai-enhance:single", "response", newVal);
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
@@ -301,11 +303,14 @@ export default function EmployerPanel() {
         else if (fieldName === "statsLabelDialogs") setNewCompanyStatsLabelDialogs(newVal);
         else if (fieldName === "statsValFounded") setNewCompanyStatsValFounded(newVal);
         else if (fieldName === "statsLabelFounded") setNewCompanyStatsLabelFounded(newVal);
+        else if (fieldName === "descriptionText") setNewCompanyDescription(newVal);
+        else if (fieldName === "productsText") setNewCompanyProducts(newVal);
 
         addAuditEvent("success", "ИИ Улучшение поля", `Поле успешно улучшено ИИ!`);
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-enhance:single", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
