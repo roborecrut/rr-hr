@@ -143,6 +143,39 @@ export default function EmployerPanel() {
   const [setupTeamText, setSetupTeamText] = useState("");
   const [setupSystemText, setSetupSystemText] = useState("");
 
+  // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
+  // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
+  // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
+  const [roleTemplates, setRoleTemplates] = useState<Record<string, string>>({});
+  const exampleFor = (field: string): string =>
+    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
+  const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
+
+  // Reload templates when the selected role changes and prefill empty fields.
+  useEffect(() => {
+    if (!setupRoleName.trim()) return;
+    let cancelled = false;
+    (async () => {
+      const tpl = await getRoleTemplates(setupRoleName);
+      if (cancelled) return;
+      setRoleTemplates(tpl as Record<string, string>);
+      // Prefill ONLY empty wizard fields, never overwrite user input.
+      const get = (k: string) =>
+        ((tpl as any)?.[k] || (DEFAULT_VAC_TEMPLATES as any)[k] || "").trim();
+      setSetupVacancyText((v) => v || get("vacancy_text"));
+      setSetupTasksActivityText((v) => v || get("tasks_activity_text"));
+      setSetupScheduleText((v) => v || get("schedule_text"));
+      setSetupMotivationText((v) => v || get("motivation_text"));
+      setSetupMotivationDetail((v) => v || get("motivation_text_detail"));
+      setSetupPayoutsText((v) => v || get("payouts_text"));
+      setSetupOnboardingText((v) => v || get("onboarding_text"));
+      setSetupTeamText((v) => v || get("team_text_vac"));
+      setSetupSystemText((v) => v || get("system_text_vac"));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupRoleName]);
+
   // Draft project bookkeeping (matches the company wizard pattern).
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
   const [draftProjectPublicId, setDraftProjectPublicId] = useState<string | null>(null);
