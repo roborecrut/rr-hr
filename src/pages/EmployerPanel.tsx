@@ -1217,79 +1217,59 @@ export default function EmployerPanel() {
     }
   };
 
-  // Submit dynamic system generation via server Gemini API
+  // Save the wizard draft into projects (UPDATE), publish it, and redirect to
+  // the employer vacancies list. The onboarding/training generation has been
+  // moved out of the wizard to a dedicated action on each vacancy card.
   const handleCreateOnboardingSystem = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!draftProjectId) {
+      addAuditEvent("warning", "Нет черновика", "Откройте мастер через «+ Добавить вакансию».");
+      return;
+    }
+    if (!setupRoleName.trim()) {
+      addAuditEvent("warning", "Не указана должность", "Введите должность перед сохранением.");
+      return;
+    }
     setIsGenerating(true);
-    addAuditEvent("info", "Старт ИИ Генерации", `Запуск ИИ-сборки онбординга для вакансии: ${setupRoleName}`);
-
-    const matchedCompany = companiesList.find(c => c.name.toLowerCase() === setupCompanyName.toLowerCase());
-    const companySlug = matchedCompany ? matchedCompany.slug : setupCompanyName.toLowerCase()
-      .replace(/[^а-яёa-z0-9\s-]/gi, "")
-      .trim()
-      .replace(/\s+/g, "-");
-
     try {
-      const { aiGenerateOnboarding } = await import("@/lib/aiClient");
-      const aiData = await aiGenerateOnboarding({
-        role_name: setupRoleName,
-        company_name: setupCompanyName,
-        brief: `Зарплата: ${setupSalary}\nГрафик: ${setupSchedule}\nБаза знаний:\n${setupCustomWiki}`,
-        save: false,
-      });
-      const newProjectData: any = {
-        id: `proj_${Date.now()}`,
-        companyName: setupCompanyName,
-        companySlug,
-        employerId,
-        roleName: setupRoleName,
-        salaryTerms: setupSalary,
-        scheduleTerms: setupSchedule,
-        customWiki: setupCustomWiki,
-        vacancyText: aiData?.vacancy_text,
-        motivationText: aiData?.motivation_text,
-        onboardingText: aiData?.onboarding_text,
-        trainingProfText: aiData?.training_prof_text,
-        trainingProductText: aiData?.training_product_text,
-        trainingSystemText: aiData?.training_system_text,
-        checklistQuestions: (aiData?.checklist || []).map((q: any) => q.question).filter(Boolean),
-        roleplayQuestions: (aiData?.roleplay || []).map((q: any) => q.question).filter(Boolean),
-        createdTasks: true,
+      // Resolve the company id from the selected company name (if any).
+      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyId = (matched as any)?.id || null;
+
+      const patch: any = {
+        company_id: companyId,
+        role_name: setupRoleName.trim(),
+        salary_terms: setupSalary || null,
+        schedule_terms: setupSchedule || null,
+        custom_wiki: setupCustomWiki || null,
+        vacancy_text: setupVacancyText || null,
+        tasks_activity_text: setupTasksActivityText || null,
+        motivation_text: setupMotivationText || null,
+        motivation_text_detail: setupMotivationDetail || null,
+        schedule_text: setupScheduleText || null,
+        payouts_text: setupPayoutsText || null,
+        onboarding_text: setupOnboardingText || null,
+        team_text: setupTeamText || null,
+        system_text: setupSystemText || null,
+        is_published: true,
       };
-      setProjects(prev => [...prev, newProjectData]);
-      
-      // Notify Telegram Bot mock
-      await fetch("/api/telegram-mock-send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: adminTgId,
-          message: `🤖 Настроена новая система адаптации Робота Рекрутера!\n🏢 Компания: ${setupCompanyName}\n💼 Должность: ${setupRoleName}`
-        })
-      });
+      const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
+      if (upd.error) throw upd.error;
 
-      // Insert new company into local listing if unique
-      if (!companiesList.some(comp => comp.name.toLowerCase() === setupCompanyName.toLowerCase())) {
-        setCompaniesList(prev => [
-          ...prev,
-          { 
-            name: setupCompanyName, 
-            slug: companySlug,
-            industry: "Услуги / Производство", 
-            staff: "10-25 человек", 
-            description: "Интегрированная новая компания в экосистему адаптации сотрудников.", 
-            activeVacancies: 1,
-            employerId
-          }
-        ]);
-      }
+      // Keep the shared title catalog up-to-date.
+      try { await upsertJobTitle(setupRoleName.trim()); } catch {}
 
-      addAuditEvent("success", "ИИ-Блок онбординга собран", `Программа лекций, ситуационных вопросов создана для ${setupRoleName}`);
+      addAuditEvent("success", "Вакансия сохранена", `Опубликована вакансия «${setupRoleName}»`);
       setShowAddNewVacancy(false);
-      navigate(`/emp${employerId}/vacancies`);
-      fetchData();
+      setDraftProjectId(null);
+      setDraftProjectPublicId(null);
+      // Refresh list from the database and navigate to the vacancies tab.
+      await fetchData();
+      if (employerId) navigate(`/emp${employerId}/vacancies`);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     } catch (err: any) {
-      alert("Ошибка при генерации: " + err.message);
+      console.error(err);
+      addAuditEvent("warning", "Ошибка сохранения вакансии", err?.message || "supabase error");
     } finally {
       setIsGenerating(false);
     }
