@@ -69,3 +69,7 @@ body {
   border-radius: 0.25rem;
 }
 
+/* Hide scrollbar (used by sticky in-page nav chips) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
