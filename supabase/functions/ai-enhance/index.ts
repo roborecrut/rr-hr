@@ -33,6 +33,21 @@ const LIMITS: Record<string, number> = {
   statsLabelDialogs: 40,
   statsValFounded: 8,
   statsLabelFounded: 40,
+  // Vacancy fields
+  roleName: 120,
+  role_name: 120,
+  vacancy_text: 1500,
+  vacancyText: 1500,
+  tasks_activity_text: 1000,
+  tasksActivityText: 1000,
+  motivation_text: 500,
+  motivationText: 500,
+  motivation_text_detail: 800,
+  motivationTextDetail: 800,
+  onboarding_text: 1000,
+  onboardingText: 1000,
+  team_text_vac: 600,
+  system_text_vac: 600,
 };
 const clampField = (field: string | undefined, val: unknown): string => {
   const v = typeof val === "string" ? val : String(val ?? "");
