@@ -637,12 +637,15 @@ export type Database = {
           created_at: string
           id: string
           interview_credits: number
+          interview_setup_credits: number
+          landing_credits: number
           legacy_public_id: string | null
           plan: string | null
           public_id: string | null
           ref_by: string | null
           status: string | null
           training_credits: number
+          training_setup_credits: number
           updated_at: string
           user_id: string | null
         }
@@ -656,12 +659,15 @@ export type Database = {
           created_at?: string
           id?: string
           interview_credits?: number
+          interview_setup_credits?: number
+          landing_credits?: number
           legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
           training_credits?: number
+          training_setup_credits?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -675,12 +681,15 @@ export type Database = {
           created_at?: string
           id?: string
           interview_credits?: number
+          interview_setup_credits?: number
+          landing_credits?: number
           legacy_public_id?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
           training_credits?: number
+          training_setup_credits?: number
           updated_at?: string
           user_id?: string | null
         }
@@ -1653,7 +1662,12 @@ export type Database = {
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
+      purchase_fixed: { Args: { _item: string; _qty?: number }; Returns: Json }
       purchase_pack: { Args: { _kind: string; _qty: number }; Returns: Json }
+      purchase_pack_mixed: {
+        Args: { _qty_int: number; _qty_train: number }
+        Returns: Json
+      }
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }
         Returns: boolean
