@@ -434,6 +434,19 @@ export default function EmployerPanel() {
       const d = data as any;
       setDraftCompanyId(d?.id || null);
       setDraftCompanyPublicId(d?.public_id || null);
+      // Reset wizard fields so the user starts clean.
+      setNewCompanyName("");
+      setNewCompanyIndustry("");
+      setNewCompanyStaff("");
+      setNewCompanySite("");
+      setNewCompanyLogo(DEFAULT_LOGO_URL);
+      setNewCompanyDescription("");
+      setNewCompanyProducts("");
+      setNewCompanyMissionText("");
+      setNewCompanyDesc("");
+      setNewCompanySalaryTerms("");
+      setNewCompanyScheduleTerms("");
+      setNewCompanyCustomWiki("");
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
