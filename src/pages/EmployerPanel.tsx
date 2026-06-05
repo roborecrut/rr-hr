@@ -2649,16 +2649,25 @@ export default function EmployerPanel() {
                           </button>
                         </div>
 
-                        <select 
-                          className="bg-[#17344F] text-xs px-3 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
-                          value={newCompanyStaff}
-                          onChange={(e) => setNewCompanyStaff(e.target.value)}
-                        >
-                          <option value="менее 10 сотрудников">До 10 сотрудников</option>
-                          <option value="10-50 человек">10 - 50 сотрудников</option>
-                          <option value="50-250 человек">50 - 250 сотрудников</option>
-                          <option value="свыше 250 сотрудников">Более 250 человек</option>
-                        </select>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            placeholder="Количество сотрудников (например: 120 человек)"
+                            maxLength={80}
+                            className="w-full bg-black/40 text-xs pl-3 pr-8 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none focus:border-green-500/50"
+                            value={newCompanyStaff}
+                            onChange={(e) => setNewCompanyStaff(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleEnhanceSingleField("staff", newCompanyStaff)}
+                            disabled={enhancingFields["staff"]}
+                            className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
+                            title="Уточнить число сотрудников через ИИ"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["staff"] ? "animate-spin text-yellow-400" : ""}`} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
