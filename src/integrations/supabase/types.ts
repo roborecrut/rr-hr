@@ -1738,6 +1738,28 @@ export type Database = {
       }
     }
     Functions: {
+      admin_delete_job_title: { Args: { _id: string }; Returns: Json }
+      admin_job_title_upsert_templates: {
+        Args: {
+          _is_basic?: boolean
+          _overwrite?: boolean
+          _patch: Json
+          _title: string
+        }
+        Returns: Json
+      }
+      admin_list_job_titles: {
+        Args: never
+        Returns: {
+          created_at: string
+          field_templates: Json
+          id: string
+          is_basic: boolean
+          title: string
+          title_norm: string
+          usage_count: number
+        }[]
+      }
       apply_transaction: {
         Args: {
           _amount: number
