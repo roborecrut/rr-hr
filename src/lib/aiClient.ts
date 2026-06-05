@@ -31,6 +31,7 @@ export async function aiEnhanceSingle(opts: {
   role_name?: string;
   company_name?: string;
   hint?: string;
+  template?: string;
 }): Promise<string> {
   const data = await invoke<{ value: string }>("ai-enhance", { mode: "single", ...opts });
   return (data?.value ?? "").toString();
@@ -42,6 +43,7 @@ export async function aiEnhanceAll(opts: {
   role_name?: string;
   company_name?: string;
   hint?: string;
+  templates?: Record<string, string>;
 }): Promise<Record<string, any>> {
   const data = await invoke<{ fields: Record<string, any> }>("ai-enhance", opts);
   return data?.fields || {};
