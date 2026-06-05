@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
+import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
@@ -119,9 +120,35 @@ export default function EmployerPanel() {
   const [setupSalary, setSetupSalary] = useState("80000 - 120000 руб");
   const [setupSchedule, setSetupSchedule] = useState("5/2, гибридный график");
   const [setupCustomWiki, setSetupCustomWiki] = useState("Правила адаптации: мы поставляем ИИ-сервисы. Кандидат должен владеть техниками продаж.");
-  const [setupLogoUrl, setSetupLogoUrl] = useState("https://i.ibb.co/WWRbtPq0/RR-Logo.png");
   const [specialtySearch, setSpecialtySearch] = useState("");
   const [showAddNewVacancy, setShowAddNewVacancy] = useState(false);
+
+  // Extended vacancy wizard fields (mirror of project landing sections).
+  const [setupVacancyText, setSetupVacancyText] = useState("");
+  const [setupTasksActivityText, setSetupTasksActivityText] = useState("");
+  const [setupMotivationText, setSetupMotivationText] = useState("");
+  const [setupMotivationDetail, setSetupMotivationDetail] = useState("");
+  const [setupScheduleText, setSetupScheduleText] = useState("");
+  const [setupPayoutsText, setSetupPayoutsText] = useState("");
+  const [setupOnboardingText, setSetupOnboardingText] = useState("");
+  const [setupTeamText, setSetupTeamText] = useState("");
+  const [setupSystemText, setSetupSystemText] = useState("");
+
+  // Draft project bookkeeping (matches the company wizard pattern).
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
+  const [draftProjectPublicId, setDraftProjectPublicId] = useState<string | null>(null);
+  const [enhancingVacFields, setEnhancingVacFields] = useState<Record<string, boolean>>({});
+
+  // Shared job titles catalog (loaded from public.job_titles).
+  const [jobTitlesList, setJobTitlesList] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchJobTitles();
+      if (!cancelled) setJobTitlesList(rows.map((r) => r.title));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Profile States
   const [adminTgId, setAdminTgId] = useState(() => localStorage.getItem("employer_tg_id") || "59384591");
