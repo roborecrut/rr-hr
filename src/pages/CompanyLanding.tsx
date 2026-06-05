@@ -524,8 +524,8 @@ export default function CompanyLanding() {
             </div>
           )}
 
-          {/* Active Job Vacancy presentation banner */}
-          {selectedVacancy ? (
+          {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL */}
+          {vacancyId && selectedVacancy ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
@@ -619,16 +619,16 @@ export default function CompanyLanding() {
               </button>
 
             </div>
-          ) : (
+          ) : vacancyId ? (
             <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-400/80" />
               <h3 className="font-bold text-white">Список вакансий пуст</h3>
               <p className="text-xs text-slate-400">Наш робот подбирает новые должности. Пожалуйста, загляните позже.</p>
             </div>
-          )}
+          ) : null}
 
-          {/* List of all vacancies for this company */}
-          {vacancies.length > 0 && (
+          {/* List of all vacancies for this company (kept on a vacancy page as a switcher) */}
+          {vacancyId && vacancies.length > 0 && (
             <div className="space-y-3 pt-5 border-t border-white/10 mt-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎯</span>
