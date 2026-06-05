@@ -779,13 +779,16 @@ export default function EmployerPanel() {
       if (!user) return;
       const { data: emp } = await supabase
         .from("employers")
-        .select("id, public_id, interview_credits, training_credits, wallets(units_balance, id)")
+        .select("id, public_id, interview_credits, training_credits, landing_credits, interview_setup_credits, training_setup_credits, wallets(units_balance, id)")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!emp) return;
       setBalance(Number(((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance) || 0));
       setInterviewCredits(Number((emp as any).interview_credits || 0));
       setTrainingCredits(Number((emp as any).training_credits || 0));
+      setLandingCredits(Number((emp as any).landing_credits || 0));
+      setInterviewSetupCredits(Number((emp as any).interview_setup_credits || 0));
+      setTrainingSetupCredits(Number((emp as any).training_setup_credits || 0));
 
       const walletId = (emp as any).wallets?.[0]?.id ?? (emp as any).wallets?.id;
       if (walletId) {
@@ -803,70 +806,29 @@ export default function EmployerPanel() {
         })));
       }
 
-      // Реферер (кто меня пригласил)
-      const { data: refRow } = await supabase
-        .from("referrals_emp")
-        .select("bonus_units, created_at, referrer_employer_id")
-        .eq("referred_employer_id", (emp as any).id)
-        .maybeSingle();
-      if (refRow?.referrer_employer_id) {
-        const { data: refEmp } = await supabase
-          .from("employers")
-          .select("public_id, contact_phone, contact_telegram, user_id")
-          .eq("id", refRow.referrer_employer_id)
-          .maybeSingle();
-        if (refEmp) {
-          const { data: refProf } = await supabase
-            .from("profiles")
-            .select("display_name, email")
-            .eq("id", (refEmp as any).user_id)
-            .maybeSingle();
-          setReferrer({
-            public_id: (refEmp as any).public_id,
-            name: (refProf as any)?.display_name || "",
-            email: (refProf as any)?.email || "",
-            phone: (refEmp as any).contact_phone || null,
-            telegram: (refEmp as any).contact_telegram || null,
-          });
-        }
+      // Реферер (кто меня пригласил) — через SECURITY DEFINER RPC, чтобы обойти RLS на чужих employers/profiles
+      const { data: refData } = await supabase.rpc("get_my_referrer");
+      if (refData && typeof refData === "object") {
+        const r: any = refData;
+        setReferrer({
+          public_id: r.public_id || "",
+          name: r.name || "",
+          email: r.email || "",
+          phone: r.contact_phone || null,
+          telegram: r.contact_telegram || null,
+        });
       } else {
         setReferrer(null);
       }
-
       // Кого пригласил я
-      const { data: invited } = await supabase
-        .from("referrals_emp")
-        .select("bonus_units, created_at, referred_employer_id")
-        .eq("referrer_employer_id", (emp as any).id)
-        .order("created_at", { ascending: false });
-      if (invited && invited.length) {
-        const ids = invited.map((r: any) => r.referred_employer_id);
-        const { data: emps } = await supabase
-          .from("employers")
-          .select("id, user_id")
-          .in("id", ids);
-        const userIds = (emps || []).map((e: any) => e.user_id);
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, display_name, email")
-          .in("id", userIds);
-        const profById: Record<string, any> = {};
-        (profs || []).forEach((p: any) => { profById[p.id] = p; });
-        const empToUser: Record<string, string> = {};
-        (emps || []).forEach((e: any) => { empToUser[e.id] = e.user_id; });
-        setReferees(invited.map((r: any) => {
-          const uid = empToUser[r.referred_employer_id];
-          const p = uid ? profById[uid] : null;
-          return {
-            name: p?.display_name || "",
-            email: p?.email || "",
-            created_at: r.created_at,
-            bonus_rr: Number(r.bonus_units) || 0,
-          };
-        }));
-      } else {
-        setReferees([]);
-      }
+      const { data: invitedData } = await supabase.rpc("get_my_referees");
+      const list: any[] = Array.isArray(invitedData) ? invitedData : [];
+      setReferees(list.map((r: any) => ({
+        name: r.name || "",
+        email: r.email || "",
+        created_at: r.created_at,
+        bonus_rr: Number(r.bonus_rr) || 0,
+      })));
     } catch (e) {
       console.error("fetchBillingState failed", e);
     }
