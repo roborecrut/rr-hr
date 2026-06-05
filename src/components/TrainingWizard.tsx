@@ -41,6 +41,13 @@ const COLUMN_MAP: Record<TrainingFieldKey, string> = {
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent }: Props) {
   const [projectId, setProjectId] = useState<string>("");
+  // Auto-select the project from `?project=` so the "Open Training Wizard"
+  // button on each vacancy card lands directly on the right course.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search).get("project");
+    if (q && projects.some(p => p.id === q)) setProjectId(q);
+  }, [projects]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [show, setShow] = useState<Record<string, boolean>>({});
   const [enhancing, setEnhancing] = useState<Record<string, boolean>>({});
