@@ -1967,18 +1967,15 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Опубликованная вакансия</span>
                     <h2 className="text-2xl font-bold text-white">{project?.roleName || "Специалист"}</h2>
-                    <p className="text-slate-300 text-xs leading-relaxed font-normal">
-                      Мы ищем сильного специалиста на должность <strong className="text-[#E7C768]">{project?.roleName}</strong>. Эта позиция предполагает работу в нашей передовой ИИ-платформе. 
-                      Вы будете вести сделки, коммуницировать с целевой аудиторией и помогать развивать наши высокотехнологичные продукты.
+                    <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.vacancy_text || `Мы ищем специалиста на должность ${project?.roleName || ""}.`}
                     </p>
-                    <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
-                      <h4 className="text-xs font-bold text-[#E7C768] uppercase">Ключевые Обязанности:</h4>
-                      <ul className="list-disc pl-4 text-xs text-slate-300 space-y-1">
-                        <li>Качественное консультирование клиентов по стандартам и инструкциям;</li>
-                        <li>Сопровождение клиентов в нашей экосистеме, ведение CRM;</li>
-                        <li>Входной контроль требований и своевременная отчётность руководителю.</li>
-                      </ul>
-                    </div>
+                    {projectFull?.tasks_activity_text && (
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
+                        <h4 className="text-xs font-bold text-[#E7C768] uppercase">Задачи и Деятельность</h4>
+                        <p className="text-xs text-slate-300 whitespace-pre-wrap">{projectFull.tasks_activity_text}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1986,19 +1983,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Мотивационный буклет</span>
                     <h2 className="text-xl font-bold text-white">Мотивация и Карьерный рост</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed italic border-l-4 border-[#E7C768] pl-3">
-                      "{project?.motivationText || "Наша компания предлагает крутые возможности карьерной лестницы, стабильный оклад и оплачиваемое обучение."}"
+                    <p className="text-xs text-slate-300 leading-relaxed italic border-l-4 border-[#E7C768] pl-3 whitespace-pre-wrap">
+                      {projectFull?.motivation_text || project?.motivationText || "Карьерный рост, стабильный оклад и оплачиваемое обучение."}
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Структура дохода</span>
-                        <p className="text-xs text-white font-bold mt-1">Оклад + KPI в зависимости от выполнения плана продаж или активности.</p>
-                      </div>
-                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Профессиональный Рост</span>
-                        <p className="text-xs text-[#E7C768] font-bold mt-1">Грейдовая сетка (Junior, Middle, Senior) и выдвижение в тимлиды.</p>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -2006,16 +1993,21 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Манифест организации</span>
                     <h2 className="text-xl font-bold text-white">Информация о компании: {project?.companyName || "ООО Работодатель"}</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Компания <strong className="text-white">{project?.companyName}</strong> — признанный флагман в своей технологической сфере. Мы гордимся тем, что строим полностью прозрачные и понятные рабочие процессы. 
-                      Внедрение нашего ИИ Робота Рекрутера помогает нам мгновенно обучать новых людей, адаптируя их прямо под внутреннюю специфику наших регламентов и Wiki-баз.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {companyFull?.description_text || companyFull?.about_text || `Компания ${project?.companyName || ""}.`}
                     </p>
-                    <div className="bg-[#E7C768]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs space-y-2">
-                      <h4 className="font-bold text-[#E7C768]">Наши ценности:</h4>
-                      <p className="text-slate-200">
-                        Честность, инновационность и скорость. Мы дорожим временем наших соискателей и обеспечиваем автоматический онбординг сразу после собеседования!
-                      </p>
-                    </div>
+                    {companyFull?.mission_text && (
+                      <div className="bg-[#E7C768]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs">
+                        <h4 className="font-bold text-[#E7C768] mb-1">Миссия</h4>
+                        <p className="text-slate-200 whitespace-pre-wrap">{companyFull.mission_text}</p>
+                      </div>
+                    )}
+                    {companyFull?.products_text && (
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-xs">
+                        <h4 className="font-bold text-[#E7C768] mb-1">Продукты и услуги</h4>
+                        <p className="text-slate-200 whitespace-pre-wrap">{companyFull.products_text}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2023,19 +2015,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Правила адаптации</span>
                     <h2 className="text-xl font-bold text-white font-serif">Оформление и трудоустройство</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Мы ставим процессы оформления на полностью прозрачные рельсы в строгом соответствии со стандартами.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.onboarding_text || "Процесс оформления прозрачный, в соответствии со стандартами."}
                     </p>
-                    <div className="bg-black/35 p-4 rounded-xl border border-white/5 space-y-2 text-xs font-normal">
-                      <div className="flex justify-between border-b border-white/5 pb-1">
-                        <span className="text-gray-400">Вид договора:</span>
-                        <span className="text-white font-bold">ТК РФ / ГПХ / СЗ</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Срок оформления:</span>
-                        <span className="text-white font-bold">1 рабочий день</span>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -2043,12 +2025,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Финансы</span>
                     <h2 className="text-xl font-bold text-white font-serif">Выплаты и Бонусы</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Заработная плата выплачивается стабильно два раза в месяц на любую карту банка РФ без скрытых комиссий.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.payouts_text || projectFull?.salary_terms || project?.salaryTerms || "Условия выплат уточняются."}
                     </p>
-                    <div className="bg-gradient-to-br from-[#E7C768]/15 to-[#FF4C4C]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs">
-                      <strong>Прозрачные условия:</strong> {project?.salaryTerms || "Стабильно и вовремя"}
-                    </div>
                   </div>
                 )}
 
@@ -2056,8 +2035,8 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Режим работы</span>
                     <h2 className="text-xl font-bold text-white font-serif">График и Смены</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Планируемый режим занятости: <span className="text-[#E7C768] font-bold">{project?.scheduleTerms || "Гибкий"}</span>. Все детали согласовываются индивидуально с наставником.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.schedule_text || projectFull?.schedule_terms || project?.scheduleTerms || "График работы уточняется."}
                     </p>
                   </div>
                 )}
@@ -2066,8 +2045,8 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Коллеги</span>
                     <h2 className="text-xl font-bold text-white font-serif">Ваша рабочая группа</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Вы будете работать в плотной интеграции со специалистами отдела адаптации и ведущими кураторами компании.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.team_text || companyFull?.team_text || "Информация о команде уточняется."}
                     </p>
                   </div>
                 )}
@@ -2077,8 +2056,29 @@ export default function CandidateFlow() {
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Регламенты</span>
                     <h2 className="text-xl font-bold text-white font-serif">Базовая Wiki-система</h2>
                     <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-wrap bg-black/40 p-4 rounded-xl border border-white/5">
-                      {project?.customWiki || "Определенные правила адаптации и пользования внутренними CRM-системами."}
+                      {projectFull?.system_text || companyFull?.system_text || project?.customWiki || "Регламенты уточняются."}
                     </p>
+                  </div>
+                )}
+
+                {termsSubTab === "contacts" && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Связь с работодателем</span>
+                    <h2 className="text-xl font-bold text-white font-serif">Контакты</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Email</div>
+                        <div className="text-white font-bold mt-1 break-all">{employerContacts.email || "—"}</div>
+                      </div>
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Телефон</div>
+                        <div className="text-white font-bold mt-1">{employerContacts.phone || "—"}</div>
+                      </div>
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Telegram</div>
+                        <div className="text-white font-bold mt-1">{employerContacts.telegram || "—"}</div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
