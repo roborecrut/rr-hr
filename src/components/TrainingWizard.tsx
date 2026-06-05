@@ -103,9 +103,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     }
     setSaving(true);
     try {
-      const patch: Record<string, string | null> = {};
+      const patch: any = {};
       for (const f of FIELDS) patch[f.col] = values[f.key] || null;
-      (patch as any).training_published = true;
+      patch.training_published = true;
       const upd = await supabase.from("projects").update(patch).eq("id", project.id);
       if (upd.error) throw upd.error;
 
