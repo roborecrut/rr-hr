@@ -451,9 +451,27 @@ export default function EmployerPanel() {
           await supabase.storage.from("company-uploads").remove(list.data.map((f) => `${folder}/${f.name}`));
         }
       }
+      // If the wizard was opened on a fresh empty draft (no name yet) — drop it
+      // so the user does not end up with phantom "Без названия" cards.
+      if (draftCompanyId) {
+        const { data: row } = await supabase
+          .from("companies")
+          .select("name, status")
+          .eq("id", draftCompanyId)
+          .maybeSingle();
+        const isEmptyDraft =
+          row && row.status === "draft" && (!row.name || String(row.name).trim() === "");
+        if (isEmptyDraft) {
+          await supabase.from("companies").delete().eq("id", draftCompanyId);
+        }
+      }
     } catch (e) { console.warn("cancel cleanup error", e); }
     setDraftFilePath(null);
     setShowAddCompany(false);
+    setDraftCompanyId(null);
+    setDraftCompanyPublicId(null);
+    // Refresh list from DB so any leftover state is reconciled.
+    fetchCompanies();
   };
 
   // Open existing company in the wizard for editing (free, same UX as draft)
