@@ -427,6 +427,30 @@ export default function JobVacancyLanding() {
 
             {/* CTA action button */}
             <div className="pt-2 text-center sm:text-left">
+              {employerContacts && (employerContacts.email || employerContacts.phone || employerContacts.telegram) && (
+                <div className="mb-4 bg-[#17344F]/60 border border-white/10 rounded-2xl p-4 space-y-2 text-left">
+                  <h3 className="font-bold text-sm uppercase text-[#E7C768] flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-[#D99E41]" /> Контакты работодателя
+                  </h3>
+                  <div className="space-y-1.5 text-xs text-slate-200">
+                    {employerContacts.email && (
+                      <a href={`mailto:${employerContacts.email}`} className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" /> {employerContacts.email}
+                      </a>
+                    )}
+                    {employerContacts.phone && (
+                      <a href={`tel:${employerContacts.phone}`} className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> {employerContacts.phone}
+                      </a>
+                    )}
+                    {employerContacts.telegram && (
+                      <a href={`https://t.me/${String(employerContacts.telegram).replace(/^@/, "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <MessageSquare className="w-3.5 h-3.5 text-slate-400" /> @{String(employerContacts.telegram).replace(/^@/, "")}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => setShowApplyModal(true)}
                 className="cursor-pointer inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:shadow-orange-700/20 hover:-translate-y-0.5 active:translate-y-0 transition duration-150 w-full sm:w-auto text-center justify-center"
