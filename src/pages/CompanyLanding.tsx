@@ -548,7 +548,6 @@ export default function CompanyLanding() {
 
               <button
                 onClick={() => {
-                  triggerOneClickRegister("telegram");
                   setShowApplyModal(true);
                 }}
                 className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3.5 rounded-2xl hover:bg-[#F4EE8E] transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
@@ -603,90 +602,17 @@ export default function CompanyLanding() {
 
       </main>
 
-      {/* Candidate registration modal with 1-click & Reminder note constraint */}
-      {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/50 text-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative text-left">
-            
-            <button
-              onClick={() => setShowApplyModal(false)}
-              className="absolute top-4 right-4 hover:bg-white/10 p-1.5 rounded-full text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {registrationSuccess ? (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto text-emerald-400 border border-emerald-500/30">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-emerald-300">Успешно зарегистрировано!</h3>
-                <p className="text-sm text-slate-200 font-semibold">
-                  Перенаправляем в кабинет ИИ-собеседований...
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="text-center space-y-1">
-                  <h3 className="text-xl font-black text-[#E7C768]">
-                    {isLoginOnly ? "Вход в Кабинет Кандидата" : "Начать Блиц-Собеседование"}
-                  </h3>
-                  <p className="text-xs text-slate-300">
-                    {isLoginOnly 
-                      ? "Авторизуйтесь в 1 клик для входа в свой персональный кабинет соискателя."
-                      : "Выберите удобный сервис в 1 клик для авторизации и мгновенной связи с работодателем."}
-                  </p>
-                </div>
-
-                {/* 1-Click Action triggers as requested by user! */}
-                {submitting ? (
-                  <div className="flex flex-col items-center justify-center py-10 space-y-3">
-                    <Loader className="w-8 h-8 text-[#E7C768] animate-spin animate-infinite" />
-                    <span className="text-xs text-slate-300 font-medium">Связываемся с базой ИИ-собеседований...</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("telegram")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-6 h-6 text-sky-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03-.01-.14-.07-.19s-.16-.03-.22-.01c-.1.02-1.63 1.03-4.6 3.04-.44.3-.83.45-1.18.44-.39-.01-1.13-.22-1.68-.4-.68-.22-1.22-.34-1.17-.72.03-.2.3-.41.81-.62 3.17-1.38 5.28-2.29 6.34-2.73 3.01-1.26 3.63-1.48 4.04-1.48.09 0 .29.02.42.13.11.08.14.21.15.3l-.01.12z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Tg</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("google")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-5 h-5 text-red-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 1.514 15.34 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.89 11.57-11.79 0-.795-.085-1.4-.195-1.925H12.24z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Google</span>
-                      </button>
-                    </div>
-
-                    {/* Reminder note strictly matching user prompt requirements */}
-                    <div className="bg-sky-500/10 border border-sky-500/25 p-3 rounded-2xl space-y-1.5 text-xs text-sky-200">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <AlertCircle className="w-4 h-4 text-sky-400" />
-                        <span>Автоматические напоминания</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        🎓 <strong>Обратите внимание!</strong> При регистрации через <strong>Telegram</strong> мы будем присылать вам напоминания в чат-бота, чтобы вы не забывали проходить этапы онбординга или лекции с пользой!
-                      </p>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-          </div>
-        </div>
+      {/* Candidate email auth modal — only meaningful when a vacancy is selected */}
+      {selectedVacancy && (
+        <CandidateAuthModal
+          isOpen={showApplyModal}
+          onClose={() => setShowApplyModal(false)}
+          projectId={selectedVacancy.id}
+          companyId={company?.id || null}
+          roleName={selectedVacancy.roleName}
+          companyName={company?.name || selectedVacancy.companyName}
+          onSuccess={handleCandidateAuthSuccess}
+        />
       )}
 
       {/* Floating Career Consultant Chat Pop-up / Widget */}
