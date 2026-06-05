@@ -2277,7 +2277,7 @@ export default function EmployerPanel() {
                 </div>
 
                 <button 
-                  onClick={() => setShowAddNewVacancy(!showAddNewVacancy)}
+                  onClick={openAddVacancyWizard}
                   className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] hover:scale-102 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1 shadow transition-all"
                 >
                   <Plus className="w-4 h-4" /> Добавить вакансию
