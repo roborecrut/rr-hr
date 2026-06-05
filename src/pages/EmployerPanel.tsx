@@ -2467,7 +2467,7 @@ export default function EmployerPanel() {
                         const file = e.dataTransfer.files[0];
                         setNewCompanyFiles(file.name);
                         addAuditEvent("info", "Файл загружен", `Прикреплен регламент: ${file.name}`);
-                        parseCompanyFileWithAI(file.name);
+                        (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
                       }
                     }}
                     className={`cursor-pointer border-2 border-dashed rounded-2xl p-4 text-center space-y-1.5 transition-all ${
@@ -2485,7 +2485,7 @@ export default function EmployerPanel() {
                           const file = e.target.files[0];
                           setNewCompanyFiles(file.name);
                           addAuditEvent("info", "Файл загружен", `Прикреплен файл: ${file.name}`);
-                          parseCompanyFileWithAI(file.name);
+                          (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
                         }
                       }}
                     />
