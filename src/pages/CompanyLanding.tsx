@@ -349,19 +349,8 @@ export default function CompanyLanding() {
               </div>
             )}
 
-            {/* Right block: login button on desktop, hamburger on mobile */}
+            {/* Right block: hamburger on mobile only — login is available only on a vacancy page */}
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setIsLoginOnly(true);
-                  setShowApplyModal(true);
-                }}
-                className="hidden md:block cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black px-4 py-2 rounded-xl hover:bg-[#F4EE8E] transition shadow-md whitespace-nowrap"
-              >
-                Войти 🔑
-              </button>
-
-              {/* Hamburger Toggle icon */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="md:hidden text-slate-300 hover:text-white p-2 border border-white/10 rounded-xl bg-black/25 focus:outline-none transition shrink-0"
@@ -398,18 +387,16 @@ export default function CompanyLanding() {
                 })}
               </div>
 
-              <div className="pt-2 border-t border-white/5 font-sans">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setIsLoginOnly(true);
-                    setShowApplyModal(true);
-                  }}
-                  className="w-full cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
-                >
-                  Войти 🔑
-                </button>
-              </div>
+              {selectedVacancy && (
+                <div className="pt-2 border-t border-white/5 font-sans">
+                  <button
+                    onClick={() => { setMenuOpen(false); setShowApplyModal(true); }}
+                    className="w-full cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
+                  >
+                    Войти / Регистрация 🔑
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
