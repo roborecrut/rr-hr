@@ -34,11 +34,14 @@ export default function JobVacancyLanding() {
   // States
   const [project, setProject] = useState<JobProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [employerContacts, setEmployerContacts] = useState<{ email?: string; phone?: string; telegram?: string } | null>(null);
+  const [companyData, setCompanyData] = useState<any>(null);
 
   // Consultant chatbot conversation state
   const [messages, setMessages] = useState<Message[]>([]);
   const [userQuestion, setUserQuestion] = useState("");
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [isTypewriting, setIsTypewriting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Apply candidate signup modal trigger
@@ -57,14 +60,14 @@ export default function JobVacancyLanding() {
       // joining its parent company to get the display name & logo.
       let q = supabase
         .from("projects")
-        .select("*, companies(name, slug, logo_url)")
+        .select("*, companies(*)")
         .eq("is_published", true)
         .limit(1);
       if (projectId) {
         const isUuid = /^[0-9a-f-]{36}$/i.test(projectId);
         q = isUuid
-          ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", projectId).limit(1)
-          : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", projectId).limit(1);
+          ? supabase.from("projects").select("*, companies(*)").eq("id", projectId).limit(1)
+          : supabase.from("projects").select("*, companies(*)").eq("slug", projectId).limit(1);
       }
       const { data } = await q;
       const row: any = data && data[0];
@@ -83,7 +86,32 @@ export default function JobVacancyLanding() {
           roleplayQuestions: [],
           logoUrl: row.logo_url || row.companies?.logo_url || undefined,
         };
+        (found as any).vacancyText = row.vacancy_text || undefined;
+        (found as any).tasksActivityText = row.tasks_activity_text || undefined;
+        (found as any).motivationTextDetail = row.motivation_text_detail || undefined;
+        (found as any).scheduleText = row.schedule_text || undefined;
+        (found as any).payoutsText = row.payouts_text || undefined;
+        (found as any).onboardingText = row.onboarding_text || undefined;
+        (found as any).teamText = row.team_text || undefined;
+        (found as any).systemText = row.system_text || undefined;
         setProject(found);
+        setCompanyData(row.companies || null);
+        if (row.employer_id) {
+          const { data: emp } = await supabase
+            .from("employers")
+            .select("contact_email, contact_phone, contact_telegram")
+            .eq("id", row.employer_id)
+            .maybeSingle();
+          if (emp) setEmployerContacts({
+            email: (emp as any).contact_email || undefined,
+            phone: (emp as any).contact_phone || undefined,
+            telegram: (emp as any).contact_telegram || undefined,
+          });
+        }
+        try {
+          const { aiRestart } = await import("@/lib/aiClient");
+          await aiRestart(row.public_id || row.employer_id || undefined).catch(() => {});
+        } catch {}
         setMessages([
           {
             sender: "recruiter",
