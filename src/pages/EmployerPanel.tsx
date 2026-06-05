@@ -4520,6 +4520,7 @@ export default function EmployerPanel() {
       )}
 
       <EmployerAIAssistant />
+      <AIDialogPanel />
     </div>
   );
 }
