@@ -489,6 +489,7 @@ export type Database = {
         Row: {
           about_text: string | null
           created_at: string
+          description_text: string | null
           id: string
           is_published: boolean
           legacy_public_id: string | null
@@ -498,10 +499,12 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text: string | null
+          products_text: string | null
           public_id: string | null
           schedule_text: string | null
           slug: string | null
           stats: Json
+          status: string
           system_text: string | null
           team_text: string | null
           updated_at: string
@@ -509,6 +512,7 @@ export type Database = {
         Insert: {
           about_text?: string | null
           created_at?: string
+          description_text?: string | null
           id?: string
           is_published?: boolean
           legacy_public_id?: string | null
@@ -518,10 +522,12 @@ export type Database = {
           name: string
           owner_employer_id: string
           payouts_text?: string | null
+          products_text?: string | null
           public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
+          status?: string
           system_text?: string | null
           team_text?: string | null
           updated_at?: string
@@ -529,6 +535,7 @@ export type Database = {
         Update: {
           about_text?: string | null
           created_at?: string
+          description_text?: string | null
           id?: string
           is_published?: boolean
           legacy_public_id?: string | null
@@ -538,10 +545,12 @@ export type Database = {
           name?: string
           owner_employer_id?: string
           payouts_text?: string | null
+          products_text?: string | null
           public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
+          status?: string
           system_text?: string | null
           team_text?: string | null
           updated_at?: string
@@ -1652,6 +1661,9 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
+      company_create_draft: { Args: never; Returns: Json }
+      company_finalize: { Args: { _id: string }; Returns: Json }
+      company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
       get_my_referees: { Args: never; Returns: Json }
       get_my_referrer: { Args: never; Returns: Json }
       has_role: {
