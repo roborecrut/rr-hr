@@ -100,6 +100,18 @@ Deno.serve(async (req) => {
             }
           }
         }
+
+        // Списываем фикс-услуги после успешного сохранения (идемпотентно по project+item)
+        try {
+          if ((data.checklist?.length || 0) > 0 || (data.roleplay?.length || 0) > 0) {
+            await admin.rpc("spend_fixed" as any, { _project: body.project_id, _item: "interview_setup" });
+          }
+          if ((data.training_blocks?.length || 0) > 0) {
+            await admin.rpc("spend_fixed" as any, { _project: body.project_id, _item: "training_setup" });
+          }
+        } catch (billErr) {
+          console.error("spend_fixed failed:", billErr);
+        }
       }
     }
 
