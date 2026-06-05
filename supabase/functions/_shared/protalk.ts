@@ -115,6 +115,7 @@ export function buildChatId(opts: {
 export function buildSocialId(info?: {
   telegram_id?: number | string;
   user_id?: string;
+  employer_public_id?: string | number;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -124,6 +125,7 @@ export function buildSocialId(info?: {
     const u = info.username ? `(@${info.username})` : "(@unknown)";
     return `from_user_id:${info.telegram_id} ${name} ${u} message_id:${Date.now()}`;
   }
+  if (info?.employer_public_id) return `from_user_id:${info.employer_public_id} message_id:${Date.now()}`;
   if (info?.user_id) return `from_user_id:${info.user_id} message_id:${Date.now()}`;
   return `from_user_id:anon message_id:${Date.now()}`;
 }
