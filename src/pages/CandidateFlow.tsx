@@ -2699,6 +2699,30 @@ export default function CandidateFlow() {
 
         {/* Tab 5: Training interactive program */}
         {activeTab === "training" && (
+          (() => {
+            // Training is only unlocked after a successful interview.
+            // Stages progress: terms → interview → scoring → training → certified.
+            const unlocked = ["training", "certified"].includes(currentStage)
+              || (candidate?.scores?.overallScore ?? 0) >= 60;
+            if (!unlocked) {
+              return (
+                <div className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
+                  <BookOpen className="w-10 h-10 text-[#E7C768] mx-auto" />
+                  <h2 className="text-lg font-bold text-white">Курс обучения откроется после интервью</h2>
+                  <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+                    Сначала пройдите ИИ-собеседование и получите положительную оценку. После этого здесь появится персональный курс с уроками, тестами и финальной аттестацией.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("interview")}
+                    className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-4 py-2 rounded-xl"
+                  >
+                    💬 Перейти к интервью
+                  </button>
+                </div>
+              );
+            }
+            return (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
             {/* Left side Sub tabs */}
@@ -2752,11 +2776,7 @@ export default function CandidateFlow() {
                   // Check if this block index is valid
                   const block = candidate.trainingPlan[bIdx] || candidate.trainingPlan[0];
                   if (!block) {
-                    return (
-                      <div className="p-12 text-center text-gray-400">
-                        <p className="text-xs">Для Вас готовится индивидуальный план обучения роботом. Ожидайте...</p>
-                      </div>
-                    );
+                    return <TrainingCoursePreview projectFull={projectFull} trainingSubTab={trainingSubTab} />;
                   }
                   const lesson = block.lessons[activeLessonIdx] || block.lessons[0];
                   const answeredCount = trainingAnswers.filter(a => !!a.userAnswer).length;
