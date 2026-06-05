@@ -428,10 +428,9 @@ export default function EmployerPanel() {
       const d = data as any;
       setDraftCompanyId(d?.id || null);
       setDraftCompanyPublicId(d?.public_id || null);
-      // Optimistically add draft card to list
-      if (d?.id && !companiesList.some((c) => c.id === d.id)) {
-        setCompaniesList((prev) => [...prev, { id: d.id, public_id: d.public_id, name: "Без названия", status: "draft" }]);
-      }
+      // Source of truth for the list is Supabase. We do not optimistically
+      // push a "draft" card here — fetchCompanies() will surface it after
+      // the user actually saves data, which avoids ghost cards on cancel.
       pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       const { aiRestart } = await import("@/lib/aiClient");
       await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
@@ -452,9 +451,27 @@ export default function EmployerPanel() {
           await supabase.storage.from("company-uploads").remove(list.data.map((f) => `${folder}/${f.name}`));
         }
       }
+      // If the wizard was opened on a fresh empty draft (no name yet) — drop it
+      // so the user does not end up with phantom "Без названия" cards.
+      if (draftCompanyId) {
+        const { data: row } = await supabase
+          .from("companies")
+          .select("name, status")
+          .eq("id", draftCompanyId)
+          .maybeSingle();
+        const isEmptyDraft =
+          row && row.status === "draft" && (!row.name || String(row.name).trim() === "");
+        if (isEmptyDraft) {
+          await supabase.from("companies").delete().eq("id", draftCompanyId);
+        }
+      }
     } catch (e) { console.warn("cancel cleanup error", e); }
     setDraftFilePath(null);
     setShowAddCompany(false);
+    setDraftCompanyId(null);
+    setDraftCompanyPublicId(null);
+    // Refresh list from DB so any leftover state is reconciled.
+    fetchCompanies();
   };
 
   // Open existing company in the wizard for editing (free, same UX as draft)
@@ -556,12 +573,25 @@ export default function EmployerPanel() {
         if (r.error) console.error("fetchCompanies: companies query failed", r.error);
         data = (r.data as any[]) || [];
       }
+      console.info("[EmployerPanel] companies loaded:", data.length, "for emp", employerId);
       setCompaniesList(
         (data || []).map((c: any) => ({
           id: c.id,
+          public_id: c.public_id,
           name: c.name,
           slug: c.slug,
           logoUrl: c.logo_url,
+          status: c.status,
+          description_text: c.description_text,
+          products_text: c.products_text,
+          mission_text: c.mission_text,
+          about_text: c.about_text,
+          team_text: c.team_text,
+          payouts_text: c.payouts_text,
+          schedule_text: c.schedule_text,
+          system_text: c.system_text,
+          stats: c.stats,
+          logo_url: c.logo_url,
           missionText: c.mission_text,
           description: c.about_text,
           industry: "—",
@@ -774,6 +804,14 @@ export default function EmployerPanel() {
     fetchData();
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
+  }, [employerId]);
+
+  // Immediate refresh of the companies list whenever the employerId changes
+  // (e.g. when the user navigates into /emp{id}/companies). The 4-second
+  // polling above eventually loads it too, but UX should be instant.
+  useEffect(() => {
+    if (!employerId) return;
+    fetchCompanies();
   }, [employerId]);
 
   useEffect(() => {
