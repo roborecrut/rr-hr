@@ -857,6 +857,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          field_templates: Json
           id: string
           is_basic: boolean
           title: string
@@ -866,6 +867,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          field_templates?: Json
           id?: string
           is_basic?: boolean
           title: string
@@ -875,6 +877,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          field_templates?: Json
           id?: string
           is_basic?: boolean
           title?: string
@@ -1262,9 +1265,13 @@ export type Database = {
           system_text: string | null
           tasks_activity_text: string | null
           team_text: string | null
+          training_intro_text: string | null
           training_product_text: string | null
           training_prof_text: string | null
+          training_published: boolean
+          training_regulations_text: string | null
           training_system_text: string | null
+          training_wiki_text: string | null
           updated_at: string
           vacancy_text: string | null
         }
@@ -1298,9 +1305,13 @@ export type Database = {
           system_text?: string | null
           tasks_activity_text?: string | null
           team_text?: string | null
+          training_intro_text?: string | null
           training_product_text?: string | null
           training_prof_text?: string | null
+          training_published?: boolean
+          training_regulations_text?: string | null
           training_system_text?: string | null
+          training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
         }
@@ -1334,9 +1345,13 @@ export type Database = {
           system_text?: string | null
           tasks_activity_text?: string | null
           team_text?: string | null
+          training_intro_text?: string | null
           training_product_text?: string | null
           training_prof_text?: string | null
+          training_published?: boolean
+          training_regulations_text?: string | null
           training_system_text?: string | null
+          training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
         }
@@ -1784,11 +1799,17 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      job_title_get_templates: { Args: { _title: string }; Returns: Json }
+      job_title_save_templates: {
+        Args: { _patch: Json; _title: string }
+        Returns: Json
+      }
       job_title_upsert: {
         Args: { _title: string }
         Returns: {
           created_at: string
           created_by: string | null
+          field_templates: Json
           id: string
           is_basic: boolean
           title: string
