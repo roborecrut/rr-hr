@@ -542,6 +542,7 @@ export type Database = {
           created_at: string
           description_text: string | null
           id: string
+          industry: string | null
           is_published: boolean
           legacy_public_id: string | null
           legacy_slug: string | null
@@ -554,17 +555,20 @@ export type Database = {
           public_id: string | null
           schedule_text: string | null
           slug: string | null
+          staff: string | null
           stats: Json
           status: string
           system_text: string | null
           team_text: string | null
           updated_at: string
+          website: string | null
         }
         Insert: {
           about_text?: string | null
           created_at?: string
           description_text?: string | null
           id?: string
+          industry?: string | null
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
@@ -577,17 +581,20 @@ export type Database = {
           public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
+          staff?: string | null
           stats?: Json
           status?: string
           system_text?: string | null
           team_text?: string | null
           updated_at?: string
+          website?: string | null
         }
         Update: {
           about_text?: string | null
           created_at?: string
           description_text?: string | null
           id?: string
+          industry?: string | null
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
@@ -600,11 +607,13 @@ export type Database = {
           public_id?: string | null
           schedule_text?: string | null
           slug?: string | null
+          staff?: string | null
           stats?: Json
           status?: string
           system_text?: string | null
           team_text?: string | null
           updated_at?: string
+          website?: string | null
         }
         Relationships: [
           {
