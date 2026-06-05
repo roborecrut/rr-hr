@@ -11,6 +11,7 @@ import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { buildCandidateUrl } from "@/lib/links";
 import CandidateAuthModal from "../components/CandidateAuthModal";
+import CompanySections from "../components/CompanySections";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
@@ -318,7 +319,11 @@ export default function CompanyLanding() {
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
           <div className="flex items-center justify-between gap-4 py-2">
             {/* Logo field */}
-            <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate(selectedVacancy ? `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}` : "/")}>
+            <div
+              className="flex items-center gap-3 cursor-pointer shrink-0"
+              onClick={() => navigate(companySlug ? `/com${companySlug}` : "/")}
+              title="На страницу компании"
+            >
               <img
                 src={company?.logo_url || selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
                 alt={company?.name || "Logo"}
