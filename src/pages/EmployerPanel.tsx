@@ -1289,7 +1289,10 @@ export default function EmployerPanel() {
       };
       const patch = {
         name: newCompanyName,
-        logo_url: newCompanyLogo || null,
+        logo_url: newCompanyLogo || DEFAULT_LOGO_URL,
+        industry: newCompanyIndustry || null,
+        website: newCompanySite || null,
+        staff: newCompanyStaff || null,
         description_text: newCompanyDescription || null,
         products_text: newCompanyProducts || null,
         mission_text: newCompanyMissionText || null,
