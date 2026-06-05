@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
           { role: "system", content: `Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг. ВАЖНО: ответ должен быть не длиннее ${LIMITS[body.field ?? ""] ?? 600} символов.` },
           { role: "user", content: `Роль: ${body.role_name ?? "—"}\nКомпания: ${body.company_name ?? "—"}\nПоле: ${body.field}\nИсходный текст:\n${body.value ?? ""}\n${body.hint ? `Подсказка: ${body.hint}` : ""}` },
         ],
+        chatId, socialId,
       });
       const value = clampField(body.field, text.trim());
       await logToDb({
@@ -85,6 +86,7 @@ Deno.serve(async (req) => {
         { role: "system", content: "Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений. Соблюдай лимиты длины: name≤80, description_text≤600, products_text≤500, mission_text≤500, team≤500, payouts_text≤300, schedule_text≤300, system_text≤600." },
         { role: "user", content: `Контекст: роль ${body.role_name ?? "—"}, компания ${body.company_name ?? "—"}\n\nИсходные поля:\n${JSON.stringify(body.fields ?? {}, null, 2)}\n${body.hint ? `\nПодсказка: ${body.hint}` : ""}` },
       ],
+      chatId, socialId,
     });
     const parsed = tryParseJson<Record<string, string>>(text) ?? {};
     const obj: Record<string, string> = {};
