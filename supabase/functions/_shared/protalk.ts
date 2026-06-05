@@ -2,7 +2,7 @@
 // https://ai.pro-talk.ru/api/v1.0/ask/{bot_token}
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const PROTALK_BASE = "https://ai.pro-talk.ru/api/v1.0/ask";
+const PROTALK_BASE = "https://api.pro-talk.ru/api/v1.0/ask";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
