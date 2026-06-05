@@ -2514,58 +2514,52 @@ export default function EmployerPanel() {
                       })()}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">Условия оплаты:</label>
-                        <input
-                          type="text"
-                          className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupSalary}
-                          onChange={(e) => setSetupSalary(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">График работы:</label>
-                        <input
-                          type="text"
-                          className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupSchedule}
-                          onChange={(e) => setSetupSchedule(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-200 block mb-1">Регламенты и база Wiki для обучения кандидата:</label>
-                      <textarea
-                        rows={3}
-                        className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                        value={setupCustomWiki}
-                        onChange={(e) => setSetupCustomWiki(e.target.value)}
-                      />
-                    </div>
-
                     <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
-                      ℹ️ Логотип берётся из настроек компании — отдельной загрузки для вакансии не требуется.
+                      ℹ️ Логотип берётся из настроек компании. «График и тайм-слоты» включает в себя график работы, «Оплата и схема выплат» — условия оплаты. Базу знаний и регламенты вынесли в <strong className="text-[#E7C768]">Мастер Обучения</strong> на странице «Обучение».
                     </div>
 
                     {/* Extended landing sections: each maps to a vacancy landing page block. */}
                     {[
                       { label: "Обязанности, требования, условия (для блока Vacancy: разделы выводятся автоматически из строк)", field: "vacancy_text" as const, value: setupVacancyText, set: setSetupVacancyText, rows: 6, max: 1500, placeholder: "• Ведение переговоров с клиентами по готовой базе\n• Уверенный пользователь ПК\n• Базовые навыки общения" },
                       { label: "Ежедневный процесс (3 таба, формат [Название] Описание):", field: "tasks_activity_text" as const, value: setupTasksActivityText, set: setSetupTasksActivityText, rows: 4, max: 1000, placeholder: "• [📞 Консультация] Открыть Wiki и направить ссылку на тариф\n• [📝 Ведение CRM] Добавить заметку по итогам звонка\n• [🤝 Возражения] Объяснить ценность ИИ-сервисов" },
-                      { label: "График и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
+                      { label: "График работы и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
                       { label: "Мотивация и преимущества (краткий текст):", field: "motivation_text" as const, value: setupMotivationText, set: setSetupMotivationText, rows: 2, max: 500, placeholder: "Бонусы за результат, обучение за счёт компании, гибкий график." },
                       { label: "Развёрнутая мотивация (списком, каждая строка — отдельный бонус):", field: "motivation_text_detail" as const, value: setupMotivationDetail, set: setSetupMotivationDetail, rows: 4, max: 800, placeholder: "• Премии до 30% за высокую скорость\n• Еженедельные выплаты\n• Компенсация интернета" },
-                      { label: "Схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
+                      { label: "Оплата и схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
                       { label: "Оформление (этапы от интервью до выхода + типы оформления):", field: "onboarding_text" as const, value: setupOnboardingText, set: setSetupOnboardingText, rows: 6, max: 1000, placeholder: "• [📝 Интервью] ИИ-собеседование за 10 минут\n• [📚 Кейс-тест] Проверка навыков\n• [🤖 Обучение] Wiki и симуляции\n• [🤝 Стажировка] Первые звонки с куратором\n• [✍️ Оформление] Самозанятость / ИП / ГПХ / ТК РФ" },
                       { label: "Команда (формат [Отдел] Имя — роль):", field: "team_text_vac" as const, value: setupTeamText, set: setSetupTeamText, rows: 4, max: 600, placeholder: "• [Продажи] Иван — РОП\n• [Маркетинг] Мария — таргетолог" },
                       { label: "Система работы (формат [Раздел] Описание регламента):", field: "system_text_vac" as const, value: setupSystemText, set: setSetupSystemText, rows: 4, max: 600, placeholder: "• [CRM] Bitrix24, обязательное заполнение карточек\n• [Связь] Telegram-каналы команды" },
-                    ].map(({ label, field, value, set, rows, max, placeholder }) => (
+                    ].map(({ label, field, value, set, rows, max, placeholder }) => {
+                      const example = exampleFor(field) || placeholder;
+                      const isOpen = !!showExampleFor[field];
+                      return (
                       <div key={field}>
                         <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between gap-2">
                           <span className="truncate">{label}</span>
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0">до {max}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setShowExampleFor(p => ({ ...p, [field]: !p[field] }))}
+                              className="text-[10px] text-[#E7C768] hover:underline font-semibold"
+                            >
+                              {isOpen ? "Скрыть пример" : "📋 Показать пример"}
+                            </button>
+                            <span className="text-[10px] text-slate-400 font-mono">до {max}</span>
+                          </span>
                         </label>
+                        {isOpen && example && (
+                          <div className="mb-2 bg-[#0F2A42]/70 border border-[#E7C768]/25 rounded-xl p-2.5 text-[10.5px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            <div className="text-[9px] uppercase text-[#E7C768]/80 font-bold tracking-wider mb-1">Эталон для роли «{setupRoleName || "—"}»</div>
+                            {example}
+                            <button
+                              type="button"
+                              onClick={() => set(example)}
+                              className="block mt-2 text-[10px] text-[#E7C768] hover:underline font-semibold"
+                            >
+                              ↓ Подставить пример в поле
+                            </button>
+                          </div>
+                        )}
                         <div className="relative">
                           <textarea
                             rows={rows}
@@ -2573,7 +2567,7 @@ export default function EmployerPanel() {
                             className="w-full bg-[#17344F]/60 text-xs p-2.5 pr-9 rounded-xl border border-white/10 focus:outline-[#E7C768]"
                             value={value}
                             onChange={(e) => set(e.target.value)}
-                            placeholder={placeholder}
+                            placeholder={isOpen ? "" : "Нажмите «📋 Показать пример», чтобы увидеть эталонное заполнение для этой роли"}
                           />
                           <button
                             type="button"
@@ -2586,7 +2580,8 @@ export default function EmployerPanel() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
 
                     <button
                       type="submit"
