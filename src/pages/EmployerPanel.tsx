@@ -1572,9 +1572,19 @@ export default function EmployerPanel() {
         mode: "all_vacancy",
         company_name: setupCompanyName,
         role_name: setupRoleName,
+        templates: {
+          vacancy_text: exampleFor("vacancy_text"),
+          tasks_activity_text: exampleFor("tasks_activity_text"),
+          schedule_text: exampleFor("schedule_text"),
+          motivation_text: exampleFor("motivation_text"),
+          motivation_text_detail: exampleFor("motivation_text_detail"),
+          payouts_text: exampleFor("payouts_text"),
+          onboarding_text: exampleFor("onboarding_text"),
+          team_text_vac: exampleFor("team_text_vac"),
+          system_text_vac: exampleFor("system_text_vac"),
+        },
         fields: {
-          roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          roleName: setupRoleName,
           vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
           motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
           schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
@@ -1584,9 +1594,6 @@ export default function EmployerPanel() {
       });
       if (enhanced) {
         if (enhanced.roleName) setSetupRoleName(enhanced.roleName);
-        if (enhanced.salaryTerms) setSetupSalary(enhanced.salaryTerms);
-        if (enhanced.scheduleTerms) setSetupSchedule(enhanced.scheduleTerms);
-        if (enhanced.customWiki) setSetupCustomWiki(enhanced.customWiki);
         if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
         if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
         if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
