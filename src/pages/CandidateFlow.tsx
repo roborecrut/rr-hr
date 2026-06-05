@@ -834,6 +834,24 @@ export default function CandidateFlow() {
                 roleplayQuestions: [],
                 logoUrl: p.logo_url || p.companies?.logo_url || undefined,
               } as any);
+              setProjectFull(p);
+              // Fetch full company + employer contacts (item 11 + 12)
+              if (p.company_id) {
+                const { data: co } = await supabase.from("companies").select("*").eq("id", p.company_id).maybeSingle();
+                if (co) setCompanyFull(co);
+              }
+              if (p.employer_id) {
+                const { data: emp } = await supabase
+                  .from("employers")
+                  .select("contact_email, contact_phone, contact_telegram")
+                  .eq("id", p.employer_id)
+                  .maybeSingle();
+                if (emp) setEmployerContacts({
+                  email: (emp as any).contact_email,
+                  phone: (emp as any).contact_phone,
+                  telegram: (emp as any).contact_telegram,
+                });
+              }
             }
           }
         }
