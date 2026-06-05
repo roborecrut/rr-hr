@@ -1,48 +1,71 @@
-// ProTalk OpenAI-compatible client + logging helper.
-// https://ai.pro-talk.ru/v1/chat/completions
+// ProTalk native ask API client + logging helper.
+// https://ai.pro-talk.ru/api/v1.0/ask/{bot_token}
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const PROTALK_URL = "https://ai.pro-talk.ru/v1/chat/completions";
+const PROTALK_BASE = "https://api.pro-talk.ru/api/v1.0/ask";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
 export type CallOpts = {
-  messages: ChatMessage[];
-  model?: string;
-  temperature?: number;
-  json?: boolean; // hint: ask the model to return strict JSON
+  // Either a flat message or an array of role-tagged messages (will be joined).
+  message?: string;
+  messages?: ChatMessage[];
+  chatId?: string;
+  socialId?: string;
+  timeoutMs?: number;
 };
 
-export function getModel(): string {
-  return Deno.env.get("PROTALK_MODEL")?.trim() || "test_chat_2";
-}
-
-function apiKey(): string {
-  const k = Deno.env.get("PRO_TALK_API_KEY");
-  if (!k) throw new Error("PRO_TALK_API_KEY is not configured");
+function botToken(): string {
+  const k = Deno.env.get("PRO_TALK_BOT_TOKEN");
+  if (!k) throw new Error("PRO_TALK_BOT_TOKEN is not configured");
   return k;
 }
+function botId(): number {
+  const raw = Deno.env.get("PRO_TALK_BOT_ID") || "0";
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) throw new Error("PRO_TALK_BOT_ID is invalid");
+  return n;
+}
 
-// Stream from ProTalk OpenAI-compatible endpoint and aggregate to a full text.
-// We use stream=true upstream and accumulate; this keeps the edge function
-// interface simple (returns final text) while honoring the streaming choice.
+function flattenMessages(msgs: ChatMessage[]): string {
+  const labelMap: Record<ChatMessage["role"], string> = {
+    system: "Система",
+    user: "Пользователь",
+    assistant: "Ассистент",
+  };
+  return msgs.map((m) => `${labelMap[m.role] ?? m.role}:\n${m.content}`).join("\n\n");
+}
+
+// Call ProTalk's native ask endpoint. Returns the assistant text from the `done` field.
 export async function callProTalk(opts: CallOpts): Promise<{ text: string; raw: any }> {
-  const body: Record<string, unknown> = {
-    model: opts.model || getModel(),
-    messages: opts.messages,
-    temperature: opts.temperature ?? 0.4,
-    stream: true,
+  const message = opts.message ?? (opts.messages ? flattenMessages(opts.messages) : "");
+  if (!message) throw new Error("protalk_empty_message");
+
+  const chat_id = opts.chatId || buildChatId({});
+  const user_social_id = opts.socialId || buildSocialId({});
+
+  const body = {
+    bot_id: botId(),
+    chat_id,
+    user_social_id,
+    message,
   };
 
-  const res = await fetch(PROTALK_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey()}`,
-      "Content-Type": "application/json",
-      "Accept": "text/event-stream",
-    },
-    body: JSON.stringify(body),
-  });
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), opts.timeoutMs ?? 110_000);
+  let res: Response;
+  try {
+    res = await fetch(`${PROTALK_BASE}/${botToken()}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } catch (e) {
+    clearTimeout(to);
+    throw new Error(`protalk_fetch_failed: ${(e as Error).message}`);
+  }
+  clearTimeout(to);
 
   if (res.status === 429) throw new Error("protalk_rate_limited");
   if (res.status === 402) throw new Error("protalk_payment_required");
@@ -51,50 +74,35 @@ export async function callProTalk(opts: CallOpts): Promise<{ text: string; raw: 
     throw new Error(`protalk_${res.status}: ${t.slice(0, 400)}`);
   }
 
-  // If server didn't actually stream, try JSON fallback
-  const ct = res.headers.get("content-type") || "";
-  if (!ct.includes("event-stream")) {
-    const data = await res.json().catch(() => null) as any;
-    const text = data?.choices?.[0]?.message?.content ?? "";
-    return { text, raw: data };
-  }
-
-  const reader = res.body!.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  let out = "";
-  let usage: any = null;
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, idx).trim();
-      buf = buf.slice(idx + 1);
-      if (!line || !line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (payload === "[DONE]") continue;
-      try {
-        const j = JSON.parse(payload);
-        const delta = j?.choices?.[0]?.delta?.content
-          ?? j?.choices?.[0]?.message?.content
-          ?? "";
-        if (delta) out += delta;
-        if (j?.usage) usage = j.usage;
-      } catch { /* ignore non-JSON chunks */ }
-    }
-  }
-  return { text: out, raw: { usage } };
+  const data = await res.json().catch(async () => ({ done: await res.text().catch(() => "") })) as any;
+  const text: string = (data?.done ?? data?.text ?? data?.message ?? "").toString();
+  if (data?.error) throw new Error(`protalk_error: ${String(data.error).slice(0, 300)}`);
+  // Detect ProTalk's "soft" server errors embedded in the text body.
+  if (/^\s*\[Server Error:/i.test(text)) throw new Error(`protalk_server_error: ${text.slice(0, 300)}`);
+  return { text, raw: data };
 }
 
+// Robust JSON extractor for LLM outputs: strips markdown fences, finds the first
+// {...} or [...] block, retries after sanitizing trailing commas/control chars.
 export function tryParseJson<T = unknown>(s: string): T | null {
+  if (!s) return null;
+  let cleaned = s.replace(/```json\s*/gi, "").replace(/```/g, "").trim();
+  const firstObj = cleaned.indexOf("{");
+  const firstArr = cleaned.indexOf("[");
+  const start = (firstObj === -1) ? firstArr : (firstArr === -1 ? firstObj : Math.min(firstObj, firstArr));
+  if (start === -1) return null;
+  const isArr = cleaned[start] === "[";
+  const end = isArr ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
+  if (end === -1 || end < start) return null;
+  cleaned = cleaned.slice(start, end + 1);
+  try { return JSON.parse(cleaned) as T; } catch { /* try sanitize */ }
   try {
-    const m = s.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-    return JSON.parse(m ? m[0] : s) as T;
-  } catch {
-    return null;
-  }
+    const fixed = cleaned
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, " ");
+    return JSON.parse(fixed) as T;
+  } catch { return null; }
 }
 
 // chat_id rules:

@@ -42,8 +42,7 @@ Deno.serve(async (req) => {
         { role: "system", content: "Ты — аналитик HR. Извлекаешь структурированные данные о компании в строгий JSON." },
         { role: "user", content: userMsg },
       ],
-      json: true,
-      temperature: 0.2,
+      chatId, socialId,
     });
     const parsed = tryParseJson<Record<string, any>>(text) || {};
     await logToDb({

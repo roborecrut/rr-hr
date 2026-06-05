@@ -39,6 +39,7 @@ Deno.serve(async (req) => {
         { role: "system", content: PROMPTS[body.mode] },
         { role: "user", content: JSON.stringify(body.payload) },
       ],
+      chatId, socialId,
     });
     const obj = tryParseJson(text) ?? { raw: text };
     await logToDb({

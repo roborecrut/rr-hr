@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
         { role: "system", content: system },
         { role: "user", content: `Роль: ${body.role_name}\nКомпания: ${body.company_name ?? "—"}\nБриф:\n${body.brief ?? ""}` },
       ],
+      chatId, socialId,
     });
     const data = tryParseJson<any>(text);
     if (!data) return jsonResponse({ error: "ai_returned_non_json", raw: text }, 502);
