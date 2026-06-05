@@ -2706,6 +2706,13 @@ export default function EmployerPanel() {
                             🛠 Редактировать
                           </button>
                         </div>
+
+                        <button
+                          onClick={() => employerId && navigate(`/emp${employerId}/training?project=${proj.id}`)}
+                          className="cursor-pointer w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-emerald-500/25"
+                        >
+                          📚 Открыть Мастер Обучения
+                        </button>
                       </div>
                     </div>
                   );
