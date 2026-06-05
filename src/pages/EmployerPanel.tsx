@@ -2489,15 +2489,44 @@ export default function EmployerPanel() {
                       ℹ️ Логотип берётся из настроек компании — отдельной загрузки для вакансии не требуется.
                     </div>
 
-                    <button
-                      type="button"
-                      disabled={isGenerating || isParsingFile}
-                      onClick={handleBeautifyNewVacancyWithAI}
-                      className="cursor-pointer w-full bg-[#17344F] border border-[#E7C768]/60 hover:border-[#E7C768] text-xs py-2.5 px-4 rounded-xl text-slate-100 font-bold flex items-center justify-center gap-1.5 transition select-none"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-[#E7C768]" />
-                      <span>✨ Оформить красиво через ИИ (оптимизировать все условия)</span>
-                    </button>
+                    {/* Extended landing sections: each maps to a vacancy landing page block. */}
+                    {[
+                      { label: "Обязанности, требования, условия (для блока Vacancy: разделы выводятся автоматически из строк)", field: "vacancy_text" as const, value: setupVacancyText, set: setSetupVacancyText, rows: 6, max: 1500, placeholder: "• Ведение переговоров с клиентами по готовой базе\n• Уверенный пользователь ПК\n• Базовые навыки общения" },
+                      { label: "Ежедневный процесс (3 таба, формат [Название] Описание):", field: "tasks_activity_text" as const, value: setupTasksActivityText, set: setSetupTasksActivityText, rows: 4, max: 1000, placeholder: "• [📞 Консультация] Открыть Wiki и направить ссылку на тариф\n• [📝 Ведение CRM] Добавить заметку по итогам звонка\n• [🤝 Возражения] Объяснить ценность ИИ-сервисов" },
+                      { label: "График и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
+                      { label: "Мотивация и преимущества (краткий текст):", field: "motivation_text" as const, value: setupMotivationText, set: setSetupMotivationText, rows: 2, max: 500, placeholder: "Бонусы за результат, обучение за счёт компании, гибкий график." },
+                      { label: "Развёрнутая мотивация (списком, каждая строка — отдельный бонус):", field: "motivation_text_detail" as const, value: setupMotivationDetail, set: setSetupMotivationDetail, rows: 4, max: 800, placeholder: "• Премии до 30% за высокую скорость\n• Еженедельные выплаты\n• Компенсация интернета" },
+                      { label: "Схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
+                      { label: "Оформление (этапы от интервью до выхода + типы оформления):", field: "onboarding_text" as const, value: setupOnboardingText, set: setSetupOnboardingText, rows: 6, max: 1000, placeholder: "• [📝 Интервью] ИИ-собеседование за 10 минут\n• [📚 Кейс-тест] Проверка навыков\n• [🤖 Обучение] Wiki и симуляции\n• [🤝 Стажировка] Первые звонки с куратором\n• [✍️ Оформление] Самозанятость / ИП / ГПХ / ТК РФ" },
+                      { label: "Команда (формат [Отдел] Имя — роль):", field: "team_text_vac" as const, value: setupTeamText, set: setSetupTeamText, rows: 4, max: 600, placeholder: "• [Продажи] Иван — РОП\n• [Маркетинг] Мария — таргетолог" },
+                      { label: "Система работы (формат [Раздел] Описание регламента):", field: "system_text_vac" as const, value: setupSystemText, set: setSetupSystemText, rows: 4, max: 600, placeholder: "• [CRM] Bitrix24, обязательное заполнение карточек\n• [Связь] Telegram-каналы команды" },
+                    ].map(({ label, field, value, set, rows, max, placeholder }) => (
+                      <div key={field}>
+                        <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between gap-2">
+                          <span className="truncate">{label}</span>
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0">до {max}</span>
+                        </label>
+                        <div className="relative">
+                          <textarea
+                            rows={rows}
+                            maxLength={max}
+                            className="w-full bg-[#17344F]/60 text-xs p-2.5 pr-9 rounded-xl border border-white/10 focus:outline-[#E7C768]"
+                            value={value}
+                            onChange={(e) => set(e.target.value)}
+                            placeholder={placeholder}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleEnhanceVacancyField(field, value, set)}
+                            disabled={enhancingVacFields[field]}
+                            className="absolute right-2 top-2 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
+                            title="Оформить красиво ИИ"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${enhancingVacFields[field] ? "animate-spin text-yellow-400" : ""}`} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
 
                     <button
                       type="submit"
@@ -2506,10 +2535,10 @@ export default function EmployerPanel() {
                     >
                       {isGenerating ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin" /> Генерация лекций и ситуаций при помощи ИИ Gemini...
+                          <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
                         </>
                       ) : (
-                        "Создать систему адаптации и форму соискателя"
+                        "Сохранить и синхронизировать"
                       )}
                     </button>
                   </form>
