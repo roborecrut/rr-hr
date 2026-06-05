@@ -1,65 +1,71 @@
-## Проблема
 
-В логах два разных типа ошибок от ProTalk:
+## 1. Company landing — sync sections with DB fields
 
-1. `ai-restart` → ProTalk вернул 200, но в теле текст `[Server Error: 'str' object has no attribute 'get']`. Это ошибка самого ProTalk: команда `/restart` не работает через OpenAI‑совместимый эндпоинт `/v1/chat/completions`, потому что у того нет понятия `chat_id`/`user_social_id` и сбрасывать просто нечего.
-2. `ai-enhance:all_company`, `ai-company-analyze`, `ai-generate-onboarding` → `protalk_504 Gateway Time-out`. Длинные system+JSON промпты висят и обрываются openresty. Раньше изредка приходил ответ от персонажа `test_chat_2`, но это был не‑JSON диалог («Привет, я RR…»), а не структурированные данные.
+**Goal:** `/com{public_id}` renders one section per filled company field, with the logo from `companies.logo_url`, and lets the visitor pick any published vacancy of the company.
 
-Корень один: мы используем «не тот» API ProTalk. По спецификации, которую задал пользователь в исходном ТЗ (`user_social_id from_user_id:… message_id:…`, `/restart` сбрасывает бота) — нужен классический ProTalk endpoint, где есть `chat_id`, `user_social_id` и память диалога. OpenAI‑совместимый `/v1/chat/completions` для этого не предназначен.
+Files: `src/pages/CompanyLanding.tsx`, `src/components/VacancySections.tsx` (only if a new presenter is needed).
 
-## Решение
+- Load company by `slug` (already done) and **all** its published projects.
+- When the URL is `/com{slug}` (no `/vac...`), render a **company-only** view:
+  - Header: logo from `companies.logo_url` (fallback to placeholder only if empty). Remove the "Войти" button from the header completely.
+  - Sections built strictly from filled `companies.*` fields (skip a section when the field is empty). One section per field, in this fixed order, with exact headings from the master:
+    1. О компании — `description_text`
+    2. Продукты — `products_text`
+    3. Миссия — `mission_text`
+    4. О нас — `about_text`
+    5. Команда — `team_text`
+    6. Выплаты — `payouts_text`
+    7. График — `schedule_text`
+    8. ИИ-Система — `system_text`
+    9. Показатели — `stats` (render only keys present in JSON).
+  - **Vacancy picker block**: a grid of cards for every published project of the company (`role_name`, `salary_terms`, `schedule_terms`, logo). Click → `/com{slug}/vac{slug}`.
+- When `/com{slug}/vac{slug}` is open: keep the current vacancy tabs view, but the header still shows the company logo from `companies.logo_url` (not the project logo) and shows the company name.
+- Remove the header "Войти" button on every `/com...` route. The candidate login modal must be triggerable **only from a vacancy page** (the existing CTA inside the vacancy view).
 
-Перевести все обращения к ProTalk на нативный API:
+## 2. Candidate auth — email + password only, scoped to a vacancy
 
-```
-POST https://ai.pro-talk.ru/api/v1.0/ask/{PRO_TALK_BOT_TOKEN}
-Content-Type: application/json
-{
-  "bot_id": <PRO_TALK_BOT_ID:number>,
-  "chat_id": "<строка вида u_{uid}_{bot}, tb{tg}_{bot} или ask{ts}_{rand}>",
-  "user_social_id": "from_user_id:<personalCabinetId> message_id:<ts>",
-  "message": "<полный текст запроса>"
-}
-```
+**Goal:** Employers continue to use Google (Supabase Auth). Candidates use a separate email/password flow whose record lives in `public.candidates` and is bound to the project + company they registered from.
 
-Ответ ProTalk: `{ "done": "...текст..." }` (или `error`). Этот эндпоинт:
-- помнит контекст по `chat_id`, поэтому `/restart` действительно сбрасывает сессию;
-- принимает обычные русские длинные запросы без stream/openresty‑таймаутов так часто;
-- использует промпт и базу знаний бота, который пользователь дальше будет «обучать» в кабинете ProTalk.
+### 2.1 DB migration (`supabase/migrations/...`)
 
-### Шаги
+Add to `public.candidates`:
+- `email text` (nullable, unique partial index where not null)
+- `password_hash text`
+- `company_id uuid references public.companies(id)`
+- `auth_kind text default 'email'` (`'email' | 'google' | 'telegram'`)
+- `last_login_at timestamptz`
 
-1. **`supabase/functions/_shared/protalk.ts`** — переписать `callProTalk`:
-   - новый сигнатур: `callProTalk({ message, chatId, socialId })` → `{ text, raw }`;
-   - POST на `https://ai.pro-talk.ru/api/v1.0/ask/{token}` (token = `PRO_TALK_BOT_TOKEN`);
-   - `bot_id` берём из `PRO_TALK_BOT_ID`;
-   - таймаут 110 с через `AbortController`, нормальная обработка 4xx/5xx;
-   - сохранить `buildChatId` / `buildSocialId` / `logToDb` как есть;
-   - `tryParseJson` оставляем — пригодится для enhance/analyze.
+Add helper RPCs (SECURITY DEFINER, `search_path=public`) so the anon client never touches the password column directly:
 
-2. **`ai-restart/index.ts`** — отправлять одно сообщение `/restart` через новый `callProTalk`, тот же `chat_id`, что и у обычного диалога этого работодателя (`u_{uid}_{bot}`), и `user_social_id` с `employer_public_id`. После успеха возвращать `{ ok:true, reply }`. На фронте при нажатии «+ Добавить Компанию» сначала вызывать `aiRestart(employer_public_id)`.
+- `candidate_email_signup(_email text, _password text, _project uuid, _company uuid)` → validates email format, password length ≥ 8, hashes with `crypt(_password, gen_salt('bf'))` (enable `pgcrypto` if missing), inserts a candidate row bound to project + company, returns `{ candidate_id, public_id, token }` where `token` is a random `gen_random_uuid()` stored in a new `candidate_sessions` table.
+- `candidate_email_login(_email text, _password text)` → verifies hash with `crypt`, returns the same shape.
+- New table `candidate_sessions(token uuid pk, candidate_id uuid, created_at, expires_at)` with `GRANT SELECT, INSERT, DELETE … TO authenticated, anon` only via the RPCs (no direct grants on the table beyond `service_role`).
+- RLS: candidate rows already restrict updates; add a policy so `candidates.password_hash` is never selectable by `anon`/`authenticated` (use a view `candidates_public` that excludes it, and revoke column privileges on `password_hash`).
 
-3. **`ai-chat/index.ts`** — собирать единый `message` из system+context+истории (склейка с маркерами `Система:`, `Контекст:`, `Пользователь:`, `Ассистент:`) и отправлять одним вызовом `callProTalk`. Persona и память остаются на стороне ProTalk‑бота.
+### 2.2 Frontend changes
 
-4. **`ai-company-analyze/index.ts`** — отправлять `SCHEMA + raw_text|file_url` одним `message`. Перед парсингом — извлекать JSON‑блок (фигурные скобки, чистка markdown/control‑символов), как в нашей stack‑overflow подсказке. Если JSON битый — возвращать `{ ok:false, raw }`, чтобы UI не падал.
+Files: `src/pages/CompanyLanding.tsx`, new `src/components/CandidateAuthModal.tsx`, `src/lib/candidateSession.ts`, `src/pages/CandidateFlow.tsx`.
 
-5. **`ai-enhance/index.ts`** — то же самое: и `single`, и `all_*` режим шлют единый prompt через `callProTalk`. Для `single` ответ берём как есть и `clampField`; для `all_*` достаём JSON робастно (markdown‑очистка, поиск `{...}`, повторная попытка с заменой trailing‑comma/control chars). Серверные лимиты `LIMITS`/`clampField` оставляем.
+- Replace the current 1-click Google/Telegram modal on the vacancy page with a new `CandidateAuthModal` containing two tabs (Регистрация / Вход):
+  - **Регистрация:** email (regex check), пароль (≥8), повтор пароля (должны совпадать). No email confirmation sent. On submit → `supabase.rpc('candidate_email_signup', { _email, _password, _project: project.id, _company: company.id })`.
+  - **Вход:** email + пароль → `candidate_email_login`.
+- On success: save `{ token, candidate_id, public_id }` to `localStorage` under `cand_session` and navigate to `/com{companySlug}/vac{vacSlug}/cand{public_id}/profile` (candidate profile bound to the vacancy).
+- `CandidateFlow` reads `cand_session` instead of the previous `cand_session_id` and loads its candidate by `public_id`.
+- Remove the old Google/Telegram one-click code path on the candidate side.
 
-6. **`ai-generate-onboarding/index.ts`** и **`ai-evaluate/index.ts`** — обновить вызовы под новый `callProTalk(message, …)` (та же замена, без других изменений).
+### 2.3 Employer CRM visibility
 
-7. **Логи** — `logToDb` уже пишет `user_message`, `bot_reply`, `channel_id`, `user_social_id`, `bot_id` — сохраняем семантику, чтобы пользователь видел в таблице `logs` ровно те поля, которые он хочет «обучать» (как раньше работало).
+The employer's existing candidate list already queries `candidates` filtered by their projects — no extra work needed. The new `company_id` + `project_id` columns make the per-vacancy / per-company grouping straightforward; ensure the employer dashboard query selects `email` and `auth_kind` so registered candidates are visible immediately.
 
-8. **Фронт `EmployerPanel.tsx`** — никаких изменений API не нужно, только убедиться, что `aiRestart(employer.public_id)` вызывается при старте мастера «+ Добавить Компанию» и ошибки `ai-restart`/`ai-company-analyze` показываются в `AIDialogPanel` (уже сделано через `pushAILog`).
+## 3. Cleanup
 
-### Технические детали
+- Drop `AuthModal` usage on `/com...` routes.
+- Update `AIDialogPanel` / header copy where it currently references "Войти" on company pages.
 
-- Секреты: `PRO_TALK_BOT_TOKEN` и `PRO_TALK_BOT_ID` уже есть, новых добавлять не надо.
-- `PRO_TALK_API_KEY` (Bearer) больше не используется — оставляем секрет, не удаляем.
-- Шаблон chat_id остаётся: `u_{uid}_{botId}` для авторизованного пользователя, `tb{tg}_{botId}` для Telegram, иначе `ask{ts}_{rand}`. Это даёт ProTalk непрерывную память для каждого ЛК.
-- `user_social_id` обязательно содержит `from_user_id:<employer_public_id>` (как требовал пользователь — id личного кабинета, напр. `100003`), а для Telegram — `from_user_id:<tg_id> Имя (@user) message_id:<ts>`.
-- Парсер JSON: убираем ```` ```json ````, ищем первую `{` и последнюю `}`, повторная попытка после `replace(/,\s*[}\]]/, …)` и удаления `[\x00-\x1F\x7F]`.
+## Technical notes
 
-### Что НЕ меняем
-
-- Структуру таблицы `logs`, RLS, миграции, бакет `company-uploads`, RPC `company_*` — всё это уже корректно.
-- UI‑копию страниц и логику мастера компании.
+- `pgcrypto` is needed for `crypt` + `gen_salt('bf')`. The migration will `CREATE EXTENSION IF NOT EXISTS pgcrypto`.
+- Password hash never crosses the network; only RPCs see plaintext, briefly.
+- All new RPCs return `jsonb` with `{ ok, error }` shape so the client can display "email занят" / "неверный пароль" without leaking which one failed (login returns generic "неверные данные").
+- No edits to existing migrations; one new timestamped migration file.
+- No changes to ProTalk / ai-* edge functions in this plan.
