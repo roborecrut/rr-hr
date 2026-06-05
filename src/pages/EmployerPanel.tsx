@@ -1128,6 +1128,95 @@ export default function EmployerPanel() {
     }
   };
 
+  // Open the vacancy wizard: create a draft project + restart the ProTalk
+  // dialog so the user starts with a clean session, mirroring the company
+  // wizard flow.
+  const openAddVacancyWizard = async () => {
+    if (showAddNewVacancy) { await cancelAddVacancyWizard(); return; }
+    try {
+      // Resolve the selected company id (by name, if any company was picked).
+      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyId = (matched as any)?.id || null;
+      const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
+      if (error) throw error;
+      const d = data as any;
+      setDraftProjectId(d?.id || null);
+      setDraftProjectPublicId(d?.public_id || null);
+      // Reset wizard fields so the user starts clean.
+      setSetupRoleName("");
+      setSetupSalary("");
+      setSetupSchedule("");
+      setSetupCustomWiki("");
+      setSetupVacancyText("");
+      setSetupTasksActivityText("");
+      setSetupMotivationText("");
+      setSetupMotivationDetail("");
+      setSetupScheduleText("");
+      setSetupPayoutsText("");
+      setSetupOnboardingText("");
+      setSetupTeamText("");
+      setSetupSystemText("");
+      setSpecialtySearch("");
+      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+      try {
+        const { aiRestart } = await import("@/lib/aiClient");
+        await aiRestart(employerId)
+          .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
+          .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+      } catch {}
+      setShowAddNewVacancy(true);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
+    }
+  };
+
+  const cancelAddVacancyWizard = async () => {
+    try {
+      // Drop an empty draft so the list does not accumulate phantom rows.
+      if (draftProjectId) {
+        const { data: row } = await supabase
+          .from("projects")
+          .select("role_name, is_published")
+          .eq("id", draftProjectId)
+          .maybeSingle();
+        const isEmpty = row && !row.is_published && (!row.role_name || String(row.role_name).trim() === "");
+        if (isEmpty) {
+          await supabase.from("projects").delete().eq("id", draftProjectId);
+        }
+      }
+    } catch (e) { console.warn("cancel vacancy cleanup error", e); }
+    setShowAddNewVacancy(false);
+    setDraftProjectId(null);
+    setDraftProjectPublicId(null);
+    fetchData();
+  };
+
+  // Single-field AI improvement for vacancy wizard textareas.
+  const handleEnhanceVacancyField = async (
+    fieldName: string,
+    currentVal: string,
+    setter: (v: string) => void,
+  ) => {
+    setEnhancingVacFields(prev => ({ ...prev, [fieldName]: true }));
+    try {
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const value = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: setupCompanyName,
+        role_name: setupRoleName,
+      });
+      if (value) setter(value);
+      addAuditEvent("success", "Поле улучшено ИИ", `Готово: ${fieldName}`);
+    } catch (err) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Проверьте соединение.");
+    } finally {
+      setEnhancingVacFields(prev => ({ ...prev, [fieldName]: false }));
+    }
+  };
+
   // Submit dynamic system generation via server Gemini API
   const handleCreateOnboardingSystem = async (e: React.FormEvent) => {
     e.preventDefault();
