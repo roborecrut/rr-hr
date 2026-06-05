@@ -244,10 +244,11 @@ export default function EmployerPanel() {
   const [showAddCompany, setShowAddCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyIndustry, setNewCompanyIndustry] = useState("");
-  const [newCompanyStaff, setNewCompanyStaff] = useState("10-50 человек");
+  const [newCompanyStaff, setNewCompanyStaff] = useState("");
   const [newCompanyDesc, setNewCompanyDesc] = useState("");
   const [newCompanySite, setNewCompanySite] = useState("");
-  const [newCompanyLogo, setNewCompanyLogo] = useState("");
+  const DEFAULT_LOGO_URL = "https://i.ibb.co/WWRbtPq0/RR-Logo.png";
+  const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
 
