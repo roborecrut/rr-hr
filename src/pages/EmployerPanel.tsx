@@ -2875,7 +2875,7 @@ export default function EmployerPanel() {
                   </div>
 
                   <div className="flex justify-end gap-2 text-xs pt-2">
-                    <button type="button" onClick={() => setShowAddCompany(false)} className="px-4 py-2 hover:bg-white/5 rounded-xl">Отмена</button>
+                    <button type="button" onClick={cancelAddCompanyWizard} className="px-4 py-2 hover:bg-white/5 rounded-xl">Отмена</button>
                     <button type="submit" className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-xl font-bold text-white shadow-lg transition-all">
                       Сохранить и Синхронизировать
                     </button>
