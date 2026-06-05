@@ -11,8 +11,9 @@ Deno.serve(async (req) => {
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: body?.employer_public_id });
   try {
     const { text, raw } = await callProTalk({
-      messages: [{ role: "user", content: "/restart" }],
-      temperature: 0,
+      message: "/restart",
+      chatId,
+      socialId,
     });
     await logToDb({
       user_message: "/restart",
