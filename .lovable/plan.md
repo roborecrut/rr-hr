@@ -1,60 +1,89 @@
-## Цель
-Заменить Lovable AI Gateway (Gemini) на ProTalk (OpenAI-совместимый `/v1/chat/completions` со стримингом) во всех ИИ-функциях, добавить логирование в таблицу `logs`, и переключить фронтенд с несуществующих `/api/*` эндпоинтов на реальные edge-функции через `supabase.functions.invoke`.
 
-## Бэкенд: edge-функции
+## Что меняем
 
-### Общий хелпер `supabase/functions/_shared/protalk.ts`
-- `callProTalk({messages, stream, model})` — POST на `https://ai.pro-talk.ru/v1/chat/completions` с заголовком `Authorization: Bearer ${PRO_TALK_API_KEY}`, `stream=true` для чатов, `stream=false` для one-shot/JSON ответов. Возвращает либо полный текст, либо `ReadableStream`.
-- `buildChatId(userId, telegramId, botId)` — `tb{tg_id}_{bot_id}` если есть `telegram_id`, иначе `u_{auth.uid}_{bot_id}`, иначе `ask{ts}_{rand}`.
-- `buildSocialId(userInfo)` — формат из приложенной функции.
-- `logChat(supabase, {user_message, bot_reply, bot_id, channel_id, channel_name, user_social_id, server_name, llm, function_call_params, function_error, tokens_*})` — INSERT в `public.logs`.
+### 1) Единая тарифная сетка для интервью+обучения (по сумме штук)
 
-### Перепись 4 функций
-- `ai-chat/index.ts` — стриминг через ProTalk. Возвращает `Response` с потоком SSE/чанки текста (OpenAI-формат). Принимает `{ kind, messages, context, project_id, candidate_id, employer_id, userInfo? }`. Систему берёт из `SYSTEMS[kind]` + `context`. Логирует последний user-message и собранный assistant-ответ в `logs`.
-- `ai-enhance/index.ts` — `stream=false`, `response_format` не используется (ProTalk OpenAI-совместим, попросить JSON в system-prompt и распарсить). Режимы `single | all_vacancy | all_company`. Логирует.
-- `ai-evaluate/index.ts` — `stream=false`, JSON-ответ. Режимы `resume | checklist | situations | training_block`. Логирует.
-- `ai-generate-onboarding/index.ts` — `stream=false`, JSON-ответ. Сохраняет в таблицы `projects`, `project_questions`, `training_blocks`, `training_lessons`, `training_quizzes` как сейчас. Логирует.
+Сейчас покупка идёт раздельно: 7 интервью и 3 обучения тарифицируются как два маленьких пакета (по 200 RR), вместо общего 10 шт. по 150 RR.
 
-### Конфиг
-- В `supabase/config.toml` для всех 4 функций — `verify_jwt = false` (чтобы анонимные посетители лендинга могли спрашивать у `vacancy_consultant`), но внутри функций для `kind=employer|candidate` валидировать JWT через `supabase.auth.getUser(authHeader)` и подставлять `user_id` в `chat_id`.
-- Удалить `_shared/ai.ts` (Lovable Gateway больше не используется).
+- В UI «Тариф & Счета» одна форма выбора пакета: пользователь указывает **сколько интервью** и **сколько обучений** в одном пакете. Грейд цены берётся от **суммы** (qty_int + qty_train).
+- В БД переписываем `public.purchase_pack` → `public.purchase_pack_mixed(_qty_int int, _qty_train int)`:
+  - `total_qty = _qty_int + _qty_train`, `unit = pack_tier_price(total_qty)`, `total_rr = unit*total_qty`
+  - проверяет баланс, списывает, начисляет в `employers.interview_credits` и `employers.training_credits` раздельно, пишет одну транзакцию с пометкой `Пакет: N инт + M обуч × <unit> RR`.
+- Старый `purchase_pack(_kind,_qty)` оставляем как обёртку для обратной совместимости (вызывает `purchase_pack_mixed`).
+- Списание (`spend_pack`) уже работает корректно — расходует **по 1 шт.** из нужного счётчика при первом старте ИИ-интервью/ИИ-обучения кандидатом и привязано к `candidate_id` (идемпотентно). Оставляем как есть. Проверяем, что на стороне фронта вызовы `spend_pack('interview' | 'training')` действительно срабатывают в `CandidateFlow` при первом клике «Приступить» — если нет, добавим.
 
-### Секреты
-- `PRO_TALK_API_KEY` — основной OpenAI-совместимый ключ формата `23456_XXX...`. **Этого ключа нет в текущих secrets** — попрошу через `secrets--add_secret` перед деплоем.
-- `PRO_TALK_BOT_ID` (= `66337`) и `PRO_TALK_BOT_TOKEN` (= `kEL1nRZp330QvUrG1KenhRQ2JIynkWLs`) — нужны для формирования `chat_id`/логов. Сейчас тоже отсутствуют в secrets — добавлю.
+### 2) Отдельные покупки фикс-услуг (лендинг / интервью-сетап / обучение-сетап)
 
-### Модель
-Какую модель указывать в `model:` для ProTalk — возьму из текущей фронт-настройки `ai_status.model` (по умолчанию `gemini-1.5-flash`) либо новый секрет `PROTALK_MODEL` со значением, которое скажет пользователь. На уточнение оставлю значение по умолчанию `"test_chat_2"` из примера и сделаю его переопределяемым через env.
+Сейчас `spend_fixed` существует в БД, но **нигде не вызывается** и счётчиков нет.
 
-## Фронтенд: замена `/api/*` на `supabase.functions.invoke`
+- Добавляем в `public.employers`:
+  - `landing_credits INT NOT NULL DEFAULT 0`
+  - `interview_setup_credits INT NOT NULL DEFAULT 0`
+  - `training_setup_credits INT NOT NULL DEFAULT 0`
+- Новая RPC `purchase_fixed(_item text, _qty int default 1)`: списывает `FIXED_PRICES[item]*qty` (500/200/300 RR), инкрементит соответствующий счётчик, пишет транзакцию.
+- Переписываем `spend_fixed(_project, _item)`:
+  - если у работодателя есть `*_credits > 0` → расходует 1 кредит без списания RR (идемпотентно по `_project+_item`);
+  - иначе списывает фикс-цену с баланса (как сейчас).
+- В edge-функциях вызываем `spend_fixed` после успешного сохранения:
+  - `ai-generate-onboarding` → при `save && project_id` вызываем `spend_fixed(project_id,'interview_setup')` после успешной записи чек-листа/ситуаций и `spend_fixed(project_id,'training_setup')` после успешной записи training_blocks.
+  - Для лендинга — после сохранения `project_landings` (см. вызов в `EmployerPanel`/`JobVacancyLanding` генерации) добавляем `spend_fixed(project_id,'landing')`. Если генерации лендинга через edge-функцию ещё нет — RPC вызываем прямо из фронта после успешной записи.
+- В UI блока «Разовые услуги» добавляем кнопки **«Купить впрок»** и счётчики «Куплено: N шт» рядом с каждой услугой. Подпись: «спишется автоматически при создании; если кредитов нет — спишется с баланса».
 
-Все вызовы перевожу на реальные функции. Список замен:
+### 3) Корректное отображение баланса и реферальной программы
 
-| Сейчас | Станет |
-|---|---|
-| `fetch('/api/enhance-single-field', {body})` | `invoke('ai-enhance', { body: { mode:'single', ... } })` |
-| `fetch('/api/enhance-all-fields')` / `/api/enhance-all-vacancy-fields` | `invoke('ai-enhance', { body:{ mode:'all_company'\|'all_vacancy', ... } })` |
-| `fetch('/api/parse-company-file')` | `invoke('ai-enhance', { body:{ mode:'all_company', fields, hint:'parse_file' } })` (текст файла кладём в `hint`) |
-| `fetch('/api/generate-project-onboarding')` | `invoke('ai-generate-onboarding', { body:{ project_id, role_name, company_name, brief, save:true } })` + `spend_fixed(project, 'interview_setup'/'training_setup')` после успеха |
-| `fetch('/api/evaluate-resume')` | `invoke('ai-evaluate', { body:{ mode:'resume', candidate_id, project_id, payload } })` |
-| `fetch('/api/evaluate-checklist')` | `invoke('ai-evaluate', { body:{ mode:'checklist', ... } })` |
-| `fetch('/api/evaluate-situations')` | `invoke('ai-evaluate', { body:{ mode:'situations', ... } })` |
-| `fetch('/api/evaluate-training-block')` | `invoke('ai-evaluate', { body:{ mode:'training_block', ... } })` |
-| `fetch('/api/candidate-assist')` | `invoke('ai-chat', { body:{ kind:'candidate', messages, candidate_id, project_id } })` со стримингом |
-| `fetch('/api/vacancy-consultant-chat')` | `invoke('ai-chat', { body:{ kind:'vacancy_consultant', messages, context, project_id } })` со стримингом |
+- Кнопка раздела «5. Тариф & Счета» в сайдбаре сейчас показывает старое значение (1000 RR на скрине, хотя в БД 2000). Источник `balance` обновляем единым хуком `useWallet()` с интервальным `fetchBillingState` (он есть, но не используется для бейджа в сайдбаре) — пробрасываем `balance` в бейдж сайдбара.
+- Баг «Кем вы приглашены = самостоятельно» при наличии записи в `referrals_emp`:
+  - проверяем, что запрос `referrals_emp` идёт под JWT текущего пользователя (RLS-политика уже разрешает чтение приглашённому);
+  - чиним маппинг `referrer.public_id` (сейчас отдельный запрос — корректен, но не отрабатывает на странице). Перепишем на один JOIN-запрос с `select("referrer:employers!referrals_emp_referrer_employer_id_fkey(public_id, contact_phone, contact_telegram, user_id)")`, чтобы RLS не резал второй шаг.
+  - В блоке «Кем вы приглашены» выводим: ID работодателя (emp1000XX), имя, email, телефон, telegram приглашающего.
+- Баг «Кого пригласили вы: 0 чел» при наличии реферала:
+  - аналогично переписываем выборку приглашённых одним `select` c вложенным `employers→profiles`;
+  - в шапке блока выводим суммарно `count` и сумму бонусов: `{N} чел · +{sum} RR`.
+- Запись `referrals_emp.bonus_units` сейчас 10 (легаси), а реальный бонус 1000 RR (через `apply_transaction`). Делаем одноразовый `UPDATE referrals_emp SET bonus_units = 1000 WHERE bonus_units = 10`, чтобы суммарный показатель в UI совпадал с реальным начислением.
 
-Чисто данные (`/api/projects`, `/api/candidates`, `/api/companies`, `/api/employers/:id`, `/api/admin/*`, `/api/telegram-logs`, `/api/ai-status`, `/api/get-questions`, `/api/admin/pay-mock`) — **не трогаем в этом плане**: это отдельная задача по выпиливанию мок-API, и пользователь явно попросил только про ИИ-функции.
+## Технические детали
 
-Для стриминга `ai-chat` использую прямой `fetch` к `${VITE_SUPABASE_URL}/functions/v1/ai-chat` (как в knowledge `classic-ai-chat`) с заголовком `Authorization: Bearer <publishable_key>`, парсю SSE и обновляю UI чанками.
+### Миграция (SQL)
 
-## База данных
-Изменений схемы нет — таблица `logs` уже создана с подходящими колонками (`channel_id`, `bot_id`, `user_message`, `bot_reply`, `llm`, `api_key`, `server_name`, `tokens_*`, `function_error`, `function_call_params`, `created_at`).
+```sql
+-- A. Новые счётчики для фикс-услуг
+ALTER TABLE public.employers
+  ADD COLUMN IF NOT EXISTS landing_credits INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS interview_setup_credits INT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS training_setup_credits INT NOT NULL DEFAULT 0;
 
-## Что НЕ делаю в этом плане
-- Не переписываю `/api/projects`, `/api/candidates`, `/api/employers`, `/api/companies` и админ-эндпоинты — это отдельный большой пласт работ.
-- Не меняю UI (тексты «ProTalk» в EmployerPanel уже соответствуют новому бэкенду).
-- Не трогаю `signup-bootstrap`.
+-- B. purchase_pack_mixed(qty_int, qty_train) — единый грейд по сумме
+CREATE OR REPLACE FUNCTION public.purchase_pack_mixed(_qty_int int, _qty_train int)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
 
-## Открытые вопросы
-1. **Значение `model`** для ProTalk OpenAI API — оставлю `test_chat_2` по умолчанию + переменная `PROTALK_MODEL`. Подтвердите название продакшен-бота.
-2. Перед стартом запрошу секреты: `PRO_TALK_API_KEY`, `PRO_TALK_BOT_ID`, `PRO_TALK_BOT_TOKEN` (или подтверждение, что значения из `.env.example` можно использовать).
+-- C. purchase_fixed(item, qty)
+CREATE OR REPLACE FUNCTION public.purchase_fixed(_item text, _qty int DEFAULT 1)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
+
+-- D. spend_fixed: расходовать кредит, если есть; иначе списать с баланса
+CREATE OR REPLACE FUNCTION public.spend_fixed(_project uuid, _item text)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
+
+-- E. Привести легаси bonus_units к фактически начисленным RR
+UPDATE public.referrals_emp SET bonus_units = 1000 WHERE bonus_units = 10;
+
+GRANT EXECUTE ON FUNCTION public.purchase_pack_mixed(int,int), public.purchase_fixed(text,int) TO authenticated, service_role;
+```
+
+### Фронт
+
+- `src/lib/rr.ts` — без изменений (тарифная сетка уже общая).
+- `src/pages/EmployerPanel.tsx`:
+  - Заменить блок «Пакеты лимитов» на единую форму: два инпута (qty_int, qty_train) + сводка «Всего N шт × U RR = T RR»; кнопка вызывает `supabase.rpc('purchase_pack_mixed', { _qty_int, _qty_train })`.
+  - В блок «Разовые услуги» добавить кнопки покупки впрок и счётчики `landing_credits`, `interview_setup_credits`, `training_setup_credits` (загружаем в `fetchBillingState`).
+  - Переписать запрос рефералов на JOIN, корректно показать «Кем вы приглашены» и «Кого пригласили вы» (счётчик + список с email/телефон/telegram).
+  - В сайдбаре бейдж раздела «5. Тариф & Счета» брать из стейта `balance`.
+- `supabase/functions/ai-generate-onboarding/index.ts` — после успешного `save` вызывать `spend_fixed` для `interview_setup` и `training_setup`.
+- Где сохраняется лендинг (`project_landings`) — добавить `supabase.rpc('spend_fixed', { _project, _item: 'landing' })` сразу после успешной записи.
+- `CandidateFlow.tsx` — убедиться, что при первом старте ИИ-интервью и ИИ-обучения вызывается `supabase.rpc('spend_pack', { _candidate, _kind })`; добавить, если нет.
+
+## Чего НЕ делаем
+
+- Не меняем формулу пополнения RR за рубли (1 ₽ = 1 RR) и приветственный бонус 1000 RR.
+- Не трогаем ProTalk/edge-функции AI кроме добавления вызова `spend_fixed`.
+- Не меняем структуру `wallets` и `transactions`.
