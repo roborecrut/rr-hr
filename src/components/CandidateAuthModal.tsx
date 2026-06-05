@@ -40,6 +40,7 @@ export default function CandidateAuthModal({
     bad_password: "Пароль должен быть не короче 8 символов",
     email_taken: "Этот email уже зарегистрирован — войдите",
     bad_credentials: "Неверный email или пароль",
+    wrong_password: "Этот email уже используется с другим паролем",
     no_project: "Вакансия не найдена",
   }[code] || "Не удалось выполнить запрос");
 
@@ -66,6 +67,8 @@ export default function CandidateAuthModal({
         public_id: res.public_id,
         project_id: res.project_id ?? projectId,
         company_id: res.company_id ?? companyId ?? null,
+        email: email.trim().toLowerCase(),
+        applications: Array.isArray(res.applications) ? res.applications : undefined,
       });
       setOk(true);
       setTimeout(() => {

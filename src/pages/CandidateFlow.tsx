@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import { getCandidateSession, saveCandidateSession, type CandidateApplication } from "@/lib/candidateSession";
 import {
   FileText,
   Upload,
@@ -436,6 +437,13 @@ export default function CandidateFlow() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [project, setProject] = useState<JobProject | null>(null);
   const [allProjects, setAllProjects] = useState<any[]>([]);
+  // Full DB row for the active project + parent company + employer contacts
+  const [projectFull, setProjectFull] = useState<any | null>(null);
+  const [companyFull, setCompanyFull] = useState<any | null>(null);
+  const [employerContacts, setEmployerContacts] = useState<{ email?: string|null; phone?: string|null; telegram?: string|null }>({});
+  // Multi-application switcher (item 10)
+  const [applications, setApplications] = useState<CandidateApplication[]>([]);
+  const [appsMenuOpen, setAppsMenuOpen] = useState(false);
 
   // Flow navigation stage index: "terms" | "interview" | "scoring" | "training" | "certified"
   const [currentStage, setCurrentStage] = useState<string>("terms");
@@ -826,6 +834,24 @@ export default function CandidateFlow() {
                 roleplayQuestions: [],
                 logoUrl: p.logo_url || p.companies?.logo_url || undefined,
               } as any);
+              setProjectFull(p);
+              // Fetch full company + employer contacts (item 11 + 12)
+              if (p.company_id) {
+                const { data: co } = await supabase.from("companies").select("*").eq("id", p.company_id).maybeSingle();
+                if (co) setCompanyFull(co);
+              }
+              if (p.employer_id) {
+                const { data: emp } = await supabase
+                  .from("employers")
+                  .select("contact_email, contact_phone, contact_telegram")
+                  .eq("id", p.employer_id)
+                  .maybeSingle();
+                if (emp) setEmployerContacts({
+                  email: (emp as any).contact_email,
+                  phone: (emp as any).contact_phone,
+                  telegram: (emp as any).contact_telegram,
+                });
+              }
             }
           }
         }
@@ -838,6 +864,56 @@ export default function CandidateFlow() {
   useEffect(() => {
     loadSession();
   }, []);
+
+  // Hydrate "My applications" from saved candidate session + refresh from DB
+  useEffect(() => {
+    const s = getCandidateSession();
+    if (s?.applications && s.applications.length) setApplications(s.applications);
+    (async () => {
+      if (!s?.email) return;
+      try {
+        const { data, error } = await supabase
+          .from("candidates")
+          .select("id, public_id, project_id, company_id, role_name, current_stage, created_at, companies(name, slug)")
+          .ilike("email", s.email);
+        if (!error && Array.isArray(data)) {
+          const apps: CandidateApplication[] = data.map((c: any) => ({
+            candidate_id: c.id,
+            public_id: c.public_id,
+            project_id: c.project_id,
+            company_id: c.company_id,
+            role_name: c.role_name,
+            company_name: c.companies?.name ?? null,
+            company_slug: c.companies?.slug ?? null,
+            current_stage: c.current_stage,
+          }));
+          setApplications(apps);
+          saveCandidateSession({ ...s, applications: apps });
+        }
+      } catch {}
+    })();
+  }, [candidate?.id]);
+
+  const switchApplication = (a: CandidateApplication) => {
+    const s = getCandidateSession();
+    if (s) {
+      saveCandidateSession({
+        ...s,
+        candidate_id: a.candidate_id,
+        public_id: a.public_id,
+        project_id: a.project_id,
+        company_id: a.company_id,
+      });
+    }
+    localStorage.setItem("cand_session_id", `candidate${a.public_id || a.candidate_id}`);
+    setAppsMenuOpen(false);
+    const slug = a.company_slug || "";
+    const vacId = a.project_id || "";
+    const candId = `candidate${a.public_id || a.candidate_id}`;
+    const target = slug && vacId ? `/${slug}/${vacId}/${candId}/profile` : `/${candId}/profile`;
+    navigate(target);
+    setTimeout(() => window.location.reload(), 50);
+  };
 
   // Sync stage to backend
   const updateStageOnBackend = async (newStage: string, additionalPayload: any = {}) => {
@@ -1380,6 +1456,40 @@ export default function CandidateFlow() {
 
           {/* Right section: Name & Logout button */}
           <div className="hidden lg:flex items-center gap-3">
+            {applications.length > 1 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAppsMenuOpen(o => !o)}
+                  className="cursor-pointer bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/30 text-[#E7C768] px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5"
+                  title="Переключить отклик"
+                >
+                  📂 Мои отклики · {applications.length}
+                </button>
+                {appsMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-[#17344F] border border-white/10 rounded-xl shadow-2xl p-2 z-50 max-h-96 overflow-y-auto">
+                    {applications.map(a => {
+                      const isActive = a.candidate_id === candidate?.id || a.public_id === (candidate as any)?.publicId;
+                      return (
+                        <button
+                          key={a.candidate_id}
+                          type="button"
+                          onClick={() => switchApplication(a)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition mb-1 ${
+                            isActive ? "bg-[#E7C768] text-[#17344F] font-bold" : "text-slate-200 hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="font-bold">{a.role_name || "Вакансия"}</div>
+                          <div className={`text-[10px] ${isActive ? "text-[#17344F]/80" : "text-slate-400"}`}>
+                            {a.company_name || "Компания"} · {a.current_stage || "—"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {candidate && (
               <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl text-left text-xs">
                 <span className="text-slate-400 text-[10px] block font-normal leading-tight">Авторизован:</span>
@@ -1820,7 +1930,8 @@ export default function CandidateFlow() {
                     { id: "payouts", title: "💳 Выплаты", desc: "Когда и сколько" },
                     { id: "schedule", title: "📅 График", desc: "Режим и смены" },
                     { id: "team", title: "👥 Команда", desc: "Коллеги и руководство" },
-                    { id: "system", title: "⚙️ Система", desc: "Регламенты и Wiki" }
+                    { id: "system", title: "⚙️ Система", desc: "Регламенты и Wiki" },
+                    { id: "contacts", title: "📞 Контакты", desc: "Связаться с работодателем" }
                   ].map((subTab) => {
                     const isSelected = termsSubTab === subTab.id;
                     return (
@@ -1856,18 +1967,15 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Опубликованная вакансия</span>
                     <h2 className="text-2xl font-bold text-white">{project?.roleName || "Специалист"}</h2>
-                    <p className="text-slate-300 text-xs leading-relaxed font-normal">
-                      Мы ищем сильного специалиста на должность <strong className="text-[#E7C768]">{project?.roleName}</strong>. Эта позиция предполагает работу в нашей передовой ИИ-платформе. 
-                      Вы будете вести сделки, коммуницировать с целевой аудиторией и помогать развивать наши высокотехнологичные продукты.
+                    <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.vacancy_text || `Мы ищем специалиста на должность ${project?.roleName || ""}.`}
                     </p>
-                    <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
-                      <h4 className="text-xs font-bold text-[#E7C768] uppercase">Ключевые Обязанности:</h4>
-                      <ul className="list-disc pl-4 text-xs text-slate-300 space-y-1">
-                        <li>Качественное консультирование клиентов по стандартам и инструкциям;</li>
-                        <li>Сопровождение клиентов в нашей экосистеме, ведение CRM;</li>
-                        <li>Входной контроль требований и своевременная отчётность руководителю.</li>
-                      </ul>
-                    </div>
+                    {projectFull?.tasks_activity_text && (
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
+                        <h4 className="text-xs font-bold text-[#E7C768] uppercase">Задачи и Деятельность</h4>
+                        <p className="text-xs text-slate-300 whitespace-pre-wrap">{projectFull.tasks_activity_text}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1875,19 +1983,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Мотивационный буклет</span>
                     <h2 className="text-xl font-bold text-white">Мотивация и Карьерный рост</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed italic border-l-4 border-[#E7C768] pl-3">
-                      "{project?.motivationText || "Наша компания предлагает крутые возможности карьерной лестницы, стабильный оклад и оплачиваемое обучение."}"
+                    <p className="text-xs text-slate-300 leading-relaxed italic border-l-4 border-[#E7C768] pl-3 whitespace-pre-wrap">
+                      {projectFull?.motivation_text || project?.motivationText || "Карьерный рост, стабильный оклад и оплачиваемое обучение."}
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Структура дохода</span>
-                        <p className="text-xs text-white font-bold mt-1">Оклад + KPI в зависимости от выполнения плана продаж или активности.</p>
-                      </div>
-                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
-                        <span className="text-[10px] font-bold text-slate-400 block uppercase">Профессиональный Рост</span>
-                        <p className="text-xs text-[#E7C768] font-bold mt-1">Грейдовая сетка (Junior, Middle, Senior) и выдвижение в тимлиды.</p>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -1895,16 +1993,21 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Манифест организации</span>
                     <h2 className="text-xl font-bold text-white">Информация о компании: {project?.companyName || "ООО Работодатель"}</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Компания <strong className="text-white">{project?.companyName}</strong> — признанный флагман в своей технологической сфере. Мы гордимся тем, что строим полностью прозрачные и понятные рабочие процессы. 
-                      Внедрение нашего ИИ Робота Рекрутера помогает нам мгновенно обучать новых людей, адаптируя их прямо под внутреннюю специфику наших регламентов и Wiki-баз.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {companyFull?.description_text || companyFull?.about_text || `Компания ${project?.companyName || ""}.`}
                     </p>
-                    <div className="bg-[#E7C768]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs space-y-2">
-                      <h4 className="font-bold text-[#E7C768]">Наши ценности:</h4>
-                      <p className="text-slate-200">
-                        Честность, инновационность и скорость. Мы дорожим временем наших соискателей и обеспечиваем автоматический онбординг сразу после собеседования!
-                      </p>
-                    </div>
+                    {companyFull?.mission_text && (
+                      <div className="bg-[#E7C768]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs">
+                        <h4 className="font-bold text-[#E7C768] mb-1">Миссия</h4>
+                        <p className="text-slate-200 whitespace-pre-wrap">{companyFull.mission_text}</p>
+                      </div>
+                    )}
+                    {companyFull?.products_text && (
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5 text-xs">
+                        <h4 className="font-bold text-[#E7C768] mb-1">Продукты и услуги</h4>
+                        <p className="text-slate-200 whitespace-pre-wrap">{companyFull.products_text}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1912,19 +2015,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Правила адаптации</span>
                     <h2 className="text-xl font-bold text-white font-serif">Оформление и трудоустройство</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Мы ставим процессы оформления на полностью прозрачные рельсы в строгом соответствии со стандартами.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.onboarding_text || "Процесс оформления прозрачный, в соответствии со стандартами."}
                     </p>
-                    <div className="bg-black/35 p-4 rounded-xl border border-white/5 space-y-2 text-xs font-normal">
-                      <div className="flex justify-between border-b border-white/5 pb-1">
-                        <span className="text-gray-400">Вид договора:</span>
-                        <span className="text-white font-bold">ТК РФ / ГПХ / СЗ</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Срок оформления:</span>
-                        <span className="text-white font-bold">1 рабочий день</span>
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -1932,12 +2025,9 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Финансы</span>
                     <h2 className="text-xl font-bold text-white font-serif">Выплаты и Бонусы</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Заработная плата выплачивается стабильно два раза в месяц на любую карту банка РФ без скрытых комиссий.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.payouts_text || projectFull?.salary_terms || project?.salaryTerms || "Условия выплат уточняются."}
                     </p>
-                    <div className="bg-gradient-to-br from-[#E7C768]/15 to-[#FF4C4C]/5 p-4 rounded-xl border border-[#E7C768]/20 text-xs">
-                      <strong>Прозрачные условия:</strong> {project?.salaryTerms || "Стабильно и вовремя"}
-                    </div>
                   </div>
                 )}
 
@@ -1945,8 +2035,8 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Режим работы</span>
                     <h2 className="text-xl font-bold text-white font-serif">График и Смены</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Планируемый режим занятости: <span className="text-[#E7C768] font-bold">{project?.scheduleTerms || "Гибкий"}</span>. Все детали согласовываются индивидуально с наставником.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.schedule_text || projectFull?.schedule_terms || project?.scheduleTerms || "График работы уточняется."}
                     </p>
                   </div>
                 )}
@@ -1955,8 +2045,8 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Коллеги</span>
                     <h2 className="text-xl font-bold text-white font-serif">Ваша рабочая группа</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                      Вы будете работать в плотной интеграции со специалистами отдела адаптации и ведущими кураторами компании.
+                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
+                      {projectFull?.team_text || companyFull?.team_text || "Информация о команде уточняется."}
                     </p>
                   </div>
                 )}
@@ -1966,8 +2056,29 @@ export default function CandidateFlow() {
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Регламенты</span>
                     <h2 className="text-xl font-bold text-white font-serif">Базовая Wiki-система</h2>
                     <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-wrap bg-black/40 p-4 rounded-xl border border-white/5">
-                      {project?.customWiki || "Определенные правила адаптации и пользования внутренними CRM-системами."}
+                      {projectFull?.system_text || companyFull?.system_text || project?.customWiki || "Регламенты уточняются."}
                     </p>
+                  </div>
+                )}
+
+                {termsSubTab === "contacts" && (
+                  <div className="space-y-4 animate-fadeIn">
+                    <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Связь с работодателем</span>
+                    <h2 className="text-xl font-bold text-white font-serif">Контакты</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Email</div>
+                        <div className="text-white font-bold mt-1 break-all">{employerContacts.email || "—"}</div>
+                      </div>
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Телефон</div>
+                        <div className="text-white font-bold mt-1">{employerContacts.phone || "—"}</div>
+                      </div>
+                      <div className="bg-black/35 p-4 rounded-xl border border-white/5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Telegram</div>
+                        <div className="text-white font-bold mt-1">{employerContacts.telegram || "—"}</div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
