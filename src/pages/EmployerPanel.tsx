@@ -428,10 +428,9 @@ export default function EmployerPanel() {
       const d = data as any;
       setDraftCompanyId(d?.id || null);
       setDraftCompanyPublicId(d?.public_id || null);
-      // Optimistically add draft card to list
-      if (d?.id && !companiesList.some((c) => c.id === d.id)) {
-        setCompaniesList((prev) => [...prev, { id: d.id, public_id: d.public_id, name: "Без названия", status: "draft" }]);
-      }
+      // Source of truth for the list is Supabase. We do not optimistically
+      // push a "draft" card here — fetchCompanies() will surface it after
+      // the user actually saves data, which avoids ghost cards on cancel.
       pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       const { aiRestart } = await import("@/lib/aiClient");
       await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
