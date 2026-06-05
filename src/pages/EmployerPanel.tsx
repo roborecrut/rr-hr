@@ -1248,6 +1248,7 @@ export default function EmployerPanel() {
         value: currentVal,
         company_name: setupCompanyName,
         role_name: setupRoleName,
+        template: exampleFor(fieldName) || undefined,
       });
       if (value) setter(value);
       addAuditEvent("success", "Поле улучшено ИИ", `Готово: ${fieldName}`);
