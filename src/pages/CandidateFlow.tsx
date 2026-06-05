@@ -865,6 +865,56 @@ export default function CandidateFlow() {
     loadSession();
   }, []);
 
+  // Hydrate "My applications" from saved candidate session + refresh from DB
+  useEffect(() => {
+    const s = getCandidateSession();
+    if (s?.applications && s.applications.length) setApplications(s.applications);
+    (async () => {
+      if (!s?.email) return;
+      try {
+        const { data, error } = await supabase
+          .from("candidates")
+          .select("id, public_id, project_id, company_id, role_name, current_stage, created_at, companies(name, slug)")
+          .ilike("email", s.email);
+        if (!error && Array.isArray(data)) {
+          const apps: CandidateApplication[] = data.map((c: any) => ({
+            candidate_id: c.id,
+            public_id: c.public_id,
+            project_id: c.project_id,
+            company_id: c.company_id,
+            role_name: c.role_name,
+            company_name: c.companies?.name ?? null,
+            company_slug: c.companies?.slug ?? null,
+            current_stage: c.current_stage,
+          }));
+          setApplications(apps);
+          saveCandidateSession({ ...s, applications: apps });
+        }
+      } catch {}
+    })();
+  }, [candidate?.id]);
+
+  const switchApplication = (a: CandidateApplication) => {
+    const s = getCandidateSession();
+    if (s) {
+      saveCandidateSession({
+        ...s,
+        candidate_id: a.candidate_id,
+        public_id: a.public_id,
+        project_id: a.project_id,
+        company_id: a.company_id,
+      });
+    }
+    localStorage.setItem("cand_session_id", `candidate${a.public_id || a.candidate_id}`);
+    setAppsMenuOpen(false);
+    const slug = a.company_slug || "";
+    const vacId = a.project_id || "";
+    const candId = `candidate${a.public_id || a.candidate_id}`;
+    const target = slug && vacId ? `/${slug}/${vacId}/${candId}/profile` : `/${candId}/profile`;
+    navigate(target);
+    setTimeout(() => window.location.reload(), 50);
+  };
+
   // Sync stage to backend
   const updateStageOnBackend = async (newStage: string, additionalPayload: any = {}) => {
     if (!candidate) return;
