@@ -2410,14 +2410,18 @@ export default function EmployerPanel() {
                       />
                       {(() => {
                         const existingSpecialties = Array.from(new Set(projects.map(p => p.roleName).filter(Boolean)));
-                        const allSpecialtiesCombined = Array.from(new Set([...existingSpecialties, ...BASIC_SPECIALTIES]));
+                        const allSpecialtiesCombined = Array.from(new Set([
+                          ...existingSpecialties,
+                          ...jobTitlesList,
+                          ...BASIC_SPECIALTIES,
+                        ]));
                         const filteredSpec = allSpecialtiesCombined.filter(s => s.toLowerCase().includes(specialtySearch.toLowerCase()));
                         const hasExactMatch = allSpecialtiesCombined.some(s => s.toLowerCase() === specialtySearch.trim().toLowerCase());
                         
                         return (
                           <div className="space-y-2 mt-1">
-                            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-                              {filteredSpec.slice(0, 12).map(spec => (
+                            <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto pr-1">
+                              {filteredSpec.slice(0, 60).map(spec => (
                                 <button
                                   key={spec}
                                   type="button"
@@ -2430,9 +2434,14 @@ export default function EmployerPanel() {
                               {specialtySearch.trim() && !hasExactMatch && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setSetupRoleName(specialtySearch.trim());
+                                  onClick={async () => {
+                                    const t = specialtySearch.trim();
+                                    setSetupRoleName(t);
                                     setSpecialtySearch("");
+                                    const row = await upsertJobTitle(t);
+                                    if (row?.title) {
+                                      setJobTitlesList(prev => [row.title, ...prev.filter(p => p.toLowerCase() !== row.title.toLowerCase())]);
+                                    }
                                   }}
                                   className="bg-amber-500/20 border border-amber-500/45 hover:border-amber-400 text-[9.5px] text-amber-350 font-bold px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
                                 >
