@@ -10,6 +10,7 @@ import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { buildCandidateUrl } from "@/lib/links";
+import CandidateAuthModal from "../components/CandidateAuthModal";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
@@ -127,13 +128,6 @@ export default function CompanyLanding() {
 
   // Candidate signup modal
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [isLoginOnly, setIsLoginOnly] = useState(false);
-  const [candName, setCandName] = useState("");
-  const [candEmail, setCandEmail] = useState("");
-  const [candTg, setCandTg] = useState("");
-  const [authMethod, setAuthMethod] = useState<"google" | "telegram" | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   // Fetch company & projects from server
   const loadData = async () => {
