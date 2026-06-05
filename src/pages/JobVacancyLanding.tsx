@@ -529,7 +529,7 @@ export default function JobVacancyLanding() {
               />
               <button
                 onClick={() => handleSendMessage()}
-                disabled={isAiTyping || !userQuestion.trim()}
+                disabled={isAiTyping || isTypewriting || !userQuestion.trim()}
                 className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white p-2.5 rounded-xl font-bold transition flex items-center justify-center disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />
