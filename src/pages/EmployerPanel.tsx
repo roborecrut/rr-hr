@@ -1339,13 +1339,12 @@ export default function EmployerPanel() {
       }
 
       addAuditEvent("success", "Компания опубликована", `Лендинг доступен: /com${pid}`);
-      // Reload list from Supabase
-      const r = await supabase.from("companies").select("*").eq("owner_employer_id", (await supabase.from("employers").select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle()).data?.id || "");
-      if (r.data) setCompaniesList(r.data);
+      // Reload list through the unified mapper.
+      await fetchCompanies();
 
       // Reset wizard
-      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanySite("");
-      setNewCompanyLogo(""); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
+      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanyStaff(""); setNewCompanySite("");
+      setNewCompanyLogo(DEFAULT_LOGO_URL); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
       setNewCompanySalaryTerms(""); setNewCompanyScheduleTerms("");
       setNewCompanyStatsValClients(""); setNewCompanyStatsLabelClients("");
       setNewCompanyStatsValDialogs(""); setNewCompanyStatsLabelDialogs("");
