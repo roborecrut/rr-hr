@@ -1157,7 +1157,6 @@ export default function EmployerPanel() {
         salaryTerms: setupSalary,
         scheduleTerms: setupSchedule,
         customWiki: setupCustomWiki,
-        logoUrl: setupLogoUrl,
         vacancyText: aiData?.vacancy_text,
         motivationText: aiData?.motivation_text,
         onboardingText: aiData?.onboarding_text,
