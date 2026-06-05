@@ -1,127 +1,94 @@
-## Что меняется (по пунктам пользователя)
+## Что меняем в Мастере Вакансий (/empXXX/vacancies)
 
-### 1. Заголовок мастера
-- `src/pages/EmployerPanel.tsx` → блок с `Конструктор вакансии с поддержкой Gemini API` (стр. 2184) переименовать в **«Мастер Вакансий»**. Иконка/стиль как у мастера компаний.
+### 1. Подсказки вместо placeholder
+Сейчас примеры скрыты в `placeholder` и пропадают при вводе. Переделаем:
+- Под label каждого поля выводим небольшой блок «Пример заполнения» (свернутый по умолчанию, разворачивается по клику «Показать пример»).
+- Само текстовое поле **предзаполняется** этим примером при создании черновика вакансии (если поле пустое).
+- Пример всегда виден рядом, даже когда пользователь редактирует значение.
 
-### 2. Справочник должностей в БД
-- Новая таблица `public.job_titles`:
-  - `id uuid pk default gen_random_uuid()`
-  - `title text not null unique` (case-insensitive по `lower(title)`)
-  - `usage_count int default 0`
-  - `is_basic boolean default false` (для сидинга)
-  - `created_by uuid null` (auth.uid())
-  - `created_at timestamptz default now()`
-- GRANT: `SELECT` для `anon, authenticated`; `INSERT/UPDATE` только для `authenticated`; `ALL` для `service_role`. RLS: чтение всем, вставка/инкремент только аутентифицированным.
-- RPC `public.job_title_upsert(_title text)` (SECURITY DEFINER) — нормализует пробелы, делает upsert, инкрементит `usage_count`, возвращает строку.
-- Сид: вставить все 70 позиций из `BASIC_SPECIALTIES` с `is_basic=true`.
-- В мастере вакансий и `MainCatalogPage.tsx` заменить `BASIC_SPECIALTIES` на загрузку из БД (`select … order by usage_count desc, title`). Поле фильтра, чипы, и кнопка «➕ Добавить свою профессию» — оба места.
-- При выборе/вводе своей профессии вызывать `job_title_upsert`. При сохранении вакансии — тоже (для роста `usage_count`).
-- `src/types.ts`: оставить `BASIC_SPECIALTIES` только как fallback на случай ошибки загрузки.
+### 2. Шаблоны привязаны к должности
+- В таблицу `job_titles` добавляем JSONB-колонку `field_templates` — словарь `{ vacancy_text, tasks_activity_text, schedule_text, motivation_text, motivation_text_detail, payouts_text, onboarding_text, team_text_vac, system_text_vac }`.
+- Для базовых 70 должностей сидируем дефолтные шаблоны (текущие placeholder’ы как стартовая база; для топ-должностей — более точные тексты).
+- При выборе должности в мастере вакансий:
+  - Если поле пустое → подставляем шаблон из `job_titles.field_templates`.
+  - Поле «Пример» всегда показывает шаблон выбранной должности.
+- Если пользователь добавляет новую должность (через upsert) — после первого сохранения вакансии её поля сохраняются как шаблон (`field_templates`) для этой должности, если шаблона ещё нет.
 
-### 3. Открытие мастера вакансии как у компаний
-- Добавить RPC `public.project_create_draft(_company uuid)` по аналогии с `company_create_draft`: создаёт `projects` со `status` (если есть) и пустыми полями, возвращает `{id, public_id}`. (В таблице `projects` нет колонки `status` — драфт определяется по `is_published=false` и пустому `role_name`. Уже подходит: добавлять статус не нужно.)
-- В `openAddVacancyWizard` (новая функция) при клике «+ Добавить вакансию»:
-  1. RPC создаёт черновую запись `projects` для выбранной компании.
-  2. Сразу зовём `aiRestart(employerId)` с логом в `AIDialogPanel`.
-  3. Открываем форму мастера, поля сброшены.
-- Кнопка «Отмена/Закрыть» — `cancelAddVacancyWizard`: если пользователь ничего не ввёл (роль пустая, тексты пустые), удаляем драфт из `projects`. Иначе оставляем как незаконченный.
+### 3. Передача шаблона в ИИ
+- В edge-функции `ai-enhance` (режимы `single` и `all_vacancy`) добавляем поле `template` — приходит с клиента, содержит шаблон поля(ей) для выбранной должности.
+- В system-промпт добавляется блок «Эталон заполнения для роли X», ИИ ориентируется на структуру, формат и стиль шаблона.
+- Кнопки ✨ (улучшить поле) и «Оформить красиво» подгружают шаблоны и передают их в `ai-enhance`.
 
-### 4–5. Все поля лендинга вакансии в мастере + кнопка «Оформить красиво» в шапке
-- Текущий мастер закрывает только: компания, должность, оплата, график, custom_wiki, логотип. Расширить до полного набора колонок `projects`:
-  - `vacancy_text` (Обязанности/Требования/Условия — одно поле с подзаголовками внутри текста, как сейчас в `VacancyView`. В подсказке мастера указать формат и лимиты символов.)
-  - `tasks_activity_text` (формат `[Таб] Описание`)
-  - `schedule_text`, `payouts_text`, `motivation_text`, `motivation_text_detail`
-  - `onboarding_text` (см. п.8)
-  - `team_text`, `system_text`
-  - `salary_terms`, `schedule_terms` — оставить
-  - Уроки/обучение (`training_*`) пока не трогаем (это отдельный режим).
-- Каждое поле — `textarea` с `maxLength`, кнопкой ✨ (`handleEnhanceSingleField` по аналогии с компанией), серверный лимит уже выставлен в `ai-enhance/index.ts` (нужно добавить `vacancy_text=1500`, `tasks_activity_text=1000`, `onboarding_text=800`, `team_text=600`, `system_text=600`).
-- Шапка карточки мастера: слева заголовок «Мастер Вакансий», справа кнопка **«✨ Оформить красиво с помощью ИИ»** (вызывает `handleBeautifyNewVacancyWithAI`, который передаёт **все** поля + правила оформления в `ai-enhance` mode `all_vacancy`) и рядом крестик «✕». Старую кнопку «Оформить красиво» снизу убираем.
-- В edge-функции `ai-enhance` системный промт для `all_vacancy` обновить под список всех полей и правил длины.
+### 4. Объединение и удаление полей в мастере вакансий
+- «График работы» + «График и тайм-слоты» → одно поле **«График работы и тайм-слоты»** (`schedule_text`).
+- «Условия оплаты» + «Схема выплат» → одно поле **«Оплата и схема выплат»** (`payouts_text`).
+- Поле **«Регламенты и база Wiki для обучения кандидата»** убираем из мастера вакансий. Содержимое (если было) переезжает в Мастер Обучения как стартовый шаблон.
 
-### 6. Кнопка «Сохранить и синхронизировать»
-- Заменить «Создать систему адаптации и форму соискателя» на **«Сохранить и синхронизировать»**.
-- В обработчике (`handleCreateOnboardingSystem` → переименовать в `handleSaveVacancyWizard`):
-  - Обновить запись `projects` (UPDATE по `draftProjectId`) всеми полями мастера.
-  - Вызвать `job_title_upsert` для введённой должности.
-  - Установить `is_published=true`.
-  - Закрыть форму, вызвать `fetchProjects()`.
-  - Сделать `navigate("/emp{public_id}/vacancies")` (если не на ней) и проскроллить наверх.
-- Генерацию уроков/ситуаций НЕ запускать здесь. Для этого на карточке вакансии в списке оставить отдельную кнопку «Сгенерировать адаптацию» (использует существующий `ai-generate-onboarding`).
-- Карточки вакансий уже выводятся в `grid grid-cols-1 md:grid-cols-2` (стр. 2418) — обновим, чтобы после сохранения список перезагружался из БД (`fetchProjects` + сброс локального кэша).
+## Мастер Обучения (/empXXX/training)
 
-### 7. Убрать загрузку логотипа вакансии
-- Удалить блок `setupLogoUrl` (input + кнопка загрузки + превью) из мастера. На лендинге `JobVacancyLanding` уже используется `row.logo_url || row.companies?.logo_url` — оставить только companies.logo_url. В `EmployerPanel` при сохранении не передавать `logo_url`.
+### 5. Структура и привязка
+- Новая страница-мастер по образцу Мастера Вакансий: заголовок **«Мастер Обучения»**, шаги, поля с примерами, кнопки ✨ и «Оформить красиво».
+- Обучение **прикрепляется к вакансии**: на странице есть селектор «Вакансия», список из `projects` текущего работодателя. Один курс на одну вакансию (1:1).
+- На карточке вакансии в /vacancies добавляем кнопку **«📚 Открыть Мастер Обучения»**, ведёт на `/empXXX/training?project=<id>`.
 
-### 8. Полный набор подразделов
-Все эти поля уже есть в таблице `projects` (`onboarding_text`, `team_text`, `system_text`, `schedule_text`, `payouts_text`, `tasks_activity_text`, `motivation_text*`). Нужно:
-- В мастере добавить секции с подсказками и шаблонами по умолчанию:
-  - **Vacancy**: подзаголовки «Пул задач», «Требования», «Ежедневный процесс» (3 таба `tasks_activity_text`).
-  - **Schedule**: график + тайм-слоты.
-  - **Motivation**: бонусы/преимущества.
-  - **Payouts**: схема выплат.
-  - **Onboarding**: дефолтный шаблон с этапами «Интервью → Кейс-тест → Обучение → Стажировка → Выход на работу» и блок про типы оформления (Самозанятость, ИП, ТК РФ, ГПХ).
-  - **Team**: отделы и сотрудники (формат `[Отдел] Имя — роль`).
-  - **System**: табы с регламентами (формат `[Раздел] Описание`).
-- В `VacancySections.tsx`: расширить `OnboardingView` и `TeamView` парсингом тех же шаблонов.
-- Добавить блок **«Контакты для связи»** (п. 12) на лендинге вакансии — читается из `employers.contact_email/contact_phone/contact_telegram`. Новый компонент `VacancyContactsSection` в `VacancySections.tsx`, отображается в боковой колонке и в подвале.
+### 6. База данных
+- Используем существующие таблицы `training_blocks` и `training_lessons` для хранения, но добавляем в `projects` колонку `training_published boolean default false`.
+- В `projects` уже есть `trainingProfText/trainingProductText/trainingSystemText` — используем их + новые поля для мастера: `training_wiki_text`, `training_regulations_text`, `training_intro_text`.
+- Шаблоны полей обучения тоже хранятся в `job_titles.field_templates` под префиксом `training_*`.
 
-### 9. ИИ-консультант
-- В `CompanyLanding.tsx` — не показывать чат-консультанта (он сейчас может всплывать через `JobVacancyLanding`-подобный код; убрать ссылки/кнопки).
-- В `JobVacancyLanding.tsx`:
-  - Подключить к существующей edge-функции `ai-chat` (ProTalk). Контекст промта — собрать строку из всех полей вакансии + компании из БД (роль, оплата, график, vacancy_text, schedule_text, payouts_text, onboarding_text, team_text, system_text, motivation_text, company.name/description/products/mission). Системный промт: «Ты консультант по вакансии {role} компании {name}. Отвечай ТОЛЬКО на основе данных ниже.»
-  - При открытии страницы — `aiRestart` для уникального `chatId` (по `projectId`), чтобы диалог был свежим под конкретную вакансию.
-  - Ввод текста и кнопка «Отправить» — рабочие.
-  - Анимация ожидания: spinner + три точки (используем `animate-pulse`).
-  - Стриминг 30 симв/сек на клиенте: после получения полного ответа от `ai-chat` запускаем typewriter в `useEffect` (setInterval на `setMessages` с подстановкой `text.slice(0, i)`). Disable кнопку отправки во время typewriter.
+### 7. Поля мастера обучения (с примерами и ✨ ИИ)
+- Вводная (для кого курс, цели)
+- Профессиональное обучение (теория профессии)
+- Обучение продукту/компании
+- Обучение процессам и системе (CRM, регламенты)
+- База Wiki / регламенты (то, что убрали из вакансии)
+- Финальный кейс/аттестация (опционально)
 
-### 10. Регистрация кандидата с привязкой к вакансии
-- В `JobVacancyLanding.tsx` форма заявки уже знает `project.id` и `companyId`. В `CandidateAuthModal` / RPC `candidate_email_signup` уже принимаются `_project` и `_company`. Проверить, что при OAuth/email-входе всегда передаются.
-- Для существующих кандидатов с тем же email — RPC `candidate_email_signup` сейчас отвечает `email_taken`. Изменить: если email уже есть, не создавать дубль, а добавить **новую запись `candidates`** с тем же `email`/`user_id` для другой вакансии/компании (или вторую запись по project_id+email). Проще всего: снять unique-проверку и просто создавать новую строку для каждой пары `(email, project_id)`.
-- В личном кабинете кандидата (`CandidateFlow.tsx`) добавить переключатель «Мои отклики»: список всех `candidates` по email, с переходом к нужной компании/вакансии.
+### 8. Доступ к лендингу обучения
+- **Курс НЕ публикуется на публичном URL.** Доступ только из личного кабинета кандидата.
+- В `CandidateFlow.tsx` добавляем вкладку/этап **«📚 Обучение»**.
+- Видимость: вкладка появляется только если `candidate.current_stage IN ('training','certified')` или интервью пройдено успешно (`candidate_scores.overall_score >= порог` ИЛИ `current_stage != 'terms'/'interview'`).
+- Контент берётся из `training_blocks`/`training_lessons` по `project_id` кандидата.
 
-### 11. Данные вакансии и компании в кабинете кандидата
-- В `CandidateFlow.tsx` добавить подгрузку `projects` + `companies` по `candidate.project_id/company_id` и вывести разделы:
-  - «О вакансии» — `vacancy_text`, оплата, график.
-  - «О компании» — `description_text`, `mission_text`, logo.
-  - «Команда» / «Система работы» / «Онбординг» — соответствующие тексты, если заполнены.
-- Если каких-то подстраниц нет — добавить простые табы в шапке кабинета.
-
-### 12. Контакты работодателя на лендинге
-- Реализовано в п.8 (`VacancyContactsSection`): `email`, `phone`, `telegram` из `employers` по `employer_id` вакансии.
+### 9. Кнопка генерации обучения
+- В мастере обучения кнопка **«Сохранить и сгенерировать курс»** → вызывает существующий `ai-generate-onboarding` (передаём поля мастера + шаблон должности), результат пишется в `training_blocks/training_lessons`.
+- После генерации редирект на `/empXXX/training` со списком курсов по вакансиям.
 
 ## Технические детали
 
 ```text
-DB migrations:
-  - CREATE TABLE public.job_titles (...)
-  - GRANT + RLS + policies (read=anon/auth, write=auth/service_role)
-  - CREATE FUNCTION public.job_title_upsert(_title text) ... SECURITY DEFINER SET search_path=public
-  - CREATE FUNCTION public.project_create_draft(_company uuid) ... SECURITY DEFINER
-  - Seed BASIC_SPECIALTIES (70 строк) с is_basic=true
-  - (Опционально) добавить в employers: ничего; уже есть contact_email/phone/telegram
+DB migration:
+  ALTER TABLE job_titles ADD COLUMN field_templates jsonb DEFAULT '{}'::jsonb;
+  ALTER TABLE projects ADD COLUMN training_published boolean DEFAULT false,
+                       ADD COLUMN training_wiki_text text,
+                       ADD COLUMN training_regulations_text text,
+                       ADD COLUMN training_intro_text text;
+  + сидирование шаблонов для 70 базовых должностей (job_titles.field_templates)
+  + RPC job_title_get_templates(_title text) RETURNS jsonb
+  + RPC job_title_save_templates(_title text, _templates jsonb)  -- SECURITY DEFINER, owner-only
 
-Frontend:
-  - src/pages/EmployerPanel.tsx — переписать блок мастера вакансий (~2180-2415)
-    + новые state: draftProjectId, все *_text поля, enhancingFieldsVac
-    + новые функции openAddVacancyWizard, cancelAddVacancyWizard, handleSaveVacancyWizard,
-      handleEnhanceVacancyField, handleBeautifyVacancyWizardAll
-    + удалить старые setupLogoUrl
-    + обновить fetchJobTitles() — заменить BASIC_SPECIALTIES
-  - src/pages/MainCatalogPage.tsx — заменить локальный список на БД-список, использовать job_title_upsert
-  - src/pages/JobVacancyLanding.tsx
-    + подключить ai-chat (уже есть в supabase/functions/ai-chat)
-    + typewriter эффект
-    + блок контактов работодателя
-    + загрузка полного contextа вакансии
-  - src/pages/CompanyLanding.tsx — убрать триггеры открытия AI-консультанта
-  - src/components/VacancySections.tsx — расширить OnboardingView, TeamView, SystemView; добавить VacancyContactsSection
-  - src/pages/CandidateFlow.tsx — список «Мои отклики» + подразделы с данными вакансии/компании
-  - supabase/functions/ai-enhance/index.ts — расширить LIMITS, обновить system prompt для all_vacancy
+Client:
+  src/lib/jobTitles.ts:
+    + fetchJobTitleTemplates(title) → возвращает field_templates
+    + saveJobTitleTemplates(title, patch) → upsert при первом сохранении
+  src/pages/EmployerPanel.tsx (Мастер Вакансий):
+    - удалить поля «График работы», «Регламенты и база Wiki», старое «Условия оплаты»
+    - объединить дубли (schedule_text, payouts_text)
+    - заменить placeholder на блок <FieldExample> под label
+    - при изменении должности подгружать шаблоны и предзаполнять пустые поля
+    - в onEnhance/onBeautify передавать template
+  src/pages/EmployerPanel.tsx (вкладка training):
+    + новый раздел «Мастер Обучения» с теми же паттернами
+    + селектор вакансии, кнопка «Сохранить и сгенерировать»
+  src/pages/CandidateFlow.tsx:
+    + вкладка «📚 Обучение», условный рендер по стадии
+
+Edge:
+  supabase/functions/ai-enhance/index.ts:
+    + accept body.template; вставлять в system-prompt
+    + расширить LIMITS для training_* полей
 ```
 
-## Что НЕ делаем в этом плане
-- Не трогаем существующие платежи/кредиты и `purchase_*` RPC.
-- Не меняем дизайн карточек компаний.
-- Не запускаем автоматически генерацию уроков из мастера вакансий (по решению пункта 6).
-- Не реализуем настоящий SSE-стриминг ProTalk — typewriter на клиенте.
+## Что НЕ меняется
+- Структура `candidates`, `companies`, лендинг вакансии, авторизация — без изменений.
+- Существующая логика «Сохранить и синхронизировать», ProTalk — без изменений (только расширяется контекст).
