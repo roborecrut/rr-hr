@@ -2737,6 +2737,8 @@ export default function EmployerPanel() {
                             <input 
                               type="text" 
                               placeholder="Например: 2018" 
+                              maxLength={4}
+                              inputMode="numeric"
                               className="w-full bg-black/50 text-xs px-2.5 py-1.5 rounded-lg border border-white/10 text-white"
                               value={newCompanyStatsValFounded}
                               onChange={(e) => setNewCompanyStatsValFounded(e.target.value)}
