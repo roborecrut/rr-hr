@@ -11,6 +11,7 @@ import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
+import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
 import {
   Users,
   Smartphone,
@@ -250,6 +251,15 @@ export default function EmployerPanel() {
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
 
+  // New fields per spec: "Описание компании и чем занимается" + "Основные продукты"
+  const [newCompanyDescription, setNewCompanyDescription] = useState("");
+  const [newCompanyProducts, setNewCompanyProducts] = useState("");
+
+  // Draft company state (Supabase) — created when user opens the wizard
+  const [draftCompanyId, setDraftCompanyId] = useState<string | null>(null);
+  const [draftCompanyPublicId, setDraftCompanyPublicId] = useState<string | null>(null);
+  const [draftFilePath, setDraftFilePath] = useState<string | null>(null);
+
   // New Brand fields requested by end-user:
   const [newCompanyMissionText, setNewCompanyMissionText] = useState("");
   const [newCompanyCustomWiki, setNewCompanyCustomWiki] = useState("");
@@ -269,12 +279,14 @@ export default function EmployerPanel() {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      pushAILog("ai-enhance:single", "request", { field: fieldName, value: currentVal, company_id: draftCompanyId });
       const newVal = await aiEnhanceSingle({
         field: fieldName,
         value: currentVal,
         company_name: newCompanyName,
         hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
       });
+      pushAILog("ai-enhance:single", "response", newVal);
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
@@ -291,11 +303,14 @@ export default function EmployerPanel() {
         else if (fieldName === "statsLabelDialogs") setNewCompanyStatsLabelDialogs(newVal);
         else if (fieldName === "statsValFounded") setNewCompanyStatsValFounded(newVal);
         else if (fieldName === "statsLabelFounded") setNewCompanyStatsLabelFounded(newVal);
+        else if (fieldName === "descriptionText") setNewCompanyDescription(newVal);
+        else if (fieldName === "productsText") setNewCompanyProducts(newVal);
 
         addAuditEvent("success", "ИИ Улучшение поля", `Поле успешно улучшено ИИ!`);
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-enhance:single", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
@@ -307,34 +322,41 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ Настройка", "ИИ-аналитик RR комплексно оформляет ваш бренд...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const fields = {
+        name: newCompanyName,
+        industry: newCompanyIndustry,
+        staff: newCompanyStaff,
+        description_text: newCompanyDescription,
+        products_text: newCompanyProducts,
+        missionText: newCompanyMissionText,
+        team: newCompanyDesc,
+        sites: newCompanySite,
+        logoUrl: newCompanyLogo,
+        customWiki: newCompanyCustomWiki,
+        salaryTerms: newCompanySalaryTerms,
+        scheduleTerms: newCompanyScheduleTerms,
+        statsValClients: newCompanyStatsValClients,
+        statsLabelClients: newCompanyStatsLabelClients,
+        statsValDialogs: newCompanyStatsValDialogs,
+        statsLabelDialogs: newCompanyStatsLabelDialogs,
+        statsValFounded: newCompanyStatsValFounded,
+        statsLabelFounded: newCompanyStatsLabelFounded,
+      };
+      pushAILog("ai-enhance:all_company", "request", fields);
       const enriched = await aiEnhanceAll({
         mode: "all_company",
         company_name: newCompanyName,
-        fields: {
-          name: newCompanyName,
-          industry: newCompanyIndustry,
-          staff: newCompanyStaff,
-          description: newCompanyDesc,
-          sites: newCompanySite,
-          logoUrl: newCompanyLogo,
-          missionText: newCompanyMissionText,
-          customWiki: newCompanyCustomWiki,
-          salaryTerms: newCompanySalaryTerms,
-          scheduleTerms: newCompanyScheduleTerms,
-          statsValClients: newCompanyStatsValClients,
-          statsLabelClients: newCompanyStatsLabelClients,
-          statsValDialogs: newCompanyStatsValDialogs,
-          statsLabelDialogs: newCompanyStatsLabelDialogs,
-          statsValFounded: newCompanyStatsValFounded,
-          statsLabelFounded: newCompanyStatsLabelFounded
-        },
+        fields,
         hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
       });
+      pushAILog("ai-enhance:all_company", "response", enriched);
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
         if (enriched.staff) setNewCompanyStaff(enriched.staff);
-        if (enriched.description) setNewCompanyDesc(enriched.description);
+        if (enriched.description_text) setNewCompanyDescription(enriched.description_text);
+        if (enriched.products_text) setNewCompanyProducts(enriched.products_text);
+        if (enriched.team) setNewCompanyDesc(enriched.team);
         if (enriched.sites) setNewCompanySite(enriched.sites);
         if (enriched.logoUrl) setNewCompanyLogo(enriched.logoUrl);
         if (enriched.missionText) setNewCompanyMissionText(enriched.missionText);
@@ -352,6 +374,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-enhance:all_company", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
@@ -362,41 +385,79 @@ export default function EmployerPanel() {
     setIsParsingFile(true);
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
-      const { aiEnhanceAll } = await import("@/lib/aiClient");
-      const payload = await aiEnhanceAll({
-        mode: "all_company",
-        fields: {
-          name: newCompanyName, industry: newCompanyIndustry, staff: newCompanyStaff,
-          description: newCompanyDesc, sites: newCompanySite, logoUrl: newCompanyLogo,
-          missionText: newCompanyMissionText, customWiki: newCompanyCustomWiki,
-        },
-        hint: `parse_file:${filename}`,
+      const { aiCompanyAnalyze } = await import("@/lib/aiClient");
+      pushAILog("ai-company-analyze", "request", { company_id: draftCompanyId, file_url: draftFilePath, filename });
+      const { fields: payload, raw } = await aiCompanyAnalyze({
+        company_id: draftCompanyId || undefined,
+        employer_public_id: employerId,
+        file_url: draftFilePath || undefined,
+        raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
       });
+      pushAILog("ai-company-analyze", "response", raw || payload);
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
-        if (payload.industry) setNewCompanyIndustry(payload.industry);
-        if (payload.staff) setNewCompanyStaff(payload.staff);
-        if (payload.description) setNewCompanyDesc(payload.description);
-        if (payload.sites) setNewCompanySite(payload.sites);
-        if (payload.logoUrl) setNewCompanyLogo(payload.logoUrl);
-        if (payload.missionText) setNewCompanyMissionText(payload.missionText);
-        if (payload.customWiki) setNewCompanyCustomWiki(payload.customWiki);
-        if (payload.salaryTerms) setNewCompanySalaryTerms(payload.salaryTerms);
-        if (payload.scheduleTerms) setNewCompanyScheduleTerms(payload.scheduleTerms);
-        if (payload.statsValClients) setNewCompanyStatsValClients(payload.statsValClients);
-        if (payload.statsLabelClients) setNewCompanyStatsLabelClients(payload.statsLabelClients);
-        if (payload.statsValDialogs) setNewCompanyStatsValDialogs(payload.statsValDialogs);
-        if (payload.statsLabelDialogs) setNewCompanyStatsLabelDialogs(payload.statsLabelDialogs);
-        if (payload.statsValFounded) setNewCompanyStatsValFounded(payload.statsValFounded);
-        if (payload.statsLabelFounded) setNewCompanyStatsLabelFounded(payload.statsLabelFounded);
+        if (payload.description_text) setNewCompanyDescription(payload.description_text);
+        if (payload.products_text) setNewCompanyProducts(payload.products_text);
+        if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
+        if (payload.team_text) setNewCompanyDesc(payload.team_text);
+        if (payload.payouts_text) setNewCompanySalaryTerms(payload.payouts_text);
+        if (payload.schedule_text) setNewCompanyScheduleTerms(payload.schedule_text);
+        if (payload.system_text) setNewCompanyCustomWiki(payload.system_text);
+        const st = payload.stats || {};
+        if (st.founded_year) setNewCompanyStatsValFounded(String(st.founded_year));
+        if (st.employees) setNewCompanyStatsValClients(String(st.employees));
+        if (st.turnover) setNewCompanyStatsValDialogs(String(st.turnover));
 
         addAuditEvent("success", "ИИ разбор завершен", `Корпоративный профиль автоматически предзаполнен из документа ${filename}!`);
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-company-analyze", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
+    }
+  };
+
+  // Open wizard: create draft company + reset ProTalk dialog with /restart
+  const openAddCompanyWizard = async () => {
+    if (showAddCompany) { setShowAddCompany(false); return; }
+    try {
+      const { data, error } = await supabase.rpc("company_create_draft");
+      if (error) throw error;
+      const d = data as any;
+      setDraftCompanyId(d?.id || null);
+      setDraftCompanyPublicId(d?.public_id || null);
+      // Optimistically add draft card to list
+      if (d?.id && !companiesList.some((c) => c.id === d.id)) {
+        setCompaniesList((prev) => [...prev, { id: d.id, public_id: d.public_id, name: "Без названия", status: "draft" }]);
+      }
+      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+      const { aiRestart } = await import("@/lib/aiClient");
+      await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+      setShowAddCompany(true);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка создания компании", err?.message || "RPC error");
+    }
+  };
+
+  // Upload a file to storage, returns signed URL
+  const uploadCompanyFile = async (file: File): Promise<string | null> => {
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if (!uid || !draftCompanyId) return null;
+      const path = `${uid}/${draftCompanyId}/${Date.now()}_${file.name.replace(/[^a-zа-я0-9._-]+/gi, "_")}`;
+      const up = await supabase.storage.from("company-uploads").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      setDraftFilePath(path);
+      const signed = await supabase.storage.from("company-uploads").createSignedUrl(path, 60 * 60);
+      return signed.data?.signedUrl || null;
+    } catch (err: any) {
+      console.error("upload error", err);
+      addAuditEvent("warning", "Ошибка загрузки файла", err?.message || "upload error");
+      return null;
     }
   };
 
@@ -1116,83 +1177,69 @@ export default function EmployerPanel() {
   const handleAddCompanySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCompanyName) return;
-
-    // Transliterate to generate slug as requested: "Лендинг будет иметь адрес /ooo-roga-i-kopyta"
-    const rus = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
-    const lat = ["a","b","v","g","d","e","yo","zh","z","i","y","k","l","m","n","o","p","r","s","t","u","f","kh","ts","ch","sh","shch","","y","","e","yu","ya"];
-    const slug = newCompanyName.toLowerCase()
-      .replace(/[^а-яёa-z0-9\s-]/gi, "")
-      .trim()
-      .split("")
-      .map(char => {
-        const idx = rus.indexOf(char);
-        return idx > -1 ? lat[idx] : char;
-      })
-      .join("")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-");
-
-    const payload = {
-      name: newCompanyName,
-      slug,
-      industry: newCompanyIndustry || "Производство",
-      staff: newCompanyStaff,
-      description: newCompanyDesc || "Компания осуществляет подбор перспективных кадров.",
-      sites: newCompanySite || "",
-      logoUrl: newCompanyLogo || "",
-      files: newCompanyFiles || "",
-      employerId,
-      missionText: newCompanyMissionText,
-      customWiki: newCompanyCustomWiki,
-      salaryTerms: newCompanySalaryTerms,
-      scheduleTerms: newCompanyScheduleTerms,
-      statsValClients: newCompanyStatsValClients,
-      statsLabelClients: newCompanyStatsLabelClients,
-      statsValDialogs: newCompanyStatsValDialogs,
-      statsLabelDialogs: newCompanyStatsLabelDialogs,
-      statsValFounded: newCompanyStatsValFounded,
-      statsLabelFounded: newCompanyStatsLabelFounded
-    };
-
+    if (!draftCompanyId) {
+      addAuditEvent("warning", "Нет черновика", "Откройте мастер через «+ Добавить Компанию».");
+      return;
+    }
     try {
-      const res = await fetch("/api/companies", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const saved = await res.json();
-        setCompaniesList(prev => {
-          // If already exists, replace it, otherwise append
-          const exists = prev.some(c => c.slug === saved.slug);
-          if (exists) {
-            return prev.map(c => c.slug === saved.slug ? saved : c);
+      const stats = {
+        founded_year: newCompanyStatsValFounded || null,
+        employees: newCompanyStatsValClients || null,
+        turnover: newCompanyStatsValDialogs || null,
+        labels: {
+          founded: newCompanyStatsLabelFounded || null,
+          employees: newCompanyStatsLabelClients || null,
+          turnover: newCompanyStatsLabelDialogs || null,
+        },
+      };
+      const patch = {
+        name: newCompanyName,
+        logo_url: newCompanyLogo || null,
+        description_text: newCompanyDescription || null,
+        products_text: newCompanyProducts || null,
+        mission_text: newCompanyMissionText || null,
+        about_text: newCompanyDesc || null,
+        team_text: null,
+        payouts_text: newCompanySalaryTerms || null,
+        schedule_text: newCompanyScheduleTerms || null,
+        system_text: newCompanyCustomWiki || null,
+        stats,
+      };
+      const upd = await supabase.rpc("company_update", { _id: draftCompanyId, _patch: patch as any });
+      if (upd.error) throw upd.error;
+      const fin = await supabase.rpc("company_finalize", { _id: draftCompanyId });
+      if (fin.error) throw fin.error;
+      const pid = (fin.data as any)?.public_id || draftCompanyPublicId;
+
+      // Cleanup uploaded files for this company
+      if (draftFilePath) {
+        try {
+          const folder = draftFilePath.split("/").slice(0, -1).join("/");
+          const list = await supabase.storage.from("company-uploads").list(folder);
+          if (list.data?.length) {
+            await supabase.storage.from("company-uploads").remove(list.data.map((f) => `${folder}/${f.name}`));
           }
-          return [...prev, saved];
-        });
-        addAuditEvent("success", "Компания зарегистрирована", `Бренд "${newCompanyName}" сохранен со всеми ИИ-сведениями.`);
-        
-        // Reset inputs
-        setNewCompanyName("");
-        setNewCompanyDesc("");
-        setNewCompanyIndustry("");
-        setNewCompanySite("");
-        setNewCompanyLogo("");
-        setNewCompanyFiles("");
-        setNewCompanyMissionText("");
-        setNewCompanyCustomWiki("");
-        setNewCompanySalaryTerms("");
-        setNewCompanyScheduleTerms("");
-        setNewCompanyStatsValClients("");
-        setNewCompanyStatsLabelClients("");
-        setNewCompanyStatsValDialogs("");
-        setNewCompanyStatsLabelDialogs("");
-        setNewCompanyStatsValFounded("");
-        setNewCompanyStatsLabelFounded("");
-        setShowAddCompany(false);
+        } catch (e) { console.warn("cleanup error", e); }
       }
-    } catch (err) {
-      console.error("Failed to add company on server:", err);
+
+      addAuditEvent("success", "Компания опубликована", `Лендинг доступен: /com${pid}`);
+      // Reload list from Supabase
+      const r = await supabase.from("companies").select("*").eq("owner_employer_id", (await supabase.from("employers").select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle()).data?.id || "");
+      if (r.data) setCompaniesList(r.data);
+
+      // Reset wizard
+      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanySite("");
+      setNewCompanyLogo(""); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
+      setNewCompanySalaryTerms(""); setNewCompanyScheduleTerms("");
+      setNewCompanyStatsValClients(""); setNewCompanyStatsLabelClients("");
+      setNewCompanyStatsValDialogs(""); setNewCompanyStatsLabelDialogs("");
+      setNewCompanyStatsValFounded(""); setNewCompanyStatsLabelFounded("");
+      setNewCompanyDescription(""); setNewCompanyProducts("");
+      setDraftCompanyId(null); setDraftCompanyPublicId(null); setDraftFilePath(null);
+      setShowAddCompany(false);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка сохранения", err?.message || "supabase error");
     }
   };
 
@@ -2374,13 +2421,14 @@ export default function EmployerPanel() {
                     <Building2 className="w-5 h-5 text-amber-400" /> Зарегистрированные компании
                   </h2>
                   <p className="text-xs text-slate-300 mt-1">Описания ваших юридических лиц или брендов, под которыми Робот публикует онбординги.</p>
+                  <p className="text-[11px] text-emerald-300 mt-0.5">✓ Добавление, редактирование, ИИ-улучшение, сохранение и публикация лендинга компании — бесплатно.</p>
                 </div>
 
                 <button 
-                  onClick={() => setShowAddCompany(!showAddCompany)} 
+                  onClick={openAddCompanyWizard}
                   className="cursor-pointer bg-gradient-to-r from-green-650 to-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow transition"
                 >
-                  Регистрация бренда
+                  + Добавить Компанию
                 </button>
               </div>
 
@@ -2419,7 +2467,7 @@ export default function EmployerPanel() {
                         const file = e.dataTransfer.files[0];
                         setNewCompanyFiles(file.name);
                         addAuditEvent("info", "Файл загружен", `Прикреплен регламент: ${file.name}`);
-                        parseCompanyFileWithAI(file.name);
+                        (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
                       }
                     }}
                     className={`cursor-pointer border-2 border-dashed rounded-2xl p-4 text-center space-y-1.5 transition-all ${
@@ -2437,7 +2485,7 @@ export default function EmployerPanel() {
                           const file = e.target.files[0];
                           setNewCompanyFiles(file.name);
                           addAuditEvent("info", "Файл загружен", `Прикреплен файл: ${file.name}`);
-                          parseCompanyFileWithAI(file.name);
+                          (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
                         }
                       }}
                     />
@@ -2557,30 +2605,52 @@ export default function EmployerPanel() {
 
                     {/* SECTION 2: IDENTITY */}
                     <div className="space-y-3">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">2. Имидж, миссия и культура</span>
-                      
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">2. О компании</span>
+
                       <div className="relative">
                         <textarea 
-                          placeholder="Описание философии, бренда, основных продуктов компании..." 
+                          placeholder="Описание компании и чем занимается (до 600 символов)" 
+                          maxLength={600}
                           className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
-                          rows={2}
-                          value={newCompanyDesc}
-                          onChange={(e) => setNewCompanyDesc(e.target.value)}
+                          rows={3}
+                          value={newCompanyDescription}
+                          onChange={(e) => setNewCompanyDescription(e.target.value)}
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("description", newCompanyDesc)}
-                          disabled={enhancingFields["description"]}
+                          onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
+                          disabled={enhancingFields["descriptionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
-                          title="Оформить миссию красиво"
+                          title="Оформить описание ИИ"
                         >
-                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["description"] ? "animate-spin text-yellow-400" : ""}`} />
+                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["descriptionText"] ? "animate-spin text-yellow-400" : ""}`} />
                         </button>
                       </div>
 
                       <div className="relative">
                         <textarea 
-                          placeholder="Миссия или слоган бренда (будет ярко выведена на лендинге)..." 
+                          placeholder="Основные продукты / услуги (до 500 символов)" 
+                          maxLength={500}
+                          className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
+                          rows={2}
+                          value={newCompanyProducts}
+                          onChange={(e) => setNewCompanyProducts(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
+                          disabled={enhancingFields["productsText"]}
+                          className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
+                          title="Сформулировать продукты"
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["productsText"] ? "animate-spin text-yellow-400" : ""}`} />
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <textarea 
+                          placeholder="Имидж, миссия и культура (до 500 символов)" 
+                          maxLength={500}
                           className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
                           rows={2}
                           value={newCompanyMissionText}
@@ -2667,6 +2737,8 @@ export default function EmployerPanel() {
                             <input 
                               type="text" 
                               placeholder="Например: 2018" 
+                              maxLength={4}
+                              inputMode="numeric"
                               className="w-full bg-black/50 text-xs px-2.5 py-1.5 rounded-lg border border-white/10 text-white"
                               value={newCompanyStatsValFounded}
                               onChange={(e) => setNewCompanyStatsValFounded(e.target.value)}
@@ -4450,6 +4522,7 @@ export default function EmployerPanel() {
       )}
 
       <EmployerAIAssistant />
+      <AIDialogPanel />
     </div>
   );
 }
