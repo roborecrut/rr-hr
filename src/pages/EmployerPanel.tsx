@@ -2605,30 +2605,52 @@ export default function EmployerPanel() {
 
                     {/* SECTION 2: IDENTITY */}
                     <div className="space-y-3">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">2. Имидж, миссия и культура</span>
-                      
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">2. О компании</span>
+
                       <div className="relative">
                         <textarea 
-                          placeholder="Описание философии, бренда, основных продуктов компании..." 
+                          placeholder="Описание компании и чем занимается (до 600 символов)" 
+                          maxLength={600}
                           className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
-                          rows={2}
-                          value={newCompanyDesc}
-                          onChange={(e) => setNewCompanyDesc(e.target.value)}
+                          rows={3}
+                          value={newCompanyDescription}
+                          onChange={(e) => setNewCompanyDescription(e.target.value)}
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("description", newCompanyDesc)}
-                          disabled={enhancingFields["description"]}
+                          onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
+                          disabled={enhancingFields["descriptionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
-                          title="Оформить миссию красиво"
+                          title="Оформить описание ИИ"
                         >
-                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["description"] ? "animate-spin text-yellow-400" : ""}`} />
+                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["descriptionText"] ? "animate-spin text-yellow-400" : ""}`} />
                         </button>
                       </div>
 
                       <div className="relative">
                         <textarea 
-                          placeholder="Миссия или слоган бренда (будет ярко выведена на лендинге)..." 
+                          placeholder="Основные продукты / услуги (до 500 символов)" 
+                          maxLength={500}
+                          className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
+                          rows={2}
+                          value={newCompanyProducts}
+                          onChange={(e) => setNewCompanyProducts(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
+                          disabled={enhancingFields["productsText"]}
+                          className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
+                          title="Сформулировать продукты"
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["productsText"] ? "animate-spin text-yellow-400" : ""}`} />
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <textarea 
+                          placeholder="Имидж, миссия и культура (до 500 символов)" 
+                          maxLength={500}
                           className="w-full bg-black/40 text-xs pl-3 pr-10 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none"
                           rows={2}
                           value={newCompanyMissionText}
