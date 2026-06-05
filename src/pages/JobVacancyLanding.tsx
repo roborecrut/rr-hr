@@ -34,11 +34,14 @@ export default function JobVacancyLanding() {
   // States
   const [project, setProject] = useState<JobProject | null>(null);
   const [loading, setLoading] = useState(true);
+  const [employerContacts, setEmployerContacts] = useState<{ email?: string; phone?: string; telegram?: string } | null>(null);
+  const [companyData, setCompanyData] = useState<any>(null);
 
   // Consultant chatbot conversation state
   const [messages, setMessages] = useState<Message[]>([]);
   const [userQuestion, setUserQuestion] = useState("");
   const [isAiTyping, setIsAiTyping] = useState(false);
+  const [isTypewriting, setIsTypewriting] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Apply candidate signup modal trigger
@@ -57,14 +60,14 @@ export default function JobVacancyLanding() {
       // joining its parent company to get the display name & logo.
       let q = supabase
         .from("projects")
-        .select("*, companies(name, slug, logo_url)")
+        .select("*, companies(*)")
         .eq("is_published", true)
         .limit(1);
       if (projectId) {
         const isUuid = /^[0-9a-f-]{36}$/i.test(projectId);
         q = isUuid
-          ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", projectId).limit(1)
-          : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", projectId).limit(1);
+          ? supabase.from("projects").select("*, companies(*)").eq("id", projectId).limit(1)
+          : supabase.from("projects").select("*, companies(*)").eq("slug", projectId).limit(1);
       }
       const { data } = await q;
       const row: any = data && data[0];
@@ -83,7 +86,32 @@ export default function JobVacancyLanding() {
           roleplayQuestions: [],
           logoUrl: row.logo_url || row.companies?.logo_url || undefined,
         };
+        (found as any).vacancyText = row.vacancy_text || undefined;
+        (found as any).tasksActivityText = row.tasks_activity_text || undefined;
+        (found as any).motivationTextDetail = row.motivation_text_detail || undefined;
+        (found as any).scheduleText = row.schedule_text || undefined;
+        (found as any).payoutsText = row.payouts_text || undefined;
+        (found as any).onboardingText = row.onboarding_text || undefined;
+        (found as any).teamText = row.team_text || undefined;
+        (found as any).systemText = row.system_text || undefined;
         setProject(found);
+        setCompanyData(row.companies || null);
+        if (row.employer_id) {
+          const { data: emp } = await supabase
+            .from("employers")
+            .select("contact_email, contact_phone, contact_telegram")
+            .eq("id", row.employer_id)
+            .maybeSingle();
+          if (emp) setEmployerContacts({
+            email: (emp as any).contact_email || undefined,
+            phone: (emp as any).contact_phone || undefined,
+            telegram: (emp as any).contact_telegram || undefined,
+          });
+        }
+        try {
+          const { aiRestart } = await import("@/lib/aiClient");
+          await aiRestart(row.public_id || row.employer_id || undefined).catch(() => {});
+        } catch {}
         setMessages([
           {
             sender: "recruiter",
@@ -110,7 +138,7 @@ export default function JobVacancyLanding() {
 
   const handleSendMessage = async (customText?: string) => {
     const questionText = customText || userQuestion;
-    if (!questionText.trim() || !project) return;
+    if (!questionText.trim() || !project || isAiTyping || isTypewriting) return;
 
     // Add user message
     const userMsg: Message = {
@@ -129,23 +157,60 @@ export default function JobVacancyLanding() {
         role: (m.sender === "candidate" ? "user" : "assistant") as "user" | "assistant",
         content: m.text,
       }));
-      const context = `Вакансия: ${project.roleName}; Компания: ${project.companyName}; Условия: ${project.salaryTerms || ""} / ${project.scheduleTerms || ""}; База: ${project.customWiki || ""}`;
+      const p: any = project;
+      const c: any = companyData || {};
+      const parts: string[] = [
+        `Вакансия: ${project.roleName}`,
+        `Компания: ${project.companyName}`,
+      ];
+      if (project.salaryTerms) parts.push(`Оплата: ${project.salaryTerms}`);
+      if (project.scheduleTerms) parts.push(`График: ${project.scheduleTerms}`);
+      if (p.vacancyText) parts.push(`Задачи/требования/условия:\n${p.vacancyText}`);
+      if (p.tasksActivityText) parts.push(`Ежедневный процесс:\n${p.tasksActivityText}`);
+      if (p.scheduleText) parts.push(`График подробно:\n${p.scheduleText}`);
+      if (p.payoutsText) parts.push(`Выплаты:\n${p.payoutsText}`);
+      if (project.motivationText || p.motivationTextDetail) parts.push(`Мотивация:\n${p.motivationTextDetail || project.motivationText}`);
+      if (p.onboardingText) parts.push(`Оформление:\n${p.onboardingText}`);
+      if (p.teamText) parts.push(`Команда:\n${p.teamText}`);
+      if (p.systemText) parts.push(`Система работы:\n${p.systemText}`);
+      if (project.customWiki) parts.push(`Wiki:\n${project.customWiki}`);
+      if (c.description_text) parts.push(`О компании:\n${c.description_text}`);
+      if (c.mission_text) parts.push(`Миссия:\n${c.mission_text}`);
+      if (c.products_text) parts.push(`Продукты:\n${c.products_text}`);
+      const context = `Отвечай ТОЛЬКО на основе этих данных по текущей вакансии и компании. Если в данных нет ответа — честно скажи, что уточнишь у работодателя.\n\n${parts.join("\n\n")}`;
       const reply = await aiChat({
         kind: "vacancy_consultant",
         project_id: project.id,
         context,
         messages: [...history, { role: "user", content: questionText }],
       });
-      const aiMsg: Message = {
-        sender: "recruiter",
-        text: reply || "Извините, ИИ-консультант временно недоступен.",
-        timestamp: new Date().toLocaleTimeString()
-      };
+      const fullText = reply || "Извините, ИИ-консультант временно недоступен.";
+      setIsAiTyping(false);
+      setIsTypewriting(true);
+      const aiMsg: Message = { sender: "recruiter", text: "", timestamp: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, aiMsg]);
+      const stepMs = 1000 / 30; // 30 chars per second
+      await new Promise<void>((resolve) => {
+        let i = 0;
+        const tick = () => {
+          i = Math.min(fullText.length, i + 1);
+          setMessages(prev => {
+            const copy = prev.slice();
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "recruiter") {
+              copy[copy.length - 1] = { ...last, text: fullText.slice(0, i) };
+            }
+            return copy;
+          });
+          if (i < fullText.length) setTimeout(tick, stepMs); else resolve();
+        };
+        tick();
+      });
+      setIsTypewriting(false);
     } catch (err) {
       console.error("Failed to fetch response from consultant:", err);
-    } finally {
       setIsAiTyping(false);
+      setIsTypewriting(false);
     }
   };
 
@@ -362,6 +427,30 @@ export default function JobVacancyLanding() {
 
             {/* CTA action button */}
             <div className="pt-2 text-center sm:text-left">
+              {employerContacts && (employerContacts.email || employerContacts.phone || employerContacts.telegram) && (
+                <div className="mb-4 bg-[#17344F]/60 border border-white/10 rounded-2xl p-4 space-y-2 text-left">
+                  <h3 className="font-bold text-sm uppercase text-[#E7C768] flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-[#D99E41]" /> Контакты работодателя
+                  </h3>
+                  <div className="space-y-1.5 text-xs text-slate-200">
+                    {employerContacts.email && (
+                      <a href={`mailto:${employerContacts.email}`} className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" /> {employerContacts.email}
+                      </a>
+                    )}
+                    {employerContacts.phone && (
+                      <a href={`tel:${employerContacts.phone}`} className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <HelpCircle className="w-3.5 h-3.5 text-slate-400" /> {employerContacts.phone}
+                      </a>
+                    )}
+                    {employerContacts.telegram && (
+                      <a href={`https://t.me/${String(employerContacts.telegram).replace(/^@/, "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-[#E7C768] transition">
+                        <MessageSquare className="w-3.5 h-3.5 text-slate-400" /> @{String(employerContacts.telegram).replace(/^@/, "")}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => setShowApplyModal(true)}
                 className="cursor-pointer inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl hover:shadow-orange-700/20 hover:-translate-y-0.5 active:translate-y-0 transition duration-150 w-full sm:w-auto text-center justify-center"
@@ -464,7 +553,7 @@ export default function JobVacancyLanding() {
               />
               <button
                 onClick={() => handleSendMessage()}
-                disabled={isAiTyping || !userQuestion.trim()}
+                disabled={isAiTyping || isTypewriting || !userQuestion.trim()}
                 className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white p-2.5 rounded-xl font-bold transition flex items-center justify-center disabled:opacity-50"
               >
                 <Send className="w-3.5 h-3.5" />

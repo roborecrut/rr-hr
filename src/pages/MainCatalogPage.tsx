@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
-import { BASIC_SPECIALTIES } from "../types";
+import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import AuthModal from "../components/AuthModal";
 import { 
   Search, 
@@ -28,33 +28,49 @@ export default function MainCatalogPage() {
   const { navigate, path } = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [customPosition, setCustomPosition] = useState("");
-  const [addedCustomPositions, setAddedCustomPositions] = useState<string[]>([]);
+  const [allPositions, setAllPositions] = useState<string[]>([]);
+  const [customSet, setCustomSet] = useState<Set<string>>(new Set());
   const [selectedSpecialty, setSelectedSpecialty] = useState("Менеджер по продажам");
   const [successMsg, setSuccessMsg] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-  // Combine standard positions with any custom Added ones
-  const allPositions = [...addedCustomPositions, ...BASIC_SPECIALTIES];
+  // Load shared catalog from the database (seeded with basic specialties).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchJobTitles(true);
+      if (cancelled) return;
+      setAllPositions(rows.map((r) => r.title));
+      const cs = new Set<string>();
+      rows.forEach((r) => { if (!r.is_basic) cs.add(r.title); });
+      setCustomSet(cs);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Filter based on search term
   const filteredPositions = allPositions.filter(pos =>
     pos.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddCustomPosition = (e: React.FormEvent) => {
+  const handleAddCustomPosition = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customPosition.trim()) return;
+    const title = customPosition.trim();
+    if (!title) return;
 
-    if (allPositions.some(p => p.toLowerCase() === customPosition.trim().toLowerCase())) {
+    if (allPositions.some(p => p.toLowerCase() === title.toLowerCase())) {
       setSuccessMsg("Эта должность уже существует в каталоге!");
       setTimeout(() => setSuccessMsg(""), 3000);
       return;
     }
 
-    setAddedCustomPositions(prev => [customPosition.trim(), ...prev]);
-    setSelectedSpecialty(customPosition.trim());
-    setSuccessMsg(`🚀 Должность "${customPosition.trim()}" успешно добавлена в каталог!`);
+    const row = await upsertJobTitle(title);
+    const canonical = row?.title || title;
+    setAllPositions(prev => [canonical, ...prev.filter(p => p.toLowerCase() !== canonical.toLowerCase())]);
+    setCustomSet(prev => new Set(prev).add(canonical));
+    setSelectedSpecialty(canonical);
+    setSuccessMsg(`🚀 Должность "${canonical}" успешно добавлена в каталог!`);
     setCustomPosition("");
     setTimeout(() => setSuccessMsg(""), 4000);
   };
@@ -301,7 +317,7 @@ export default function MainCatalogPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
                 {filteredPositions.map((spec) => {
                   const isSelected = selectedSpecialty === spec;
-                  const isCustom = addedCustomPositions.includes(spec);
+                  const isCustom = customSet.has(spec);
                   return (
                     <div
                       key={spec}

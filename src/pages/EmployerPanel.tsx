@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
+import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
@@ -119,9 +120,35 @@ export default function EmployerPanel() {
   const [setupSalary, setSetupSalary] = useState("80000 - 120000 руб");
   const [setupSchedule, setSetupSchedule] = useState("5/2, гибридный график");
   const [setupCustomWiki, setSetupCustomWiki] = useState("Правила адаптации: мы поставляем ИИ-сервисы. Кандидат должен владеть техниками продаж.");
-  const [setupLogoUrl, setSetupLogoUrl] = useState("https://i.ibb.co/WWRbtPq0/RR-Logo.png");
   const [specialtySearch, setSpecialtySearch] = useState("");
   const [showAddNewVacancy, setShowAddNewVacancy] = useState(false);
+
+  // Extended vacancy wizard fields (mirror of project landing sections).
+  const [setupVacancyText, setSetupVacancyText] = useState("");
+  const [setupTasksActivityText, setSetupTasksActivityText] = useState("");
+  const [setupMotivationText, setSetupMotivationText] = useState("");
+  const [setupMotivationDetail, setSetupMotivationDetail] = useState("");
+  const [setupScheduleText, setSetupScheduleText] = useState("");
+  const [setupPayoutsText, setSetupPayoutsText] = useState("");
+  const [setupOnboardingText, setSetupOnboardingText] = useState("");
+  const [setupTeamText, setSetupTeamText] = useState("");
+  const [setupSystemText, setSetupSystemText] = useState("");
+
+  // Draft project bookkeeping (matches the company wizard pattern).
+  const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
+  const [draftProjectPublicId, setDraftProjectPublicId] = useState<string | null>(null);
+  const [enhancingVacFields, setEnhancingVacFields] = useState<Record<string, boolean>>({});
+
+  // Shared job titles catalog (loaded from public.job_titles).
+  const [jobTitlesList, setJobTitlesList] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchJobTitles();
+      if (!cancelled) setJobTitlesList(rows.map((r) => r.title));
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Profile States
   const [adminTgId, setAdminTgId] = useState(() => localStorage.getItem("employer_tg_id") || "59384591");
@@ -1101,80 +1128,148 @@ export default function EmployerPanel() {
     }
   };
 
-  // Submit dynamic system generation via server Gemini API
+  // Open the vacancy wizard: create a draft project + restart the ProTalk
+  // dialog so the user starts with a clean session, mirroring the company
+  // wizard flow.
+  const openAddVacancyWizard = async () => {
+    if (showAddNewVacancy) { await cancelAddVacancyWizard(); return; }
+    try {
+      // Resolve the selected company id (by name, if any company was picked).
+      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyId = (matched as any)?.id || null;
+      const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
+      if (error) throw error;
+      const d = data as any;
+      setDraftProjectId(d?.id || null);
+      setDraftProjectPublicId(d?.public_id || null);
+      // Reset wizard fields so the user starts clean.
+      setSetupRoleName("");
+      setSetupSalary("");
+      setSetupSchedule("");
+      setSetupCustomWiki("");
+      setSetupVacancyText("");
+      setSetupTasksActivityText("");
+      setSetupMotivationText("");
+      setSetupMotivationDetail("");
+      setSetupScheduleText("");
+      setSetupPayoutsText("");
+      setSetupOnboardingText("");
+      setSetupTeamText("");
+      setSetupSystemText("");
+      setSpecialtySearch("");
+      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+      try {
+        const { aiRestart } = await import("@/lib/aiClient");
+        await aiRestart(employerId)
+          .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
+          .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+      } catch {}
+      setShowAddNewVacancy(true);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
+    }
+  };
+
+  const cancelAddVacancyWizard = async () => {
+    try {
+      // Drop an empty draft so the list does not accumulate phantom rows.
+      if (draftProjectId) {
+        const { data: row } = await supabase
+          .from("projects")
+          .select("role_name, is_published")
+          .eq("id", draftProjectId)
+          .maybeSingle();
+        const isEmpty = row && !row.is_published && (!row.role_name || String(row.role_name).trim() === "");
+        if (isEmpty) {
+          await supabase.from("projects").delete().eq("id", draftProjectId);
+        }
+      }
+    } catch (e) { console.warn("cancel vacancy cleanup error", e); }
+    setShowAddNewVacancy(false);
+    setDraftProjectId(null);
+    setDraftProjectPublicId(null);
+    fetchData();
+  };
+
+  // Single-field AI improvement for vacancy wizard textareas.
+  const handleEnhanceVacancyField = async (
+    fieldName: string,
+    currentVal: string,
+    setter: (v: string) => void,
+  ) => {
+    setEnhancingVacFields(prev => ({ ...prev, [fieldName]: true }));
+    try {
+      const { aiEnhanceSingle } = await import("@/lib/aiClient");
+      const value = await aiEnhanceSingle({
+        field: fieldName,
+        value: currentVal,
+        company_name: setupCompanyName,
+        role_name: setupRoleName,
+      });
+      if (value) setter(value);
+      addAuditEvent("success", "Поле улучшено ИИ", `Готово: ${fieldName}`);
+    } catch (err) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Проверьте соединение.");
+    } finally {
+      setEnhancingVacFields(prev => ({ ...prev, [fieldName]: false }));
+    }
+  };
+
+  // Save the wizard draft into projects (UPDATE), publish it, and redirect to
+  // the employer vacancies list. The onboarding/training generation has been
+  // moved out of the wizard to a dedicated action on each vacancy card.
   const handleCreateOnboardingSystem = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!draftProjectId) {
+      addAuditEvent("warning", "Нет черновика", "Откройте мастер через «+ Добавить вакансию».");
+      return;
+    }
+    if (!setupRoleName.trim()) {
+      addAuditEvent("warning", "Не указана должность", "Введите должность перед сохранением.");
+      return;
+    }
     setIsGenerating(true);
-    addAuditEvent("info", "Старт ИИ Генерации", `Запуск ИИ-сборки онбординга для вакансии: ${setupRoleName}`);
-
-    const matchedCompany = companiesList.find(c => c.name.toLowerCase() === setupCompanyName.toLowerCase());
-    const companySlug = matchedCompany ? matchedCompany.slug : setupCompanyName.toLowerCase()
-      .replace(/[^а-яёa-z0-9\s-]/gi, "")
-      .trim()
-      .replace(/\s+/g, "-");
-
     try {
-      const { aiGenerateOnboarding } = await import("@/lib/aiClient");
-      const aiData = await aiGenerateOnboarding({
-        role_name: setupRoleName,
-        company_name: setupCompanyName,
-        brief: `Зарплата: ${setupSalary}\nГрафик: ${setupSchedule}\nБаза знаний:\n${setupCustomWiki}`,
-        save: false,
-      });
-      const newProjectData: any = {
-        id: `proj_${Date.now()}`,
-        companyName: setupCompanyName,
-        companySlug,
-        employerId,
-        roleName: setupRoleName,
-        salaryTerms: setupSalary,
-        scheduleTerms: setupSchedule,
-        customWiki: setupCustomWiki,
-        logoUrl: setupLogoUrl,
-        vacancyText: aiData?.vacancy_text,
-        motivationText: aiData?.motivation_text,
-        onboardingText: aiData?.onboarding_text,
-        trainingProfText: aiData?.training_prof_text,
-        trainingProductText: aiData?.training_product_text,
-        trainingSystemText: aiData?.training_system_text,
-        checklistQuestions: (aiData?.checklist || []).map((q: any) => q.question).filter(Boolean),
-        roleplayQuestions: (aiData?.roleplay || []).map((q: any) => q.question).filter(Boolean),
-        createdTasks: true,
+      // Resolve the company id from the selected company name (if any).
+      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyId = (matched as any)?.id || null;
+
+      const patch: any = {
+        company_id: companyId,
+        role_name: setupRoleName.trim(),
+        salary_terms: setupSalary || null,
+        schedule_terms: setupSchedule || null,
+        custom_wiki: setupCustomWiki || null,
+        vacancy_text: setupVacancyText || null,
+        tasks_activity_text: setupTasksActivityText || null,
+        motivation_text: setupMotivationText || null,
+        motivation_text_detail: setupMotivationDetail || null,
+        schedule_text: setupScheduleText || null,
+        payouts_text: setupPayoutsText || null,
+        onboarding_text: setupOnboardingText || null,
+        team_text: setupTeamText || null,
+        system_text: setupSystemText || null,
+        is_published: true,
       };
-      setProjects(prev => [...prev, newProjectData]);
-      
-      // Notify Telegram Bot mock
-      await fetch("/api/telegram-mock-send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chatId: adminTgId,
-          message: `🤖 Настроена новая система адаптации Робота Рекрутера!\n🏢 Компания: ${setupCompanyName}\n💼 Должность: ${setupRoleName}`
-        })
-      });
+      const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
+      if (upd.error) throw upd.error;
 
-      // Insert new company into local listing if unique
-      if (!companiesList.some(comp => comp.name.toLowerCase() === setupCompanyName.toLowerCase())) {
-        setCompaniesList(prev => [
-          ...prev,
-          { 
-            name: setupCompanyName, 
-            slug: companySlug,
-            industry: "Услуги / Производство", 
-            staff: "10-25 человек", 
-            description: "Интегрированная новая компания в экосистему адаптации сотрудников.", 
-            activeVacancies: 1,
-            employerId
-          }
-        ]);
-      }
+      // Keep the shared title catalog up-to-date.
+      try { await upsertJobTitle(setupRoleName.trim()); } catch {}
 
-      addAuditEvent("success", "ИИ-Блок онбординга собран", `Программа лекций, ситуационных вопросов создана для ${setupRoleName}`);
+      addAuditEvent("success", "Вакансия сохранена", `Опубликована вакансия «${setupRoleName}»`);
       setShowAddNewVacancy(false);
-      navigate(`/emp${employerId}/vacancies`);
-      fetchData();
+      setDraftProjectId(null);
+      setDraftProjectPublicId(null);
+      // Refresh list from the database and navigate to the vacancies tab.
+      await fetchData();
+      if (employerId) navigate(`/emp${employerId}/vacancies`);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
     } catch (err: any) {
-      alert("Ошибка при генерации: " + err.message);
+      console.error(err);
+      addAuditEvent("warning", "Ошибка сохранения вакансии", err?.message || "supabase error");
     } finally {
       setIsGenerating(false);
     }
@@ -1381,7 +1476,7 @@ export default function EmployerPanel() {
         company_name: setupCompanyName,
         fields: {
           roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
         },
         hint: `parse_file:${filename}`,
       });
@@ -1390,7 +1485,6 @@ export default function EmployerPanel() {
       if (parsed.salaryTerms) setSetupSalary(parsed.salaryTerms);
       if (parsed.scheduleTerms) setSetupSchedule(parsed.scheduleTerms);
       if (parsed.customWiki) setSetupCustomWiki(parsed.customWiki);
-      if (parsed.logoUrl) setSetupLogoUrl(parsed.logoUrl);
       
       addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
     } catch (err: any) {
@@ -1422,7 +1516,12 @@ export default function EmployerPanel() {
         role_name: setupRoleName,
         fields: {
           roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
+          motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
+          schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
+          onboardingText: setupOnboardingText, team_text_vac: setupTeamText,
+          system_text_vac: setupSystemText,
         },
       });
       if (enhanced) {
@@ -1430,7 +1529,15 @@ export default function EmployerPanel() {
         if (enhanced.salaryTerms) setSetupSalary(enhanced.salaryTerms);
         if (enhanced.scheduleTerms) setSetupSchedule(enhanced.scheduleTerms);
         if (enhanced.customWiki) setSetupCustomWiki(enhanced.customWiki);
-        if (enhanced.logoUrl) setSetupLogoUrl(enhanced.logoUrl);
+        if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
+        if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
+        if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
+        if (enhanced.motivationTextDetail) setSetupMotivationDetail(enhanced.motivationTextDetail);
+        if (enhanced.schedule_text) setSetupScheduleText(enhanced.schedule_text);
+        if (enhanced.payouts_text) setSetupPayoutsText(enhanced.payouts_text);
+        if (enhanced.onboardingText) setSetupOnboardingText(enhanced.onboardingText);
+        if (enhanced.team_text_vac) setSetupTeamText(enhanced.team_text_vac);
+        if (enhanced.system_text_vac) setSetupSystemText(enhanced.system_text_vac);
         addAuditEvent("success", "Оформление завершено", "Все поля успешно облагорожены ИИ в единую продающую форму.");
       }
     } catch (err) {
@@ -2170,7 +2277,7 @@ export default function EmployerPanel() {
                 </div>
 
                 <button 
-                  onClick={() => setShowAddNewVacancy(!showAddNewVacancy)}
+                  onClick={openAddVacancyWizard}
                   className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] hover:scale-102 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1 shadow transition-all"
                 >
                   <Plus className="w-4 h-4" /> Добавить вакансию
@@ -2180,9 +2287,30 @@ export default function EmployerPanel() {
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
                 <div className="bg-[#1D3E5E]/95 border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
-                  <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                    <span className="text-xs font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Конструктор вакансии с поддержкой Gemini API</span>
-                    <button onClick={() => setShowAddNewVacancy(false)} className="text-slate-400 hover:text-white">✕ Close</button>
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Панель вакансии RR</span>
+                      <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleBeautifyNewVacancyWithAI}
+                        disabled={isGenerating || isParsingFile}
+                        className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+                        {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelAddVacancyWizard}
+                        className="text-slate-400 hover:text-white p-2 rounded-xl hover:bg-white/5"
+                        title="Закрыть мастер"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* File intelligent import block */}
@@ -2282,14 +2410,18 @@ export default function EmployerPanel() {
                       />
                       {(() => {
                         const existingSpecialties = Array.from(new Set(projects.map(p => p.roleName).filter(Boolean)));
-                        const allSpecialtiesCombined = Array.from(new Set([...existingSpecialties, ...BASIC_SPECIALTIES]));
+                        const allSpecialtiesCombined = Array.from(new Set([
+                          ...existingSpecialties,
+                          ...jobTitlesList,
+                          ...BASIC_SPECIALTIES,
+                        ]));
                         const filteredSpec = allSpecialtiesCombined.filter(s => s.toLowerCase().includes(specialtySearch.toLowerCase()));
                         const hasExactMatch = allSpecialtiesCombined.some(s => s.toLowerCase() === specialtySearch.trim().toLowerCase());
                         
                         return (
                           <div className="space-y-2 mt-1">
-                            <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto pr-1">
-                              {filteredSpec.slice(0, 12).map(spec => (
+                            <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto pr-1">
+                              {filteredSpec.slice(0, 60).map(spec => (
                                 <button
                                   key={spec}
                                   type="button"
@@ -2302,9 +2434,14 @@ export default function EmployerPanel() {
                               {specialtySearch.trim() && !hasExactMatch && (
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setSetupRoleName(specialtySearch.trim());
+                                  onClick={async () => {
+                                    const t = specialtySearch.trim();
+                                    setSetupRoleName(t);
                                     setSpecialtySearch("");
+                                    const row = await upsertJobTitle(t);
+                                    if (row?.title) {
+                                      setJobTitlesList(prev => [row.title, ...prev.filter(p => p.toLowerCase() !== row.title.toLowerCase())]);
+                                    }
                                   }}
                                   className="bg-amber-500/20 border border-amber-500/45 hover:border-amber-400 text-[9.5px] text-amber-350 font-bold px-2 py-0.5 rounded transition flex items-center gap-1 cursor-pointer"
                                 >
@@ -2348,54 +2485,48 @@ export default function EmployerPanel() {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-xs font-bold text-slate-200 block mb-1">Картинка логотипа вакансии (ссылка или файл):</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          className="flex-1 bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupLogoUrl}
-                          onChange={(e) => setSetupLogoUrl(e.target.value)}
-                          placeholder="https://i.ibb.co/WWRbtPq0/RR-Logo.png"
-                        />
-                        <label className="cursor-pointer bg-[#1D3E5E] border border-white/10 hover:border-[#E7C768] text-xs px-3.5 py-2.5 rounded-xl text-white font-bold select-none text-center flex items-center shrink-0">
-                          <span>📂 Загрузить файл</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  if (typeof reader.result === "string") {
-                                    setSetupLogoUrl(reader.result);
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
-                      {setupLogoUrl && (
-                        <div className="mt-2 flex items-center gap-2 bg-black/15 p-2 rounded-xl border border-white/5">
-                          <img src={setupLogoUrl} alt="Logo Preview" className="w-8 h-8 object-contain rounded" referrerPolicy="no-referrer" />
-                          <span className="text-[10px] text-gray-400 truncate max-w-xs">{setupLogoUrl}</span>
-                        </div>
-                      )}
+                    <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
+                      ℹ️ Логотип берётся из настроек компании — отдельной загрузки для вакансии не требуется.
                     </div>
 
-                    <button
-                      type="button"
-                      disabled={isGenerating || isParsingFile}
-                      onClick={handleBeautifyNewVacancyWithAI}
-                      className="cursor-pointer w-full bg-[#17344F] border border-[#E7C768]/60 hover:border-[#E7C768] text-xs py-2.5 px-4 rounded-xl text-slate-100 font-bold flex items-center justify-center gap-1.5 transition select-none"
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-[#E7C768]" />
-                      <span>✨ Оформить красиво через ИИ (оптимизировать все условия)</span>
-                    </button>
+                    {/* Extended landing sections: each maps to a vacancy landing page block. */}
+                    {[
+                      { label: "Обязанности, требования, условия (для блока Vacancy: разделы выводятся автоматически из строк)", field: "vacancy_text" as const, value: setupVacancyText, set: setSetupVacancyText, rows: 6, max: 1500, placeholder: "• Ведение переговоров с клиентами по готовой базе\n• Уверенный пользователь ПК\n• Базовые навыки общения" },
+                      { label: "Ежедневный процесс (3 таба, формат [Название] Описание):", field: "tasks_activity_text" as const, value: setupTasksActivityText, set: setSetupTasksActivityText, rows: 4, max: 1000, placeholder: "• [📞 Консультация] Открыть Wiki и направить ссылку на тариф\n• [📝 Ведение CRM] Добавить заметку по итогам звонка\n• [🤝 Возражения] Объяснить ценность ИИ-сервисов" },
+                      { label: "График и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
+                      { label: "Мотивация и преимущества (краткий текст):", field: "motivation_text" as const, value: setupMotivationText, set: setSetupMotivationText, rows: 2, max: 500, placeholder: "Бонусы за результат, обучение за счёт компании, гибкий график." },
+                      { label: "Развёрнутая мотивация (списком, каждая строка — отдельный бонус):", field: "motivation_text_detail" as const, value: setupMotivationDetail, set: setSetupMotivationDetail, rows: 4, max: 800, placeholder: "• Премии до 30% за высокую скорость\n• Еженедельные выплаты\n• Компенсация интернета" },
+                      { label: "Схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
+                      { label: "Оформление (этапы от интервью до выхода + типы оформления):", field: "onboarding_text" as const, value: setupOnboardingText, set: setSetupOnboardingText, rows: 6, max: 1000, placeholder: "• [📝 Интервью] ИИ-собеседование за 10 минут\n• [📚 Кейс-тест] Проверка навыков\n• [🤖 Обучение] Wiki и симуляции\n• [🤝 Стажировка] Первые звонки с куратором\n• [✍️ Оформление] Самозанятость / ИП / ГПХ / ТК РФ" },
+                      { label: "Команда (формат [Отдел] Имя — роль):", field: "team_text_vac" as const, value: setupTeamText, set: setSetupTeamText, rows: 4, max: 600, placeholder: "• [Продажи] Иван — РОП\n• [Маркетинг] Мария — таргетолог" },
+                      { label: "Система работы (формат [Раздел] Описание регламента):", field: "system_text_vac" as const, value: setupSystemText, set: setSetupSystemText, rows: 4, max: 600, placeholder: "• [CRM] Bitrix24, обязательное заполнение карточек\n• [Связь] Telegram-каналы команды" },
+                    ].map(({ label, field, value, set, rows, max, placeholder }) => (
+                      <div key={field}>
+                        <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between gap-2">
+                          <span className="truncate">{label}</span>
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0">до {max}</span>
+                        </label>
+                        <div className="relative">
+                          <textarea
+                            rows={rows}
+                            maxLength={max}
+                            className="w-full bg-[#17344F]/60 text-xs p-2.5 pr-9 rounded-xl border border-white/10 focus:outline-[#E7C768]"
+                            value={value}
+                            onChange={(e) => set(e.target.value)}
+                            placeholder={placeholder}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleEnhanceVacancyField(field, value, set)}
+                            disabled={enhancingVacFields[field]}
+                            className="absolute right-2 top-2 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
+                            title="Оформить красиво ИИ"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${enhancingVacFields[field] ? "animate-spin text-yellow-400" : ""}`} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
 
                     <button
                       type="submit"
@@ -2404,10 +2535,10 @@ export default function EmployerPanel() {
                     >
                       {isGenerating ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin" /> Генерация лекций и ситуаций при помощи ИИ Gemini...
+                          <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
                         </>
                       ) : (
-                        "Создать систему адаптации и форму соискателя"
+                        "Сохранить и синхронизировать"
                       )}
                     </button>
                   </form>

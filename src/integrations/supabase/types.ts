@@ -853,6 +853,36 @@ export type Database = {
           },
         ]
       }
+      job_titles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_basic: boolean
+          title: string
+          title_norm: string | null
+          usage_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_basic?: boolean
+          title: string
+          title_norm?: string | null
+          usage_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_basic?: boolean
+          title?: string
+          title_norm?: string | null
+          usage_count?: number
+        }
+        Relationships: []
+      }
       logs: {
         Row: {
           api_key: string | null
@@ -1748,7 +1778,26 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      job_title_upsert: {
+        Args: { _title: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_basic: boolean
+          title: string
+          title_norm: string | null
+          usage_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_titles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
+      project_create_draft: { Args: { _company: string }; Returns: Json }
       purchase_fixed: { Args: { _item: string; _qty?: number }; Returns: Json }
       purchase_pack: { Args: { _kind: string; _qty: number }; Returns: Json }
       purchase_pack_mixed: {
