@@ -292,6 +292,7 @@ export default function EmployerPanel() {
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
+        else if (fieldName === "staff") setNewCompanyStaff(newVal);
         else if (fieldName === "description") setNewCompanyDesc(newVal);
         else if (fieldName === "sites") setNewCompanySite(newVal);
         else if (fieldName === "logoUrl") setNewCompanyLogo(newVal);
