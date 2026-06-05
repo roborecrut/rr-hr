@@ -464,6 +464,66 @@ export default function CompanyLanding() {
             </div>
           )}
 
+          {/* Company-only view: show one section per filled company field,
+              plus a picker grid for choosing a vacancy. Visible when the URL
+              has no /vac segment (vacancyId === ""). */}
+          {!vacancyId && company && (
+            <div className="space-y-4">
+              {[
+                { key: "description_text", label: "О компании" },
+                { key: "products_text",    label: "Продукты" },
+                { key: "mission_text",     label: "Миссия" },
+                { key: "about_text",       label: "О нас" },
+                { key: "team_text",        label: "Команда" },
+                { key: "payouts_text",     label: "Выплаты" },
+                { key: "schedule_text",    label: "График" },
+                { key: "system_text",      label: "ИИ-Система" },
+              ]
+                .filter(s => company[s.key] && String(company[s.key]).trim() !== "")
+                .map(s => (
+                  <section key={s.key} className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                    <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">{s.label}</h2>
+                    {renderFormattedText(String(company[s.key]))}
+                  </section>
+                ))}
+
+              {company.stats && typeof company.stats === "object" && Object.keys(company.stats).length > 0 && (
+                <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                  <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">Показатели</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {Object.entries(company.stats).map(([k, v]) => (
+                      <div key={k} className="bg-black/25 border border-white/5 rounded-xl p-3">
+                        <div className="text-xl font-black text-white">{String(v)}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-1">{k}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">
+                  Выберите вакансию ({vacancies.length})
+                </h2>
+                {vacancies.length === 0 ? (
+                  <p className="text-xs text-slate-400">Открытых вакансий пока нет.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {vacancies.map((v) => (
+                      <button key={v.id}
+                        onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)}
+                        className="text-left bg-black/30 hover:bg-black/40 border border-white/10 hover:border-[#E7C768]/50 rounded-2xl p-4 transition">
+                        <h4 className="font-extrabold text-sm text-white">{v.roleName}</h4>
+                        {v.salaryTerms && <span className="text-[11px] font-bold text-[#E7C768] block mt-1">{v.salaryTerms}</span>}
+                        {v.scheduleTerms && <span className="text-[10px] text-slate-300 block mt-0.5">{v.scheduleTerms}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
           {/* Active Job Vacancy presentation banner */}
           {selectedVacancy ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
