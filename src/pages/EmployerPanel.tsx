@@ -322,34 +322,41 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ Настройка", "ИИ-аналитик RR комплексно оформляет ваш бренд...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const fields = {
+        name: newCompanyName,
+        industry: newCompanyIndustry,
+        staff: newCompanyStaff,
+        description_text: newCompanyDescription,
+        products_text: newCompanyProducts,
+        missionText: newCompanyMissionText,
+        team: newCompanyDesc,
+        sites: newCompanySite,
+        logoUrl: newCompanyLogo,
+        customWiki: newCompanyCustomWiki,
+        salaryTerms: newCompanySalaryTerms,
+        scheduleTerms: newCompanyScheduleTerms,
+        statsValClients: newCompanyStatsValClients,
+        statsLabelClients: newCompanyStatsLabelClients,
+        statsValDialogs: newCompanyStatsValDialogs,
+        statsLabelDialogs: newCompanyStatsLabelDialogs,
+        statsValFounded: newCompanyStatsValFounded,
+        statsLabelFounded: newCompanyStatsLabelFounded,
+      };
+      pushAILog("ai-enhance:all_company", "request", fields);
       const enriched = await aiEnhanceAll({
         mode: "all_company",
         company_name: newCompanyName,
-        fields: {
-          name: newCompanyName,
-          industry: newCompanyIndustry,
-          staff: newCompanyStaff,
-          description: newCompanyDesc,
-          sites: newCompanySite,
-          logoUrl: newCompanyLogo,
-          missionText: newCompanyMissionText,
-          customWiki: newCompanyCustomWiki,
-          salaryTerms: newCompanySalaryTerms,
-          scheduleTerms: newCompanyScheduleTerms,
-          statsValClients: newCompanyStatsValClients,
-          statsLabelClients: newCompanyStatsLabelClients,
-          statsValDialogs: newCompanyStatsValDialogs,
-          statsLabelDialogs: newCompanyStatsLabelDialogs,
-          statsValFounded: newCompanyStatsValFounded,
-          statsLabelFounded: newCompanyStatsLabelFounded
-        },
+        fields,
         hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
       });
+      pushAILog("ai-enhance:all_company", "response", enriched);
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
         if (enriched.staff) setNewCompanyStaff(enriched.staff);
-        if (enriched.description) setNewCompanyDesc(enriched.description);
+        if (enriched.description_text) setNewCompanyDescription(enriched.description_text);
+        if (enriched.products_text) setNewCompanyProducts(enriched.products_text);
+        if (enriched.team) setNewCompanyDesc(enriched.team);
         if (enriched.sites) setNewCompanySite(enriched.sites);
         if (enriched.logoUrl) setNewCompanyLogo(enriched.logoUrl);
         if (enriched.missionText) setNewCompanyMissionText(enriched.missionText);
@@ -367,6 +374,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-enhance:all_company", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
