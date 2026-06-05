@@ -255,6 +255,35 @@ export type Database = {
           },
         ]
       }
+      candidate_sessions: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          expires_at: string
+          token: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          expires_at?: string
+          token?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          expires_at?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_sessions_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_stages_history: {
         Row: {
           candidate_id: string
@@ -343,11 +372,16 @@ export type Database = {
       }
       candidates: {
         Row: {
+          auth_kind: string
+          company_id: string | null
           created_at: string
           current_stage: Database["public"]["Enums"]["candidate_stage"]
+          email: string | null
           id: string
           landing_slug: string | null
+          last_login_at: string | null
           legacy_public_id: string | null
+          password_hash: string | null
           project_id: string | null
           public_id: string | null
           ref_source: string | null
@@ -362,11 +396,16 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          auth_kind?: string
+          company_id?: string | null
           created_at?: string
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          email?: string | null
           id?: string
           landing_slug?: string | null
+          last_login_at?: string | null
           legacy_public_id?: string | null
+          password_hash?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -381,11 +420,16 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          auth_kind?: string
+          company_id?: string | null
           created_at?: string
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
+          email?: string | null
           id?: string
           landing_slug?: string | null
+          last_login_at?: string | null
           legacy_public_id?: string | null
+          password_hash?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -400,6 +444,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "candidates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "candidates_project_id_fkey"
             columns: ["project_id"]
@@ -1661,6 +1712,19 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
+      candidate_email_login: {
+        Args: { _email: string; _password: string }
+        Returns: Json
+      }
+      candidate_email_signup: {
+        Args: {
+          _company?: string
+          _email: string
+          _password: string
+          _project: string
+        }
+        Returns: Json
+      }
       company_create_draft: { Args: never; Returns: Json }
       company_finalize: { Args: { _id: string }; Returns: Json }
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
