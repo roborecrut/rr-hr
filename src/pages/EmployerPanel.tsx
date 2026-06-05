@@ -153,8 +153,12 @@ export default function EmployerPanel() {
   const [balance, setBalance] = useState<number>(1000);
   const [interviewCredits, setInterviewCredits] = useState<number>(0);
   const [trainingCredits, setTrainingCredits] = useState<number>(0);
-  const [packQty, setPackQty] = useState<{ interview: number; training: number }>({ interview: 10, training: 10 });
-  const [packBusy, setPackBusy] = useState<null | "interview" | "training">(null);
+  const [landingCredits, setLandingCredits] = useState<number>(0);
+  const [interviewSetupCredits, setInterviewSetupCredits] = useState<number>(0);
+  const [trainingSetupCredits, setTrainingSetupCredits] = useState<number>(0);
+  const [packQty, setPackQty] = useState<{ interview: number; training: number }>({ interview: 10, training: 0 });
+  const [packBusy, setPackBusy] = useState<boolean>(false);
+  const [fixedBusy, setFixedBusy] = useState<null | "landing" | "interview_setup" | "training_setup">(null);
   const [referrer, setReferrer] = useState<null | { name: string; email: string; phone: string | null; telegram: string | null; public_id: string }>(null);
   const [referees, setReferees] = useState<Array<{ name: string; email: string; created_at: string; bonus_rr: number }>>([]);
 
@@ -775,13 +779,16 @@ export default function EmployerPanel() {
       if (!user) return;
       const { data: emp } = await supabase
         .from("employers")
-        .select("id, public_id, interview_credits, training_credits, wallets(units_balance, id)")
+        .select("id, public_id, interview_credits, training_credits, landing_credits, interview_setup_credits, training_setup_credits, wallets(units_balance, id)")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!emp) return;
       setBalance(Number(((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance) || 0));
       setInterviewCredits(Number((emp as any).interview_credits || 0));
       setTrainingCredits(Number((emp as any).training_credits || 0));
+      setLandingCredits(Number((emp as any).landing_credits || 0));
+      setInterviewSetupCredits(Number((emp as any).interview_setup_credits || 0));
+      setTrainingSetupCredits(Number((emp as any).training_setup_credits || 0));
 
       const walletId = (emp as any).wallets?.[0]?.id ?? (emp as any).wallets?.id;
       if (walletId) {
@@ -799,70 +806,29 @@ export default function EmployerPanel() {
         })));
       }
 
-      // Реферер (кто меня пригласил)
-      const { data: refRow } = await supabase
-        .from("referrals_emp")
-        .select("bonus_units, created_at, referrer_employer_id")
-        .eq("referred_employer_id", (emp as any).id)
-        .maybeSingle();
-      if (refRow?.referrer_employer_id) {
-        const { data: refEmp } = await supabase
-          .from("employers")
-          .select("public_id, contact_phone, contact_telegram, user_id")
-          .eq("id", refRow.referrer_employer_id)
-          .maybeSingle();
-        if (refEmp) {
-          const { data: refProf } = await supabase
-            .from("profiles")
-            .select("display_name, email")
-            .eq("id", (refEmp as any).user_id)
-            .maybeSingle();
-          setReferrer({
-            public_id: (refEmp as any).public_id,
-            name: (refProf as any)?.display_name || "",
-            email: (refProf as any)?.email || "",
-            phone: (refEmp as any).contact_phone || null,
-            telegram: (refEmp as any).contact_telegram || null,
-          });
-        }
+      // Реферер (кто меня пригласил) — через SECURITY DEFINER RPC, чтобы обойти RLS на чужих employers/profiles
+      const { data: refData } = await supabase.rpc("get_my_referrer");
+      if (refData && typeof refData === "object") {
+        const r: any = refData;
+        setReferrer({
+          public_id: r.public_id || "",
+          name: r.name || "",
+          email: r.email || "",
+          phone: r.contact_phone || null,
+          telegram: r.contact_telegram || null,
+        });
       } else {
         setReferrer(null);
       }
-
       // Кого пригласил я
-      const { data: invited } = await supabase
-        .from("referrals_emp")
-        .select("bonus_units, created_at, referred_employer_id")
-        .eq("referrer_employer_id", (emp as any).id)
-        .order("created_at", { ascending: false });
-      if (invited && invited.length) {
-        const ids = invited.map((r: any) => r.referred_employer_id);
-        const { data: emps } = await supabase
-          .from("employers")
-          .select("id, user_id")
-          .in("id", ids);
-        const userIds = (emps || []).map((e: any) => e.user_id);
-        const { data: profs } = await supabase
-          .from("profiles")
-          .select("id, display_name, email")
-          .in("id", userIds);
-        const profById: Record<string, any> = {};
-        (profs || []).forEach((p: any) => { profById[p.id] = p; });
-        const empToUser: Record<string, string> = {};
-        (emps || []).forEach((e: any) => { empToUser[e.id] = e.user_id; });
-        setReferees(invited.map((r: any) => {
-          const uid = empToUser[r.referred_employer_id];
-          const p = uid ? profById[uid] : null;
-          return {
-            name: p?.display_name || "",
-            email: p?.email || "",
-            created_at: r.created_at,
-            bonus_rr: Number(r.bonus_units) || 0,
-          };
-        }));
-      } else {
-        setReferees([]);
-      }
+      const { data: invitedData } = await supabase.rpc("get_my_referees");
+      const list: any[] = Array.isArray(invitedData) ? invitedData : [];
+      setReferees(list.map((r: any) => ({
+        name: r.name || "",
+        email: r.email || "",
+        created_at: r.created_at,
+        bonus_rr: Number(r.bonus_rr) || 0,
+      })));
     } catch (e) {
       console.error("fetchBillingState failed", e);
     }
@@ -874,20 +840,38 @@ export default function EmployerPanel() {
     return () => clearInterval(t);
   }, [employerId]);
 
-  // Покупка пакета лимитов интервью/обучения по тарифной сетке (RR → лимит шт.)
-  const handleBuyPack = async (kind: "interview" | "training") => {
+  // Покупка единого пакета: грейд цены определяется по сумме интервью + обучения.
+  const handleBuyMixedPack = async () => {
     setPurchaseError("");
-    setPackBusy(kind);
+    setPackBusy(true);
     try {
-      const qty = Math.max(1, Math.floor(packQty[kind] || 0));
-      const { error } = await supabase.rpc("purchase_pack", { _kind: kind, _qty: qty });
+      const qi = Math.max(0, Math.floor(packQty.interview || 0));
+      const qt = Math.max(0, Math.floor(packQty.training || 0));
+      if (qi + qt < 1) throw new Error("Укажите хотя бы 1 шт.");
+      const { error } = await supabase.rpc("purchase_pack_mixed", { _qty_int: qi, _qty_train: qt });
       if (error) throw new Error(error.message || "Ошибка покупки пакета");
-      addAuditEvent("success", "Пакет приобретён", `${kind === "interview" ? "Интервью" : "Обучение"}: +${qty} шт.`);
+      addAuditEvent("success", "Пакет приобретён", `Интервью +${qi} · Обучение +${qt}`);
       await fetchBillingState();
     } catch (err: any) {
       setPurchaseError(translateBillingError(err.message));
     } finally {
-      setPackBusy(null);
+      setPackBusy(false);
+    }
+  };
+
+  // Покупка фикс-услуги впрок (landing / interview_setup / training_setup)
+  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup") => {
+    setPurchaseError("");
+    setFixedBusy(item);
+    try {
+      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: 1 });
+      if (error) throw new Error(error.message || "Ошибка покупки услуги");
+      addAuditEvent("success", "Услуга куплена", item);
+      await fetchBillingState();
+    } catch (err: any) {
+      setPurchaseError(translateBillingError(err.message));
+    } finally {
+      setFixedBusy(null);
     }
   };
 
@@ -2938,41 +2922,44 @@ export default function EmployerPanel() {
                       🛍️ Разовые услуги (фикс. цена)
                     </h3>
                     <p className="text-xs text-slate-300 mt-1">
-                      Списываются с баланса <strong className="text-white">автоматически</strong> сразу после успешной ИИ-генерации.
-                      Отдельно покупать не нужно.
+                      Списываются автоматически после успешной ИИ-генерации.
+                      Можно купить впрок — тогда списание пойдёт из лимита, а не с баланса.
                     </p>
                   </div>
 
                   <div className="space-y-2.5 pt-1">
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
-                      <div className="max-w-[75%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">🌐 ИИ-Лендинг вакансии</h4>
-                        <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          Стильный мини-сайт вакансии с описанием условий, компанией и ИИ-консультантом по базе знаний.
-                        </p>
+                    {([
+                      { item: "landing" as const, icon: "🌐", title: "ИИ-Лендинг вакансии",
+                        desc: "Стильный мини-сайт вакансии с описанием условий, компанией и ИИ-консультантом по базе знаний.",
+                        price: FIXED_PRICES.landing, credits: landingCredits },
+                      { item: "interview_setup" as const, icon: "⚙️", title: "ИИ-Система интервью",
+                        desc: "Генератор скрининга резюме, чек-листа и 3 ролевых ситуаций под вашу вакансию.",
+                        price: FIXED_PRICES.interview_setup, credits: interviewSetupCredits },
+                      { item: "training_setup" as const, icon: "🎓", title: "ИИ-Система обучения",
+                        desc: "Профессиональное дообучение + обучение продукту + обучение регламентам по вашей базе знаний.",
+                        price: FIXED_PRICES.training_setup, credits: trainingSetupCredits },
+                    ]).map(row => (
+                      <div key={row.item} className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-2 text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="max-w-[70%]">
+                            <h4 className="font-bold text-white text-xs flex items-center gap-1.5">{row.icon} {row.title}</h4>
+                            <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">{row.desc}</p>
+                          </div>
+                          <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{row.price} RR</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
+                          <span className="text-[10px] text-slate-400 font-mono">Куплено впрок: <span className="text-white font-bold">{row.credits} шт</span></span>
+                          <button
+                            type="button"
+                            onClick={() => handleBuyFixed(row.item)}
+                            disabled={fixedBusy !== null}
+                            className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
+                          >
+                            {fixedBusy === row.item ? "..." : "Купить впрок +1"}
+                          </button>
+                        </div>
                       </div>
-                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.landing} RR</span>
-                    </div>
-
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
-                      <div className="max-w-[75%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">⚙️ ИИ-Система интервью</h4>
-                        <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          Генератор скрининга резюме, чек-листа и 3 ролевых ситуаций под вашу вакансию.
-                        </p>
-                      </div>
-                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.interview_setup} RR</span>
-                    </div>
-
-                    <div className="bg-black/15 p-3 rounded-2xl border border-white/5 flex items-center justify-between gap-3 text-xs">
-                      <div className="max-w-[75%]">
-                        <h4 className="font-bold text-white text-xs flex items-center gap-1.5">🎓 ИИ-Система обучения</h4>
-                        <p className="text-[10.5px] text-slate-300 mt-1 leading-relaxed">
-                          Профессиональное дообучение + обучение продукту + обучение регламентам по вашей базе знаний.
-                        </p>
-                      </div>
-                      <span className="font-mono font-bold text-[#E7C768] whitespace-nowrap">{FIXED_PRICES.training_setup} RR</span>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
@@ -2983,7 +2970,7 @@ export default function EmployerPanel() {
                       📦 Пакеты лимитов интервью и обучения
                     </h3>
                     <p className="text-xs text-slate-300 mt-1">
-                      Покупаются за RR. Чем больше пакет — тем дешевле каждая штука. 1 RR = 1 ₽.
+                      Цена за штуку считается по <strong className="text-white">сумме</strong> интервью + обучения. Чем больше пакет — тем дешевле каждая штука. 1 RR = 1 ₽.
                     </p>
                   </div>
 
@@ -3002,40 +2989,50 @@ export default function EmployerPanel() {
                     ))}
                   </div>
 
-                  {(["interview","training"] as const).map((kind) => {
-                    const qty = packQty[kind];
-                    const unit = packTierPrice(qty);
-                    const total = unit * qty;
-                    const label = kind === "interview" ? "🎙️ Пакет интервью" : "🎓 Пакет обучения";
+                  {(() => {
+                    const qi = Math.max(0, Math.floor(packQty.interview || 0));
+                    const qt = Math.max(0, Math.floor(packQty.training || 0));
+                    const total_qty = qi + qt;
+                    const unit = packTierPrice(Math.max(1, total_qty));
+                    const total_rr = unit * total_qty;
                     return (
-                      <div key={kind} className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="font-bold text-white text-xs">{label}</h4>
-                          <span className="text-[10px] text-slate-400 font-mono">Текущий остаток: {kind === "interview" ? interviewCredits : trainingCredits}</span>
+                      <div className="bg-black/15 p-3 rounded-2xl border border-white/5 space-y-2.5">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="space-y-1">
+                            <label className="text-slate-300 text-[11px]">🎙️ Интервью (шт)</label>
+                            <input
+                              type="number" min={0} value={qi}
+                              onChange={(e) => setPackQty(s => ({ ...s, interview: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-full bg-black/30 border border-white/15 text-[#E7C768] font-bold text-center rounded-lg px-2 py-1.5 font-mono"
+                            />
+                            <div className="text-[10px] text-slate-400 font-mono">Остаток: {interviewCredits} шт</div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-slate-300 text-[11px]">🎓 Обучение (шт)</label>
+                            <input
+                              type="number" min={0} value={qt}
+                              onChange={(e) => setPackQty(s => ({ ...s, training: Math.max(0, parseInt(e.target.value) || 0) }))}
+                              className="w-full bg-black/30 border border-white/15 text-[#E7C768] font-bold text-center rounded-lg px-2 py-1.5 font-mono"
+                            />
+                            <div className="text-[10px] text-slate-400 font-mono">Остаток: {trainingCredits} шт</div>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <label className="text-slate-300">Кол-во:</label>
-                          <input
-                            type="number"
-                            min={1}
-                            value={qty}
-                            onChange={(e) => setPackQty(s => ({ ...s, [kind]: Math.max(1, parseInt(e.target.value) || 1) }))}
-                            className="w-20 bg-black/30 border border-white/15 text-[#E7C768] font-bold text-center rounded-lg px-2 py-1 font-mono"
-                          />
-                          <span className="text-slate-400 font-mono text-[11px]">× {unit} RR = </span>
-                          <span className="font-mono font-extrabold text-[#E7C768]">{total.toLocaleString("ru-RU")} RR</span>
+                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5 text-xs">
+                          <span className="text-slate-300 font-mono text-[11px]">
+                            Всего: <strong className="text-white">{total_qty}</strong> шт × <strong className="text-white">{unit}</strong> RR = <strong className="text-[#E7C768]">{total_rr.toLocaleString("ru-RU")} RR</strong>
+                          </span>
                           <button
                             type="button"
-                            onClick={() => handleBuyPack(kind)}
-                            disabled={packBusy !== null}
-                            className="ml-auto bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
+                            onClick={handleBuyMixedPack}
+                            disabled={packBusy || total_qty < 1}
+                            className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
                           >
-                            {packBusy === kind ? "..." : "Купить пакет"}
+                            {packBusy ? "..." : "Купить пакет"}
                           </button>
                         </div>
                       </div>
                     );
-                  })}
+                  })()}
                 </div>
               </div>
 
