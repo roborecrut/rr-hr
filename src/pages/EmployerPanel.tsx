@@ -556,12 +556,25 @@ export default function EmployerPanel() {
         if (r.error) console.error("fetchCompanies: companies query failed", r.error);
         data = (r.data as any[]) || [];
       }
+      console.info("[EmployerPanel] companies loaded:", data.length, "for emp", employerId);
       setCompaniesList(
         (data || []).map((c: any) => ({
           id: c.id,
+          public_id: c.public_id,
           name: c.name,
           slug: c.slug,
           logoUrl: c.logo_url,
+          status: c.status,
+          description_text: c.description_text,
+          products_text: c.products_text,
+          mission_text: c.mission_text,
+          about_text: c.about_text,
+          team_text: c.team_text,
+          payouts_text: c.payouts_text,
+          schedule_text: c.schedule_text,
+          system_text: c.system_text,
+          stats: c.stats,
+          logo_url: c.logo_url,
           missionText: c.mission_text,
           description: c.about_text,
           industry: "—",
@@ -774,6 +787,14 @@ export default function EmployerPanel() {
     fetchData();
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
+  }, [employerId]);
+
+  // Immediate refresh of the companies list whenever the employerId changes
+  // (e.g. when the user navigates into /emp{id}/companies). The 4-second
+  // polling above eventually loads it too, but UX should be instant.
+  useEffect(() => {
+    if (!employerId) return;
+    fetchCompanies();
   }, [employerId]);
 
   useEffect(() => {
