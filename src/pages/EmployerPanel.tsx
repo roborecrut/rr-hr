@@ -372,41 +372,79 @@ export default function EmployerPanel() {
     setIsParsingFile(true);
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
-      const { aiEnhanceAll } = await import("@/lib/aiClient");
-      const payload = await aiEnhanceAll({
-        mode: "all_company",
-        fields: {
-          name: newCompanyName, industry: newCompanyIndustry, staff: newCompanyStaff,
-          description: newCompanyDesc, sites: newCompanySite, logoUrl: newCompanyLogo,
-          missionText: newCompanyMissionText, customWiki: newCompanyCustomWiki,
-        },
-        hint: `parse_file:${filename}`,
+      const { aiCompanyAnalyze } = await import("@/lib/aiClient");
+      pushAILog("ai-company-analyze", "request", { company_id: draftCompanyId, file_url: draftFilePath, filename });
+      const { fields: payload, raw } = await aiCompanyAnalyze({
+        company_id: draftCompanyId || undefined,
+        employer_public_id: employerId,
+        file_url: draftFilePath || undefined,
+        raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
       });
+      pushAILog("ai-company-analyze", "response", raw || payload);
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
-        if (payload.industry) setNewCompanyIndustry(payload.industry);
-        if (payload.staff) setNewCompanyStaff(payload.staff);
-        if (payload.description) setNewCompanyDesc(payload.description);
-        if (payload.sites) setNewCompanySite(payload.sites);
-        if (payload.logoUrl) setNewCompanyLogo(payload.logoUrl);
-        if (payload.missionText) setNewCompanyMissionText(payload.missionText);
-        if (payload.customWiki) setNewCompanyCustomWiki(payload.customWiki);
-        if (payload.salaryTerms) setNewCompanySalaryTerms(payload.salaryTerms);
-        if (payload.scheduleTerms) setNewCompanyScheduleTerms(payload.scheduleTerms);
-        if (payload.statsValClients) setNewCompanyStatsValClients(payload.statsValClients);
-        if (payload.statsLabelClients) setNewCompanyStatsLabelClients(payload.statsLabelClients);
-        if (payload.statsValDialogs) setNewCompanyStatsValDialogs(payload.statsValDialogs);
-        if (payload.statsLabelDialogs) setNewCompanyStatsLabelDialogs(payload.statsLabelDialogs);
-        if (payload.statsValFounded) setNewCompanyStatsValFounded(payload.statsValFounded);
-        if (payload.statsLabelFounded) setNewCompanyStatsLabelFounded(payload.statsLabelFounded);
+        if (payload.description_text) setNewCompanyDescription(payload.description_text);
+        if (payload.products_text) setNewCompanyProducts(payload.products_text);
+        if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
+        if (payload.team_text) setNewCompanyDesc(payload.team_text);
+        if (payload.payouts_text) setNewCompanySalaryTerms(payload.payouts_text);
+        if (payload.schedule_text) setNewCompanyScheduleTerms(payload.schedule_text);
+        if (payload.system_text) setNewCompanyCustomWiki(payload.system_text);
+        const st = payload.stats || {};
+        if (st.founded_year) setNewCompanyStatsValFounded(String(st.founded_year));
+        if (st.employees) setNewCompanyStatsValClients(String(st.employees));
+        if (st.turnover) setNewCompanyStatsValDialogs(String(st.turnover));
 
         addAuditEvent("success", "ИИ разбор завершен", `Корпоративный профиль автоматически предзаполнен из документа ${filename}!`);
       }
     } catch (err) {
       console.error(err);
+      pushAILog("ai-company-analyze", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
+    }
+  };
+
+  // Open wizard: create draft company + reset ProTalk dialog with /restart
+  const openAddCompanyWizard = async () => {
+    if (showAddCompany) { setShowAddCompany(false); return; }
+    try {
+      const { data, error } = await supabase.rpc("company_create_draft");
+      if (error) throw error;
+      const d = data as any;
+      setDraftCompanyId(d?.id || null);
+      setDraftCompanyPublicId(d?.public_id || null);
+      // Optimistically add draft card to list
+      if (d?.id && !companiesList.some((c) => c.id === d.id)) {
+        setCompaniesList((prev) => [...prev, { id: d.id, public_id: d.public_id, name: "Без названия", status: "draft" }]);
+      }
+      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+      const { aiRestart } = await import("@/lib/aiClient");
+      await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+      setShowAddCompany(true);
+    } catch (err: any) {
+      console.error(err);
+      addAuditEvent("warning", "Ошибка создания компании", err?.message || "RPC error");
+    }
+  };
+
+  // Upload a file to storage, returns signed URL
+  const uploadCompanyFile = async (file: File): Promise<string | null> => {
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if (!uid || !draftCompanyId) return null;
+      const path = `${uid}/${draftCompanyId}/${Date.now()}_${file.name.replace(/[^a-zа-я0-9._-]+/gi, "_")}`;
+      const up = await supabase.storage.from("company-uploads").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      setDraftFilePath(path);
+      const signed = await supabase.storage.from("company-uploads").createSignedUrl(path, 60 * 60);
+      return signed.data?.signedUrl || null;
+    } catch (err: any) {
+      console.error("upload error", err);
+      addAuditEvent("warning", "Ошибка загрузки файла", err?.message || "upload error");
+      return null;
     }
   };
 
