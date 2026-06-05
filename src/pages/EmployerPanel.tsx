@@ -3892,47 +3892,11 @@ export default function EmployerPanel() {
           )}
 
           {activeTab === "training" && (
-            <div className="space-y-6">
-              <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <h2 className="text-xl font-bold text-white">Конструктор ИИ-Обучения</h2>
-                    <p className="text-xs text-slate-300">3 этапа: Профессиональное обучение → Обучение продукту → Обучение процессам компании.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-3 gap-4">
-                {[
-                  { stepNum: "1", title: "Профессиональное", desc: "Базовые знания профессии. ИИ собирает учебный модуль и тесты из регламентов." },
-                  { stepNum: "2", title: "Продукт", desc: "Сведения о продукте/услуге компании — материалы и проверочные вопросы." },
-                  { stepNum: "3", title: "Процессы", desc: "Внутренние процессы и инструкции — симулятор онбординга и финальная аттестация." },
-                ].map(s => (
-                  <div key={s.stepNum} className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3 text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#E7C768] text-[#17344F] font-bold flex items-center justify-center text-sm">{s.stepNum}</span>
-                      <h3 className="font-bold text-[#E7C768]">{s.title}</h3>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">{s.desc}</p>
-                    <div className="space-y-2 pt-2">
-                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-200 font-semibold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Upload className="w-3.5 h-3.5" /> Загрузить материалы и регламенты
-                      </button>
-                      <button className="w-full bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-xs text-[#E7C768] font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Wand2 className="w-3.5 h-3.5" /> Сгенерировать тесты ИИ
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 leading-relaxed">
-                Материалы и тесты будут связаны с лендингом вакансии и личным кабинетом кандидата. Полнофункциональный конструктор и сохранение — следующим шагом.
-              </div>
-            </div>
+            <TrainingWizard
+              projects={projects}
+              addAuditEvent={addAuditEvent}
+              refreshProjects={fetchData}
+            />
           )}
 
         </main>
