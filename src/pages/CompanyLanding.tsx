@@ -153,12 +153,17 @@ export default function CompanyLanding() {
         const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
         setVacancies(mapped);
 
-        // If a vacancyId (slug or uuid) was passed, find it; otherwise pick first
-        let active = mapped[0] || null;
+        // Only pick an "active" vacancy when the URL points to one — otherwise
+        // the company-only view should not show vacancy-specific UI (tabs etc).
         if (vacancyId) {
-          active = mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) || active;
+          const active =
+            mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) ||
+            mapped[0] ||
+            null;
+          setSelectedVacancy(active);
+        } else {
+          setSelectedVacancy(null);
         }
-        setSelectedVacancy(active);
       } else {
         setVacancies([]);
         setSelectedVacancy(null);
