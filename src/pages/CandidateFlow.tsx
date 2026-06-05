@@ -1930,7 +1930,8 @@ export default function CandidateFlow() {
                     { id: "payouts", title: "💳 Выплаты", desc: "Когда и сколько" },
                     { id: "schedule", title: "📅 График", desc: "Режим и смены" },
                     { id: "team", title: "👥 Команда", desc: "Коллеги и руководство" },
-                    { id: "system", title: "⚙️ Система", desc: "Регламенты и Wiki" }
+                    { id: "system", title: "⚙️ Система", desc: "Регламенты и Wiki" },
+                    { id: "contacts", title: "📞 Контакты", desc: "Связаться с работодателем" }
                   ].map((subTab) => {
                     const isSelected = termsSubTab === subTab.id;
                     return (
