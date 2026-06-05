@@ -9,6 +9,19 @@ export type CandidateSession = {
   public_id: string | null;
   project_id?: string | null;
   company_id?: string | null;
+  email?: string | null;
+  applications?: CandidateApplication[];
+};
+
+export type CandidateApplication = {
+  candidate_id: string;
+  public_id: string | null;
+  project_id: string | null;
+  company_id: string | null;
+  role_name?: string | null;
+  company_name?: string | null;
+  company_slug?: string | null;
+  current_stage?: string | null;
 };
 
 const KEY = "cand_session";
