@@ -1407,7 +1407,7 @@ export default function EmployerPanel() {
         company_name: setupCompanyName,
         fields: {
           roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
         },
         hint: `parse_file:${filename}`,
       });
@@ -1416,7 +1416,6 @@ export default function EmployerPanel() {
       if (parsed.salaryTerms) setSetupSalary(parsed.salaryTerms);
       if (parsed.scheduleTerms) setSetupSchedule(parsed.scheduleTerms);
       if (parsed.customWiki) setSetupCustomWiki(parsed.customWiki);
-      if (parsed.logoUrl) setSetupLogoUrl(parsed.logoUrl);
       
       addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
     } catch (err: any) {
@@ -1448,7 +1447,12 @@ export default function EmployerPanel() {
         role_name: setupRoleName,
         fields: {
           roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki, logoUrl: setupLogoUrl,
+          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
+          motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
+          schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
+          onboardingText: setupOnboardingText, team_text_vac: setupTeamText,
+          system_text_vac: setupSystemText,
         },
       });
       if (enhanced) {
@@ -1456,7 +1460,15 @@ export default function EmployerPanel() {
         if (enhanced.salaryTerms) setSetupSalary(enhanced.salaryTerms);
         if (enhanced.scheduleTerms) setSetupSchedule(enhanced.scheduleTerms);
         if (enhanced.customWiki) setSetupCustomWiki(enhanced.customWiki);
-        if (enhanced.logoUrl) setSetupLogoUrl(enhanced.logoUrl);
+        if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
+        if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
+        if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
+        if (enhanced.motivationTextDetail) setSetupMotivationDetail(enhanced.motivationTextDetail);
+        if (enhanced.schedule_text) setSetupScheduleText(enhanced.schedule_text);
+        if (enhanced.payouts_text) setSetupPayoutsText(enhanced.payouts_text);
+        if (enhanced.onboardingText) setSetupOnboardingText(enhanced.onboardingText);
+        if (enhanced.team_text_vac) setSetupTeamText(enhanced.team_text_vac);
+        if (enhanced.system_text_vac) setSetupSystemText(enhanced.system_text_vac);
         addAuditEvent("success", "Оформление завершено", "Все поля успешно облагорожены ИИ в единую продающую форму.");
       }
     } catch (err) {
