@@ -421,7 +421,7 @@ export default function EmployerPanel() {
 
   // Open wizard: create draft company + reset ProTalk dialog with /restart
   const openAddCompanyWizard = async () => {
-    if (showAddCompany) { setShowAddCompany(false); return; }
+    if (showAddCompany) { await cancelAddCompanyWizard(); return; }
     try {
       const { data, error } = await supabase.rpc("company_create_draft");
       if (error) throw error;
@@ -440,6 +440,53 @@ export default function EmployerPanel() {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания компании", err?.message || "RPC error");
     }
+  };
+
+  // Cancel wizard: cleanup any uploaded files in storage for the current draft folder
+  const cancelAddCompanyWizard = async () => {
+    try {
+      if (draftFilePath) {
+        const folder = draftFilePath.split("/").slice(0, -1).join("/");
+        const list = await supabase.storage.from("company-uploads").list(folder);
+        if (list.data?.length) {
+          await supabase.storage.from("company-uploads").remove(list.data.map((f) => `${folder}/${f.name}`));
+        }
+      }
+    } catch (e) { console.warn("cancel cleanup error", e); }
+    setDraftFilePath(null);
+    setShowAddCompany(false);
+  };
+
+  // Open existing company in the wizard for editing (free, same UX as draft)
+  const openEditCompanyWizard = async (comp: any) => {
+    setDraftCompanyId(comp.id);
+    setDraftCompanyPublicId(comp.public_id || null);
+    setNewCompanyName(comp.name || "");
+    setNewCompanyLogo(comp.logo_url || "");
+    setNewCompanyDescription(comp.description_text || "");
+    setNewCompanyProducts(comp.products_text || "");
+    setNewCompanyMissionText(comp.mission_text || "");
+    setNewCompanyDesc(comp.about_text || "");
+    setNewCompanySalaryTerms(comp.payouts_text || "");
+    setNewCompanyScheduleTerms(comp.schedule_text || "");
+    setNewCompanyCustomWiki(comp.system_text || "");
+    const st = (comp.stats || {}) as any;
+    setNewCompanyStatsValFounded(st.founded_year ? String(st.founded_year) : "");
+    setNewCompanyStatsValClients(st.employees ? String(st.employees) : "");
+    setNewCompanyStatsValDialogs(st.turnover ? String(st.turnover) : "");
+    const lbl = (st.labels || {}) as any;
+    setNewCompanyStatsLabelFounded(lbl.founded || "");
+    setNewCompanyStatsLabelClients(lbl.employees || "");
+    setNewCompanyStatsLabelDialogs(lbl.turnover || "");
+    pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+    try {
+      const { aiRestart } = await import("@/lib/aiClient");
+      await aiRestart(employerId)
+        .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
+        .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+    } catch {}
+    setShowAddCompany(true);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
 
   // Upload a file to storage, returns signed URL
