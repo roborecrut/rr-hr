@@ -1282,9 +1282,10 @@ export default function EmployerPanel() {
       const patch: any = {
         company_id: companyId,
         role_name: setupRoleName.trim(),
-        salary_terms: setupSalary || null,
-        schedule_terms: setupSchedule || null,
-        custom_wiki: setupCustomWiki || null,
+        // Legacy mirror fields kept in sync from the merged wizard inputs so
+        // older queries that read salary_terms / schedule_terms still work.
+        salary_terms: setupPayoutsText || null,
+        schedule_terms: setupScheduleText || null,
         vacancy_text: setupVacancyText || null,
         tasks_activity_text: setupTasksActivityText || null,
         motivation_text: setupMotivationText || null,
@@ -1299,8 +1300,22 @@ export default function EmployerPanel() {
       const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
       if (upd.error) throw upd.error;
 
-      // Keep the shared title catalog up-to-date.
-      try { await upsertJobTitle(setupRoleName.trim()); } catch {}
+      // Keep the shared title catalog up-to-date AND save the wizard answers
+      // as a per-role template (only fills empty keys; never overwrites).
+      try {
+        await upsertJobTitle(setupRoleName.trim());
+        await saveRoleTemplates(setupRoleName.trim(), {
+          vacancy_text: setupVacancyText,
+          tasks_activity_text: setupTasksActivityText,
+          schedule_text: setupScheduleText,
+          motivation_text: setupMotivationText,
+          motivation_text_detail: setupMotivationDetail,
+          payouts_text: setupPayoutsText,
+          onboarding_text: setupOnboardingText,
+          team_text_vac: setupTeamText,
+          system_text_vac: setupSystemText,
+        });
+      } catch {}
 
       addAuditEvent("success", "Вакансия сохранена", `Опубликована вакансия «${setupRoleName}»`);
       setShowAddNewVacancy(false);
