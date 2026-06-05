@@ -251,6 +251,15 @@ export default function EmployerPanel() {
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
 
+  // New fields per spec: "Описание компании и чем занимается" + "Основные продукты"
+  const [newCompanyDescription, setNewCompanyDescription] = useState("");
+  const [newCompanyProducts, setNewCompanyProducts] = useState("");
+
+  // Draft company state (Supabase) — created when user opens the wizard
+  const [draftCompanyId, setDraftCompanyId] = useState<string | null>(null);
+  const [draftCompanyPublicId, setDraftCompanyPublicId] = useState<string | null>(null);
+  const [draftFilePath, setDraftFilePath] = useState<string | null>(null);
+
   // New Brand fields requested by end-user:
   const [newCompanyMissionText, setNewCompanyMissionText] = useState("");
   const [newCompanyCustomWiki, setNewCompanyCustomWiki] = useState("");
