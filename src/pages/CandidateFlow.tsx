@@ -1456,6 +1456,40 @@ export default function CandidateFlow() {
 
           {/* Right section: Name & Logout button */}
           <div className="hidden lg:flex items-center gap-3">
+            {applications.length > 1 && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAppsMenuOpen(o => !o)}
+                  className="cursor-pointer bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/30 text-[#E7C768] px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5"
+                  title="Переключить отклик"
+                >
+                  📂 Мои отклики · {applications.length}
+                </button>
+                {appsMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-[#17344F] border border-white/10 rounded-xl shadow-2xl p-2 z-50 max-h-96 overflow-y-auto">
+                    {applications.map(a => {
+                      const isActive = a.candidate_id === candidate?.id || a.public_id === (candidate as any)?.publicId;
+                      return (
+                        <button
+                          key={a.candidate_id}
+                          type="button"
+                          onClick={() => switchApplication(a)}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition mb-1 ${
+                            isActive ? "bg-[#E7C768] text-[#17344F] font-bold" : "text-slate-200 hover:bg-white/5"
+                          }`}
+                        >
+                          <div className="font-bold">{a.role_name || "Вакансия"}</div>
+                          <div className={`text-[10px] ${isActive ? "text-[#17344F]/80" : "text-slate-400"}`}>
+                            {a.company_name || "Компания"} · {a.current_stage || "—"}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
             {candidate && (
               <div className="bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl text-left text-xs">
                 <span className="text-slate-400 text-[10px] block font-normal leading-tight">Авторизован:</span>
