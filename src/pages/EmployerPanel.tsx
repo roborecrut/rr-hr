@@ -10,6 +10,15 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
+import {
+  DEFAULT_VAC_TEMPLATES,
+  DEFAULT_TRAINING_TEMPLATES,
+  getRoleTemplates,
+  mergedTemplate,
+  saveRoleTemplates,
+  type VacancyFieldKey,
+  type TrainingFieldKey,
+} from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
