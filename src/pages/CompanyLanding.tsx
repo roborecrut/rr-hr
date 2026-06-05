@@ -320,11 +320,14 @@ export default function CompanyLanding() {
             {/* Logo field */}
             <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate(selectedVacancy ? `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}` : "/")}>
               <img
-                src={selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
-                alt="Logo"
+                src={company?.logo_url || selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
+                alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"
               />
+              {company?.name && (
+                <span className="hidden sm:block text-sm font-extrabold text-white truncate max-w-[220px]">{company.name}</span>
+              )}
             </div>
 
             {/* Desktop Tabs menu centered */}
