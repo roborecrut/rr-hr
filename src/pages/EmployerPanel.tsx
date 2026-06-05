@@ -8,8 +8,18 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
+import TrainingWizard from "../components/TrainingWizard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
+import {
+  DEFAULT_VAC_TEMPLATES,
+  DEFAULT_TRAINING_TEMPLATES,
+  getRoleTemplates,
+  mergedTemplate,
+  saveRoleTemplates,
+  type VacancyFieldKey,
+  type TrainingFieldKey,
+} from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
@@ -133,6 +143,39 @@ export default function EmployerPanel() {
   const [setupOnboardingText, setSetupOnboardingText] = useState("");
   const [setupTeamText, setSetupTeamText] = useState("");
   const [setupSystemText, setSetupSystemText] = useState("");
+
+  // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
+  // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
+  // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
+  const [roleTemplates, setRoleTemplates] = useState<Record<string, string>>({});
+  const exampleFor = (field: string): string =>
+    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
+  const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
+
+  // Reload templates when the selected role changes and prefill empty fields.
+  useEffect(() => {
+    if (!setupRoleName.trim()) return;
+    let cancelled = false;
+    (async () => {
+      const tpl = await getRoleTemplates(setupRoleName);
+      if (cancelled) return;
+      setRoleTemplates(tpl as Record<string, string>);
+      // Prefill ONLY empty wizard fields, never overwrite user input.
+      const get = (k: string) =>
+        ((tpl as any)?.[k] || (DEFAULT_VAC_TEMPLATES as any)[k] || "").trim();
+      setSetupVacancyText((v) => v || get("vacancy_text"));
+      setSetupTasksActivityText((v) => v || get("tasks_activity_text"));
+      setSetupScheduleText((v) => v || get("schedule_text"));
+      setSetupMotivationText((v) => v || get("motivation_text"));
+      setSetupMotivationDetail((v) => v || get("motivation_text_detail"));
+      setSetupPayoutsText((v) => v || get("payouts_text"));
+      setSetupOnboardingText((v) => v || get("onboarding_text"));
+      setSetupTeamText((v) => v || get("team_text_vac"));
+      setSetupSystemText((v) => v || get("system_text_vac"));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setupRoleName]);
 
   // Draft project bookkeeping (matches the company wizard pattern).
   const [draftProjectId, setDraftProjectId] = useState<string | null>(null);
@@ -1206,6 +1249,7 @@ export default function EmployerPanel() {
         value: currentVal,
         company_name: setupCompanyName,
         role_name: setupRoleName,
+        template: exampleFor(fieldName) || undefined,
       });
       if (value) setter(value);
       addAuditEvent("success", "Поле улучшено ИИ", `Готово: ${fieldName}`);
@@ -1239,9 +1283,10 @@ export default function EmployerPanel() {
       const patch: any = {
         company_id: companyId,
         role_name: setupRoleName.trim(),
-        salary_terms: setupSalary || null,
-        schedule_terms: setupSchedule || null,
-        custom_wiki: setupCustomWiki || null,
+        // Legacy mirror fields kept in sync from the merged wizard inputs so
+        // older queries that read salary_terms / schedule_terms still work.
+        salary_terms: setupPayoutsText || null,
+        schedule_terms: setupScheduleText || null,
         vacancy_text: setupVacancyText || null,
         tasks_activity_text: setupTasksActivityText || null,
         motivation_text: setupMotivationText || null,
@@ -1256,8 +1301,22 @@ export default function EmployerPanel() {
       const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
       if (upd.error) throw upd.error;
 
-      // Keep the shared title catalog up-to-date.
-      try { await upsertJobTitle(setupRoleName.trim()); } catch {}
+      // Keep the shared title catalog up-to-date AND save the wizard answers
+      // as a per-role template (only fills empty keys; never overwrites).
+      try {
+        await upsertJobTitle(setupRoleName.trim());
+        await saveRoleTemplates(setupRoleName.trim(), {
+          vacancy_text: setupVacancyText,
+          tasks_activity_text: setupTasksActivityText,
+          schedule_text: setupScheduleText,
+          motivation_text: setupMotivationText,
+          motivation_text_detail: setupMotivationDetail,
+          payouts_text: setupPayoutsText,
+          onboarding_text: setupOnboardingText,
+          team_text_vac: setupTeamText,
+          system_text_vac: setupSystemText,
+        });
+      } catch {}
 
       addAuditEvent("success", "Вакансия сохранена", `Опубликована вакансия «${setupRoleName}»`);
       setShowAddNewVacancy(false);
@@ -1475,16 +1534,18 @@ export default function EmployerPanel() {
         mode: "all_vacancy",
         company_name: setupCompanyName,
         fields: {
-          roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          roleName: setupRoleName,
+          schedule_text: setupScheduleText,
+          payouts_text: setupPayoutsText,
+          vacancyText: setupVacancyText,
         },
         hint: `parse_file:${filename}`,
       });
       
       if (parsed.roleName) setSetupRoleName(parsed.roleName);
-      if (parsed.salaryTerms) setSetupSalary(parsed.salaryTerms);
-      if (parsed.scheduleTerms) setSetupSchedule(parsed.scheduleTerms);
-      if (parsed.customWiki) setSetupCustomWiki(parsed.customWiki);
+      if (parsed.schedule_text) setSetupScheduleText(parsed.schedule_text);
+      if (parsed.payouts_text) setSetupPayoutsText(parsed.payouts_text);
+      if (parsed.vacancyText) setSetupVacancyText(parsed.vacancyText);
       
       addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
     } catch (err: any) {
@@ -1492,13 +1553,6 @@ export default function EmployerPanel() {
       addAuditEvent("warning", "Ошибка распознавания", "Использованы правила автозаполнения.");
       // Fallback
       setSetupRoleName("Инженер по тестированию (QA)");
-      setSetupSalary("95 000 - 130 000 руб");
-      setSetupSchedule("Полный день, гибрид в Москве");
-      setSetupCustomWiki(`Обязанности сотрудника компании:
-- Проведение ручного и автоматизированного тестирования веб-приложений.
-- Заведение багов в корпоративную систему таск-трекера.
-- Подготовка тестовых сценариев и чек-листов.
-- Взаимодействие с командой разработчиков.`);
     } finally {
       setIsParsingFile(false);
     }
@@ -1514,9 +1568,19 @@ export default function EmployerPanel() {
         mode: "all_vacancy",
         company_name: setupCompanyName,
         role_name: setupRoleName,
+        templates: {
+          vacancy_text: exampleFor("vacancy_text"),
+          tasks_activity_text: exampleFor("tasks_activity_text"),
+          schedule_text: exampleFor("schedule_text"),
+          motivation_text: exampleFor("motivation_text"),
+          motivation_text_detail: exampleFor("motivation_text_detail"),
+          payouts_text: exampleFor("payouts_text"),
+          onboarding_text: exampleFor("onboarding_text"),
+          team_text_vac: exampleFor("team_text_vac"),
+          system_text_vac: exampleFor("system_text_vac"),
+        },
         fields: {
-          roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          roleName: setupRoleName,
           vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
           motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
           schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
@@ -1526,9 +1590,6 @@ export default function EmployerPanel() {
       });
       if (enhanced) {
         if (enhanced.roleName) setSetupRoleName(enhanced.roleName);
-        if (enhanced.salaryTerms) setSetupSalary(enhanced.salaryTerms);
-        if (enhanced.scheduleTerms) setSetupSchedule(enhanced.scheduleTerms);
-        if (enhanced.customWiki) setSetupCustomWiki(enhanced.customWiki);
         if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
         if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
         if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
@@ -2454,58 +2515,52 @@ export default function EmployerPanel() {
                       })()}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">Условия оплаты:</label>
-                        <input
-                          type="text"
-                          className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupSalary}
-                          onChange={(e) => setSetupSalary(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">График работы:</label>
-                        <input
-                          type="text"
-                          className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupSchedule}
-                          onChange={(e) => setSetupSchedule(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="text-xs font-bold text-slate-200 block mb-1">Регламенты и база Wiki для обучения кандидата:</label>
-                      <textarea
-                        rows={3}
-                        className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                        value={setupCustomWiki}
-                        onChange={(e) => setSetupCustomWiki(e.target.value)}
-                      />
-                    </div>
-
                     <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
-                      ℹ️ Логотип берётся из настроек компании — отдельной загрузки для вакансии не требуется.
+                      ℹ️ Логотип берётся из настроек компании. «График и тайм-слоты» включает в себя график работы, «Оплата и схема выплат» — условия оплаты. Базу знаний и регламенты вынесли в <strong className="text-[#E7C768]">Мастер Обучения</strong> на странице «Обучение».
                     </div>
 
                     {/* Extended landing sections: each maps to a vacancy landing page block. */}
                     {[
                       { label: "Обязанности, требования, условия (для блока Vacancy: разделы выводятся автоматически из строк)", field: "vacancy_text" as const, value: setupVacancyText, set: setSetupVacancyText, rows: 6, max: 1500, placeholder: "• Ведение переговоров с клиентами по готовой базе\n• Уверенный пользователь ПК\n• Базовые навыки общения" },
                       { label: "Ежедневный процесс (3 таба, формат [Название] Описание):", field: "tasks_activity_text" as const, value: setupTasksActivityText, set: setSetupTasksActivityText, rows: 4, max: 1000, placeholder: "• [📞 Консультация] Открыть Wiki и направить ссылку на тариф\n• [📝 Ведение CRM] Добавить заметку по итогам звонка\n• [🤝 Возражения] Объяснить ценность ИИ-сервисов" },
-                      { label: "График и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
+                      { label: "График работы и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
                       { label: "Мотивация и преимущества (краткий текст):", field: "motivation_text" as const, value: setupMotivationText, set: setSetupMotivationText, rows: 2, max: 500, placeholder: "Бонусы за результат, обучение за счёт компании, гибкий график." },
                       { label: "Развёрнутая мотивация (списком, каждая строка — отдельный бонус):", field: "motivation_text_detail" as const, value: setupMotivationDetail, set: setSetupMotivationDetail, rows: 4, max: 800, placeholder: "• Премии до 30% за высокую скорость\n• Еженедельные выплаты\n• Компенсация интернета" },
-                      { label: "Схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
+                      { label: "Оплата и схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
                       { label: "Оформление (этапы от интервью до выхода + типы оформления):", field: "onboarding_text" as const, value: setupOnboardingText, set: setSetupOnboardingText, rows: 6, max: 1000, placeholder: "• [📝 Интервью] ИИ-собеседование за 10 минут\n• [📚 Кейс-тест] Проверка навыков\n• [🤖 Обучение] Wiki и симуляции\n• [🤝 Стажировка] Первые звонки с куратором\n• [✍️ Оформление] Самозанятость / ИП / ГПХ / ТК РФ" },
                       { label: "Команда (формат [Отдел] Имя — роль):", field: "team_text_vac" as const, value: setupTeamText, set: setSetupTeamText, rows: 4, max: 600, placeholder: "• [Продажи] Иван — РОП\n• [Маркетинг] Мария — таргетолог" },
                       { label: "Система работы (формат [Раздел] Описание регламента):", field: "system_text_vac" as const, value: setupSystemText, set: setSetupSystemText, rows: 4, max: 600, placeholder: "• [CRM] Bitrix24, обязательное заполнение карточек\n• [Связь] Telegram-каналы команды" },
-                    ].map(({ label, field, value, set, rows, max, placeholder }) => (
+                    ].map(({ label, field, value, set, rows, max, placeholder }) => {
+                      const example = exampleFor(field) || placeholder;
+                      const isOpen = !!showExampleFor[field];
+                      return (
                       <div key={field}>
                         <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between gap-2">
                           <span className="truncate">{label}</span>
-                          <span className="text-[10px] text-slate-400 font-mono shrink-0">до {max}</span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setShowExampleFor(p => ({ ...p, [field]: !p[field] }))}
+                              className="text-[10px] text-[#E7C768] hover:underline font-semibold"
+                            >
+                              {isOpen ? "Скрыть пример" : "📋 Показать пример"}
+                            </button>
+                            <span className="text-[10px] text-slate-400 font-mono">до {max}</span>
+                          </span>
                         </label>
+                        {isOpen && example && (
+                          <div className="mb-2 bg-[#0F2A42]/70 border border-[#E7C768]/25 rounded-xl p-2.5 text-[10.5px] text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            <div className="text-[9px] uppercase text-[#E7C768]/80 font-bold tracking-wider mb-1">Эталон для роли «{setupRoleName || "—"}»</div>
+                            {example}
+                            <button
+                              type="button"
+                              onClick={() => set(example)}
+                              className="block mt-2 text-[10px] text-[#E7C768] hover:underline font-semibold"
+                            >
+                              ↓ Подставить пример в поле
+                            </button>
+                          </div>
+                        )}
                         <div className="relative">
                           <textarea
                             rows={rows}
@@ -2513,7 +2568,7 @@ export default function EmployerPanel() {
                             className="w-full bg-[#17344F]/60 text-xs p-2.5 pr-9 rounded-xl border border-white/10 focus:outline-[#E7C768]"
                             value={value}
                             onChange={(e) => set(e.target.value)}
-                            placeholder={placeholder}
+                            placeholder={isOpen ? "" : "Нажмите «📋 Показать пример», чтобы увидеть эталонное заполнение для этой роли"}
                           />
                           <button
                             type="button"
@@ -2526,7 +2581,8 @@ export default function EmployerPanel() {
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
 
                     <button
                       type="submit"
@@ -2650,6 +2706,13 @@ export default function EmployerPanel() {
                             🛠 Редактировать
                           </button>
                         </div>
+
+                        <button
+                          onClick={() => employerId && navigate(`/emp${employerId}/training?project=${proj.id}`)}
+                          className="cursor-pointer w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-emerald-500/25"
+                        >
+                          📚 Открыть Мастер Обучения
+                        </button>
                       </div>
                     </div>
                   );
@@ -3837,47 +3900,11 @@ export default function EmployerPanel() {
           )}
 
           {activeTab === "training" && (
-            <div className="space-y-6">
-              <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <h2 className="text-xl font-bold text-white">Конструктор ИИ-Обучения</h2>
-                    <p className="text-xs text-slate-300">3 этапа: Профессиональное обучение → Обучение продукту → Обучение процессам компании.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-3 gap-4">
-                {[
-                  { stepNum: "1", title: "Профессиональное", desc: "Базовые знания профессии. ИИ собирает учебный модуль и тесты из регламентов." },
-                  { stepNum: "2", title: "Продукт", desc: "Сведения о продукте/услуге компании — материалы и проверочные вопросы." },
-                  { stepNum: "3", title: "Процессы", desc: "Внутренние процессы и инструкции — симулятор онбординга и финальная аттестация." },
-                ].map(s => (
-                  <div key={s.stepNum} className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3 text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#E7C768] text-[#17344F] font-bold flex items-center justify-center text-sm">{s.stepNum}</span>
-                      <h3 className="font-bold text-[#E7C768]">{s.title}</h3>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">{s.desc}</p>
-                    <div className="space-y-2 pt-2">
-                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-200 font-semibold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Upload className="w-3.5 h-3.5" /> Загрузить материалы и регламенты
-                      </button>
-                      <button className="w-full bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-xs text-[#E7C768] font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Wand2 className="w-3.5 h-3.5" /> Сгенерировать тесты ИИ
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 leading-relaxed">
-                Материалы и тесты будут связаны с лендингом вакансии и личным кабинетом кандидата. Полнофункциональный конструктор и сохранение — следующим шагом.
-              </div>
-            </div>
+            <TrainingWizard
+              projects={projects}
+              addAuditEvent={addAuditEvent}
+              refreshProjects={fetchData}
+            />
           )}
 
         </main>
