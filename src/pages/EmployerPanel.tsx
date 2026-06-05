@@ -12,6 +12,7 @@ import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
+import SitePreview from "../components/SitePreview";
 import {
   Users,
   Smartphone,
@@ -244,10 +245,11 @@ export default function EmployerPanel() {
   const [showAddCompany, setShowAddCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyIndustry, setNewCompanyIndustry] = useState("");
-  const [newCompanyStaff, setNewCompanyStaff] = useState("10-50 человек");
+  const [newCompanyStaff, setNewCompanyStaff] = useState("");
   const [newCompanyDesc, setNewCompanyDesc] = useState("");
   const [newCompanySite, setNewCompanySite] = useState("");
-  const [newCompanyLogo, setNewCompanyLogo] = useState("");
+  const DEFAULT_LOGO_URL = "https://i.ibb.co/WWRbtPq0/RR-Logo.png";
+  const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
 
@@ -290,6 +292,7 @@ export default function EmployerPanel() {
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
+        else if (fieldName === "staff") setNewCompanyStaff(newVal);
         else if (fieldName === "description") setNewCompanyDesc(newVal);
         else if (fieldName === "sites") setNewCompanySite(newVal);
         else if (fieldName === "logoUrl") setNewCompanyLogo(newVal);
@@ -396,6 +399,9 @@ export default function EmployerPanel() {
       pushAILog("ai-company-analyze", "response", raw || payload);
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
+        if (payload.industry) setNewCompanyIndustry(payload.industry);
+        if (payload.website) setNewCompanySite(payload.website);
+        if (payload.staff) setNewCompanyStaff(payload.staff);
         if (payload.description_text) setNewCompanyDescription(payload.description_text);
         if (payload.products_text) setNewCompanyProducts(payload.products_text);
         if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
@@ -428,6 +434,19 @@ export default function EmployerPanel() {
       const d = data as any;
       setDraftCompanyId(d?.id || null);
       setDraftCompanyPublicId(d?.public_id || null);
+      // Reset wizard fields so the user starts clean.
+      setNewCompanyName("");
+      setNewCompanyIndustry("");
+      setNewCompanyStaff("");
+      setNewCompanySite("");
+      setNewCompanyLogo(DEFAULT_LOGO_URL);
+      setNewCompanyDescription("");
+      setNewCompanyProducts("");
+      setNewCompanyMissionText("");
+      setNewCompanyDesc("");
+      setNewCompanySalaryTerms("");
+      setNewCompanyScheduleTerms("");
+      setNewCompanyCustomWiki("");
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
@@ -479,7 +498,10 @@ export default function EmployerPanel() {
     setDraftCompanyId(comp.id);
     setDraftCompanyPublicId(comp.public_id || null);
     setNewCompanyName(comp.name || "");
-    setNewCompanyLogo(comp.logo_url || "");
+    setNewCompanyLogo(comp.logo_url || DEFAULT_LOGO_URL);
+    setNewCompanyIndustry(comp.industry || "");
+    setNewCompanyStaff(comp.staff || "");
+    setNewCompanySite(comp.website || "");
     setNewCompanyDescription(comp.description_text || "");
     setNewCompanyProducts(comp.products_text || "");
     setNewCompanyMissionText(comp.mission_text || "");
@@ -594,8 +616,10 @@ export default function EmployerPanel() {
           logo_url: c.logo_url,
           missionText: c.mission_text,
           description: c.about_text,
-          industry: "—",
-          staff: "—",
+          industry: c.industry || "",
+          staff: c.staff || "",
+          website: c.website || "",
+          sites: c.website || "",
           activeVacancies: 0,
           employerId,
         })),
@@ -1283,7 +1307,10 @@ export default function EmployerPanel() {
       };
       const patch = {
         name: newCompanyName,
-        logo_url: newCompanyLogo || null,
+        logo_url: newCompanyLogo || DEFAULT_LOGO_URL,
+        industry: newCompanyIndustry || null,
+        website: newCompanySite || null,
+        staff: newCompanyStaff || null,
         description_text: newCompanyDescription || null,
         products_text: newCompanyProducts || null,
         mission_text: newCompanyMissionText || null,
@@ -1312,13 +1339,12 @@ export default function EmployerPanel() {
       }
 
       addAuditEvent("success", "Компания опубликована", `Лендинг доступен: /com${pid}`);
-      // Reload list from Supabase
-      const r = await supabase.from("companies").select("*").eq("owner_employer_id", (await supabase.from("employers").select("id").eq("user_id", (await supabase.auth.getUser()).data.user?.id || "").maybeSingle()).data?.id || "");
-      if (r.data) setCompaniesList(r.data);
+      // Reload list through the unified mapper.
+      await fetchCompanies();
 
       // Reset wizard
-      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanySite("");
-      setNewCompanyLogo(""); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
+      setNewCompanyName(""); setNewCompanyDesc(""); setNewCompanyIndustry(""); setNewCompanyStaff(""); setNewCompanySite("");
+      setNewCompanyLogo(DEFAULT_LOGO_URL); setNewCompanyFiles(""); setNewCompanyMissionText(""); setNewCompanyCustomWiki("");
       setNewCompanySalaryTerms(""); setNewCompanyScheduleTerms("");
       setNewCompanyStatsValClients(""); setNewCompanyStatsLabelClients("");
       setNewCompanyStatsValDialogs(""); setNewCompanyStatsLabelDialogs("");
@@ -2639,16 +2665,25 @@ export default function EmployerPanel() {
                           </button>
                         </div>
 
-                        <select 
-                          className="bg-[#17344F] text-xs px-3 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
-                          value={newCompanyStaff}
-                          onChange={(e) => setNewCompanyStaff(e.target.value)}
-                        >
-                          <option value="менее 10 сотрудников">До 10 сотрудников</option>
-                          <option value="10-50 человек">10 - 50 сотрудников</option>
-                          <option value="50-250 человек">50 - 250 сотрудников</option>
-                          <option value="свыше 250 сотрудников">Более 250 человек</option>
-                        </select>
+                        <div className="relative flex items-center">
+                          <input
+                            type="text"
+                            placeholder="Количество сотрудников (например: 120 человек)"
+                            maxLength={80}
+                            className="w-full bg-black/40 text-xs pl-3 pr-8 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none focus:border-green-500/50"
+                            value={newCompanyStaff}
+                            onChange={(e) => setNewCompanyStaff(e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleEnhanceSingleField("staff", newCompanyStaff)}
+                            disabled={enhancingFields["staff"]}
+                            className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
+                            title="Уточнить число сотрудников через ИИ"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["staff"] ? "animate-spin text-yellow-400" : ""}`} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2947,15 +2982,16 @@ export default function EmployerPanel() {
                             </div>
                           )}
                           <div>
-                            <span className="text-[10px] text-[#E7C768] font-bold tracking-wide uppercase font-mono">{comp.industry}</span>
-                            <h3 className="text-base font-bold text-white mt-0.5">{comp.name}</h3>
+                            <h3 className="text-lg font-black text-[#E7C768] leading-tight">{comp.name || "Без названия"}</h3>
+                            {comp.industry && comp.industry !== "—" && (
+                              <div className="text-[11px] text-slate-300 mt-0.5">{comp.industry}</div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {comp.status === "draft" && (
                             <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] py-1 px-2 rounded-full font-mono">Черновик</span>
                           )}
-                          <span className="bg-white/5 border border-white/5 text-[10px] text-slate-350 py-1 px-2.5 rounded-full font-mono">Штат: {comp.staff || "—"}</span>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openEditCompanyWizard(comp); }}
@@ -2967,23 +3003,19 @@ export default function EmployerPanel() {
                       </div>
 
                       <p className="text-xs text-slate-200 leading-relaxed font-normal">{comp.description}</p>
-                      
-                      {/* Expanded sites, files links */}
-                      <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
-                        {comp.sites && (
-                          <a 
-                            href={comp.sites.startsWith("http") ? comp.sites : `https://${comp.sites}`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[#E7C768] hover:underline font-bold flex items-center gap-1"
-                          >
-                            🔗 Сайт: {comp.sites}
-                          </a>
+
+                      {/* Site preview + staff info */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {comp.website && <SitePreview url={comp.website} variant="compact" />}
+                        {comp.staff && (
+                          <span className="inline-flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-200">
+                            <span className="text-slate-400">Сотрудники:</span>
+                            <span className="font-bold text-white">{comp.staff}</span>
+                          </span>
                         )}
                         {comp.files && (
-                          <span className="text-slate-300 flex items-center gap-1 font-semibold">
-                            📂 Регламент: <strong className="text-[#E7C768] font-mono">{comp.files}</strong> (Распознан ИИ)
+                          <span className="text-[11px] text-slate-300 flex items-center gap-1 font-semibold">
+                            📂 <strong className="text-[#E7C768] font-mono">{comp.files}</strong>
                           </span>
                         )}
                       </div>

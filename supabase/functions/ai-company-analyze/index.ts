@@ -5,6 +5,9 @@ import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthH
 const SCHEMA = `Верни СТРОГО один JSON-объект без markdown с такими ключами и ограничениями длины (символы):
 {
   "name": string (≤80),
+  "industry": string (≤80) — отрасль/сфера деятельности (например: "Финтех", "Ритейл", "Производство кофе"),
+  "website": string (≤200) — официальный сайт компании, корректный URL (например: "https://acme.ru"). Если не известен — пустая строка,
+  "staff": string (≤80) — количество сотрудников свободным текстом (например: "около 120 человек" или "1500+ сотрудников"),
   "description_text": string (≤600) — чем компания занимается,
   "products_text": string (≤500) — основные продукты/услуги,
   "mission_text": string (≤500) — имидж, миссия и культура,

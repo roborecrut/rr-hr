@@ -11,6 +11,7 @@ const LIMITS: Record<string, number> = {
   industry: 80,
   staff: 80,
   sites: 200,
+  website: 200,
   logoUrl: 500,
   description: 600,
   description_text: 600,
