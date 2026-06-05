@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
     project_id?: string;
     candidate_id?: string;
     employer_id?: string;
+    employer_public_id?: string;
     userInfo?: {
       telegram_id?: number | string;
       first_name?: string;
@@ -41,7 +42,7 @@ Deno.serve(async (req) => {
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ telegramId: body.userInfo?.telegram_id, userId: user?.id });
-  const socialId = buildSocialId({ ...(body.userInfo || {}), user_id: user?.id });
+  const socialId = buildSocialId({ ...(body.userInfo || {}), user_id: user?.id, employer_public_id: body.employer_public_id });
 
   const system = SYSTEMS[body.kind] ?? SYSTEMS.employer;
   const ctxMsg: ChatMessage[] = body.context ? [{ role: "system", content: `Контекст: ${body.context}` }] : [];
