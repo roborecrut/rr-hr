@@ -138,7 +138,7 @@ export default function JobVacancyLanding() {
 
   const handleSendMessage = async (customText?: string) => {
     const questionText = customText || userQuestion;
-    if (!questionText.trim() || !project) return;
+    if (!questionText.trim() || !project || isAiTyping || isTypewriting) return;
 
     // Add user message
     const userMsg: Message = {
@@ -157,23 +157,60 @@ export default function JobVacancyLanding() {
         role: (m.sender === "candidate" ? "user" : "assistant") as "user" | "assistant",
         content: m.text,
       }));
-      const context = `Вакансия: ${project.roleName}; Компания: ${project.companyName}; Условия: ${project.salaryTerms || ""} / ${project.scheduleTerms || ""}; База: ${project.customWiki || ""}`;
+      const p: any = project;
+      const c: any = companyData || {};
+      const parts: string[] = [
+        `Вакансия: ${project.roleName}`,
+        `Компания: ${project.companyName}`,
+      ];
+      if (project.salaryTerms) parts.push(`Оплата: ${project.salaryTerms}`);
+      if (project.scheduleTerms) parts.push(`График: ${project.scheduleTerms}`);
+      if (p.vacancyText) parts.push(`Задачи/требования/условия:\n${p.vacancyText}`);
+      if (p.tasksActivityText) parts.push(`Ежедневный процесс:\n${p.tasksActivityText}`);
+      if (p.scheduleText) parts.push(`График подробно:\n${p.scheduleText}`);
+      if (p.payoutsText) parts.push(`Выплаты:\n${p.payoutsText}`);
+      if (project.motivationText || p.motivationTextDetail) parts.push(`Мотивация:\n${p.motivationTextDetail || project.motivationText}`);
+      if (p.onboardingText) parts.push(`Оформление:\n${p.onboardingText}`);
+      if (p.teamText) parts.push(`Команда:\n${p.teamText}`);
+      if (p.systemText) parts.push(`Система работы:\n${p.systemText}`);
+      if (project.customWiki) parts.push(`Wiki:\n${project.customWiki}`);
+      if (c.description_text) parts.push(`О компании:\n${c.description_text}`);
+      if (c.mission_text) parts.push(`Миссия:\n${c.mission_text}`);
+      if (c.products_text) parts.push(`Продукты:\n${c.products_text}`);
+      const context = `Отвечай ТОЛЬКО на основе этих данных по текущей вакансии и компании. Если в данных нет ответа — честно скажи, что уточнишь у работодателя.\n\n${parts.join("\n\n")}`;
       const reply = await aiChat({
         kind: "vacancy_consultant",
         project_id: project.id,
         context,
         messages: [...history, { role: "user", content: questionText }],
       });
-      const aiMsg: Message = {
-        sender: "recruiter",
-        text: reply || "Извините, ИИ-консультант временно недоступен.",
-        timestamp: new Date().toLocaleTimeString()
-      };
+      const fullText = reply || "Извините, ИИ-консультант временно недоступен.";
+      setIsAiTyping(false);
+      setIsTypewriting(true);
+      const aiMsg: Message = { sender: "recruiter", text: "", timestamp: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, aiMsg]);
+      const stepMs = 1000 / 30; // 30 chars per second
+      await new Promise<void>((resolve) => {
+        let i = 0;
+        const tick = () => {
+          i = Math.min(fullText.length, i + 1);
+          setMessages(prev => {
+            const copy = prev.slice();
+            const last = copy[copy.length - 1];
+            if (last && last.sender === "recruiter") {
+              copy[copy.length - 1] = { ...last, text: fullText.slice(0, i) };
+            }
+            return copy;
+          });
+          if (i < fullText.length) setTimeout(tick, stepMs); else resolve();
+        };
+        tick();
+      });
+      setIsTypewriting(false);
     } catch (err) {
       console.error("Failed to fetch response from consultant:", err);
-    } finally {
       setIsAiTyping(false);
+      setIsTypewriting(false);
     }
   };
 
