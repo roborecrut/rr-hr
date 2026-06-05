@@ -1652,6 +1652,8 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
+      get_my_referees: { Args: never; Returns: Json }
+      get_my_referrer: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
