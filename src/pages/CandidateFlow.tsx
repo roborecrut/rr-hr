@@ -437,6 +437,13 @@ export default function CandidateFlow() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [project, setProject] = useState<JobProject | null>(null);
   const [allProjects, setAllProjects] = useState<any[]>([]);
+  // Full DB row for the active project + parent company + employer contacts
+  const [projectFull, setProjectFull] = useState<any | null>(null);
+  const [companyFull, setCompanyFull] = useState<any | null>(null);
+  const [employerContacts, setEmployerContacts] = useState<{ email?: string|null; phone?: string|null; telegram?: string|null }>({});
+  // Multi-application switcher (item 10)
+  const [applications, setApplications] = useState<CandidateApplication[]>([]);
+  const [appsMenuOpen, setAppsMenuOpen] = useState(false);
 
   // Flow navigation stage index: "terms" | "interview" | "scoring" | "training" | "certified"
   const [currentStage, setCurrentStage] = useState<string>("terms");
