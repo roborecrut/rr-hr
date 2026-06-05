@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
+import TrainingCoursePreview from "../components/TrainingCoursePreview";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
