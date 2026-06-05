@@ -2887,14 +2887,14 @@ export default function EmployerPanel() {
               <div className="space-y-4">
                 {companiesList.length === 0 && (
                   <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center text-slate-400 text-xs">
-                    Компаний пока нет. Нажмите кнопку "Регистрация бренда" выше, чтобы добавить компанию и создать её ИИ-лендинг.
+                    Компаний пока нет. Нажмите «+ Добавить Компанию» выше, чтобы создать карточку и её ИИ-лендинг. Все действия по компании — бесплатно.
                   </div>
                 )}
                 {companiesList.map((comp, idx) => {
                   const compVacancies = projects.filter(p => p.companyName?.toLowerCase() === comp.name?.toLowerCase());
 
                   return (
-                    <div key={idx} className="bg-[#1D3E5E]/60 border border-white/10 p-5 rounded-3xl space-y-3">
+                    <div key={idx} className="bg-[#1D3E5E]/60 border border-white/10 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768]/40 transition" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           {comp.logoUrl ? (
@@ -2909,7 +2909,19 @@ export default function EmployerPanel() {
                             <h3 className="text-base font-bold text-white mt-0.5">{comp.name}</h3>
                           </div>
                         </div>
-                        <span className="bg-white/5 border border-white/5 text-[10px] text-slate-350 py-1 px-2.5 rounded-full font-mono">Штат: {comp.staff}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {comp.status === "draft" && (
+                            <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] py-1 px-2 rounded-full font-mono">Черновик</span>
+                          )}
+                          <span className="bg-white/5 border border-white/5 text-[10px] text-slate-350 py-1 px-2.5 rounded-full font-mono">Штат: {comp.staff || "—"}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openEditCompanyWizard(comp); }}
+                            className="bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/30 text-[#E7C768] text-[10px] font-bold px-2.5 py-1 rounded-full"
+                          >
+                            Редактировать
+                          </button>
+                        </div>
                       </div>
 
                       <p className="text-xs text-slate-200 leading-relaxed font-normal">{comp.description}</p>
@@ -2921,6 +2933,7 @@ export default function EmployerPanel() {
                             href={comp.sites.startsWith("http") ? comp.sites : `https://${comp.sites}`} 
                             target="_blank" 
                             rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-[#E7C768] hover:underline font-bold flex items-center gap-1"
                           >
                             🔗 Сайт: {comp.sites}
@@ -2937,10 +2950,10 @@ export default function EmployerPanel() {
                       <div className="bg-black/20 border border-white/5 p-3 rounded-2xl flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                         <div className="space-y-0.5">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">ИИ-Лендинг Компании для Кандидатов</span>
-                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/com{comp.slug}</span>
+                          <span className="text-[11.5px] text-slate-300 font-mono select-all">https://hr-rr.online/com{comp.slug || comp.public_id}</span>
                         </div>
                         <button
-                          onClick={() => navigate(`/${comp.slug}`)}
+                          onClick={(e) => { e.stopPropagation(); navigate(`/com${comp.slug || comp.public_id}`); }}
                           className="cursor-pointer bg-white/10 hover:bg-white/15 text-white font-bold text-[10.5px] py-1.5 px-3 rounded-lg transition text-center"
                         >
                           Открыть Лендинг 🔗
