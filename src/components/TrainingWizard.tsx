@@ -11,7 +11,7 @@ import {
 } from "@/lib/vacancyTemplates";
 import type { JobProject } from "../types";
 
-type AuditFn = (level: "success" | "warning" | "info", title: string, msg?: string) => void;
+type AuditFn = (level: "success" | "warning" | "info", title: string, msg: string) => void;
 
 interface Props {
   projects: JobProject[];
@@ -88,7 +88,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         template: exampleFor(k) || undefined,
       });
       if (v) setValues(s => ({ ...s, [k]: v }));
-      addAuditEvent("success", "Поле обучения улучшено ИИ", k);
+      addAuditEvent("success", "Поле обучения улучшено ИИ", k as string);
     } catch (err: any) {
       addAuditEvent("warning", "Ошибка ИИ", err?.message || "ai-enhance failed");
     } finally {
