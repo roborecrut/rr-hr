@@ -411,8 +411,8 @@ export default function CompanyLanding() {
         {/* Centered Content Area */}
         <section className="space-y-6 text-left">
           
-          {/* Company branding card */}
-          {subTab === "company" && (
+          {/* Legacy branding card — only when a vacancy is in the URL */}
+          {vacancyId && subTab === "company" && (
             <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
               
               <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
