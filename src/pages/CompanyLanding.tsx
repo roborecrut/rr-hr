@@ -91,15 +91,20 @@ export default function CompanyLanding() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Company-level fallbacks let the landing render meaningful sections
+  // even when no vacancy is published yet (or fields are blank on a vacancy).
+  const companyAbout = [company?.description_text, company?.products_text, company?.about_text]
+    .filter((v) => v && String(v).trim() !== "")
+    .join("\n\n");
   const allTabs = [
-    { key: "company", label: "🏢 Компания", textVal: selectedVacancy?.companyText },
-    { key: "vacancy", label: "💼 Вакансия", textVal: selectedVacancy?.vacancyText },
-    { key: "schedule", label: "📅 График", textVal: selectedVacancy?.scheduleText || selectedVacancy?.scheduleTerms },
-    { key: "motivation", label: "🔥 Мотивация", textVal: selectedVacancy?.motivationTextDetail || selectedVacancy?.motivationText },
-    { key: "payouts", label: "💵 Выплаты", textVal: selectedVacancy?.payoutsText },
-    { key: "onboarding", label: "🚀 Оформление", textVal: selectedVacancy?.onboardingText },
-    { key: "team", label: "👥 Команда", textVal: selectedVacancy?.teamText },
-    { key: "system", label: "⚙️ ИИ-Система", textVal: selectedVacancy?.systemText }
+    { key: "company",     label: "🏢 Компания",   textVal: selectedVacancy?.companyText || companyAbout },
+    { key: "vacancy",     label: "💼 Вакансия",   textVal: selectedVacancy?.vacancyText },
+    { key: "schedule",    label: "📅 График",     textVal: selectedVacancy?.scheduleText || selectedVacancy?.scheduleTerms || company?.schedule_text },
+    { key: "motivation",  label: "🔥 Мотивация",  textVal: selectedVacancy?.motivationTextDetail || selectedVacancy?.motivationText || company?.mission_text },
+    { key: "payouts",     label: "💵 Выплаты",    textVal: selectedVacancy?.payoutsText || company?.payouts_text },
+    { key: "onboarding",  label: "🚀 Оформление", textVal: selectedVacancy?.onboardingText },
+    { key: "team",        label: "👥 Команда",    textVal: selectedVacancy?.teamText || company?.team_text },
+    { key: "system",      label: "⚙️ ИИ-Система", textVal: selectedVacancy?.systemText || company?.system_text },
   ];
 
   const visibleTabs = allTabs.filter(t => t.textVal && t.textVal.trim() !== "");

@@ -4,6 +4,42 @@ import {
   callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
 } from "../_shared/protalk.ts";
 
+// Server-side length limits per field (in chars). Mirrors the client constraints
+// so the AI cannot blow past UI limits even if the model returns long text.
+const LIMITS: Record<string, number> = {
+  name: 80,
+  industry: 80,
+  staff: 80,
+  sites: 200,
+  logoUrl: 500,
+  description: 600,
+  description_text: 600,
+  products_text: 500,
+  mission_text: 500,
+  missionText: 500,
+  about_text: 600,
+  team: 500,
+  team_text: 500,
+  payouts_text: 300,
+  salaryTerms: 300,
+  schedule_text: 300,
+  scheduleTerms: 300,
+  system_text: 600,
+  customWiki: 600,
+  statsValClients: 16,
+  statsLabelClients: 40,
+  statsValDialogs: 16,
+  statsLabelDialogs: 40,
+  statsValFounded: 8,
+  statsLabelFounded: 40,
+};
+const clampField = (field: string | undefined, val: unknown): string => {
+  const v = typeof val === "string" ? val : String(val ?? "");
+  const max = field ? LIMITS[field] : undefined;
+  if (!max) return v;
+  return v.length > max ? v.slice(0, max).trimEnd() : v;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
@@ -27,11 +63,11 @@ Deno.serve(async (req) => {
     if (body.mode === "single") {
       const { text, raw } = await callProTalk({
         messages: [
-          { role: "system", content: "Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг." },
+          { role: "system", content: `Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг. ВАЖНО: ответ должен быть не длиннее ${LIMITS[body.field ?? ""] ?? 600} символов.` },
           { role: "user", content: `Роль: ${body.role_name ?? "—"}\nКомпания: ${body.company_name ?? "—"}\nПоле: ${body.field}\nИсходный текст:\n${body.value ?? ""}\n${body.hint ? `Подсказка: ${body.hint}` : ""}` },
         ],
       });
-      const value = text.trim();
+      const value = clampField(body.field, text.trim());
       await logToDb({
         user_message: `enhance.single field=${body.field}`,
         bot_reply: value,
@@ -46,11 +82,13 @@ Deno.serve(async (req) => {
 
     const { text, raw } = await callProTalk({
       messages: [
-        { role: "system", content: "Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений." },
+        { role: "system", content: "Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений. Соблюдай лимиты длины: name≤80, description_text≤600, products_text≤500, mission_text≤500, team≤500, payouts_text≤300, schedule_text≤300, system_text≤600." },
         { role: "user", content: `Контекст: роль ${body.role_name ?? "—"}, компания ${body.company_name ?? "—"}\n\nИсходные поля:\n${JSON.stringify(body.fields ?? {}, null, 2)}\n${body.hint ? `\nПодсказка: ${body.hint}` : ""}` },
       ],
     });
-    const obj = tryParseJson<Record<string, string>>(text) ?? {};
+    const parsed = tryParseJson<Record<string, string>>(text) ?? {};
+    const obj: Record<string, string> = {};
+    for (const [k, v] of Object.entries(parsed)) obj[k] = clampField(k, v);
     await logToDb({
       user_message: `enhance.${body.mode}`,
       bot_reply: text,
