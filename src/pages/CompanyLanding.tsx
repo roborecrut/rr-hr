@@ -416,121 +416,31 @@ export default function CompanyLanding() {
         {/* Centered Content Area */}
         <section className="space-y-6 text-left">
           
-          {/* Legacy branding card — only when a vacancy is in the URL */}
-          {vacancyId && subTab === "company" && (
-            <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
-              
-              <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
-                <div className="w-16 h-16 bg-gradient-to-tr from-[#E7C768] to-amber-300 rounded-2xl flex items-center justify-center text-teal-950 font-black text-2xl shadow-md border-2 border-white/20">
-                  {displayCompany.name.includes('"') ? displayCompany.name.split('"')[1]?.[0] || "C" : displayCompany.name[0]}
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#E7C768] bg-[#E7C768]/15 px-2.5 py-0.5 rounded-full border border-[#E7C768]/20">
-                      Верифицированный бренд
-                    </span>
-                    <Sparkles className="w-4 h-4 text-[#E7C768]" />
-                  </div>
-                  <h1 className="text-3xl font-extrabold text-white leading-tight">
-                    {displayCompany.name}
-                  </h1>
-                  <p className="text-sm text-slate-300 flex items-center gap-1.5 pt-1">
-                    <Building className="w-4 h-4 text-[#E7C768]/70" /> {displayCompany.industry || "Услуги / Производство"}
-                  </p>
-                </div>
-              </div>
-
-              <p className="text-slate-200 text-sm leading-relaxed whitespace-pre-line">
-                {displayCompany.description || "Компания осуществляет подбор перспективных кадров для масштабирования внутренних бизнес-процессов с использованием передовых нейросетевых технологий."}
-              </p>
-
-              {/* Quick stats grid */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-[#12283C] p-3 rounded-2xl border border-white/5 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Численность</span>
-                  <span className="text-sm font-bold text-[#E7C768] flex items-center gap-1">
-                    <Users className="w-4 h-4" /> {displayCompany.staff || "10-25 человек"}
-                  </span>
-                </div>
-                <div className="bg-[#12283C] p-3 rounded-2xl border border-white/5 space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Сайт компании</span>
-                  {displayCompany.sites ? (
-                    <a href={displayCompany.sites} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-sky-400 hover:underline flex items-center gap-1">
-                      <Globe className="w-4 h-4" /> {displayCompany.sites.replace("https://", "")}
-                    </a>
-                  ) : (
-                    <span className="text-sm font-bold text-slate-400 flex items-center gap-1">
-                      <Globe className="w-4 h-4" /> не указан
-                    </span>
-                  )}
-                </div>
-              </div>
-
-            </div>
+          {/* Unified company sections: shown on /com{slug} (no vacancy),
+              and also on /com{slug}/vac{slug}/company so both routes look identical. */}
+          {(!vacancyId || subTab === "company") && company && (
+            <CompanySections
+              company={company}
+              vacancies={vacancies}
+              companySlug={companySlug}
+              currentVacancy={vacancyId ? selectedVacancy : null}
+              onOpenVacancy={(v) =>
+                navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)
+              }
+              onBackToVacancy={
+                vacancyId && selectedVacancy
+                  ? () =>
+                      navigate(
+                        `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}`,
+                      )
+                  : undefined
+              }
+            />
           )}
 
-          {/* Company-only view: show one section per filled company field,
-              plus a picker grid for choosing a vacancy. Visible when the URL
-              has no /vac segment (vacancyId === ""). */}
-          {!vacancyId && company && (
-            <div className="space-y-4">
-              {[
-                { key: "description_text", label: "О компании" },
-                { key: "products_text",    label: "Продукты" },
-                { key: "mission_text",     label: "Миссия" },
-                { key: "about_text",       label: "О нас" },
-                { key: "team_text",        label: "Команда" },
-                { key: "payouts_text",     label: "Выплаты" },
-                { key: "schedule_text",    label: "График" },
-                { key: "system_text",      label: "ИИ-Система" },
-              ]
-                .filter(s => company[s.key] && String(company[s.key]).trim() !== "")
-                .map(s => (
-                  <section key={s.key} className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
-                    <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">{s.label}</h2>
-                    {renderFormattedText(String(company[s.key]))}
-                  </section>
-                ))}
-
-              {company.stats && typeof company.stats === "object" && Object.keys(company.stats).length > 0 && (
-                <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
-                  <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">Показатели</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {Object.entries(company.stats).map(([k, v]) => (
-                      <div key={k} className="bg-black/25 border border-white/5 rounded-xl p-3">
-                        <div className="text-xl font-black text-white">{String(v)}</div>
-                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-1">{k}</div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
-                <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">
-                  Выберите вакансию ({vacancies.length})
-                </h2>
-                {vacancies.length === 0 ? (
-                  <p className="text-xs text-slate-400">Открытых вакансий пока нет.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {vacancies.map((v) => (
-                      <button key={v.id}
-                        onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)}
-                        className="text-left bg-black/30 hover:bg-black/40 border border-white/10 hover:border-[#E7C768]/50 rounded-2xl p-4 transition">
-                        <h4 className="font-extrabold text-sm text-white">{v.roleName}</h4>
-                        {v.salaryTerms && <span className="text-[11px] font-bold text-[#E7C768] block mt-1">{v.salaryTerms}</span>}
-                        {v.scheduleTerms && <span className="text-[10px] text-slate-300 block mt-0.5">{v.scheduleTerms}</span>}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-          )}
-
-          {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL */}
-          {vacancyId && selectedVacancy ? (
+          {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL
+              AND we are NOT on the /company sub-tab (company view is handled above). */}
+          {vacancyId && subTab !== "company" && selectedVacancy ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
@@ -624,7 +534,7 @@ export default function CompanyLanding() {
               </button>
 
             </div>
-          ) : vacancyId ? (
+          ) : vacancyId && subTab !== "company" ? (
             <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-400/80" />
               <h3 className="font-bold text-white">Список вакансий пуст</h3>
@@ -633,7 +543,7 @@ export default function CompanyLanding() {
           ) : null}
 
           {/* List of all vacancies for this company (kept on a vacancy page as a switcher) */}
-          {vacancyId && vacancies.length > 0 && (
+          {vacancyId && subTab !== "company" && vacancies.length > 0 && (
             <div className="space-y-3 pt-5 border-t border-white/10 mt-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎯</span>
