@@ -399,6 +399,9 @@ export default function EmployerPanel() {
       pushAILog("ai-company-analyze", "response", raw || payload);
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
+        if (payload.industry) setNewCompanyIndustry(payload.industry);
+        if (payload.website) setNewCompanySite(payload.website);
+        if (payload.staff) setNewCompanyStaff(payload.staff);
         if (payload.description_text) setNewCompanyDescription(payload.description_text);
         if (payload.products_text) setNewCompanyProducts(payload.products_text);
         if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
