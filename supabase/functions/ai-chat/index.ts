@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   const lastUser = [...body.messages].reverse().find((m) => m.role === "user")?.content || "";
 
   try {
-    const { text, raw } = await callProTalk({ messages });
+    const { text, raw } = await callProTalk({ messages, chatId, socialId });
     await logToDb({
       user_message: lastUser,
       bot_reply: text,
