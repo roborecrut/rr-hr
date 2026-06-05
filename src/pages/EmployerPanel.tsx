@@ -2386,43 +2386,8 @@ export default function EmployerPanel() {
                       />
                     </div>
 
-                    <div>
-                      <label className="text-xs font-bold text-slate-200 block mb-1">Картинка логотипа вакансии (ссылка или файл):</label>
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          className="flex-1 bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                          value={setupLogoUrl}
-                          onChange={(e) => setSetupLogoUrl(e.target.value)}
-                          placeholder="https://i.ibb.co/WWRbtPq0/RR-Logo.png"
-                        />
-                        <label className="cursor-pointer bg-[#1D3E5E] border border-white/10 hover:border-[#E7C768] text-xs px-3.5 py-2.5 rounded-xl text-white font-bold select-none text-center flex items-center shrink-0">
-                          <span>📂 Загрузить файл</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                const reader = new FileReader();
-                                reader.onloadend = () => {
-                                  if (typeof reader.result === "string") {
-                                    setSetupLogoUrl(reader.result);
-                                  }
-                                };
-                                reader.readAsDataURL(file);
-                              }
-                            }}
-                          />
-                        </label>
-                      </div>
-                      {setupLogoUrl && (
-                        <div className="mt-2 flex items-center gap-2 bg-black/15 p-2 rounded-xl border border-white/5">
-                          <img src={setupLogoUrl} alt="Logo Preview" className="w-8 h-8 object-contain rounded" referrerPolicy="no-referrer" />
-                          <span className="text-[10px] text-gray-400 truncate max-w-xs">{setupLogoUrl}</span>
-                        </div>
-                      )}
+                    <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
+                      ℹ️ Логотип берётся из настроек компании — отдельной загрузки для вакансии не требуется.
                     </div>
 
                     <button
