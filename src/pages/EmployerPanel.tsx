@@ -480,7 +480,10 @@ export default function EmployerPanel() {
     setDraftCompanyId(comp.id);
     setDraftCompanyPublicId(comp.public_id || null);
     setNewCompanyName(comp.name || "");
-    setNewCompanyLogo(comp.logo_url || "");
+    setNewCompanyLogo(comp.logo_url || DEFAULT_LOGO_URL);
+    setNewCompanyIndustry(comp.industry || "");
+    setNewCompanyStaff(comp.staff || "");
+    setNewCompanySite(comp.website || "");
     setNewCompanyDescription(comp.description_text || "");
     setNewCompanyProducts(comp.products_text || "");
     setNewCompanyMissionText(comp.mission_text || "");
