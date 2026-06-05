@@ -10,6 +10,7 @@ import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { buildCandidateUrl } from "@/lib/links";
+import CandidateAuthModal from "../components/CandidateAuthModal";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
@@ -127,13 +128,6 @@ export default function CompanyLanding() {
 
   // Candidate signup modal
   const [showApplyModal, setShowApplyModal] = useState(false);
-  const [isLoginOnly, setIsLoginOnly] = useState(false);
-  const [candName, setCandName] = useState("");
-  const [candEmail, setCandEmail] = useState("");
-  const [candTg, setCandTg] = useState("");
-  const [authMethod, setAuthMethod] = useState<"google" | "telegram" | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
 
   // Fetch company & projects from server
   const loadData = async () => {
@@ -238,95 +232,19 @@ export default function CompanyLanding() {
     }
   };
 
-  // Immediate 1-Click candidate registration and login, with NO FORM.
-  const triggerOneClickRegister = async (method: "google" | "telegram") => {
-    if (submitting) return;
-    setAuthMethod(method);
-    setSubmitting(true);
-
-    const randId = Math.floor(1000 + Math.random() * 9000);
-    const mockName = method === "google" ? `Алексей Иванов (${randId})` : `Кандидат #${randId}`;
-    const mockEmail = `candidate_${randId}@candidate-pool.ru`;
-    const mockTg = method === "telegram" ? `tg_candidate_${randId}` : "";
-
+  // Candidate auth success → navigate to candidate profile bound to this vacancy.
+  const handleCandidateAuthSuccess = (publicId: string) => {
     const activeProject = selectedVacancy || vacancies[0];
-    if (!activeProject) {
-      setSubmitting(false);
-      return;
-    }
-
-    const payload: any = {
-      name: mockName,
-      email: mockEmail,
-      telegramUsername: mockTg,
-      projectId: activeProject.id,
-      roleName: activeProject.roleName,
-      registeredVia: method,
-    };
-
-    if (method === "google") {
-      payload.googleName = `Алексей Иванов (${randId})`;
-      payload.googleEmail = mockEmail;
-      payload.googleAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=alexey_${randId}`;
-    } else {
-      payload.telegramId = `123${randId}90`;
-      payload.telegramFirstName = "Алексей";
-      payload.telegramLastName = "Иванов";
-      payload.telegramAvatar = `https://api.dicebear.com/7.x/identicon/svg?seed=tg_${randId}`;
-      payload.telegramUsername = `tg_alex_${randId}`;
-    }
-
-    try {
-      // Try legacy API; on failure, create the candidate directly in Supabase so
-      // the URL we produce is bound to a real candidate row (public_id).
-      let candidateInfo: any = null;
-      const res = await fetch("/api/candidates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }).catch(() => null as any);
-      if (res && res.ok) {
-        candidateInfo = await res.json();
-      } else {
-        const { data: created, error } = await supabase
-          .from("candidates")
-          .insert({
-            project_id: activeProject.id,
-            role_name: activeProject.roleName,
-            registered_via: method as any,
-            current_stage: "terms",
-          })
-          .select("id, public_id")
-          .single();
-        if (error || !created) throw error;
-        candidateInfo = { id: created.public_id || created.id, public_id: created.public_id };
-      }
-
-      if (candidateInfo) {
-        localStorage.setItem("cand_session_id", candidateInfo.id);
-        localStorage.setItem("cand_role", "candidate");
-
-        setRegistrationSuccess(true);
-        setTimeout(() => {
-          setRegistrationSuccess(false);
-          setShowApplyModal(false);
-          setSubmitting(false);
-          navigate(
-            buildCandidateUrl(
-              { slug: (activeProject as any).companySlug },
-              { slug: (activeProject as any).slug || activeProject.id },
-              { public_id: candidateInfo.public_id || candidateInfo.id },
-              "profile",
-            ),
-          );
-        }, 1500);
-      } else {
-        setSubmitting(false);
-      }
-    } catch (err) {
-      console.error("Error creating candidate in one click:", err);
-      setSubmitting(false);
-    }
+    setShowApplyModal(false);
+    if (!activeProject) return;
+    navigate(
+      buildCandidateUrl(
+        { slug: (activeProject as any).companySlug || companySlug },
+        { slug: (activeProject as any).slug || activeProject.id },
+        { public_id: publicId },
+        "profile",
+      ),
+    );
   };
 
   const handleApplyOnboarding = async (e: React.FormEvent) => {
@@ -402,11 +320,14 @@ export default function CompanyLanding() {
             {/* Logo field */}
             <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => navigate(selectedVacancy ? `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}` : "/")}>
               <img
-                src={selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
-                alt="Logo"
+                src={company?.logo_url || selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
+                alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"
               />
+              {company?.name && (
+                <span className="hidden sm:block text-sm font-extrabold text-white truncate max-w-[220px]">{company.name}</span>
+              )}
             </div>
 
             {/* Desktop Tabs menu centered */}
@@ -431,19 +352,8 @@ export default function CompanyLanding() {
               </div>
             )}
 
-            {/* Right block: login button on desktop, hamburger on mobile */}
+            {/* Right block: hamburger on mobile only — login is available only on a vacancy page */}
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => {
-                  setIsLoginOnly(true);
-                  setShowApplyModal(true);
-                }}
-                className="hidden md:block cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black px-4 py-2 rounded-xl hover:bg-[#F4EE8E] transition shadow-md whitespace-nowrap"
-              >
-                Войти 🔑
-              </button>
-
-              {/* Hamburger Toggle icon */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
                 className="md:hidden text-slate-300 hover:text-white p-2 border border-white/10 rounded-xl bg-black/25 focus:outline-none transition shrink-0"
@@ -480,18 +390,16 @@ export default function CompanyLanding() {
                 })}
               </div>
 
-              <div className="pt-2 border-t border-white/5 font-sans">
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setIsLoginOnly(true);
-                    setShowApplyModal(true);
-                  }}
-                  className="w-full cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
-                >
-                  Войти 🔑
-                </button>
-              </div>
+              {selectedVacancy && (
+                <div className="pt-2 border-t border-white/5 font-sans">
+                  <button
+                    onClick={() => { setMenuOpen(false); setShowApplyModal(true); }}
+                    className="w-full cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
+                  >
+                    Войти / Регистрация 🔑
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -503,8 +411,8 @@ export default function CompanyLanding() {
         {/* Centered Content Area */}
         <section className="space-y-6 text-left">
           
-          {/* Company branding card */}
-          {subTab === "company" && (
+          {/* Legacy branding card — only when a vacancy is in the URL */}
+          {vacancyId && subTab === "company" && (
             <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
               
               <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
@@ -556,8 +464,68 @@ export default function CompanyLanding() {
             </div>
           )}
 
-          {/* Active Job Vacancy presentation banner */}
-          {selectedVacancy ? (
+          {/* Company-only view: show one section per filled company field,
+              plus a picker grid for choosing a vacancy. Visible when the URL
+              has no /vac segment (vacancyId === ""). */}
+          {!vacancyId && company && (
+            <div className="space-y-4">
+              {[
+                { key: "description_text", label: "О компании" },
+                { key: "products_text",    label: "Продукты" },
+                { key: "mission_text",     label: "Миссия" },
+                { key: "about_text",       label: "О нас" },
+                { key: "team_text",        label: "Команда" },
+                { key: "payouts_text",     label: "Выплаты" },
+                { key: "schedule_text",    label: "График" },
+                { key: "system_text",      label: "ИИ-Система" },
+              ]
+                .filter(s => company[s.key] && String(company[s.key]).trim() !== "")
+                .map(s => (
+                  <section key={s.key} className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                    <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">{s.label}</h2>
+                    {renderFormattedText(String(company[s.key]))}
+                  </section>
+                ))}
+
+              {company.stats && typeof company.stats === "object" && Object.keys(company.stats).length > 0 && (
+                <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                  <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">Показатели</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {Object.entries(company.stats).map(([k, v]) => (
+                      <div key={k} className="bg-black/25 border border-white/5 rounded-xl p-3">
+                        <div className="text-xl font-black text-white">{String(v)}</div>
+                        <div className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mt-1">{k}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-5 md:p-6">
+                <h2 className="text-sm font-black text-[#E7C768] uppercase tracking-wider mb-3">
+                  Выберите вакансию ({vacancies.length})
+                </h2>
+                {vacancies.length === 0 ? (
+                  <p className="text-xs text-slate-400">Открытых вакансий пока нет.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {vacancies.map((v) => (
+                      <button key={v.id}
+                        onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)}
+                        className="text-left bg-black/30 hover:bg-black/40 border border-white/10 hover:border-[#E7C768]/50 rounded-2xl p-4 transition">
+                        <h4 className="font-extrabold text-sm text-white">{v.roleName}</h4>
+                        {v.salaryTerms && <span className="text-[11px] font-bold text-[#E7C768] block mt-1">{v.salaryTerms}</span>}
+                        {v.scheduleTerms && <span className="text-[10px] text-slate-300 block mt-0.5">{v.scheduleTerms}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
+
+          {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL */}
+          {vacancyId && selectedVacancy ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
@@ -643,7 +611,6 @@ export default function CompanyLanding() {
 
               <button
                 onClick={() => {
-                  triggerOneClickRegister("telegram");
                   setShowApplyModal(true);
                 }}
                 className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3.5 rounded-2xl hover:bg-[#F4EE8E] transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
@@ -652,16 +619,16 @@ export default function CompanyLanding() {
               </button>
 
             </div>
-          ) : (
+          ) : vacancyId ? (
             <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-400/80" />
               <h3 className="font-bold text-white">Список вакансий пуст</h3>
               <p className="text-xs text-slate-400">Наш робот подбирает новые должности. Пожалуйста, загляните позже.</p>
             </div>
-          )}
+          ) : null}
 
-          {/* List of all vacancies for this company */}
-          {vacancies.length > 0 && (
+          {/* List of all vacancies for this company (kept on a vacancy page as a switcher) */}
+          {vacancyId && vacancies.length > 0 && (
             <div className="space-y-3 pt-5 border-t border-white/10 mt-6">
               <div className="flex items-center gap-2">
                 <span className="text-sm">🎯</span>
@@ -698,90 +665,17 @@ export default function CompanyLanding() {
 
       </main>
 
-      {/* Candidate registration modal with 1-click & Reminder note constraint */}
-      {showApplyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/50 text-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative text-left">
-            
-            <button
-              onClick={() => setShowApplyModal(false)}
-              className="absolute top-4 right-4 hover:bg-white/10 p-1.5 rounded-full text-slate-300 hover:text-white transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {registrationSuccess ? (
-              <div className="text-center py-6 space-y-4">
-                <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto text-emerald-400 border border-emerald-500/30">
-                  <CheckCircle className="w-8 h-8" />
-                </div>
-                <h3 className="text-xl font-bold text-emerald-300">Успешно зарегистрировано!</h3>
-                <p className="text-sm text-slate-200 font-semibold">
-                  Перенаправляем в кабинет ИИ-собеседований...
-                </p>
-              </div>
-            ) : (
-              <>
-                <div className="text-center space-y-1">
-                  <h3 className="text-xl font-black text-[#E7C768]">
-                    {isLoginOnly ? "Вход в Кабинет Кандидата" : "Начать Блиц-Собеседование"}
-                  </h3>
-                  <p className="text-xs text-slate-300">
-                    {isLoginOnly 
-                      ? "Авторизуйтесь в 1 клик для входа в свой персональный кабинет соискателя."
-                      : "Выберите удобный сервис в 1 клик для авторизации и мгновенной связи с работодателем."}
-                  </p>
-                </div>
-
-                {/* 1-Click Action triggers as requested by user! */}
-                {submitting ? (
-                  <div className="flex flex-col items-center justify-center py-10 space-y-3">
-                    <Loader className="w-8 h-8 text-[#E7C768] animate-spin animate-infinite" />
-                    <span className="text-xs text-slate-300 font-medium">Связываемся с базой ИИ-собеседований...</span>
-                  </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("telegram")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-6 h-6 text-sky-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03-.01-.14-.07-.19s-.16-.03-.22-.01c-.1.02-1.63 1.03-4.6 3.04-.44.3-.83.45-1.18.44-.39-.01-1.13-.22-1.68-.4-.68-.22-1.22-.34-1.17-.72.03-.2.3-.41.81-.62 3.17-1.38 5.28-2.29 6.34-2.73 3.01-1.26 3.63-1.48 4.04-1.48.09 0 .29.02.42.13.11.08.14.21.15.3l-.01.12z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Tg</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => triggerOneClickRegister("google")}
-                        className="cursor-pointer border py-3.5 px-2 bg-black/35 border-white/5 hover:border-[#E7C768] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition hover:bg-slate-900"
-                      >
-                        <svg className="w-5 h-5 text-red-400 fill-current" viewBox="0 0 24 24">
-                          <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 1.514 15.34 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.89 11.57-11.79 0-.795-.085-1.4-.195-1.925H12.24z" />
-                        </svg>
-                        <span className="text-[11px] font-bold">Войти в 1 клик через Google</span>
-                      </button>
-                    </div>
-
-                    {/* Reminder note strictly matching user prompt requirements */}
-                    <div className="bg-sky-500/10 border border-sky-500/25 p-3 rounded-2xl space-y-1.5 text-xs text-sky-200">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <AlertCircle className="w-4 h-4 text-sky-400" />
-                        <span>Автоматические напоминания</span>
-                      </div>
-                      <p className="text-[11px] leading-relaxed">
-                        🎓 <strong>Обратите внимание!</strong> При регистрации через <strong>Telegram</strong> мы будем присылать вам напоминания в чат-бота, чтобы вы не забывали проходить этапы онбординга или лекции с пользой!
-                      </p>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-
-          </div>
-        </div>
+      {/* Candidate email auth modal — only meaningful when a vacancy is selected */}
+      {selectedVacancy && (
+        <CandidateAuthModal
+          isOpen={showApplyModal}
+          onClose={() => setShowApplyModal(false)}
+          projectId={selectedVacancy.id}
+          companyId={company?.id || null}
+          roleName={selectedVacancy.roleName}
+          companyName={company?.name || selectedVacancy.companyName}
+          onSuccess={handleCandidateAuthSuccess}
+        />
       )}
 
       {/* Floating Career Consultant Chat Pop-up / Widget */}
