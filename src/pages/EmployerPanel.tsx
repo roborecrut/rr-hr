@@ -1533,16 +1533,18 @@ export default function EmployerPanel() {
         mode: "all_vacancy",
         company_name: setupCompanyName,
         fields: {
-          roleName: setupRoleName, salaryTerms: setupSalary,
-          scheduleTerms: setupSchedule, customWiki: setupCustomWiki,
+          roleName: setupRoleName,
+          schedule_text: setupScheduleText,
+          payouts_text: setupPayoutsText,
+          vacancyText: setupVacancyText,
         },
         hint: `parse_file:${filename}`,
       });
       
       if (parsed.roleName) setSetupRoleName(parsed.roleName);
-      if (parsed.salaryTerms) setSetupSalary(parsed.salaryTerms);
-      if (parsed.scheduleTerms) setSetupSchedule(parsed.scheduleTerms);
-      if (parsed.customWiki) setSetupCustomWiki(parsed.customWiki);
+      if (parsed.schedule_text) setSetupScheduleText(parsed.schedule_text);
+      if (parsed.payouts_text) setSetupPayoutsText(parsed.payouts_text);
+      if (parsed.vacancyText) setSetupVacancyText(parsed.vacancyText);
       
       addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
     } catch (err: any) {
@@ -1550,13 +1552,6 @@ export default function EmployerPanel() {
       addAuditEvent("warning", "Ошибка распознавания", "Использованы правила автозаполнения.");
       // Fallback
       setSetupRoleName("Инженер по тестированию (QA)");
-      setSetupSalary("95 000 - 130 000 руб");
-      setSetupSchedule("Полный день, гибрид в Москве");
-      setSetupCustomWiki(`Обязанности сотрудника компании:
-- Проведение ручного и автоматизированного тестирования веб-приложений.
-- Заведение багов в корпоративную систему таск-трекера.
-- Подготовка тестовых сценариев и чек-листов.
-- Взаимодействие с командой разработчиков.`);
     } finally {
       setIsParsingFile(false);
     }
