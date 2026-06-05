@@ -1,89 +1,103 @@
+# План: ИИ-мастер компании (ProTalk) и публикация лендинга
 
-## Что меняем
+## 1. База данных (миграция)
 
-### 1) Единая тарифная сетка для интервью+обучения (по сумме штук)
+**Таблица `companies` — новые поля:**
+- `status` text default `'draft'` (значения: `draft` = «Создается», `active` = «Активна»)
+- `description_text` text — «Описание компании и чем занимается»
+- `products_text` text — «Основные продукты»
+- (оставляем `mission_text` как «Имидж, миссия и культура»; убираем дублирование в UI)
 
-Сейчас покупка идёт раздельно: 7 интервью и 3 обучения тарифицируются как два маленьких пакета (по 200 RR), вместо общего 10 шт. по 150 RR.
+**Storage bucket** `company-uploads` (private, RLS: владелец `auth.uid()` через путь `{user_id}/...`) — для временных файлов анализа.
 
-- В UI «Тариф & Счета» одна форма выбора пакета: пользователь указывает **сколько интервью** и **сколько обучений** в одном пакете. Грейд цены берётся от **суммы** (qty_int + qty_train).
-- В БД переписываем `public.purchase_pack` → `public.purchase_pack_mixed(_qty_int int, _qty_train int)`:
-  - `total_qty = _qty_int + _qty_train`, `unit = pack_tier_price(total_qty)`, `total_rr = unit*total_qty`
-  - проверяет баланс, списывает, начисляет в `employers.interview_credits` и `employers.training_credits` раздельно, пишет одну транзакцию с пометкой `Пакет: N инт + M обуч × <unit> RR`.
-- Старый `purchase_pack(_kind,_qty)` оставляем как обёртку для обратной совместимости (вызывает `purchase_pack_mixed`).
-- Списание (`spend_pack`) уже работает корректно — расходует **по 1 шт.** из нужного счётчика при первом старте ИИ-интервью/ИИ-обучения кандидатом и привязано к `candidate_id` (идемпотентно). Оставляем как есть. Проверяем, что на стороне фронта вызовы `spend_pack('interview' | 'training')` действительно срабатывают в `CandidateFlow` при первом клике «Приступить» — если нет, добавим.
+**RPC `company_create_draft()`** — создаёт пустую запись со статусом `draft` для текущего работодателя, возвращает `id` и `public_id`. Никаких списаний с баланса.
 
-### 2) Отдельные покупки фикс-услуг (лендинг / интервью-сетап / обучение-сетап)
+**RPC `company_finalize(_id uuid)`** — ставит `status='active'`, `is_published=true`, проверяет владельца.
 
-Сейчас `spend_fixed` существует в БД, но **нигде не вызывается** и счётчиков нет.
+## 2. Edge Functions
 
-- Добавляем в `public.employers`:
-  - `landing_credits INT NOT NULL DEFAULT 0`
-  - `interview_setup_credits INT NOT NULL DEFAULT 0`
-  - `training_setup_credits INT NOT NULL DEFAULT 0`
-- Новая RPC `purchase_fixed(_item text, _qty int default 1)`: списывает `FIXED_PRICES[item]*qty` (500/200/300 RR), инкрементит соответствующий счётчик, пишет транзакцию.
-- Переписываем `spend_fixed(_project, _item)`:
-  - если у работодателя есть `*_credits > 0` → расходует 1 кредит без списания RR (идемпотентно по `_project+_item`);
-  - иначе списывает фикс-цену с баланса (как сейчас).
-- В edge-функциях вызываем `spend_fixed` после успешного сохранения:
-  - `ai-generate-onboarding` → при `save && project_id` вызываем `spend_fixed(project_id,'interview_setup')` после успешной записи чек-листа/ситуаций и `spend_fixed(project_id,'training_setup')` после успешной записи training_blocks.
-  - Для лендинга — после сохранения `project_landings` (см. вызов в `EmployerPanel`/`JobVacancyLanding` генерации) добавляем `spend_fixed(project_id,'landing')`. Если генерации лендинга через edge-функцию ещё нет — RPC вызываем прямо из фронта после успешной записи.
-- В UI блока «Разовые услуги» добавляем кнопки **«Купить впрок»** и счётчики «Куплено: N шт» рядом с каждой услугой. Подпись: «спишется автоматически при создании; если кредитов нет — спишется с баланса».
+### a) `ai-chat` — добавить `user_social_id` с public_id ЛК
+Заменить `buildSocialId({ user_id })` так, чтобы при наличии `employer_public_id` он формировался как `from_user_id:{public_id} ...`. Передавать `employer_public_id` в body.
 
-### 3) Корректное отображение баланса и реферальной программы
+### b) `ai-restart` (новый, либо доп. mode в `ai-chat`)
+Шлёт в ProTalk сообщение `/restart` от лица работодателя при нажатии «+ Добавить Компанию» — сбрасывает диалог бота.
 
-- Кнопка раздела «5. Тариф & Счета» в сайдбаре сейчас показывает старое значение (1000 RR на скрине, хотя в БД 2000). Источник `balance` обновляем единым хуком `useWallet()` с интервальным `fetchBillingState` (он есть, но не используется для бейджа в сайдбаре) — пробрасываем `balance` в бейдж сайдбара.
-- Баг «Кем вы приглашены = самостоятельно» при наличии записи в `referrals_emp`:
-  - проверяем, что запрос `referrals_emp` идёт под JWT текущего пользователя (RLS-политика уже разрешает чтение приглашённому);
-  - чиним маппинг `referrer.public_id` (сейчас отдельный запрос — корректен, но не отрабатывает на странице). Перепишем на один JOIN-запрос с `select("referrer:employers!referrals_emp_referrer_employer_id_fkey(public_id, contact_phone, contact_telegram, user_id)")`, чтобы RLS не резал второй шаг.
-  - В блоке «Кем вы приглашены» выводим: ID работодателя (emp1000XX), имя, email, телефон, telegram приглашающего.
-- Баг «Кого пригласили вы: 0 чел» при наличии реферала:
-  - аналогично переписываем выборку приглашённых одним `select` c вложенным `employers→profiles`;
-  - в шапке блока выводим суммарно `count` и сумму бонусов: `{N} чел · +{sum} RR`.
-- Запись `referrals_emp.bonus_units` сейчас 10 (легаси), а реальный бонус 1000 RR (через `apply_transaction`). Делаем одноразовый `UPDATE referrals_emp SET bonus_units = 1000 WHERE bonus_units = 10`, чтобы суммарный показатель в UI совпадал с реальным начислением.
-
-## Технические детали
-
-### Миграция (SQL)
-
-```sql
--- A. Новые счётчики для фикс-услуг
-ALTER TABLE public.employers
-  ADD COLUMN IF NOT EXISTS landing_credits INT NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS interview_setup_credits INT NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS training_setup_credits INT NOT NULL DEFAULT 0;
-
--- B. purchase_pack_mixed(qty_int, qty_train) — единый грейд по сумме
-CREATE OR REPLACE FUNCTION public.purchase_pack_mixed(_qty_int int, _qty_train int)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
-
--- C. purchase_fixed(item, qty)
-CREATE OR REPLACE FUNCTION public.purchase_fixed(_item text, _qty int DEFAULT 1)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
-
--- D. spend_fixed: расходовать кредит, если есть; иначе списать с баланса
-CREATE OR REPLACE FUNCTION public.spend_fixed(_project uuid, _item text)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$ ... $$;
-
--- E. Привести легаси bonus_units к фактически начисленным RR
-UPDATE public.referrals_emp SET bonus_units = 1000 WHERE bonus_units = 10;
-
-GRANT EXECUTE ON FUNCTION public.purchase_pack_mixed(int,int), public.purchase_fixed(text,int) TO authenticated, service_role;
+### c) `ai-company-analyze` (новый)
+Вход: `company_id`, `file_url` (signed URL из storage). Шлёт ProTalk промпт с жёсткой JSON-схемой:
 ```
+{ "name": str≤80, "mission_text": str≤500, "description_text": str≤600,
+  "products_text": str≤500, "team_text": str≤500, "payouts_text": str≤300,
+  "schedule_text": str≤300, "system_text": str≤500,
+  "stats": { "founded_year": int|null, "employees": int|null, "turnover": str|null } }
+```
+Парсит JSON, возвращает клиенту (клиент сам решает писать в форму). Логирует prompt+response.
 
-### Фронт
+### d) `ai-enhance` — уже есть; используем `mode:"all_company"` и `mode:"single"`. Добавить server-side ограничения на длину каждого поля и для числовых полей — минимум символов (год = 4, обороты ≤ 8 цифр). Промпт обновить под новые поля.
 
-- `src/lib/rr.ts` — без изменений (тарифная сетка уже общая).
-- `src/pages/EmployerPanel.tsx`:
-  - Заменить блок «Пакеты лимитов» на единую форму: два инпута (qty_int, qty_train) + сводка «Всего N шт × U RR = T RR»; кнопка вызывает `supabase.rpc('purchase_pack_mixed', { _qty_int, _qty_train })`.
-  - В блок «Разовые услуги» добавить кнопки покупки впрок и счётчики `landing_credits`, `interview_setup_credits`, `training_setup_credits` (загружаем в `fetchBillingState`).
-  - Переписать запрос рефералов на JOIN, корректно показать «Кем вы приглашены» и «Кого пригласили вы» (счётчик + список с email/телефон/telegram).
-  - В сайдбаре бейдж раздела «5. Тариф & Счета» брать из стейта `balance`.
-- `supabase/functions/ai-generate-onboarding/index.ts` — после успешного `save` вызывать `spend_fixed` для `interview_setup` и `training_setup`.
-- Где сохраняется лендинг (`project_landings`) — добавить `supabase.rpc('spend_fixed', { _project, _item: 'landing' })` сразу после успешной записи.
-- `CandidateFlow.tsx` — убедиться, что при первом старте ИИ-интервью и ИИ-обучения вызывается `supabase.rpc('spend_pack', { _candidate, _kind })`; добавить, если нет.
+### e) `ai-company-cleanup` (новый)
+При финализации удаляет все файлы пользователя из bucket `company-uploads/{user_id}/{company_id}/...`.
 
-## Чего НЕ делаем
+Все функции логируют в `logs` payload `function_call_params` (что отправили) и `bot_reply` (что получили) — это база для UI-окна диалога.
 
-- Не меняем формулу пополнения RR за рубли (1 ₽ = 1 RR) и приветственный бонус 1000 RR.
-- Не трогаем ProTalk/edge-функции AI кроме добавления вызова `spend_fixed`.
-- Не меняем структуру `wallets` и `transactions`.
+## 3. Фронтенд — `EmployerPanel.tsx` (вкладка companies)
+
+### Кнопка
+Заменить «Регистрация бренда» → **«+ Добавить Компанию»**. Под списком — пометка: «Создание компаний, лендингов и редактирование — бесплатно».
+
+### Поток «Добавить Компанию»
+1. `company_create_draft()` → получаем `{ id, public_id }`.
+2. Параллельно invoke `ai-restart` (с `employer_public_id`).
+3. Открыть модал-редактор (не уходим со страницы /companies).
+4. В списке сразу появляется карточка со статусом «Создается».
+
+### Редактор компании (модал/drawer на правой половине)
+Слева — форма полей:
+- Название, Логотип
+- Описание компании и чем занимается *(новое)*
+- Основные продукты *(новое)*
+- Имидж, миссия и культура
+- Команда, Выплаты, График, Система работы
+- Статистика (год основания, сотрудники, обороты)
+
+Контролы:
+- **Загрузить документ для анализа** → upload в `company-uploads/{user_id}/{company_id}/`, получаем signed URL, вызываем `ai-company-analyze`, заполняем форму ответом.
+- **«Оформить красиво с помощью ИИ»** → `ai-enhance mode:all_company` с лимитами.
+- На каждом поле — ⚡ иконка → `ai-enhance mode:single` (передаём `company_id` + поле).
+- **Сохранить** → upsert `companies`, `company_finalize`, `ai-company-cleanup`.
+
+Лимиты длины применяются на клиенте (`maxLength` + Zod) и дублируются в edge.
+
+### Док-панель «Диалог с ИИ» (не перекрывает редактор)
+Резизуемая колонка справа (или нижняя панель, схлопываемая). Показывает поток: `→ запрос` / `← ответ JSON` по каждому AI-вызову текущей сессии редактора. Хранится в локальном state (не БД).
+
+### Карточки компаний
+- Бейдж статуса: «Создается» (жёлтый) / «Активна» (зелёный).
+- Клик по карточке → тот же редактор (PATCH), все поля редактируемы, AI-иконки работают.
+- Если поле пустое — соответствующий блок/раздел/ссылка на лендинге `/com{public_id}` не рендерится (правка `CompanyLanding.tsx`).
+
+### Сохранение → лендинг
+После `company_finalize` показать ссылку `https://hr-rr.online/com{public_id}` и кнопку «Открыть». Никаких списаний RR, никаких `spend_fixed('landing',...)` для компаний (это правило только для вакансий).
+
+## 4. Технические детали
+
+- ProTalk JSON-режим: ставим в системный промпт «Верни СТРОГО JSON в формате …», парсим через `tryParseJson`.
+- `user_social_id` теперь `from_user_id:{employer_public_id} message_id:{ts}` — правка `buildSocialId`.
+- Storage: `supabase--storage_create_bucket` + RLS политика `storage.objects` `bucket_id='company-uploads' AND (storage.foldername(name))[1] = auth.uid()::text`.
+- Безопасность: все RPC `SECURITY DEFINER`, проверяют `auth.uid() = employers.user_id`.
+- Идемпотентность: `company_create_draft` возвращает существующий draft, если у работодателя уже есть открытый draft (опционально).
+
+## 5. Файлы для правки
+- `supabase/migrations/<new>.sql` — поля, RPC, bucket-grant
+- `supabase/functions/_shared/protalk.ts` — `buildSocialId`
+- `supabase/functions/ai-chat/index.ts` — приём `employer_public_id`
+- `supabase/functions/ai-company-analyze/index.ts` — новый
+- `supabase/functions/ai-company-cleanup/index.ts` — новый (или встроить в RPC через `http`)
+- `supabase/functions/ai-enhance/index.ts` — лимиты, новые поля
+- `src/pages/EmployerPanel.tsx` — кнопка, мастер, лог-панель
+- `src/pages/CompanyLanding.tsx` — скрытие пустых блоков
+- (новый) `src/components/CompanyEditor.tsx` + `src/components/AIDialogPanel.tsx`
+
+## Уточнения
+1. Лог-панель ИИ — справа резизуемая колонка или нижний выезжающий drawer?
+2. Загрузка документа: только PDF/DOC/DOCX или ещё картинки (OCR)?
+3. При нажатии «+ Добавить Компанию», если у работодателя уже есть незавершённый draft — открывать его или каждый раз создавать новый?
