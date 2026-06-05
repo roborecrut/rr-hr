@@ -2967,6 +2967,8 @@ export default function CandidateFlow() {
               )}
             </main>
           </div>
+            );
+          })()
         )}
 
         {/* Tab 6: Certified diploma success tab */}
