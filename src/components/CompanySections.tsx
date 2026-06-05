@@ -13,8 +13,10 @@ import {
   BarChart3,
   Briefcase,
   ArrowRight,
+  Globe,
 } from "lucide-react";
 import type { JobProject } from "../types";
+import SitePreview from "./SitePreview";
 
 type Props = {
   company: any;
@@ -174,6 +176,13 @@ export default function CompanySections({
   // Hero with company logo + name
   const heroRef = useInView<HTMLDivElement>();
 
+  const heroMeta: string[] = [];
+  if (company.industry) heroMeta.push(String(company.industry));
+  if (company.staff)    heroMeta.push(`${company.staff}`);
+
+  // Inject "website" into the sticky nav if we have one
+  if (company.website) navItems.push({ id: "sec-website", label: "Сайт" });
+
   return (
     <div className="space-y-5 md:space-y-7">
       {/* HERO */}
@@ -212,6 +221,18 @@ export default function CompanySections({
             <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
               {company.name || "Без названия"}
             </h1>
+            {heroMeta.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {heroMeta.map((m, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 bg-white/5 border border-white/10 text-[11px] font-semibold text-slate-200 px-2.5 py-1 rounded-full"
+                  >
+                    {m}
+                  </span>
+                ))}
+              </div>
+            )}
             {company.description_text && (
               <p className="mt-2 text-sm text-slate-300 line-clamp-2 max-w-2xl">
                 {String(company.description_text).split("\n")[0]}
@@ -247,6 +268,18 @@ export default function CompanySections({
 
       {/* Sticky in-page nav */}
       {navItems.length > 1 && <StickyNav items={navItems} />}
+
+      {/* Site preview */}
+      {company.website && (
+        <SectionCard
+          id="sec-website"
+          icon={<Globe className="w-5 h-5" />}
+          title="Официальный сайт"
+          eyebrow="Внешний ресурс"
+        >
+          <SitePreview url={company.website} variant="card" />
+        </SectionCard>
+      )}
 
       {/* Two-column section layout on desktop; one column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
