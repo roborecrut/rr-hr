@@ -11,6 +11,7 @@ import HiringCalculator from "../components/HiringCalculator";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
+import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
 import {
   Users,
   Smartphone,
