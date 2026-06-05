@@ -878,20 +878,38 @@ export default function EmployerPanel() {
     return () => clearInterval(t);
   }, [employerId]);
 
-  // Покупка пакета лимитов интервью/обучения по тарифной сетке (RR → лимит шт.)
-  const handleBuyPack = async (kind: "interview" | "training") => {
+  // Покупка единого пакета: грейд цены определяется по сумме интервью + обучения.
+  const handleBuyMixedPack = async () => {
     setPurchaseError("");
-    setPackBusy(kind);
+    setPackBusy(true);
     try {
-      const qty = Math.max(1, Math.floor(packQty[kind] || 0));
-      const { error } = await supabase.rpc("purchase_pack", { _kind: kind, _qty: qty });
+      const qi = Math.max(0, Math.floor(packQty.interview || 0));
+      const qt = Math.max(0, Math.floor(packQty.training || 0));
+      if (qi + qt < 1) throw new Error("Укажите хотя бы 1 шт.");
+      const { error } = await supabase.rpc("purchase_pack_mixed", { _qty_int: qi, _qty_train: qt });
       if (error) throw new Error(error.message || "Ошибка покупки пакета");
-      addAuditEvent("success", "Пакет приобретён", `${kind === "interview" ? "Интервью" : "Обучение"}: +${qty} шт.`);
+      addAuditEvent("success", "Пакет приобретён", `Интервью +${qi} · Обучение +${qt}`);
       await fetchBillingState();
     } catch (err: any) {
       setPurchaseError(translateBillingError(err.message));
     } finally {
-      setPackBusy(null);
+      setPackBusy(false);
+    }
+  };
+
+  // Покупка фикс-услуги впрок (landing / interview_setup / training_setup)
+  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup") => {
+    setPurchaseError("");
+    setFixedBusy(item);
+    try {
+      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: 1 });
+      if (error) throw new Error(error.message || "Ошибка покупки услуги");
+      addAuditEvent("success", "Услуга куплена", item);
+      await fetchBillingState();
+    } catch (err: any) {
+      setPurchaseError(translateBillingError(err.message));
+    } finally {
+      setFixedBusy(null);
     }
   };
 
