@@ -232,95 +232,19 @@ export default function CompanyLanding() {
     }
   };
 
-  // Immediate 1-Click candidate registration and login, with NO FORM.
-  const triggerOneClickRegister = async (method: "google" | "telegram") => {
-    if (submitting) return;
-    setAuthMethod(method);
-    setSubmitting(true);
-
-    const randId = Math.floor(1000 + Math.random() * 9000);
-    const mockName = method === "google" ? `Алексей Иванов (${randId})` : `Кандидат #${randId}`;
-    const mockEmail = `candidate_${randId}@candidate-pool.ru`;
-    const mockTg = method === "telegram" ? `tg_candidate_${randId}` : "";
-
+  // Candidate auth success → navigate to candidate profile bound to this vacancy.
+  const handleCandidateAuthSuccess = (publicId: string) => {
     const activeProject = selectedVacancy || vacancies[0];
-    if (!activeProject) {
-      setSubmitting(false);
-      return;
-    }
-
-    const payload: any = {
-      name: mockName,
-      email: mockEmail,
-      telegramUsername: mockTg,
-      projectId: activeProject.id,
-      roleName: activeProject.roleName,
-      registeredVia: method,
-    };
-
-    if (method === "google") {
-      payload.googleName = `Алексей Иванов (${randId})`;
-      payload.googleEmail = mockEmail;
-      payload.googleAvatar = `https://api.dicebear.com/7.x/adventurer/svg?seed=alexey_${randId}`;
-    } else {
-      payload.telegramId = `123${randId}90`;
-      payload.telegramFirstName = "Алексей";
-      payload.telegramLastName = "Иванов";
-      payload.telegramAvatar = `https://api.dicebear.com/7.x/identicon/svg?seed=tg_${randId}`;
-      payload.telegramUsername = `tg_alex_${randId}`;
-    }
-
-    try {
-      // Try legacy API; on failure, create the candidate directly in Supabase so
-      // the URL we produce is bound to a real candidate row (public_id).
-      let candidateInfo: any = null;
-      const res = await fetch("/api/candidates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      }).catch(() => null as any);
-      if (res && res.ok) {
-        candidateInfo = await res.json();
-      } else {
-        const { data: created, error } = await supabase
-          .from("candidates")
-          .insert({
-            project_id: activeProject.id,
-            role_name: activeProject.roleName,
-            registered_via: method as any,
-            current_stage: "terms",
-          })
-          .select("id, public_id")
-          .single();
-        if (error || !created) throw error;
-        candidateInfo = { id: created.public_id || created.id, public_id: created.public_id };
-      }
-
-      if (candidateInfo) {
-        localStorage.setItem("cand_session_id", candidateInfo.id);
-        localStorage.setItem("cand_role", "candidate");
-
-        setRegistrationSuccess(true);
-        setTimeout(() => {
-          setRegistrationSuccess(false);
-          setShowApplyModal(false);
-          setSubmitting(false);
-          navigate(
-            buildCandidateUrl(
-              { slug: (activeProject as any).companySlug },
-              { slug: (activeProject as any).slug || activeProject.id },
-              { public_id: candidateInfo.public_id || candidateInfo.id },
-              "profile",
-            ),
-          );
-        }, 1500);
-      } else {
-        setSubmitting(false);
-      }
-    } catch (err) {
-      console.error("Error creating candidate in one click:", err);
-      setSubmitting(false);
-    }
+    setShowApplyModal(false);
+    if (!activeProject) return;
+    navigate(
+      buildCandidateUrl(
+        { slug: (activeProject as any).companySlug || companySlug },
+        { slug: (activeProject as any).slug || activeProject.id },
+        { public_id: publicId },
+        "profile",
+      ),
+    );
   };
 
   const handleApplyOnboarding = async (e: React.FormEvent) => {
