@@ -2421,13 +2421,14 @@ export default function EmployerPanel() {
                     <Building2 className="w-5 h-5 text-amber-400" /> Зарегистрированные компании
                   </h2>
                   <p className="text-xs text-slate-300 mt-1">Описания ваших юридических лиц или брендов, под которыми Робот публикует онбординги.</p>
+                  <p className="text-[11px] text-emerald-300 mt-0.5">✓ Добавление, редактирование, ИИ-улучшение, сохранение и публикация лендинга компании — бесплатно.</p>
                 </div>
 
                 <button 
-                  onClick={() => setShowAddCompany(!showAddCompany)} 
+                  onClick={openAddCompanyWizard}
                   className="cursor-pointer bg-gradient-to-r from-green-650 to-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow transition"
                 >
-                  Регистрация бренда
+                  + Добавить Компанию
                 </button>
               </div>
 
