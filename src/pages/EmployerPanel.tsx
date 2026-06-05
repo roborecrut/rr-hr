@@ -2967,15 +2967,16 @@ export default function EmployerPanel() {
                             </div>
                           )}
                           <div>
-                            <span className="text-[10px] text-[#E7C768] font-bold tracking-wide uppercase font-mono">{comp.industry}</span>
-                            <h3 className="text-base font-bold text-white mt-0.5">{comp.name}</h3>
+                            <h3 className="text-lg font-black text-[#E7C768] leading-tight">{comp.name || "Без названия"}</h3>
+                            {comp.industry && comp.industry !== "—" && (
+                              <div className="text-[11px] text-slate-300 mt-0.5">{comp.industry}</div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           {comp.status === "draft" && (
                             <span className="bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] py-1 px-2 rounded-full font-mono">Черновик</span>
                           )}
-                          <span className="bg-white/5 border border-white/5 text-[10px] text-slate-350 py-1 px-2.5 rounded-full font-mono">Штат: {comp.staff || "—"}</span>
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openEditCompanyWizard(comp); }}
@@ -2987,23 +2988,19 @@ export default function EmployerPanel() {
                       </div>
 
                       <p className="text-xs text-slate-200 leading-relaxed font-normal">{comp.description}</p>
-                      
-                      {/* Expanded sites, files links */}
-                      <div className="flex flex-wrap items-center gap-4 text-xs pt-1">
-                        {comp.sites && (
-                          <a 
-                            href={comp.sites.startsWith("http") ? comp.sites : `https://${comp.sites}`} 
-                            target="_blank" 
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-[#E7C768] hover:underline font-bold flex items-center gap-1"
-                          >
-                            🔗 Сайт: {comp.sites}
-                          </a>
+
+                      {/* Site preview + staff info */}
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        {comp.website && <SitePreview url={comp.website} variant="compact" />}
+                        {comp.staff && (
+                          <span className="inline-flex items-center gap-1.5 bg-black/30 border border-white/10 rounded-xl px-2.5 py-1.5 text-[11px] text-slate-200">
+                            <span className="text-slate-400">Сотрудники:</span>
+                            <span className="font-bold text-white">{comp.staff}</span>
+                          </span>
                         )}
                         {comp.files && (
-                          <span className="text-slate-300 flex items-center gap-1 font-semibold">
-                            📂 Регламент: <strong className="text-[#E7C768] font-mono">{comp.files}</strong> (Распознан ИИ)
+                          <span className="text-[11px] text-slate-300 flex items-center gap-1 font-semibold">
+                            📂 <strong className="text-[#E7C768] font-mono">{comp.files}</strong>
                           </span>
                         )}
                       </div>
