@@ -627,33 +627,38 @@ export default function CandidateFlow() {
   const [profName, setProfName] = useState("");
   const [profEmail, setProfEmail] = useState("");
   const [profTelegram, setProfTelegram] = useState("");
+  const [profPhone, setProfPhone] = useState("");
+  const [profResumeUrl, setProfResumeUrl] = useState("");
+  const [profAvatarUrl, setProfAvatarUrl] = useState("");
+  const [profSocials, setProfSocials] = useState<Record<string, string>>({
+    social_telegram: "", social_whatsapp: "", social_instagram: "",
+    social_vk: "", social_max: "", social_setka: "", social_github: "",
+  });
   const [saveProfileMsg, setSaveProfileMsg] = useState("");
   const [certSavedMsg, setCertSavedMsg] = useState("");
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!candidate) return;
-
     try {
-      const res = await fetch(`/api/candidates/${candidate.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: profName,
-          email: profEmail,
-          telegramUsername: profTelegram
-        })
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setCandidate(updated);
-        setEditingProfile(false);
-        setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
-        setTimeout(() => setSaveProfileMsg(""), 3000);
+      const sess = getCandidateSession();
+      const patch: any = {
+        phone: profPhone,
+        resume_url: profResumeUrl,
+        avatar_url: profAvatarUrl,
+        ...profSocials,
+      };
+      if (sess?.token) {
+        await (supabase as any).rpc("candidate_update_profile", { _token: sess.token, _patch: patch });
+      } else {
+        await (supabase as any).from("candidates").update(patch).eq("id", candidate.id);
       }
-    } catch (err) {
-      console.error(err);
+      setCandidate({ ...candidate, ...(patch as any) });
+      setEditingProfile(false);
+      setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
+      setTimeout(() => setSaveProfileMsg(""), 3000);
+    } catch (err: any) {
+      setSaveProfileMsg("⚠️ " + (err?.message || "Не удалось сохранить"));
     }
   };
 
