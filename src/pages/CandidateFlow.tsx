@@ -1775,7 +1775,7 @@ export default function CandidateFlow() {
                       ["social_telegram","Telegram"],["social_whatsapp","WhatsApp"],["social_instagram","Instagram"],
                       ["social_vk","ВКонтакте"],["social_max","MAX"],["social_setka","Сетка"],["social_github","GitHub"],
                     ].map(([k,label]) => {
-                      const v = (candidate as any)?.[k.replace('social_','social')];
+                      const v = profSocials[k];
                       return v ? (
                         <a key={k} href={v} target="_blank" rel="noreferrer" className="block text-xs text-slate-200 hover:text-[#E7C768] truncate">{label}: <span className="text-[#E7C768] underline">{v}</span></a>
                       ) : (
