@@ -43,8 +43,8 @@ export type VacancyFieldKey =
   | "motivation_text_detail"
   | "payouts_text"
   | "onboarding_text"
-  | "team_text_vac"
-  | "system_text_vac"
+  | "team_text"
+  | "system_text"
   | "training_professional_text"
   | "training_product_text"
   | "training_systems_text"
@@ -147,7 +147,7 @@ export const VACANCY_FIELDS: VacancyField[] = [
     group: "motivation",
   },
   {
-    key: "team_text_vac",
+    key: "team_text",
     label: "Команда вакансии",
     hint: "Каждый член команды в формате: [Роль] Имя — описание.",
     multiline: true,
@@ -159,7 +159,7 @@ export const VACANCY_FIELDS: VacancyField[] = [
     group: "team",
   },
   {
-    key: "system_text_vac",
+    key: "system_text",
     label: "Системы и регламенты вакансии",
     hint: "Каждый инструмент в формате: [Тип] Название — правила использования.",
     multiline: true,
