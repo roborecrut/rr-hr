@@ -3184,7 +3184,7 @@ export default function EmployerPanel() {
                           </button>
 
                           <button
-                            onClick={() => setEditingProject(proj)}
+                            onClick={() => { setEditVacancyRawText(""); setEditingProject(proj); }}
                             className="cursor-pointer flex-1 bg-[#E7C768]/10 hover:bg-[#E7C768]/20 text-[#E7C768] text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-[#E7C768]/25"
                           >
                             🛠 Редактировать
