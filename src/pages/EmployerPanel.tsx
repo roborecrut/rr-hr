@@ -1003,7 +1003,7 @@ export default function EmployerPanel() {
         return;
       }
       // Supabase fallback — read employer row by public_id
-      if (!employerId) return;
+      if (!isEmployerPublicIdCandidate(employerId)) return;
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: emp } = await supabase
         .from("employers")
@@ -1072,19 +1072,15 @@ export default function EmployerPanel() {
   // Fetch initial data
   const fetchData = async () => {
     try {
+      if (!isEmployerPublicIdCandidate(employerId)) return;
       const { supabase } = await import("@/integrations/supabase/client");
 
       {
       // Supabase fallback: projects for this employer (by public_id)
         let projRows: any[] = [];
-        if (employerId) {
-          const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-          if (emp?.id) {
-            const r = await supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
-            projRows = (r.data as any[]) || [];
-          }
-        } else {
-          const r = await supabase.from("projects").select("*, companies(name, slug)");
+        const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
+        if (emp?.id) {
+          const r = await supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
           projRows = (r.data as any[]) || [];
         }
         setProjects(
