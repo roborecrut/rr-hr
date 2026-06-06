@@ -2823,28 +2823,6 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(() => {
-                        const totalVacChars = (
-                          setupRoleName + setupVacancyText + setupTasksActivityText + setupScheduleText +
-                          setupMotivationText + setupMotivationDetail + setupPayoutsText + setupOnboardingText +
-                          setupTeamText + setupSystemText + setupTrainingProfessionalText + setupTrainingProductText +
-                          setupTrainingSystemsText + setupTrainingWikiText + setupTrainingRegulationsText + vacancyRawText
-                        ).trim().length;
-                        const canBeautify = aiReady && totalVacChars >= 50;
-                        if (!aiReady) return null;
-                        return (
-                          <button
-                            type="button"
-                            onClick={handleBeautifyNewVacancyWithAI}
-                            disabled={!canBeautify || isGenerating || isParsingFile}
-                            title={canBeautify ? "Оформить все 15 полей через ИИ" : "Заполните поля минимум на 50 символов суммарно (или загрузите файл)"}
-                            className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-                            {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                          </button>
-                        );
-                      })()}
                       <button
                         type="button"
                         onClick={cancelAddVacancyWizard}
@@ -2856,98 +2834,33 @@ export default function EmployerPanel() {
                     </div>
                   </div>
 
-                  {/* File intelligent import block */}
-                  <div className="bg-black/25 p-4 rounded-3xl border border-white/10 space-y-3">
-                    <span className="text-xs font-bold text-[#E7C768] block">Распознавание условий вакансии из файла</span>
-                    <p className="text-[10.5px] text-slate-300">
-                      Шаг 1 — загрузите файл в Supabase. Шаг 2 — нажмите «Распознать документ» (ИИ извлечёт текст до 5000 символов). Шаг 3 — нажмите «Оформить красиво», чтобы ИИ разнёс данные по 15 полям.
-                    </p>
-
-                    <div
-                      onClick={() => {
-                        const fInput = document.getElementById("vac-file-import") as HTMLInputElement;
-                        if (fInput) fInput.click();
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          (async () => { await uploadVacancyFile(e.dataTransfer.files[0]); })();
-                        }
-                      }}
-                      className={`cursor-pointer border-2 border-dashed border-[#E7C768]/30 bg-[#1D3E5E]/40 hover:bg-[#1D3E5E]/70 rounded-2xl p-4 text-center space-y-1 transition text-white ${isUploadingVacancyFile || isParsingFile ? "animate-pulse" : ""}`}
-                    >
-                      <input
-                        id="vac-file-import"
-                        type="file"
-                        accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-                        className="hidden"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            const file = e.target.files[0];
-                            (async () => { await uploadVacancyFile(file); })();
-                          }
-                        }}
+                  {/* Unified document uploader — same UX as company wizard. */}
+                  {(() => {
+                    const totalVacChars = (
+                      setupRoleName + setupVacancyText + setupTasksActivityText + setupScheduleText +
+                      setupMotivationText + setupMotivationDetail + setupPayoutsText + setupOnboardingText +
+                      setupTeamText + setupSystemText + setupTrainingProfessionalText + setupTrainingProductText +
+                      setupTrainingSystemsText + setupTrainingWikiText + setupTrainingRegulationsText + vacancyRawText
+                    ).trim().length;
+                    const canBeautify = aiReady && totalVacChars >= 50;
+                    return (
+                      <DocumentUploader
+                        entity="vacancy"
+                        entityId={draftProjectId || undefined}
+                        pathPrefix={draftProjectId || ""}
+                        rawText={vacancyRawText}
+                        onRawTextChange={setVacancyRawText}
+                        maxChars={5000}
+                        title="Распознавание условий вакансии из файла"
+                        hint="Шаг 1 — загрузите файл. Шаг 2 — нажмите «Распознать документ» (ИИ извлечёт текст до 5000 символов). Шаг 3 — нажмите «Оформить красиво», чтобы ИИ разнёс данные по 15 полям."
+                        onEnhance={handleBeautifyNewVacancyWithAI}
+                        enhanceBusy={isGenerating}
+                        canEnhance={canBeautify}
+                        enhanceHint={canBeautify ? "Оформить все 15 полей через ИИ" : "Заполните поля минимум на 50 символов суммарно (или загрузите файл)"}
+                        onAudit={addAuditEvent}
                       />
-                      {isUploadingVacancyFile ? (
-                        <div className="flex flex-col items-center justify-center gap-1 text-[#E7C768] font-bold text-xs py-2">
-                          <RefreshCw className="w-5 h-5 animate-spin" />
-                          <span>Загружаем «{vacancyFileName || "файл"}» в Supabase Storage…</span>
-                        </div>
-                      ) : isParsingFile ? (
-                        <div className="flex flex-col items-center justify-center gap-1 text-[#E7C768] font-bold text-xs py-2">
-                          <RefreshCw className="w-5 h-5 animate-spin" />
-                          <span>ProTalk извлекает текст вакансии…</span>
-                        </div>
-                      ) : draftVacancyFilePath ? (
-                        <div className="text-xs font-semibold text-emerald-300">
-                          Файл загружен: {vacancyFileName} ✓
-                        </div>
-                      ) : (
-                        <div className="text-xs font-semibold text-slate-300">
-                          Кликните или перетащите файл с описанием вакансии 📂
-                        </div>
-                      )}
-                      <span className="text-[9.5px] text-slate-400 block font-mono">Поддерживаются .pdf, .docx, .txt, .md (до 10 МБ)</span>
-                      {vacancyUploadError ? (
-                        <div className="text-[10px] text-[#FF4C4C] mt-1">{vacancyUploadError}</div>
-                      ) : null}
-                    </div>
-
-                    {/* Step 2: explicit Распознать документ button — appears once
-                        the file has been uploaded to storage. */}
-                    {draftVacancyFilePath && !isParsingFile && !isUploadingVacancyFile && (
-                      <div className="flex justify-center">
-                        <button
-                          type="button"
-                          onClick={recognizeVacancyFile}
-                          className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition flex items-center justify-center gap-1.5 shadow-md"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          Распознать документ
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Step 3: editable raw text + total-chars counter */}
-                    {(vacancyRawText || isParsingFile) && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-[#E7C768] uppercase tracking-wider">
-                            Распознанный текст вакансии (редактируется, до 5000 симв.)
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">{vacancyRawText.length} / 5000</span>
-                        </div>
-                        <textarea
-                          value={vacancyRawText}
-                          onChange={(e) => setVacancyRawText(e.target.value.slice(0, 5000))}
-                          placeholder="Здесь появится распознанный текст из загруженного файла. Можно дописать вручную."
-                          className="w-full bg-black/40 text-xs p-3 rounded-xl border border-white/10 text-white focus:outline-[#E7C768] min-h-[140px]"
-                          maxLength={5000}
-                        />
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   <form onSubmit={handleCreateOnboardingSystem} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
