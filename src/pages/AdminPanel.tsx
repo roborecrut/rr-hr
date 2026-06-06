@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
+import RRImage from "@/components/RRImage";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CandidateDetailsModal from "@/components/CandidateDetailsModal";
@@ -109,7 +110,7 @@ export default function AdminPanel() {
       <header className="sticky top-0 z-40 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="flex items-center justify-between gap-4 max-w-[1500px] mx-auto">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="RR" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={36} alt="RR" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col leading-tight">
               <span className="text-base font-bold text-[#E7C768]">Админ-панель</span>
               <span className="text-[10px] uppercase tracking-wider text-slate-300">CRM администратора</span>

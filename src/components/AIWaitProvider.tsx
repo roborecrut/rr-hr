@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { rrImg } from "@/lib/img";
 
 /**
  * Global AI wait overlay.
@@ -272,11 +273,12 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
 
           {/* Robot */}
           <img
-            src={img}
+            src={rrImg(img, 112)}
             alt="RR"
             loading="eager"
             referrerPolicy="no-referrer"
             className="w-28 h-28 object-contain drop-shadow-xl shrink-0"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = img; }}
             style={status === "loading" ? { animation: "aiwait-float 3s ease-in-out infinite" } : undefined}
           />
         </div>

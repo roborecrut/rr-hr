@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import TrainingCoursePreview from "../components/TrainingCoursePreview";
@@ -1644,7 +1645,7 @@ export default function CandidateFlow() {
           {/* Logo & Vacancy info */}
           <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => { const id = candidate?.id || localStorage.getItem("cand_session_id") || ""; if (id) navigate(`/${id}/profile`); }}>
             <div className="bg-[#E7C768]/10 p-1.5 rounded-xl border border-[#E7C768]/20">
-              <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="RR" className="w-8 h-8 object-contain" />
+              <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={32} alt="RR" className="w-8 h-8 object-contain" />
             </div>
             <div className="text-left">
               <span className="font-extrabold text-sm tracking-tight text-[#E7C768] block leading-none">ЛИЧНЫЙ КАБИНЕТ СОИСКАТЕЛЯ</span>
@@ -2521,12 +2522,12 @@ export default function CandidateFlow() {
 
               {/* Watermark Logo */}
               <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="watermark" className="w-80 h-80 object-contain" />
+                <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={320} alt="watermark" className="w-80 h-80 object-contain" />
               </div>
 
               {/* Certificate Head */}
               <div className="space-y-2 relative z-10">
-                <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="RR Logo" className="w-16 h-16 object-contain mx-auto drop-shadow" />
+                <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={64} alt="RR Logo" className="w-16 h-16 object-contain mx-auto drop-shadow" />
                 <h1 className="text-xs uppercase tracking-[0.2em] font-bold text-[#E7C768] font-serif">
                   Сертификат Соответствия Квалификации
                 </h1>

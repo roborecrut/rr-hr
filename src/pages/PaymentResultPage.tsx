@@ -4,6 +4,7 @@
  */
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, XCircle } from "lucide-react";
+import RRImage from "@/components/RRImage";
 
 const IMG_SUCCESS = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR5.png";
 const IMG_FAIL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR9.png";
@@ -23,7 +24,7 @@ export function PaymentSuccessPage() {
   return (
     <div className="min-h-screen bg-[#0F2A45] text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="bg-[#17344F] border-2 border-emerald-500/40 rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl space-y-5">
-        <img src={IMG_SUCCESS} alt="Оплата прошла" className="w-48 h-48 object-contain mx-auto" />
+        <RRImage src={IMG_SUCCESS} w={192} alt="Оплата прошла" className="w-48 h-48 object-contain mx-auto" />
         <div className="flex items-center justify-center gap-2 text-emerald-400">
           <CheckCircle2 className="w-6 h-6" />
           <h1 className="text-2xl font-black text-[#E7C768]">Оплата прошла успешно</h1>
@@ -49,7 +50,7 @@ export function PaymentFailPage() {
   return (
     <div className="min-h-screen bg-[#0F2A45] text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="bg-[#17344F] border-2 border-rose-500/40 rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl space-y-5">
-        <img src={IMG_FAIL} alt="Оплата не прошла" className="w-48 h-48 object-contain mx-auto" />
+        <RRImage src={IMG_FAIL} w={192} alt="Оплата не прошла" className="w-48 h-48 object-contain mx-auto" />
         <div className="flex items-center justify-center gap-2 text-rose-400">
           <XCircle className="w-6 h-6" />
           <h1 className="text-2xl font-black text-[#E7C768]">Оплата не прошла</h1>

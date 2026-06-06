@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
@@ -342,8 +343,9 @@ export default function CompanyLanding() {
               onClick={() => navigate(companySlug ? `/com${companySlug}` : "/")}
               title="На страницу компании"
             >
-              <img
+              <RRImage
                 src={company?.logo_url || selectedVacancy?.logoUrl || "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png"}
+                w={40}
                 alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"

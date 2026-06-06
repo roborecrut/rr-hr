@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
@@ -287,8 +288,9 @@ export default function JobVacancyLanding() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img 
+            <RRImage 
               src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
+              w={40}
               alt="RR Робот Рекрутер" 
               className="w-10 h-10 object-contain drop-shadow" 
               referrerPolicy="no-referrer"

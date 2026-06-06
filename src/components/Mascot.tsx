@@ -4,6 +4,7 @@
  */
 
 import { motion } from "motion/react";
+import { rrImg } from "@/lib/img";
 
 export type MascotState = "chat" | "narrator" | "serious" | "greeting" | "recruitment";
 
@@ -29,8 +30,16 @@ const SIZE_CLASSES = {
   xl: "w-52 h-52 md:w-64 md:h-64",
 };
 
+const SIZE_PX: Record<NonNullable<MascotProps["size"]>, number> = {
+  sm: 64,
+  md: 128,
+  lg: 192,
+  xl: 256,
+};
+
 export default function Mascot({ state, size = "md", className = "", speechBubble }: MascotProps) {
-  const imageUrl = MASCOT_URLS[state] || MASCOT_URLS.greeting;
+  const rawUrl = MASCOT_URLS[state] || MASCOT_URLS.greeting;
+  const imageUrl = rrImg(rawUrl, SIZE_PX[size]);
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
@@ -57,6 +66,7 @@ export default function Mascot({ state, size = "md", className = "", speechBubbl
           alt={`Робот Рекрутер - ${state}`}
           className={`relative z-10 ${SIZE_CLASSES[size]} object-contain drop-shadow-md`}
           referrerPolicy="no-referrer"
+          onError={(e) => { (e.currentTarget as HTMLImageElement).src = rawUrl; }}
           animate={{
             y: [0, -8, 0],
           }}
