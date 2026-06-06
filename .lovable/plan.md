@@ -1,117 +1,105 @@
 
-# План: интервью, заготовки, профиль кандидата
+# План: меню работодателя, CRM-воронка кандидатов, новая админка
 
-## 1. Проходные баллы (редактируемые работодателем)
+Работа большая, разобью на 3 части. В этой итерации делаю каркас всех трёх частей, чтобы было что увидеть. Полировка подстраниц админки — следующими итерациями.
 
-**База:**
-- `training_stage_tests.pass_score` — уже есть, остаётся редактируемым в `TrainingWizard` (поле «Проходной балл» рядом с тестом каждого этапа).
-- В `projects` добавляется колонка `interview_pass_score INT DEFAULT 75` — это средний балл по 3 этапам интервью (резюме + чек-лист + ситуации).
+---
 
-**UI:** в редакторе интервью (см. п.4) — поле «Проходной средний балл по интервью» (1–100, по умолчанию 75).
+## Часть 1. Левое меню работодателя (`EmployerPanel.tsx`)
 
-## 2. Телефон при регистрации кандидата
+Новый порядок и группировка:
 
-**База:**
-- В `candidates` добавляется `phone TEXT` (если ещё нет — проверим). 
-- RPC `candidate_email_signup` расширяется параметром `_phone TEXT`, валидируется регуляркой `^\+?[0-9 ()\-]{7,20}$`.
+**Онбординг (1–5):**
+1. Профиль
+2. Компании
+3. Вакансии
+4. Обучение
+5. Интервью
 
-**UI:** `CandidateAuthModal` — обязательное поле «Телефон» с маской/валидацией формата (без СМС), сохраняется в `candidates.phone`. Только email/пароль/телефон — никаких других обязательных полей.
+**Разделитель + дополнительные:**
+- CRM & Воронка
+- Тариф & Счета
+- События & Логи
+- (новое, видно только админу) Админ-панель → переход на `/admin`
 
-## 3. Новое 3-этапное интервью из ЛК кандидата
+Изменения:
+- Поменять порядок пунктов и нумерацию в десктопном сайдбаре.
+- Адаптировать существующее мобильное меню под тот же порядок (бутерброд).
+- Добавить в сайдбар проверку роли `admin` (через уже существующий `user_roles` + `has_role`) и условно показать пункт «Админ-панель».
 
-Старый поток интервью в `CandidateFlow` полностью заменяется новым компонентом `CandidateInterview.tsx` с кнопкой «Начать интервью» во вкладке «Интервью» ЛК.
+## Часть 2. CRM-воронка работодателя (`/emp{id}/crm`)
 
-**Этапы:**
-1. **Скрининг резюме (0–100):** кандидат вставляет/загружает текст резюме → отправляется на edge-функцию `ai-interview-screen-resume` с заготовкой «важные параметры» → ИИ возвращает `{score, summary, strengths, gaps}` → сохраняется в `candidate_scores.resume_score` и показывается кандидату.
-2. **Чек-лист (0–100):** 20 вопросов из заготовки (10 с 4 вариантами + 10 текстовых). После ответа на все 20 → `ai-interview-grade-checklist` оценивает разом → `candidate_scores.checklist_score`. Показывается итог + общий комментарий.
-3. **Ситуации (0–100):** 3 ситуации из заготовки, по каждой ИИ выдаёт условие → кандидат пишет одну реплику-ответ → после 3 ответов → `ai-interview-grade-situations` оценивает → `candidate_scores.situations_score`.
+**Новые этапы воронки (8 колонок):**
+Регистрация → Скрининг → Чеклист → Ситуации → Профессия → Продукт → Система → Сертификат.
 
-**Итог:** `interview_score = round((resume + checklist + situations) / 3)`. Если ≥ `projects.interview_pass_score` → `candidates.current_stage = 'training'`, иначе показываем результат с возможностью пересдачи (тоже неограниченно, как у обучения).
+**База данных — миграция:**
+- Добавить тип `public.crm_stage` (enum c 8 значениями выше).
+- Добавить колонку `candidates.crm_stage public.crm_stage NOT NULL DEFAULT 'registration'`.
+- Добавить колонку `candidates.crm_stage_manual boolean NOT NULL DEFAULT false` — фиксирует, что работодатель вручную перетащил карточку (после этого авто-движение для неё отключено).
+- Функция `public.candidate_recalc_crm_stage(_id uuid)` — пересчитывает `crm_stage` на основе:
+  - есть запись в `interviews` со `started_at` → как минимум Скрининг;
+  - `candidate_scores.resume_score` not null → Чеклист;
+  - `checklist_score` not null → Ситуации;
+  - `situations_score` not null → Профессия;
+  - `candidate_stage_progress.stage='professional' passed` → Продукт; `product` → Система; `systems` → Сертификат;
+  - все блоки обучения пройдены → остаётся Сертификат.
+  Если `crm_stage_manual=true` — функция ничего не меняет.
+- Триггеры на `candidate_scores`, `candidate_stage_progress`, `interviews` — после INSERT/UPDATE вызывают `candidate_recalc_crm_stage(candidate_id)`.
+- RPC `employer_set_candidate_crm_stage(_candidate uuid, _stage crm_stage)` — права: владелец вакансии или admin; ставит `crm_stage` и `crm_stage_manual=true`.
 
-**Списание `spend_pack(_kind='interview')`** — при старте первого этапа, идемпотентно.
+**UI CRM-страницы:**
+- Канбан: 8 колонок по `crm_stage`, drag&drop через нативный HTML5 (без новой библиотеки) → вызов RPC.
+- Список (table): сортировка/фильтр по этапу, поиск как сейчас.
+- Карточка кандидата (модальное окно по клику на карточку/строку):
+  - **Профиль:** фото (аватар-инициалы если нет), имя, контакты (email/телефон/телеграм), все ссылки (на анкету `/cand{public_id}`, вакансию, компанию).
+  - **Резюме после скрининга:** `candidates.resume_text` + `candidate_scores.resume_score` + краткое summary.
+  - **Чеклист:** ответы из `candidate_answers` (тип checklist) + `checklist_score`.
+  - **Ситуации:** ответы + `situations_score`. Средний балл = `overall_score`.
+  - **Обучение:** список блоков (Профессия/Продукт/Система) с `last_score`, `passed_at`, ответами и feedback из `candidate_stage_progress.last_answers/last_feedback`; список тестов из `candidate_training_progress` с `score` и `quiz_feedback`.
+- Существующая страница профиля кандидата (`/cand…/profile`) остаётся — модалка её агрегирует.
 
-## 4. Редактор заготовок интервью у работодателя
+## Часть 3. Админка `/admin` — переход на CRM-систему
 
-Новый компонент `InterviewWizard.tsx` в редакторе вакансии, рядом с `TrainingWizard`. Три вкладки:
+`AdminPanel.tsx` превращаю в layout с левым сайдбаром и 9 подстраницами. В этой итерации — каркас + минимально рабочие списки/таблицы; глубокая логика подстраниц — отдельными итерациями.
 
-- **Резюме:** редактор текста «Важные параметры для оценки резюме» (markdown) + кнопка «Сгенерировать ИИ» (с учётом вакансии и шаблона должности).
-- **Чек-лист:** список из 20 вопросов с inline-редактором: тип (choice/text), варианты, правильный ответ, пояснение. Кнопка «Сгенерировать ИИ» — заполняет все 20 на основе вакансии.
-- **Ситуации:** 3 темы (заголовок + краткая вводная для ИИ + критерии оценки). Кнопка «Сгенерировать ИИ».
+**Подстраницы:**
+1. **Клиенты (работодатели)** — канбан (по статусу: новый / активный / платящий / спящий, рассчитывается из транзакций и активности) + таблица. Карточка работодателя со всей инфой.
+2. **Кандидаты** — таблица + фильтры, карточка (та же модалка, что в CRM работодателя).
+3. **Компании** — таблица + карточка.
+4. **Вакансии** — таблица + карточка.
+5. **Интервью** — таблица результатов с переходом в детали.
+6. **Обучения** — таблица прогресса.
+7. **Рассылки** — заглушка-каркас (список черновиков, форма создания — без отправки в этой итерации).
+8. **Роли** — список пользователей с ролями `admin`/`manager`/`employer`/`candidate`, переключение через RPC `admin_set_role`.
+9. **Счета** — список транзакций со всеми employer-кошельками, форма ручной корректировки баланса (RPC `admin_wallet_adjust(_employer uuid, _delta int, _note text)`).
+10. **ИИ** — список edge-функций ai-* и их промптов; в этой итерации просто страница с описанием и ссылками на edge function logs (без редактирования промптов — это требует вынести промпты в БД, отдельная итерация).
 
-**Хранение:** новая таблица `interview_blocks (project_id, kind 'resume'|'checklist'|'situations', payload jsonb, updated_at)`.
+Существующий редактор шаблонов должностей перенесу в подраздел «Вакансии → Шаблоны должностей» (чтобы ничего не потерять).
 
-**Edge-функции:**
-- `ai-generate-interview-resume-criteria`
-- `ai-generate-interview-checklist` (20 вопросов с правильными ответами в jsonb)
-- `ai-generate-interview-situations` (3 ситуации)
-- `ai-interview-screen-resume`, `ai-interview-grade-checklist`, `ai-interview-grade-situations` (правильные ответы и критерии передаются вместе с промптом, как сделано для обучения)
-- `ai-list-interview-checklist` — sanitized для кандидата (без correct_answer)
+**Доступ:** все подстраницы под проверкой `has_role(uid,'admin')`. Кнопка входа в админку показывается в личном кабинете работодателя, если у пользователя есть роль admin.
 
-## 5. Шаблон интервью для «Менеджер по продажам»
+---
 
-Добавим колонку `job_titles.interview_template JSONB DEFAULT '{}'::jsonb`.
+## Технические детали
 
-Структура:
-```json
-{
-  "resume_criteria": "markdown...",
-  "checklist": [{"type":"choice","question":"...","options":["...","...","...","..."],"correct":"...","explanation":"..."}, ... 20 шт],
-  "situations": [{"title":"...","brief":"...","criteria":"..."}, ... 3 шт]
-}
+**Миграции (одной транзакцией):**
+```sql
+-- enum + columns
+create type public.crm_stage as enum ('registration','screening','checklist','situations','professional','product','systems','certified');
+alter table public.candidates
+  add column if not exists crm_stage public.crm_stage not null default 'registration',
+  add column if not exists crm_stage_manual boolean not null default false;
+
+-- recalc fn + trigger fn + triggers + RPC employer_set_candidate_crm_stage + RPC admin_set_role + RPC admin_wallet_adjust
 ```
 
-Через `supabase--insert` пропишу полный шаблон только для «Менеджер по продажам». При открытии `InterviewWizard` если заготовок ещё нет — предлагается «Заполнить из шаблона должности» (если шаблон есть).
+**Файлы:**
+- `src/pages/EmployerPanel.tsx` — переупорядочить меню, добавить кнопку «Админ-панель», переписать CRM (этапы, drag&drop, новая модалка кандидата). Учитывая размер файла (4654 строк), CRM-логику вынесу в `src/components/EmployerCRM.tsx` и `src/components/CandidateDetailsModal.tsx`.
+- `src/pages/AdminPanel.tsx` — превратить в shell с `Outlet`/табами; подстраницы — `src/pages/admin/Clients.tsx`, `Candidates.tsx`, `Companies.tsx`, `Vacancies.tsx`, `Interviews.tsx`, `Trainings.tsx`, `Mailings.tsx`, `Roles.tsx`, `Accounts.tsx`, `AI.tsx`.
+- Маршруты добавить в `src/App.tsx` под `/admin/*`.
 
-RPC `job_title_get_interview_template(_title)` для чтения; `admin_job_title_upsert_interview_template(_title, _patch)` для админки.
+**Что НЕ делаю в этой итерации (по согласованию):**
+- Реальную отправку рассылок и редактор промптов ИИ — каркас.
+- Сложную аналитику по работодателям в админ-канбане — статусы вычисляю по простой эвристике.
 
-## 6. Профиль кандидата
-
-В `CandidateFlow` вкладка «Профиль» переделывается:
-
-**Убираем:** блоки Google/Telegram регистрации.
-
-**Добавляем:**
-- Email (read-only), Телефон (редактируемый), Ссылка на резюме (URL).
-- Фото профиля — загрузка в новый storage-бакет `candidate-avatars` (приватный, RLS: владелец = `candidate_id` из таблицы), хранится `candidates.avatar_url` (signed url или путь).
-- Поля ссылок на соцсети: Telegram, WhatsApp, Instagram, ВКонтакте, MAX, Сетка, GitHub (только URL, без верификации).
-- Список «Мои отклики» (компании + вакансии) — берётся из `candidate_sessions.applications` / уже есть в `CandidateSession.applications`.
-
-**База:** в `candidates` добавляются: `phone`, `avatar_url`, `resume_url`, `social_telegram`, `social_whatsapp`, `social_instagram`, `social_vk`, `social_max`, `social_setka`, `social_github`.
-
-RPC `candidate_update_profile(_token uuid, _patch jsonb)` — валидирует токен → сессию → апдейт.
-
-## Технические детали (миграции и файлы)
-
-**Миграция 1 (schema):**
-- `ALTER TABLE projects ADD interview_pass_score INT NOT NULL DEFAULT 75;`
-- `ALTER TABLE candidates ADD COLUMN IF NOT EXISTS phone TEXT, avatar_url TEXT, resume_url TEXT, social_* TEXT (7 шт);`
-- `ALTER TABLE job_titles ADD interview_template JSONB NOT NULL DEFAULT '{}'::jsonb;`
-- `CREATE TABLE interview_blocks(...)` + GRANT + RLS (employer manages, candidate read sanitized via RPC).
-- RPC: `candidate_email_signup` (+ phone), `candidate_update_profile`, `job_title_get_interview_template`, `admin_job_title_upsert_interview_template`.
-
-**Миграция 2 (data):** через `supabase--insert` — заполнение `interview_template` для «Менеджер по продажам».
-
-**Storage:** бакет `candidate-avatars` (приватный) + RLS-политики на `storage.objects`.
-
-**Edge-функции (новые):**
-```
-ai-generate-interview-resume-criteria
-ai-generate-interview-checklist
-ai-generate-interview-situations
-ai-interview-screen-resume
-ai-interview-grade-checklist
-ai-interview-grade-situations
-ai-list-interview-checklist
-```
-
-**Frontend (новые/изменённые):**
-- `src/components/InterviewWizard.tsx` (новый)
-- `src/components/CandidateInterview.tsx` (новый, заменяет старый flow)
-- `src/components/CandidateAuthModal.tsx` (+ телефон)
-- `src/pages/CandidateFlow.tsx` (новая вкладка интервью, профиль переделан, убраны Google/TG блоки)
-- `src/components/VacancyEditor.tsx` или редактор вакансии (вкладка «Интервью» с `InterviewWizard`)
-- `src/lib/candidateSession.ts` (+ phone, avatar_url в типе)
-- `src/lib/loadingPhrases.ts` (+ фразы для интервью)
-
-## Объём
-Большая итерация: ~1 миграция схемы + 1 data-insert + 7 edge-функций + 2 крупных компонента + правки существующих. Реализую последовательно: миграция → edge-функции → редактор работодателя → новое интервью кандидата → профиль кандидата → шаблон должности.
+После твоего «ок» — перехожу в build.
