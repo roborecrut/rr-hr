@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send, Upload } from "lucide-react";
+import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send, Upload, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import { getCandidateSession } from "@/lib/candidateSession";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -39,6 +40,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [resumeResult, setResumeResult] = useState<{ score: number; summary: string; strengths: string[]; gaps: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedResume, setUploadedResume] = useState<{ bucket: string; path: string; filename: string } | null>(null);
+  const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   // checklist
@@ -88,24 +92,48 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const onUploadResume = async (f: File) => {
     if (!f) return;
     if (f.size > 10 * 1024 * 1024) { alert("Файл больше 10 МБ"); return; }
-    setParsing(true);
-    const path = `${candidateId}/${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
+    setUploading(true);
+    setUploadError("");
     try {
-      const { error: upErr } = await supabase.storage.from("candidate-resumes").upload(path, f, { upsert: false });
-      if (upErr) throw upErr;
+      const sess = getCandidateSession();
+      if (!sess?.token) throw new Error("Сессия кандидата истекла — войдите снова.");
+      const form = new FormData();
+      form.append("token", sess.token);
+      form.append("kind", "resume");
+      form.append("file", f);
+      const res = await fetch(FN("candidate-upload-file"), {
+        method: "POST",
+        headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: form,
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      setUploadedResume({ bucket: j.bucket, path: j.path, filename: f.name });
+    } catch (e: any) {
+      setUploadError(e?.message || "Не удалось загрузить резюме");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const sendResumeToProTalk = async () => {
+    if (!uploadedResume) return;
+    setParsing(true);
+    try {
       const r = await aiWaitRun<any>({
         title: "Распознавание резюме",
-        task: () => call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: "candidate-resumes", file_path: path, filename: f.name }),
+        task: () => call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: uploadedResume.bucket, file_path: uploadedResume.path, filename: uploadedResume.filename }),
       });
       if (!r) return;
       const text = String(r?.text || "").slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setResumeText(text);
+      setUploadedResume(null);
     } catch (e: any) {
       alert(e?.message || "Не удалось распознать файл");
     } finally {
       setParsing(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   };
 
