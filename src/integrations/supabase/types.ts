@@ -2046,6 +2046,7 @@ export type Database = {
         Args: { _email: string; _password: string }
         Returns: Json
       }
+      candidate_public_cabinet: { Args: { _public_id: string }; Returns: Json }
       candidate_recalc_crm_stage: {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["crm_stage"]

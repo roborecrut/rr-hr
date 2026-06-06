@@ -774,6 +774,8 @@ export default function CandidateFlow() {
 
       // 2. Resolve candidate. Prefer Supabase by public_id, then legacy API.
       let activeCand: any = null;
+      let cabinetProject: any = null;
+      let cabinetCompany: any = null;
       const pubId = activeId.replace(/^candidate/i, "").replace(/^cand/i, "");
       if (savedSession?.token && (savedSession.public_id === pubId || savedSession.candidate_id === pubId || !pubId)) {
         activeCand = {
@@ -789,22 +791,44 @@ export default function CandidateFlow() {
         };
       }
       if (pubId) {
-        const { data: cand } = await supabase
-          .from("candidates")
-          .select("*")
-          .eq("public_id", pubId)
-          .maybeSingle();
-        if (cand) {
-          activeCand = {
-            id: `candidate${cand.public_id}`,
-            publicId: cand.public_id,
-            name: cand.resume_name || `Кандидат #${cand.public_id}`,
-            email: "",
-            projectId: cand.project_id,
-            roleName: cand.role_name || "",
-            currentStage: cand.current_stage,
-            registeredVia: cand.registered_via || "telegram",
-          };
+        try {
+          const { data: rpcRes } = await (supabase as any).rpc("candidate_public_cabinet", { _public_id: pubId });
+          if (rpcRes && rpcRes.ok && rpcRes.candidate) {
+            const c = rpcRes.candidate;
+            activeCand = {
+              id: c.id,
+              publicId: c.public_id,
+              name: c.resume_name || `Кандидат #${c.public_id}`,
+              email: savedSession?.email || "",
+              projectId: c.project_id,
+              companyId: c.company_id || undefined,
+              roleName: c.role_name || "",
+              currentStage: c.current_stage,
+              registeredVia: c.registered_via || "telegram",
+            };
+            cabinetProject = rpcRes.project || null;
+            cabinetCompany = rpcRes.company || null;
+          }
+        } catch {}
+        if (!activeCand) {
+          const { data: cand } = await supabase
+            .from("candidates")
+            .select("*")
+            .eq("public_id", pubId)
+            .maybeSingle();
+          if (cand) {
+            activeCand = {
+              id: cand.id,
+              publicId: cand.public_id,
+              name: cand.resume_name || `Кандидат #${cand.public_id}`,
+              email: cand.email || "",
+              projectId: cand.project_id,
+              companyId: cand.company_id || undefined,
+              roleName: cand.role_name || "",
+              currentStage: cand.current_stage,
+              registeredVia: cand.registered_via || "telegram",
+            };
+          }
         }
       }
 
@@ -816,34 +840,9 @@ export default function CandidateFlow() {
         }
       }
 
-      // If starts with candidateXXXXXX and doesn't exist, auto-provision a Supabase row
-      if (!activeCand && activeId.startsWith("candidate")) {
-        const randomNum = activeId.replace("candidate", "");
-        const randId = randomNum || Math.floor(100000 + Math.random() * 900000).toString();
-        const { data: created } = await supabase
-          .from("candidates")
-          .insert({
-            public_id: randId,
-            project_id: parts[1] ? null : null,
-            role_name: "Менеджер по продажам",
-            current_stage: "terms",
-            registered_via: "telegram",
-          })
-          .select("*")
-          .single();
-        if (created) {
-          activeCand = {
-            id: `candidate${created.public_id}`,
-            publicId: created.public_id,
-            name: `Кандидат #${created.public_id}`,
-            email: `candidate_${created.public_id}@candidate-pool.ru`,
-            projectId: created.project_id,
-            roleName: created.role_name,
-            currentStage: created.current_stage,
-            registeredVia: created.registered_via,
-          };
-        }
-      }
+      // Note: legacy auto-provisioning of fake candidates removed. If the
+      // public_id is unknown we surface the "cabinet not found" screen so
+      // the user can re-authenticate properly.
 
       if (activeCand) {
         setCandidate(activeCand);
@@ -923,7 +922,28 @@ export default function CandidateFlow() {
         // bound project_id so the vacancy block is populated automatically.
         const routeProjId = candIndex >= 2 ? (parts[1] || "").replace(/^vac/i, "") : "";
         const activeProjId = routeProjId || activeCand.projectId || "";
-        if (activeProjId) {
+        if (cabinetProject) {
+          const p = cabinetProject;
+          const co = cabinetCompany || {};
+          setProject({
+            id: p.id,
+            companyName: co.name || "",
+            companySlug: co.slug || undefined,
+            employerId: p.employer_id,
+            roleName: p.role_name,
+            salaryTerms: p.salary_terms || undefined,
+            scheduleTerms: p.schedule_terms || undefined,
+            motivationText: p.motivation_text || undefined,
+            customWiki: p.custom_wiki || undefined,
+            checklistQuestions: [],
+            roleplayQuestions: [],
+            logoUrl: p.logo_url || co.logo_url || undefined,
+            slug: p.slug,
+            publicId: p.public_id,
+          } as any);
+          setProjectFull(p);
+          if (cabinetCompany) setCompanyFull(cabinetCompany);
+        } else if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
           if (resProj && resProj.ok) {
             setProject(await resProj.json());
