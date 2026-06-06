@@ -799,12 +799,22 @@ export default function CandidateFlow() {
               id: c.id,
               publicId: c.public_id,
               name: c.resume_name || `Кандидат #${c.public_id}`,
-              email: savedSession?.email || "",
+              email: c.email || savedSession?.email || "",
               projectId: c.project_id,
               companyId: c.company_id || undefined,
               roleName: c.role_name || "",
               currentStage: c.current_stage,
               registeredVia: c.registered_via || "telegram",
+              phone: c.phone || "",
+              avatarUrl: c.avatar_url || "",
+              resumeUrl: c.resume_url || "",
+              socialTelegram: c.social_telegram || "",
+              socialWhatsapp: c.social_whatsapp || "",
+              socialInstagram: c.social_instagram || "",
+              socialVk: c.social_vk || "",
+              socialMax: c.social_max || "",
+              socialSetka: c.social_setka || "",
+              socialGithub: c.social_github || "",
             };
             cabinetProject = rpcRes.project || null;
             cabinetCompany = rpcRes.company || null;
