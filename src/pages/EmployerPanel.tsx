@@ -1500,8 +1500,14 @@ export default function EmployerPanel() {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const ep: any = editingProject;
+      // Resolve company_id from the (possibly changed) companyName.
+      const matchedCo = companiesList.find(
+        (c) => c.name.toLowerCase() === (ep.companyName || "").toLowerCase(),
+      );
+      const newCompanyId = (matchedCo as any)?.id ?? null;
       const patch: any = {
         role_name: ep.roleName,
+        company_id: newCompanyId,
         salary_terms: ep.salaryTerms ?? null,
         schedule_terms: ep.scheduleTerms ?? null,
         motivation_text: ep.motivationText ?? null,
