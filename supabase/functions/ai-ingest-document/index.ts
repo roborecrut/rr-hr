@@ -37,9 +37,15 @@ Deno.serve(async (req) => {
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   let sourceUrl = body.file_url || "";
   if (body.bucket && body.file_path) {
-    const { data } = admin.storage.from(body.bucket).getPublicUrl(body.file_path);
-    if (!data?.publicUrl) return jsonResponse({ error: "public_url_failed" }, 500);
-    sourceUrl = data.publicUrl;
+    // Prefer a signed URL so private buckets (candidate-resumes) work too.
+    const signed = await admin.storage.from(body.bucket).createSignedUrl(body.file_path, 60 * 30);
+    if (signed.data?.signedUrl) {
+      sourceUrl = signed.data.signedUrl;
+    } else {
+      const { data } = admin.storage.from(body.bucket).getPublicUrl(body.file_path);
+      if (!data?.publicUrl) return jsonResponse({ error: "public_url_failed" }, 500);
+      sourceUrl = data.publicUrl;
+    }
   }
 
   const chatId = buildChatId({ userId: user?.id });
