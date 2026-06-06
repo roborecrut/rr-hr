@@ -1588,6 +1588,30 @@ export default function CandidateFlow() {
     );
   }
 
+  // Block access if the underlying vacancy is archived/deleted/unpublished.
+  if (projectFull && ((projectFull.status && projectFull.status !== "active") || projectFull.is_published === false)) {
+    const isClosed = projectFull.status === "deleted";
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#17344F] to-[#265582] text-center p-6">
+        <div className="max-w-md space-y-4">
+          <div className="text-amber-300 font-extrabold text-lg">
+            {isClosed ? "Вакансия закрыта" : "Вакансия больше не активна"}
+          </div>
+          <p className="text-slate-300 text-sm">
+            Компания приостановила или закрыла набор по этой позиции. Ваши данные и история сохранены —
+            свяжитесь с работодателем напрямую, если у вас остались вопросы.
+          </p>
+          <button
+            onClick={() => navigate("/vacancy")}
+            className="bg-[#E7C768] text-[#17344F] font-bold text-xs py-2.5 px-5 rounded-xl hover:bg-[#F4EE8E] transition"
+          >
+            Каталог открытых вакансий
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
       
