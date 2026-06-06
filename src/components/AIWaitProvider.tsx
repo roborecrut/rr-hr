@@ -236,7 +236,7 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
         .aiwait-typing { display: inline-block; overflow: hidden; white-space: nowrap; border-right: 2px solid #E7C768; animation: aiwait-typing 1.6s steps(40, end), aiwait-blink 0.8s step-end infinite; }
         .aiwait-dots::after { content: '...'; display: inline-block; animation: aiwait-dots 1.4s steps(3, end) infinite; min-width: 1.2em; text-align: left; }
       `}</style>
-      <div className="relative w-full max-w-md rounded-3xl border border-[#E7C768]/30 bg-gradient-to-br from-[#0E2236] to-[#0a1828] p-6 shadow-2xl animate-scale-in">
+      <div className="relative w-full max-w-md rounded-3xl border border-[#E7C768]/30 bg-gradient-to-br from-[#17344F] to-[#265582] p-6 shadow-2xl animate-scale-in">
         {title && (
           <div className="mb-4 text-center text-[11px] font-mono font-bold uppercase tracking-wider text-[#E7C768]/80">
             {title}

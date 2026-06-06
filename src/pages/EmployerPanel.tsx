@@ -656,11 +656,7 @@ export default function EmployerPanel() {
       setShowAddCompany(true);
       try {
         const { aiRestart } = await import("@/lib/aiClient");
-        aiWaitRun({
-          title: "Подготовка ИИ-ассистента компании",
-          task: () => aiRestart(employerId),
-          fireAndForget: true,
-        });
+        aiRestart(employerId).catch(() => {});
       } catch {}
     } catch (err: any) {
       console.error(err);
@@ -729,11 +725,7 @@ export default function EmployerPanel() {
     setShowAddCompany(true);
     try {
       const { aiRestart } = await import("@/lib/aiClient");
-      aiWaitRun({
-        title: "Подготовка ИИ-ассистента компании",
-        task: () => aiRestart(employerId),
-        fireAndForget: true,
-      });
+      aiRestart(employerId).catch(() => {});
     } catch {}
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
@@ -1483,11 +1475,7 @@ export default function EmployerPanel() {
       setShowAddNewVacancy(true);
       try {
         const { aiRestart } = await import("@/lib/aiClient");
-        aiWaitRun({
-          title: "Подготовка ИИ-ассистента вакансии",
-          task: () => aiRestart(employerId),
-          fireAndForget: true,
-        });
+        aiRestart(employerId).catch(() => {});
       } catch {}
     } catch (err: any) {
       console.error(err);
