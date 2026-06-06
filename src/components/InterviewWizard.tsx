@@ -119,9 +119,16 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     if (!project?.roleName) return;
     const { data } = await supabase.rpc("job_title_get_interview_template" as any, { _title: project.roleName });
     const tpl: any = data || {};
-    if (tpl.resume_criteria) { setResumeMd(tpl.resume_criteria); await saveBlock("resume", { criteria_md: tpl.resume_criteria }); }
-    if (Array.isArray(tpl.checklist)) { setChecklist(tpl.checklist); await saveBlock("checklist", { questions: tpl.checklist }); }
-    if (Array.isArray(tpl.situations)) { setSituations(tpl.situations); await saveBlock("situations", { situations: tpl.situations }); }
+    const rc = typeof tpl.resume_criteria === "string"
+      ? tpl.resume_criteria
+      : (typeof tpl.resume_criteria?.criteria_md === "string" ? tpl.resume_criteria.criteria_md : "");
+    const chk = Array.isArray(tpl.checklist) ? tpl.checklist
+      : Array.isArray(tpl.checklist?.questions) ? tpl.checklist.questions : null;
+    const sit = Array.isArray(tpl.situations) ? tpl.situations
+      : Array.isArray(tpl.situations?.situations) ? tpl.situations.situations : null;
+    if (rc) { setResumeMd(rc); await saveBlock("resume", { criteria_md: rc }); }
+    if (chk) { setChecklist(chk); await saveBlock("checklist", { questions: chk }); }
+    if (sit) { setSituations(sit); await saveBlock("situations", { situations: sit }); }
     addAuditEvent("success", "Шаблон применён", `${project.roleName}`);
   };
 
