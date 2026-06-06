@@ -597,41 +597,38 @@ export default function EmployerPanel() {
 
   const parseCompanyFileWithAI = async (filename: string) => {
     setIsParsingFile(true);
-    addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
+    addAuditEvent("info", "ИИ разбор документа", `ИИ-Копирайтер ProTalk считывает текст из файла: ${filename}...`);
     try {
-      const { aiCompanyAnalyze } = await import("@/lib/aiClient");
-      const res = await aiWaitRun({
+      const filePath = draftFilePath;
+      const res = await aiWaitRun<any>({
         title: `ИИ читает файл ${filename}`,
-        task: () => aiCompanyAnalyze({
-          company_id: draftCompanyId || undefined,
-          employer_public_id: employerId,
-          file_url: draftFilePath || undefined,
-          raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
-        }),
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: {
+              entity: "company",
+              entity_id: draftCompanyId || undefined,
+              bucket: filePath ? "company-uploads" : undefined,
+              file_path: filePath || undefined,
+              filename,
+              max_chars: 5000,
+            },
+          });
+          if (error) throw new Error(error.message);
+          return data;
+        },
       });
-      const payload = res?.fields || {};
-      if (payload) {
-        if (payload.name) setNewCompanyName(payload.name);
-        if (payload.industry) setNewCompanyIndustry(payload.industry);
-        if (payload.website) setNewCompanySite(payload.website);
-        if (payload.staff) setNewCompanyStaff(payload.staff);
-        if (payload.description_text) setNewCompanyDescription(payload.description_text);
-        if (payload.products_text) setNewCompanyProducts(payload.products_text);
-        if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
-        if (payload.team_text) setNewCompanyDesc(payload.team_text);
-        if (payload.payouts_text) setNewCompanySalaryTerms(payload.payouts_text);
-        if (payload.schedule_text) setNewCompanyScheduleTerms(payload.schedule_text);
-        if (payload.system_text) setNewCompanyCustomWiki(payload.system_text);
-        const st = payload.stats || {};
-        if (st.founded_year) setNewCompanyStatsValFounded(String(st.founded_year));
-        if (st.employees) setNewCompanyStatsValClients(String(st.employees));
-        if (st.turnover) setNewCompanyStatsValDialogs(String(st.turnover));
-
-        addAuditEvent("success", "ИИ разбор завершен", `Корпоративный профиль автоматически предзаполнен из документа ${filename}!`);
+      const text = String(res?.text || "").slice(0, 5000);
+      if (text) {
+        setCompanyRawText(text);
+        addAuditEvent("success", "Текст извлечён", `Документ ${filename} распознан (${text.length} симв.). Проверьте текст и нажмите «Оформить красиво».`);
+      } else {
+        addAuditEvent("warning", "Пустой ответ", "ИИ не вернул текст из документа.");
       }
-    } catch (err) {
+      // ai-ingest-document already removes the file from storage on completion.
+      setDraftFilePath(null);
+    } catch (err: any) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
+      addAuditEvent("warning", "Ошибка распознавания", err?.message || "Не удалось разобрать файл.");
     } finally {
       setIsParsingFile(false);
     }
