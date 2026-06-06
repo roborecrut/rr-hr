@@ -7,11 +7,14 @@
  */
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  cacheEmployerPublicId,
+  clearCachedEmployerPublicId,
+  readCachedEmployerPublicIdForUser,
+} from "@/lib/links";
 
 const REF_KEY = "rr_ref";
 const DONE_KEY = "rr_bootstrap_done";
-const EMP_PID_KEY = "employer_session_id"; // shared cache w/ EmployerPanel
-const EMP_PID_USER_KEY = "employer_session_user_id";
 
 export default function SessionBootstrap() {
   useEffect(() => {
@@ -45,14 +48,14 @@ export default function SessionBootstrap() {
       // it was cached for THIS user — never reuse another user's id).
       const tryCachedRedirect = (): boolean => {
         try {
-          const cachedUser = localStorage.getItem(EMP_PID_USER_KEY);
-          const cachedPid = localStorage.getItem(EMP_PID_KEY);
-          if (cachedUser !== session.user.id || !cachedPid) return false;
+          const cachedPid = readCachedEmployerPublicIdForUser(session.user.id);
+          if (!cachedPid) return false;
           const here = window.location.pathname;
           const target = `/emp${cachedPid}/profile`;
           if (here === target) return true;
           if (
             here === "/" || here === "/main" || here === "/auth" ||
+            here === "/setup" ||
             here.startsWith("/employer")
           ) {
             window.history.replaceState({}, "", target);
@@ -73,10 +76,7 @@ export default function SessionBootstrap() {
             .maybeSingle();
           if (emp?.public_id) {
             // Persist cache tied to user — next sign-in is instant.
-            try {
-              localStorage.setItem(EMP_PID_KEY, emp.public_id);
-              localStorage.setItem(EMP_PID_USER_KEY, session.user.id);
-            } catch { /* ignore */ }
+            cacheEmployerPublicId(emp.public_id, session.user.id);
             const target = `/emp${emp.public_id}/profile`;
             const here = window.location.pathname;
             // Only auto-redirect from the auth/landing/legacy paths
@@ -84,12 +84,15 @@ export default function SessionBootstrap() {
               here === "/" ||
               here === "/main" ||
               here === "/auth" ||
+              here === "/setup" ||
               here.startsWith("/employer")
             ) {
               window.history.replaceState({}, "", target);
               // Trigger router update
               window.dispatchEvent(new PopStateEvent("popstate"));
             }
+          } else {
+            clearCachedEmployerPublicId();
           }
         } catch (e) {
           console.warn("[redirect] failed", e);

@@ -34,6 +34,12 @@ import {
   type VacancyFieldKey,
   type VacancyField,
 } from "../lib/fieldFormats";
+import {
+  cacheEmployerPublicId,
+  clearCachedEmployerPublicId,
+  isEmployerPublicIdCandidate,
+  parseEmployerPublicIdFromPath,
+} from "@/lib/links";
 
 // ---------------------------------------------------------------------------
 // Mapping helpers: JobProject (camelCase) ↔ VacancyFormValues (snake_case keys
@@ -361,7 +367,7 @@ export default function EmployerPanel() {
 
   // Billing & Tariff States
   const [employerId, setEmployerId] = useState<string>(
-    () => localStorage.getItem("employer_session_id") || "",
+    () => parseEmployerPublicIdFromPath(window.location.pathname) || "",
   );
 
   const [balance, setBalance] = useState<number>(1000);
@@ -909,29 +915,27 @@ export default function EmployerPanel() {
   // Synchronized Full-Stack Fetching
   const fetchCompanies = async () => {
     try {
+      if (!isEmployerPublicIdCandidate(employerId)) {
+        setCompaniesList([]);
+        return;
+      }
       // Load companies owned by this employer directly from Supabase.
       // (No /api/companies endpoint exists — the dev/prod server returns index.html
       // with 200 OK for unknown routes, so a fetch() here would silently break JSON parsing.)
       const { supabase } = await import("@/integrations/supabase/client");
       let data: any[] = [];
-      if (employerId) {
-        const { data: emp, error: empErr } = await supabase
-          .from("employers")
-          .select("id")
-          .eq("public_id", employerId)
-          .maybeSingle();
-        if (empErr) console.error("fetchCompanies: employer lookup failed", empErr);
-        if (emp?.id) {
-          const r = await supabase
-            .from("companies")
-            .select("*")
-            .eq("owner_employer_id", emp.id)
-            .order("created_at", { ascending: false });
-          if (r.error) console.error("fetchCompanies: companies query failed", r.error);
-          data = (r.data as any[]) || [];
-        }
-      } else {
-        const r = await supabase.from("companies").select("*");
+      const { data: emp, error: empErr } = await supabase
+        .from("employers")
+        .select("id")
+        .eq("public_id", employerId)
+        .maybeSingle();
+      if (empErr) console.error("fetchCompanies: employer lookup failed", empErr);
+      if (emp?.id) {
+        const r = await supabase
+          .from("companies")
+          .select("*")
+          .eq("owner_employer_id", emp.id)
+          .order("created_at", { ascending: false });
         if (r.error) console.error("fetchCompanies: companies query failed", r.error);
         data = (r.data as any[]) || [];
       }
@@ -999,7 +1003,7 @@ export default function EmployerPanel() {
         return;
       }
       // Supabase fallback — read employer row by public_id
-      if (!employerId) return;
+      if (!isEmployerPublicIdCandidate(employerId)) return;
       const { supabase } = await import("@/integrations/supabase/client");
       const { data: emp } = await supabase
         .from("employers")
@@ -1068,19 +1072,15 @@ export default function EmployerPanel() {
   // Fetch initial data
   const fetchData = async () => {
     try {
+      if (!isEmployerPublicIdCandidate(employerId)) return;
       const { supabase } = await import("@/integrations/supabase/client");
 
       {
       // Supabase fallback: projects for this employer (by public_id)
         let projRows: any[] = [];
-        if (employerId) {
-          const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-          if (emp?.id) {
-            const r = await supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
-            projRows = (r.data as any[]) || [];
-          }
-        } else {
-          const r = await supabase.from("projects").select("*, companies(name, slug)");
+        const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
+        if (emp?.id) {
+          const r = await supabase.from("projects").select("*, companies(name, slug)").eq("employer_id", emp.id);
           projRows = (r.data as any[]) || [];
         }
         setProjects(
@@ -1122,24 +1122,17 @@ export default function EmployerPanel() {
       {
         // Supabase fallback: candidates linked to this employer's projects
         let candRows: any[] = [];
-        if (employerId) {
-          const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-          if (emp?.id) {
-            const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
-            const ids = (projIds || []).map((p) => p.id);
-            if (ids.length) {
-              const { data } = await supabase
-                .from("candidates")
-                .select("*, projects(role_name, company_id, companies(name, slug))")
-                .in("project_id", ids);
-              candRows = (data as any[]) || [];
-            }
+        const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
+        if (emp?.id) {
+          const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
+          const ids = (projIds || []).map((p) => p.id);
+          if (ids.length) {
+            const { data } = await supabase
+              .from("candidates")
+              .select("*, projects(role_name, company_id, companies(name, slug))")
+              .in("project_id", ids);
+            candRows = (data as any[]) || [];
           }
-        } else {
-          const { data } = await supabase
-            .from("candidates")
-            .select("*, projects(role_name, company_id, companies(name, slug))");
-          candRows = (data as any[]) || [];
         }
         setCandidates(
           (candRows || []).map((c: any) => ({
@@ -1188,17 +1181,16 @@ export default function EmployerPanel() {
   }, [employerId]);
 
   useEffect(() => {
-    const pathIdMatch = path.match(/^\/(?:emp|employer)([a-zA-Z0-9_-]+)/);
-    if (pathIdMatch && pathIdMatch[1] !== employerId) {
-      setEmployerId(pathIdMatch[1]);
-      localStorage.setItem("employer_session_id", pathIdMatch[1]);
+    const pathEmployerId = parseEmployerPublicIdFromPath(path);
+    if (pathEmployerId && pathEmployerId !== employerId) {
+      setEmployerId(pathEmployerId);
     }
   }, [path, employerId]);
 
   // If no employer in URL/session, resolve via Supabase auth (user_id -> employer.public_id)
   // or fall back to the first existing employer (admin/demo case).
   useEffect(() => {
-    if (employerId) return;
+    if (isEmployerPublicIdCandidate(employerId)) return;
     let cancelled = false;
     (async () => {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1211,10 +1203,14 @@ export default function EmployerPanel() {
           .maybeSingle();
         if (!cancelled && own?.public_id) {
           setEmployerId(own.public_id);
-          localStorage.setItem("employer_session_id", own.public_id);
-          try { localStorage.setItem("employer_session_user_id", user.id); } catch {}
+          cacheEmployerPublicId(own.public_id, user.id);
+          if (path === "/setup" || path === "/employer" || path.startsWith("/employer/")) {
+            navigate(`/emp${own.public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
+          }
           return;
         }
+        clearCachedEmployerPublicId();
+        return;
       }
       // Last-resort fallback (demo/admin browsing): first employer
       const { data: any1 } = await supabase
@@ -1225,11 +1221,10 @@ export default function EmployerPanel() {
         .maybeSingle();
       if (!cancelled && any1?.public_id) {
         setEmployerId(any1.public_id);
-        localStorage.setItem("employer_session_id", any1.public_id);
       }
     })();
     return () => { cancelled = true; };
-  }, [employerId]);
+  }, [employerId, path, navigate, activeTab]);
 
   // Load profile email for the authenticated user
   useEffect(() => {
@@ -1307,6 +1302,13 @@ export default function EmployerPanel() {
         .eq("user_id", user.id)
         .maybeSingle();
       if (!emp) return;
+      if (isEmployerPublicIdCandidate((emp as any).public_id)) {
+        cacheEmployerPublicId((emp as any).public_id, user.id);
+        if ((emp as any).public_id !== employerId) {
+          setEmployerId((emp as any).public_id);
+          navigate(`/emp${(emp as any).public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
+        }
+      }
       setBalance(Number(((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance) || 0));
       setInterviewCredits(Number((emp as any).interview_credits || 0));
       setTrainingCredits(Number((emp as any).training_credits || 0));
@@ -2249,6 +2251,19 @@ export default function EmployerPanel() {
   const averageAllScores = candidates.length > 0 
     ? Math.round(candidates.reduce((acc, c) => acc + (c.scores?.overallScore || 70), 0) / candidates.length)
     : 78;
+
+  const isEmployerIdReady = isEmployerPublicIdCandidate(employerId);
+  if (!isEmployerIdReady) {
+    return (
+      <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased flex items-center justify-center px-4">
+        <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-6 shadow-xl text-center max-w-sm w-full space-y-3">
+          <Mascot state="narrator" size="md" className="mx-auto" />
+          <h1 className="text-lg font-black text-[#E7C768]">Загружаем кабинет</h1>
+          <p className="text-xs text-slate-300">Получаем ваш реальный ID работодателя из базы.</p>
+        </div>
+      </div>
+    );
+  }
 
   // Render content area based on six main tabs
   return (

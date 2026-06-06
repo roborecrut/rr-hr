@@ -5,6 +5,72 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
+export const EMPLOYER_SESSION_ID_KEY = "employer_session_id";
+export const EMPLOYER_SESSION_USER_ID_KEY = "employer_session_user_id";
+
+const RESERVED_EMPLOYER_IDS = new Set([
+  "loyer", // legacy `/employer/...` parser bug: `emp` + `loyer`
+  "profile",
+  "companies",
+  "vacancies",
+  "training",
+  "interviews",
+  "crm",
+  "tariff",
+  "billing",
+  "invoice",
+  "payment",
+  "accounts",
+]);
+
+export function isEmployerPublicIdCandidate(publicId: string | null | undefined): publicId is string {
+  const pid = (publicId || "").trim();
+  return /^[A-Za-z0-9_-]{3,64}$/.test(pid) && !RESERVED_EMPLOYER_IDS.has(pid.toLowerCase());
+}
+
+export function parseEmployerPublicIdFromPath(pathname: string): string | null {
+  // Legacy concatenated URL only: /employer100003/profile.
+  // Must NOT match /employer/profile, otherwise it becomes fake id `loyer`.
+  const legacyMatch = pathname.match(/^\/employer([A-Za-z0-9_-]+)(?:\/|$)/);
+  if (isEmployerPublicIdCandidate(legacyMatch?.[1])) return legacyMatch![1];
+
+  const empMatch = pathname.match(/^\/emp([A-Za-z0-9_-]+)(?:\/|$)/);
+  if (isEmployerPublicIdCandidate(empMatch?.[1])) return empMatch![1];
+  return null;
+}
+
+export function clearCachedEmployerPublicId() {
+  try {
+    localStorage.removeItem(EMPLOYER_SESSION_ID_KEY);
+    localStorage.removeItem(EMPLOYER_SESSION_USER_ID_KEY);
+  } catch { /* ignore */ }
+}
+
+export function cacheEmployerPublicId(publicId: string, userId?: string | null) {
+  if (!isEmployerPublicIdCandidate(publicId)) {
+    clearCachedEmployerPublicId();
+    return;
+  }
+  try {
+    localStorage.setItem(EMPLOYER_SESSION_ID_KEY, publicId);
+    if (userId) localStorage.setItem(EMPLOYER_SESSION_USER_ID_KEY, userId);
+  } catch { /* ignore */ }
+}
+
+export function readCachedEmployerPublicIdForUser(userId: string): string | null {
+  try {
+    const cachedPid = localStorage.getItem(EMPLOYER_SESSION_ID_KEY);
+    const cachedUser = localStorage.getItem(EMPLOYER_SESSION_USER_ID_KEY);
+    if (!isEmployerPublicIdCandidate(cachedPid)) {
+      clearCachedEmployerPublicId();
+      return null;
+    }
+    return cachedUser === userId ? cachedPid : null;
+  } catch {
+    return null;
+  }
+}
+
 export type DBCompany = {
   id: string;
   slug: string | null;
