@@ -8,6 +8,7 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import TrainingCoursePreview from "../components/TrainingCoursePreview";
 import CandidateStageTraining from "../components/CandidateStageTraining";
+import CandidateInterview from "../components/CandidateInterview";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
@@ -2115,7 +2116,7 @@ export default function CandidateFlow() {
               <CandidateInterview
                 projectId={candidate.projectId}
                 candidateId={candidate.id}
-                onCompleted={(passed) => { if (passed) setActiveTab("training"); }}
+                onCompleted={(passed: boolean) => { if (passed) setActiveTab("training"); }}
               />
             ) : (
               <div className="text-slate-300 text-sm">Загрузка...</div>
