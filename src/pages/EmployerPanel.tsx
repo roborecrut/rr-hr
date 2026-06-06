@@ -242,7 +242,9 @@ export default function EmployerPanel() {
     mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
   const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
 
-  // Reload templates when the selected role changes and prefill empty fields.
+  // Reload templates when the selected role changes and OVERWRITE all 15
+  // wizard fields with the per-role template (falling back to the canonical
+  // example). If the user has already typed something, ask before overwriting.
   useEffect(() => {
     if (!setupRoleName.trim()) return;
     let cancelled = false;
@@ -250,18 +252,52 @@ export default function EmployerPanel() {
       const tpl = await getRoleTemplates(setupRoleName);
       if (cancelled) return;
       setRoleTemplates(tpl as Record<string, string>);
-      // Prefill ONLY empty wizard fields, never overwrite user input.
-      const get = (k: string) =>
-        ((tpl as any)?.[k] || (DEFAULT_VAC_TEMPLATES as any)[k] || "").trim();
-      setSetupVacancyText((v) => v || get("vacancy_text"));
-      setSetupTasksActivityText((v) => v || get("tasks_activity_text"));
-      setSetupScheduleText((v) => v || get("schedule_text"));
-      setSetupMotivationText((v) => v || get("motivation_text"));
-      setSetupMotivationDetail((v) => v || get("motivation_text_detail"));
-      setSetupPayoutsText((v) => v || get("payouts_text"));
-      setSetupOnboardingText((v) => v || get("onboarding_text"));
-      setSetupTeamText((v) => v || get("team_text_vac"));
-      setSetupSystemText((v) => v || get("system_text_vac"));
+
+      const mapped = roleTplToFields(tpl as any);
+      const valueFor = (key: VacancyFieldKey) =>
+        (mapped[key] && mapped[key]!.trim()) ||
+        VACANCY_FIELDS_BY_KEY[key].example;
+
+      const current: Record<VacancyFieldKey, string> = {
+        role_name: setupRoleName,
+        vacancy_text: setupVacancyText,
+        tasks_activity_text: setupTasksActivityText,
+        schedule_text: setupScheduleText,
+        motivation_text: setupMotivationText,
+        motivation_text_detail: setupMotivationDetail,
+        payouts_text: setupPayoutsText,
+        onboarding_text: setupOnboardingText,
+        team_text: setupTeamText,
+        system_text: setupSystemText,
+        training_professional_text: setupTrainingProfessionalText,
+        training_product_text: setupTrainingProductText,
+        training_systems_text: setupTrainingSystemsText,
+        training_wiki_text: setupTrainingWikiText,
+        training_regulations_text: setupTrainingRegulationsText,
+      };
+      const hasUserContent = (Object.keys(current) as VacancyFieldKey[]).some(
+        (k) => k !== "role_name" && (current[k] || "").trim().length > 0,
+      );
+      if (hasUserContent) {
+        const ok = window.confirm(
+          `Подставить шаблоны для должности «${setupRoleName}» во все 15 полей? Текущие значения будут заменены.`,
+        );
+        if (!ok) return;
+      }
+      setSetupVacancyText(valueFor("vacancy_text"));
+      setSetupTasksActivityText(valueFor("tasks_activity_text"));
+      setSetupScheduleText(valueFor("schedule_text"));
+      setSetupMotivationText(valueFor("motivation_text"));
+      setSetupMotivationDetail(valueFor("motivation_text_detail"));
+      setSetupPayoutsText(valueFor("payouts_text"));
+      setSetupOnboardingText(valueFor("onboarding_text"));
+      setSetupTeamText(valueFor("team_text"));
+      setSetupSystemText(valueFor("system_text"));
+      setSetupTrainingProfessionalText(valueFor("training_professional_text"));
+      setSetupTrainingProductText(valueFor("training_product_text"));
+      setSetupTrainingSystemsText(valueFor("training_systems_text"));
+      setSetupTrainingWikiText(valueFor("training_wiki_text"));
+      setSetupTrainingRegulationsText(valueFor("training_regulations_text"));
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
