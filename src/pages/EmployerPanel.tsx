@@ -834,6 +834,23 @@ export default function EmployerPanel() {
             roleplayQuestions: [],
             logoUrl: p.logo_url || undefined,
             slug: p.slug,
+            // 15 canonical vacancy fields (snake_case mirrored on the row).
+            vacancyText: p.vacancy_text || undefined,
+            tasksActivityText: p.tasks_activity_text || undefined,
+            scheduleText: p.schedule_text || undefined,
+            motivationTextDetail: p.motivation_text_detail || undefined,
+            payoutsText: p.payouts_text || undefined,
+            onboardingText: p.onboarding_text || undefined,
+            teamText: p.team_text || undefined,
+            systemText: p.system_text || undefined,
+            trainingProfessionalText: p.training_professional_text || undefined,
+            trainingProductText: p.training_product_text || undefined,
+            trainingSystemsText: p.training_systems_text || undefined,
+            trainingWikiText: p.training_wiki_text || undefined,
+            trainingRegulationsText: p.training_regulations_text || undefined,
+            // legacy aliases kept for older code paths
+            trainingProfText: p.training_prof_text || p.training_professional_text || undefined,
+            trainingSystemText: p.training_system_text || p.training_systems_text || undefined,
           })) as any,
         );
       }
