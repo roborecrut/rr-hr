@@ -2937,7 +2937,9 @@ export default function EmployerPanel() {
                         </div>
 
                         <h3 className="text-base font-bold text-white mt-1.5">{proj.roleName}</h3>
-                        <div className="text-slate-300 text-xs mt-1 font-mono">{proj.salaryTerms || "Сдельная"} | {proj.scheduleTerms || "По согласованию"}</div>
+                        <div className="text-slate-300 text-xs mt-1 font-mono line-clamp-1">
+                          {(proj as any).motivationText || proj.salaryTerms || "Сдельная"} | {(proj as any).scheduleText || proj.scheduleTerms || "По согласованию"}
+                        </div>
                         
                         {/* Mini statistics visualization */}
                         <div className="grid grid-cols-4 gap-1.5 mt-4 text-center font-mono">
@@ -2959,41 +2961,21 @@ export default function EmployerPanel() {
                           </div>
                         </div>
 
-                        {/* Attached custom Wiki display toggle */}
-                        <div className="mt-2.5 bg-black/20 p-2.5 rounded-xl text-[11px] font-mono whitespace-pre-wrap leading-tight text-slate-300 line-clamp-2">
-                          <strong>Инструкция/База Wiki:</strong> {proj.customWiki || "Пока пустая корпоративная вики."}
-                        </div>
-
                         {/* Interactive dynamic link of vacancy page inside company career lander */}
                         <div className="mt-2.5 bg-black/35 p-2.5 rounded-xl border border-white/5 space-y-1">
                           <span className="text-[9px] uppercase font-bold text-[#E7C768] block leading-none font-mono">Адрес ИИ-страницы Вакансии (Лендинг):</span>
                           <a 
-                            onClick={(e) => { e.preventDefault(); navigate(`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`); }}
-                            href={`/${proj.companySlug || ""}/${(proj as any).slug || proj.id}`} 
+                            onClick={(e) => { e.preventDefault(); navigate(`/com${proj.companySlug || ""}/vac${(proj as any).slug || proj.id}/vacancy`); }}
+                            href={`/com${proj.companySlug || ""}/vac${(proj as any).slug || proj.id}/vacancy`} 
                             className="cursor-pointer text-sky-300 font-mono text-[10.5px] hover:underline hover:text-sky-450 block truncate"
                           >
-                            https://hr-rr.online/com{proj.companySlug || ""}/vac{(proj as any).slug || proj.id}
+                            https://hr-rr.online/com{proj.companySlug || ""}/vac{(proj as any).slug || proj.id}/vacancy
                           </a>
                         </div>
                       </div>
 
                       {/* Lower Actions */}
                       <div className="mt-5 pt-3 border-t border-white/5 space-y-2">
-                        <button
-                          onClick={() => handleCopyLink(proj.id, proj.companySlug)}
-                          className="cursor-pointer w-full bg-gradient-to-r from-red-650 to-orange-600 hover:shadow-md text-white text-[11px] font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5"
-                        >
-                          {copiedProjectId === proj.id ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-white" /> Ссылка скопирована
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5 text-[#E7C768]" /> Скопировать реф-ссылку соискателя
-                            </>
-                          )}
-                        </button>
-
                         <div className="flex gap-2">
                           <button
                             onClick={() => togglePauseVacancy(proj.id)}
