@@ -90,6 +90,7 @@ export default function CompanyLanding() {
   const [company, setCompany] = useState<any>(null);
   const [vacancies, setVacancies] = useState<JobProject[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<JobProject | null>(null);
+  const [selectedRaw, setSelectedRaw] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -149,24 +150,36 @@ export default function CompanyLanding() {
           .from("projects")
           .select("*")
           .eq("company_id", activeCompany.id)
-          .eq("is_published", true);
+          .eq("is_published", true)
+          .neq("status", "deleted");
         const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
-        setVacancies(mapped);
+        // Hide archived from the public list of "active" vacancies.
+        const publicList = mapped.filter((_, i) => (projRows![i] as any).status !== "archived");
+        setVacancies(publicList);
 
         // Only pick an "active" vacancy when the URL points to one — otherwise
         // the company-only view should not show vacancy-specific UI (tabs etc).
         if (vacancyId) {
-          const active =
-            mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) ||
-            mapped[0] ||
-            null;
-          setSelectedVacancy(active);
+          // Always load the exact vacancy from URL regardless of publish/status,
+          // so we can render a clear "inactive" notice instead of silently
+          // falling back to a different vacancy.
+          const { data: exactRows } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("company_id", activeCompany.id)
+            .or(`public_id.eq.${vacancyId},slug.eq.${vacancyId}`)
+            .limit(1);
+          const exact = (exactRows && exactRows[0]) || null;
+          setSelectedRaw(exact);
+          setSelectedVacancy(exact ? mapDbProjectToUi(activeCompany)(exact) : null);
         } else {
           setSelectedVacancy(null);
+          setSelectedRaw(null);
         }
       } else {
         setVacancies([]);
         setSelectedVacancy(null);
+        setSelectedRaw(null);
       }
     } catch (err) {
       console.error("Error loading company landing details:", err);
