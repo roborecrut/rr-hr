@@ -2920,9 +2920,9 @@ export default function EmployerPanel() {
                             value={setupCompanyName}
                             onChange={(e) => setSetupCompanyName(e.target.value)}
                           >
-                            <option value="">Выберите компанию...</option>
+                            <option value="" style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>Выберите компанию...</option>
                             {companiesList.map(c => (
-                              <option key={c.id} value={c.name}>{c.name}</option>
+                              <option key={c.id} value={c.name} style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>{c.name}</option>
                             ))}
                           </select>
                         ) : (
@@ -4514,9 +4514,9 @@ export default function EmployerPanel() {
                         value={editingProject.companyName || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
                       >
-                        <option value="">Выберите компанию...</option>
+                        <option value="" style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>Выберите компанию...</option>
                         {companiesList.map((c) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
+                          <option key={c.id} value={c.name} style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>{c.name}</option>
                         ))}
                       </select>
                     ) : (
