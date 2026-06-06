@@ -24,6 +24,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
 import SitePreview from "../components/SitePreview";
+import VacancyEditor from "../components/VacancyEditor";
+import {
+  VACANCY_FIELDS,
+  VACANCY_FIELDS_BY_KEY,
+  type VacancyFieldKey,
+  type VacancyField,
+} from "../lib/fieldFormats";
 import {
   Users,
   Smartphone,
