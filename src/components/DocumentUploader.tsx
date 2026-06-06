@@ -119,7 +119,7 @@ export function DocumentUploader({
       return;
     }
     const safe = sanitizeName(file.name);
-    const path = `${pathPrefix}/${Date.now()}_${safe}`;
+    const path = `${uid}/${pathPrefix}/${Date.now()}_${safe}`;
     setUploading(true);
     onAudit?.("info", "Загрузка файла", `Загружаем «${file.name}» в Supabase…`);
     try {
