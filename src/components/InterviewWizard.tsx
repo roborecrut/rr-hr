@@ -50,7 +50,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     (async () => {
       const [{ data: blocks }, { data: pr }] = await Promise.all([
         (supabase as any).from("interview_blocks").select("*").eq("project_id", projectId),
-        supabase.from("projects").select("interview_pass_score,role_name").eq("id", projectId).maybeSingle(),
+        (supabase as any).from("projects").select("interview_pass_score,role_name").eq("id", projectId).maybeSingle(),
       ]);
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
       const map: any = {};
