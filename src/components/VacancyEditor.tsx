@@ -279,13 +279,13 @@ const FieldRow: React.FC<FieldRowProps> = ({
           <p className="mt-0.5 text-[11px] text-slate-400">{field.hint}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {onAIEnhance && aiReady && (
+          {onAIEnhance && aiReady && (value || "").trim().length >= 7 && (
             <button
               type="button"
               onClick={onAIEnhance}
               disabled={aiLoading}
               className="flex items-center gap-1 rounded-lg border border-[#E7C768]/30 bg-[#E7C768]/10 px-2 py-1 text-[10px] font-bold text-[#E7C768] transition hover:bg-[#E7C768]/20 disabled:opacity-50"
-              title="ИИ-улучшение этого поля в каноническом формате"
+              title="ИИ-улучшение этого поля в каноническом формате (доступно от 7 символов)"
             >
               <Wand2 className="h-3 w-3" />
               {aiLoading ? "..." : "AI"}
