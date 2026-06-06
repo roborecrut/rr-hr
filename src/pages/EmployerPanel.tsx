@@ -242,6 +242,15 @@ export default function EmployerPanel() {
   // AI-enhance loading state for the in-wizard VacancyEditor.
   const [wizardAiKey, setWizardAiKey] = useState<VacancyFieldKey | null>(null);
 
+  // Vacancy wizard: 2-step file ingest (upload → recognize → fill raw text).
+  const [draftVacancyFilePath, setDraftVacancyFilePath] = useState<string | null>(null);
+  const [vacancyFileName, setVacancyFileName] = useState<string>("");
+  const [isUploadingVacancyFile, setIsUploadingVacancyFile] = useState(false);
+  const [vacancyUploadError, setVacancyUploadError] = useState<string>("");
+  // Raw extracted vacancy text from uploaded document (≤5000 chars). Editable.
+  // Passed to «Оформить красиво» as file_context.
+  const [vacancyRawText, setVacancyRawText] = useState<string>("");
+
   // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
   // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
   // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
@@ -1509,6 +1518,11 @@ export default function EmployerPanel() {
       setSetupTrainingWikiText("");
       setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
+      // Reset vacancy file-ingest state
+      setDraftVacancyFilePath(null);
+      setVacancyFileName("");
+      setVacancyUploadError("");
+      setVacancyRawText("");
       // Open vacancy editor IMMEDIATELY — restart happens in background
       setShowAddNewVacancy(true);
       try {
@@ -1853,36 +1867,90 @@ export default function EmployerPanel() {
     setTimeout(() => setCopiedProjectId(null), 2000);
   };
 
-  // Auto-recognize file for job vacancy conditions using ProTalk LLM
-  const handleAutoRecognizeFile = async (filename: string) => {
-    setIsParsingFile(true);
-    addAuditEvent("info", "Анализ файла вакансии", `Запущен разбор вакансии из файла: ${filename}`);
-    
+  // Step 1: upload the chosen file to Supabase Storage (vacancy-uploads bucket).
+  // We deliberately DO NOT call the LLM here — the user must press the explicit
+  // «Распознать документ» button on step 2 to extract text.
+  const uploadVacancyFile = async (file: File) => {
+    setVacancyUploadError("");
+    setIsUploadingVacancyFile(true);
     try {
-      const { aiEnhanceAll } = await import("@/lib/aiClient");
-      const parsed = await aiEnhanceAll({
-        mode: "all_vacancy",
-        company_name: setupCompanyName,
-        fields: {
-          roleName: setupRoleName,
-          schedule_text: setupScheduleText,
-          payouts_text: setupPayoutsText,
-          vacancyText: setupVacancyText,
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if (!uid) {
+        const msg = "Войдите в систему — без авторизации файл нельзя загрузить.";
+        setVacancyUploadError(msg);
+        addAuditEvent("warning", "Нет авторизации", msg);
+        return;
+      }
+      if (!draftProjectId) {
+        const msg = "Черновик вакансии ещё не создан. Закройте мастер и откройте снова.";
+        setVacancyUploadError(msg);
+        addAuditEvent("warning", "Нет черновика вакансии", msg);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        const msg = "Файл больше 10 МБ.";
+        setVacancyUploadError(msg);
+        return;
+      }
+      const safeName = file.name
+        .normalize("NFKD")
+        .replace(/[^\x20-\x7E]+/g, "")
+        .replace(/[^a-zA-Z0-9._-]+/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "") || `file_${Date.now()}`;
+      const path = `${uid}/${draftProjectId}/${Date.now()}_${safeName}`;
+      const up = await supabase.storage.from("vacancy-uploads").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      setDraftVacancyFilePath(path);
+      setVacancyFileName(file.name);
+      addAuditEvent("success", "Файл вакансии загружен", `${file.name} → vacancy-uploads/${path}`);
+    } catch (err: any) {
+      console.error("vacancy upload error", err);
+      const msg = err?.message || "Не удалось загрузить файл.";
+      setVacancyUploadError(msg);
+      addAuditEvent("warning", "Ошибка загрузки", msg);
+    } finally {
+      setIsUploadingVacancyFile(false);
+    }
+  };
+
+  // Step 2: explicit «Распознать документ» — send the uploaded file to ProTalk
+  // and put the resulting markdown into the editable raw-text textarea (≤5000
+  // chars). The file is then removed from storage by the edge function.
+  const recognizeVacancyFile = async () => {
+    if (!draftVacancyFilePath) return;
+    setIsParsingFile(true);
+    addAuditEvent("info", "ИИ разбор вакансии", `Считываем текст из «${vacancyFileName || "файла"}»…`);
+    try {
+      const res = await aiWaitRun<any>({
+        title: `ИИ читает файл ${vacancyFileName}`,
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: {
+              entity: "vacancy",
+              entity_id: draftProjectId || undefined,
+              bucket: "vacancy-uploads",
+              file_path: draftVacancyFilePath,
+              filename: vacancyFileName,
+              max_chars: 5000,
+            },
+          });
+          if (error) throw new Error(error.message);
+          return data;
         },
-        hint: `parse_file:${filename}`,
       });
-      
-      if (parsed.roleName) setSetupRoleName(parsed.roleName);
-      if (parsed.schedule_text) setSetupScheduleText(parsed.schedule_text);
-      if (parsed.payouts_text) setSetupPayoutsText(parsed.payouts_text);
-      if (parsed.vacancyText) setSetupVacancyText(parsed.vacancyText);
-      
-      addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
+      const text = String(res?.text || "").slice(0, 5000);
+      if (text) {
+        setVacancyRawText(text);
+        addAuditEvent("success", "Текст вакансии извлечён", `Распознано ${text.length} симв. Нажмите «Оформить красиво».`);
+      } else {
+        addAuditEvent("warning", "Пустой ответ", "ИИ не вернул текст из документа.");
+      }
+      setDraftVacancyFilePath(null);
     } catch (err: any) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка распознавания", "Использованы правила автозаполнения.");
-      // Fallback
-      setSetupRoleName("Инженер по тестированию (QA)");
+      addAuditEvent("warning", "Ошибка распознавания", err?.message || "Не удалось разобрать файл.");
     } finally {
       setIsParsingFile(false);
     }
@@ -1894,6 +1962,25 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ-форматирование", "Оформляем все поля новой вакансии с помощью ИИ ProTalk...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      // Find the selected company to send its data as context.
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyCtx: Record<string, any> = matchedCo ? {
+        name: matchedCo.name,
+        industry: matchedCo.industry,
+        staff: matchedCo.staff,
+        website: matchedCo.website || matchedCo.sites,
+        description_text: matchedCo.description_text,
+        products_text: matchedCo.products_text,
+        mission_text: matchedCo.mission_text || matchedCo.missionText,
+        team_text: matchedCo.team_text,
+        payouts_text: matchedCo.payouts_text,
+        schedule_text: matchedCo.schedule_text,
+        system_text: matchedCo.system_text,
+        about_text: matchedCo.about_text,
+      } : {};
+      // Drop empty values to keep prompt clean.
+      Object.keys(companyCtx).forEach((k) => { if (!companyCtx[k]) delete companyCtx[k]; });
+
       const enhanced = await aiEnhanceAll({
         mode: "all_vacancy",
         company_name: setupCompanyName,
@@ -1906,29 +1993,45 @@ export default function EmployerPanel() {
           motivation_text_detail: exampleFor("motivation_text_detail"),
           payouts_text: exampleFor("payouts_text"),
           onboarding_text: exampleFor("onboarding_text"),
-          team_text_vac: exampleFor("team_text_vac"),
-          system_text_vac: exampleFor("system_text_vac"),
+          team_text: exampleFor("team_text"),
+          system_text: exampleFor("system_text"),
         },
         fields: {
-          roleName: setupRoleName,
-          vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
-          motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
-          schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
-          onboardingText: setupOnboardingText, team_text_vac: setupTeamText,
-          system_text_vac: setupSystemText,
+          role_name: setupRoleName,
+          vacancy_text: setupVacancyText,
+          tasks_activity_text: setupTasksActivityText,
+          motivation_text: setupMotivationText,
+          motivation_text_detail: setupMotivationDetail,
+          schedule_text: setupScheduleText,
+          payouts_text: setupPayoutsText,
+          onboarding_text: setupOnboardingText,
+          team_text: setupTeamText,
+          system_text: setupSystemText,
+          training_professional_text: setupTrainingProfessionalText,
+          training_product_text: setupTrainingProductText,
+          training_systems_text: setupTrainingSystemsText,
+          training_wiki_text: setupTrainingWikiText,
+          training_regulations_text: setupTrainingRegulationsText,
         },
+        file_context: vacancyRawText || undefined,
+        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
-        if (enhanced.roleName) setSetupRoleName(enhanced.roleName);
-        if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
-        if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
-        if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
-        if (enhanced.motivationTextDetail) setSetupMotivationDetail(enhanced.motivationTextDetail);
+        if (enhanced.role_name) setSetupRoleName(enhanced.role_name);
+        if (enhanced.vacancy_text) setSetupVacancyText(enhanced.vacancy_text);
+        if (enhanced.tasks_activity_text) setSetupTasksActivityText(enhanced.tasks_activity_text);
+        if (enhanced.motivation_text) setSetupMotivationText(enhanced.motivation_text);
+        if (enhanced.motivation_text_detail) setSetupMotivationDetail(enhanced.motivation_text_detail);
         if (enhanced.schedule_text) setSetupScheduleText(enhanced.schedule_text);
         if (enhanced.payouts_text) setSetupPayoutsText(enhanced.payouts_text);
-        if (enhanced.onboardingText) setSetupOnboardingText(enhanced.onboardingText);
-        if (enhanced.team_text_vac) setSetupTeamText(enhanced.team_text_vac);
-        if (enhanced.system_text_vac) setSetupSystemText(enhanced.system_text_vac);
+        if (enhanced.onboarding_text) setSetupOnboardingText(enhanced.onboarding_text);
+        if (enhanced.team_text) setSetupTeamText(enhanced.team_text);
+        if (enhanced.system_text) setSetupSystemText(enhanced.system_text);
+        if (enhanced.training_professional_text) setSetupTrainingProfessionalText(enhanced.training_professional_text);
+        if (enhanced.training_product_text) setSetupTrainingProductText(enhanced.training_product_text);
+        if (enhanced.training_systems_text) setSetupTrainingSystemsText(enhanced.training_systems_text);
+        if (enhanced.training_wiki_text) setSetupTrainingWikiText(enhanced.training_wiki_text);
+        if (enhanced.training_regulations_text) setSetupTrainingRegulationsText(enhanced.training_regulations_text);
         addAuditEvent("success", "Оформление завершено", "Все поля успешно облагорожены ИИ в единую продающую форму.");
       }
     } catch (err) {
@@ -1971,17 +2074,66 @@ export default function EmployerPanel() {
     addAuditEvent("info", "Полное ИИ-Оформление", "Запускаем полную реконструкцию контента лендинга через ИИ ProTalk...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const ep: any = editingProject;
+      // Build canonical snake_case 15 fields payload.
+      const fields: Record<string, string> = {
+        role_name: ep.roleName || "",
+        vacancy_text: ep.vacancyText || "",
+        tasks_activity_text: ep.tasksActivityText || "",
+        schedule_text: ep.scheduleText || ep.scheduleTerms || "",
+        motivation_text: ep.motivationText || "",
+        motivation_text_detail: ep.motivationTextDetail || "",
+        payouts_text: ep.payoutsText || ep.salaryTerms || "",
+        onboarding_text: ep.onboardingText || "",
+        team_text: ep.teamText || "",
+        system_text: ep.systemText || "",
+        training_professional_text: ep.trainingProfessionalText || ep.trainingProfText || "",
+        training_product_text: ep.trainingProductText || "",
+        training_systems_text: ep.trainingSystemsText || ep.trainingSystemText || "",
+        training_wiki_text: ep.trainingWikiText || "",
+        training_regulations_text: ep.trainingRegulationsText || "",
+      };
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (ep.companyName || "").toLowerCase());
+      const companyCtx: Record<string, any> = matchedCo ? {
+        name: matchedCo.name, industry: matchedCo.industry, staff: matchedCo.staff,
+        website: matchedCo.website || matchedCo.sites,
+        description_text: matchedCo.description_text, products_text: matchedCo.products_text,
+        mission_text: matchedCo.mission_text || matchedCo.missionText,
+        team_text: matchedCo.team_text, payouts_text: matchedCo.payouts_text,
+        schedule_text: matchedCo.schedule_text, system_text: matchedCo.system_text,
+        about_text: matchedCo.about_text,
+      } : {};
+      Object.keys(companyCtx).forEach(k => { if (!companyCtx[k]) delete companyCtx[k]; });
+
       const enhanced = await aiEnhanceAll({
         mode: "all_vacancy",
-        company_name: editingProject.companyName,
-        role_name: editingProject.roleName,
-        fields: editingProject as any,
+        company_name: ep.companyName,
+        role_name: ep.roleName,
+        fields,
+        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
+        // Map snake_case response back to JobProject camelCase fields.
         setEditingProject({
           ...editingProject,
-          ...enhanced
-        });
+          roleName: enhanced.role_name ?? ep.roleName,
+          vacancyText: enhanced.vacancy_text ?? ep.vacancyText,
+          tasksActivityText: enhanced.tasks_activity_text ?? ep.tasksActivityText,
+          scheduleText: enhanced.schedule_text ?? ep.scheduleText,
+          scheduleTerms: enhanced.schedule_text ?? ep.scheduleTerms,
+          motivationText: enhanced.motivation_text ?? ep.motivationText,
+          motivationTextDetail: enhanced.motivation_text_detail ?? ep.motivationTextDetail,
+          payoutsText: enhanced.payouts_text ?? ep.payoutsText,
+          salaryTerms: enhanced.payouts_text ?? ep.salaryTerms,
+          onboardingText: enhanced.onboarding_text ?? ep.onboardingText,
+          teamText: enhanced.team_text ?? ep.teamText,
+          systemText: enhanced.system_text ?? ep.systemText,
+          trainingProfessionalText: enhanced.training_professional_text ?? ep.trainingProfessionalText,
+          trainingProductText: enhanced.training_product_text ?? ep.trainingProductText,
+          trainingSystemsText: enhanced.training_systems_text ?? ep.trainingSystemsText,
+          trainingWikiText: enhanced.training_wiki_text ?? ep.trainingWikiText,
+          trainingRegulationsText: enhanced.training_regulations_text ?? ep.trainingRegulationsText,
+        } as any);
         addAuditEvent("success", "Лендинг полностью оформлен!", "ИИ составил цельную, привлекательную картину вакансии.");
       }
     } catch (err) {
@@ -2667,15 +2819,28 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
                     </div>
                     <div className="flex items-center gap-2">
-                      {aiReady && (<button
-                        type="button"
-                        onClick={handleBeautifyNewVacancyWithAI}
-                        disabled={isGenerating || isParsingFile}
-                        className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-                        {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                      </button>)}
+                      {(() => {
+                        const totalVacChars = (
+                          setupRoleName + setupVacancyText + setupTasksActivityText + setupScheduleText +
+                          setupMotivationText + setupMotivationDetail + setupPayoutsText + setupOnboardingText +
+                          setupTeamText + setupSystemText + setupTrainingProfessionalText + setupTrainingProductText +
+                          setupTrainingSystemsText + setupTrainingWikiText + setupTrainingRegulationsText + vacancyRawText
+                        ).trim().length;
+                        const canBeautify = aiReady && totalVacChars >= 50;
+                        if (!aiReady) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={handleBeautifyNewVacancyWithAI}
+                            disabled={!canBeautify || isGenerating || isParsingFile}
+                            title={canBeautify ? "Оформить все 15 полей через ИИ" : "Заполните поля минимум на 50 символов суммарно (или загрузите файл)"}
+                            className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+                            {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                          </button>
+                        );
+                      })()}
                       <button
                         type="button"
                         onClick={cancelAddVacancyWizard}
@@ -2690,9 +2855,11 @@ export default function EmployerPanel() {
                   {/* File intelligent import block */}
                   <div className="bg-black/25 p-4 rounded-3xl border border-white/10 space-y-3">
                     <span className="text-xs font-bold text-[#E7C768] block">Распознавание условий вакансии из файла</span>
-                    <p className="text-[10.5px] text-slate-300">Перетащите сюда документ с традиционным описанием вакансии (PDF, DOC/DOCX, TXT) или нажмите для выбора — ИИ автоматически выкачает условия и обязанности.</p>
-                    
-                    <div 
+                    <p className="text-[10.5px] text-slate-300">
+                      Шаг 1 — загрузите файл в Supabase. Шаг 2 — нажмите «Распознать документ» (ИИ извлечёт текст до 5000 символов). Шаг 3 — нажмите «Оформить красиво», чтобы ИИ разнёс данные по 15 полям.
+                    </p>
+
+                    <div
                       onClick={() => {
                         const fInput = document.getElementById("vac-file-import") as HTMLInputElement;
                         if (fInput) fInput.click();
@@ -2701,33 +2868,81 @@ export default function EmployerPanel() {
                       onDrop={(e) => {
                         e.preventDefault();
                         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                          handleAutoRecognizeFile(e.dataTransfer.files[0].name);
+                          (async () => { await uploadVacancyFile(e.dataTransfer.files[0]); })();
                         }
                       }}
-                      className="cursor-pointer border-2 border-dashed border-[#E7C768]/30 bg-[#1D3E5E]/40 hover:bg-[#1D3E5E]/70 rounded-2xl p-4 text-center space-y-1 transition text-white"
+                      className={`cursor-pointer border-2 border-dashed border-[#E7C768]/30 bg-[#1D3E5E]/40 hover:bg-[#1D3E5E]/70 rounded-2xl p-4 text-center space-y-1 transition text-white ${isUploadingVacancyFile || isParsingFile ? "animate-pulse" : ""}`}
                     >
-                      <input 
-                        id="vac-file-import" 
-                        type="file" 
-                        className="hidden" 
+                      <input
+                        id="vac-file-import"
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                        className="hidden"
                         onChange={(e) => {
                           if (e.target.files && e.target.files[0]) {
-                            handleAutoRecognizeFile(e.target.files[0].name);
+                            const file = e.target.files[0];
+                            (async () => { await uploadVacancyFile(file); })();
                           }
                         }}
                       />
-                      {isParsingFile ? (
+                      {isUploadingVacancyFile ? (
                         <div className="flex flex-col items-center justify-center gap-1 text-[#E7C768] font-bold text-xs py-2">
                           <RefreshCw className="w-5 h-5 animate-spin" />
-                          <span>ИИ распознает файлы... Выделение условий работы...</span>
+                          <span>Загружаем «{vacancyFileName || "файл"}» в Supabase Storage…</span>
+                        </div>
+                      ) : isParsingFile ? (
+                        <div className="flex flex-col items-center justify-center gap-1 text-[#E7C768] font-bold text-xs py-2">
+                          <RefreshCw className="w-5 h-5 animate-spin" />
+                          <span>ProTalk извлекает текст вакансии…</span>
+                        </div>
+                      ) : draftVacancyFilePath ? (
+                        <div className="text-xs font-semibold text-emerald-300">
+                          Файл загружен: {vacancyFileName} ✓
                         </div>
                       ) : (
                         <div className="text-xs font-semibold text-slate-300">
                           Кликните или перетащите файл с описанием вакансии 📂
                         </div>
                       )}
-                      <span className="text-[9.5px] text-slate-400 block font-mono">Поддерживаются .pdf, .docx, .txt файлы</span>
+                      <span className="text-[9.5px] text-slate-400 block font-mono">Поддерживаются .pdf, .docx, .txt, .md (до 10 МБ)</span>
+                      {vacancyUploadError ? (
+                        <div className="text-[10px] text-[#FF4C4C] mt-1">{vacancyUploadError}</div>
+                      ) : null}
                     </div>
+
+                    {/* Step 2: explicit Распознать документ button — appears once
+                        the file has been uploaded to storage. */}
+                    {draftVacancyFilePath && !isParsingFile && !isUploadingVacancyFile && (
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={recognizeVacancyFile}
+                          className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 transition flex items-center justify-center gap-1.5 shadow-md"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Распознать документ
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Step 3: editable raw text + total-chars counter */}
+                    {(vacancyRawText || isParsingFile) && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-[#E7C768] uppercase tracking-wider">
+                            Распознанный текст вакансии (редактируется, до 5000 симв.)
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">{vacancyRawText.length} / 5000</span>
+                        </div>
+                        <textarea
+                          value={vacancyRawText}
+                          onChange={(e) => setVacancyRawText(e.target.value.slice(0, 5000))}
+                          placeholder="Здесь появится распознанный текст из загруженного файла. Можно дописать вручную."
+                          className="w-full bg-black/40 text-xs p-3 rounded-xl border border-white/10 text-white focus:outline-[#E7C768] min-h-[140px]"
+                          maxLength={5000}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <form onSubmit={handleCreateOnboardingSystem} className="space-y-4">
