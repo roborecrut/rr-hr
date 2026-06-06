@@ -34,13 +34,9 @@ export default function SegmentDispatcher() {
 
       // Bare numeric → maybe a candidate public_id.
       if (/^\d{4,}$/.test(firstSeg)) {
-        const { data: cand } = await supabase
-          .from("candidates")
-          .select("public_id")
-          .eq("public_id", firstSeg)
-          .maybeSingle();
+        const { data: cand } = await (supabase as any).rpc("candidate_public_cabinet", { _public_id: firstSeg });
         if (cancelled) return;
-        if (cand?.public_id) {
+        if (cand?.ok && cand?.candidate?.public_id) {
           setResolved("candidate");
           return;
         }

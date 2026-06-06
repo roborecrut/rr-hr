@@ -776,6 +776,7 @@ export default function CandidateFlow() {
       let activeCand: any = null;
       let cabinetProject: any = null;
       let cabinetCompany: any = null;
+      let cabinetEmployerContacts: any = null;
       const pubId = activeId.replace(/^candidate/i, "").replace(/^cand/i, "");
       if (savedSession?.token && (savedSession.public_id === pubId || savedSession.candidate_id === pubId || !pubId)) {
         activeCand = {
@@ -799,15 +800,26 @@ export default function CandidateFlow() {
               id: c.id,
               publicId: c.public_id,
               name: c.resume_name || `Кандидат #${c.public_id}`,
-              email: savedSession?.email || "",
+              email: c.email || savedSession?.email || "",
               projectId: c.project_id,
               companyId: c.company_id || undefined,
               roleName: c.role_name || "",
               currentStage: c.current_stage,
               registeredVia: c.registered_via || "telegram",
+              phone: c.phone || "",
+              avatarUrl: c.avatar_url || "",
+              resumeUrl: c.resume_url || "",
+              socialTelegram: c.social_telegram || "",
+              socialWhatsapp: c.social_whatsapp || "",
+              socialInstagram: c.social_instagram || "",
+              socialVk: c.social_vk || "",
+              socialMax: c.social_max || "",
+              socialSetka: c.social_setka || "",
+              socialGithub: c.social_github || "",
             };
             cabinetProject = rpcRes.project || null;
             cabinetCompany = rpcRes.company || null;
+            cabinetEmployerContacts = rpcRes.employer_contacts || null;
           }
         } catch {}
         if (!activeCand) {
@@ -852,35 +864,18 @@ export default function CandidateFlow() {
         setProfName(activeCand.name || "");
         setProfEmail(activeCand.email || "");
         setProfTelegram(activeCand.telegramUsername || "");
-        // Load extended profile (phone/avatar/resume/socials) directly from DB
-        try {
-          const { data: dbCand } = await (supabase as any)
-            .from("candidates")
-            .select("phone,avatar_url,resume_url,social_telegram,social_whatsapp,social_instagram,social_vk,social_max,social_setka,social_github")
-            .eq("id", activeCand.id)
-            .maybeSingle();
-          if (dbCand) {
-            setProfPhone(dbCand.phone || "");
-            setProfAvatarUrl(dbCand.avatar_url || "");
-            setProfResumeUrl(dbCand.resume_url || "");
-            setProfSocials({
-              social_telegram: dbCand.social_telegram || "",
-              social_whatsapp: dbCand.social_whatsapp || "",
-              social_instagram: dbCand.social_instagram || "",
-              social_vk: dbCand.social_vk || "",
-              social_max: dbCand.social_max || "",
-              social_setka: dbCand.social_setka || "",
-              social_github: dbCand.social_github || "",
-            });
-            setCandidate({
-              ...activeCand,
-              phone: dbCand.phone, avatarUrl: dbCand.avatar_url, resumeUrl: dbCand.resume_url,
-              socialTelegram: dbCand.social_telegram, socialWhatsapp: dbCand.social_whatsapp,
-              socialInstagram: dbCand.social_instagram, socialVk: dbCand.social_vk,
-              socialMax: dbCand.social_max, socialSetka: dbCand.social_setka, socialGithub: dbCand.social_github,
-            } as any);
-          }
-        } catch {}
+        setProfPhone(activeCand.phone || "");
+        setProfAvatarUrl(activeCand.avatarUrl || "");
+        setProfResumeUrl(activeCand.resumeUrl || "");
+        setProfSocials({
+          social_telegram: activeCand.socialTelegram || "",
+          social_whatsapp: activeCand.socialWhatsapp || "",
+          social_instagram: activeCand.socialInstagram || "",
+          social_vk: activeCand.socialVk || "",
+          social_max: activeCand.socialMax || "",
+          social_setka: activeCand.socialSetka || "",
+          social_github: activeCand.socialGithub || "",
+        });
 
         // Determine tabs
         let parsedTab = "profile";
@@ -943,6 +938,11 @@ export default function CandidateFlow() {
           } as any);
           setProjectFull(p);
           if (cabinetCompany) setCompanyFull(cabinetCompany);
+          if (cabinetEmployerContacts) setEmployerContacts({
+            email: cabinetEmployerContacts.email,
+            phone: cabinetEmployerContacts.phone,
+            telegram: cabinetEmployerContacts.telegram,
+          });
         } else if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
           if (resProj && resProj.ok) {

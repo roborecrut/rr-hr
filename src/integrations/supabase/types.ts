@@ -426,6 +426,7 @@ export type Database = {
       candidates: {
         Row: {
           auth_kind: string
+          avatar_url: string | null
           company_id: string | null
           created_at: string
           crm_stage: Database["public"]["Enums"]["crm_stage"]
@@ -447,12 +448,21 @@ export type Database = {
             | null
           resume_name: string | null
           resume_text: string | null
+          resume_url: string | null
           role_name: string | null
+          social_github: string | null
+          social_instagram: string | null
+          social_max: string | null
+          social_setka: string | null
+          social_telegram: string | null
+          social_vk: string | null
+          social_whatsapp: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
           auth_kind?: string
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           crm_stage?: Database["public"]["Enums"]["crm_stage"]
@@ -474,12 +484,21 @@ export type Database = {
             | null
           resume_name?: string | null
           resume_text?: string | null
+          resume_url?: string | null
           role_name?: string | null
+          social_github?: string | null
+          social_instagram?: string | null
+          social_max?: string | null
+          social_setka?: string | null
+          social_telegram?: string | null
+          social_vk?: string | null
+          social_whatsapp?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
           auth_kind?: string
+          avatar_url?: string | null
           company_id?: string | null
           created_at?: string
           crm_stage?: Database["public"]["Enums"]["crm_stage"]
@@ -501,7 +520,15 @@ export type Database = {
             | null
           resume_name?: string | null
           resume_text?: string | null
+          resume_url?: string | null
           role_name?: string | null
+          social_github?: string | null
+          social_instagram?: string | null
+          social_max?: string | null
+          social_setka?: string | null
+          social_telegram?: string | null
+          social_vk?: string | null
+          social_whatsapp?: string | null
           updated_at?: string
           user_id?: string | null
         }
