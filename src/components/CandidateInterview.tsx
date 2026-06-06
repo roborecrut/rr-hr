@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 
@@ -36,6 +36,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [resumeText, setResumeText] = useState("");
   const [resumeResult, setResumeResult] = useState<{ score: number; summary: string; strengths: string[]; gaps: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -75,6 +77,26 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setResumeResult(r.result);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
+  };
+
+  const onUploadResume = async (f: File) => {
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { alert("Файл больше 10 МБ"); return; }
+    setParsing(true);
+    const path = `${candidateId}/${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
+    try {
+      const { error: upErr } = await supabase.storage.from("candidate-resumes").upload(path, f, { upsert: false });
+      if (upErr) throw upErr;
+      const r = await call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: "candidate-resumes", file_path: path, filename: f.name });
+      const text = String(r?.text || "").slice(0, 20000);
+      if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
+      setResumeText(text);
+    } catch (e: any) {
+      alert(e?.message || "Не удалось распознать файл");
+    } finally {
+      setParsing(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   };
 
   const submitChecklist = async () => {
@@ -155,7 +177,17 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </div>
           ) : (
             <>
-              <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12} maxLength={20000} placeholder="Вставьте текст вашего резюме..." className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm" />
+              <div className="flex flex-wrap gap-2">
+                <button type="button" disabled={parsing || busy} onClick={() => fileRef.current?.click()} className="bg-white/10 hover:bg-white/15 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-2 disabled:opacity-60">
+                  {parsing ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
+                  {parsing ? "Распознаём резюме…" : "Загрузить файл резюме (PDF/DOC/TXT)"}
+                </button>
+                <input ref={fileRef} type="file" className="hidden"
+                  accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadResume(f); }} />
+              </div>
+              {parsing && <LoadingPhrase entity="interview" />}
+              <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12} maxLength={20000} placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически." className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm" />
               {busy && <LoadingPhrase entity="interview" />}
               <button disabled={busy} onClick={submitResume} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 disabled:opacity-60">
                 {busy ? <Loader className="w-4 h-4 animate-spin"/> : <FileText className="w-4 h-4"/>} Отправить на оценку
