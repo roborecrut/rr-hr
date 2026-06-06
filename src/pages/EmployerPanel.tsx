@@ -4440,43 +4440,6 @@ export default function EmployerPanel() {
               </h2>
             </div>
 
-            {companiesList.some(c => c.name.toLowerCase() === editingProject.companyName?.toLowerCase()) && (
-              <div className="bg-green-500/10 border border-green-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-pulse">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-green-300 font-bold font-mono">🌟 ИИ-ПОРТАЛ СИНХРОНИЗАЦИИ:</span>
-                  <p className="text-xs text-slate-200">Найден зарегистрированный профиль компании "{editingProject.companyName}"</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const comp = companiesList.find(c => c.name.toLowerCase() === editingProject.companyName?.toLowerCase());
-                    if (comp) {
-                      setEditingProject({
-                        ...editingProject,
-                        logoUrl: comp.logoUrl || editingProject.logoUrl,
-                        customWiki: comp.customWiki || editingProject.customWiki,
-                        companyText: comp.description || editingProject.companyText,
-                        missionText: comp.missionText || editingProject.missionText,
-                        salaryTerms: comp.salaryTerms || editingProject.salaryTerms,
-                        scheduleTerms: comp.scheduleTerms || editingProject.scheduleTerms,
-                        statsValClients: comp.statsValClients || editingProject.statsValClients,
-                        statsLabelClients: comp.statsLabelClients || editingProject.statsLabelClients,
-                        statsValDialogs: comp.statsValDialogs || editingProject.statsValDialogs,
-                        statsLabelDialogs: comp.statsLabelDialogs || editingProject.statsLabelDialogs,
-                        statsValFounded: comp.statsValFounded || editingProject.statsValFounded,
-                        statsLabelFounded: comp.statsLabelFounded || editingProject.statsLabelFounded
-                      });
-                      addAuditEvent("success", "Бренд интегрирован", `Все ИИ-поля из организации "${comp.name}" успешно импортированы в лендинг вакансии.`);
-                    }
-                  }}
-                  className="px-3.5 py-1.5 text-xs font-bold rounded-xl text-green-950 bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center gap-1 shadow-md shadow-green-950/20 self-start sm:self-center cursor-pointer select-none"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Перенести ИИ-поля в редактор лендинга
-                </button>
-              </div>
-            )}
-
 {/* Unified VacancyEditor — same look as the create wizard, with per-field live preview */}
             <form onSubmit={handleSaveEditedProject} className="space-y-5">
               {/* Document uploader — same UX as the create wizard, lets the
