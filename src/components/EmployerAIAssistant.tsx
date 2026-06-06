@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { MessageSquare, Send, X, Bot, Sparkles, Coins, Zap } from "lucide-react";
+import { Send, X, Sparkles } from "lucide-react";
 import Mascot from "./Mascot";
 import Markdown from "react-markdown";
 
@@ -133,39 +133,30 @@ export default function EmployerAIAssistant() {
     <>
       {/* Floating Trigger Button in Right Bottom Corner with nice layout pulse animations */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
-        <AnimatePresence>
-          {!isOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 15 }}
-              className="bg-[#17344F] border border-[#E7C768]/40 hover:border-[#E7C768] text-white px-3.5 py-2 rounded-2xl shadow-xl text-[11px] font-semibold mb-1 mr-1 flex items-center gap-1.5 cursor-pointer select-none"
-              onClick={() => setIsOpen(true)}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>ИИ-Ассистент RR онлайн</span>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <motion.button
           id="employer_assist_toggle_btn"
           onClick={() => setIsOpen(!isOpen)}
-          className={`relative w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition hover:scale-110 active:scale-95 cursor-pointer ${
-            isOpen 
-              ? "bg-[#FF1A1A] text-white" 
-              : "bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white"
+          aria-label={isOpen ? "Закрыть ИИ-Ассистента" : "Открыть ИИ-Ассистента"}
+          title="ИИ-Ассистент Робот Рекрутер"
+          className={`relative w-16 h-16 rounded-full flex items-center justify-center transition hover:scale-110 active:scale-95 cursor-pointer border-2 ${
+            isOpen
+              ? "bg-gradient-to-br from-[#17344F] to-[#265582] border-[#E7C768] text-white"
+              : "bg-gradient-to-br from-[#17344F] to-[#265582] border-[#E7C768] text-white"
           }`}
           whileHover={{ y: -3 }}
           animate={{
-            boxShadow: isOpen 
-              ? "0 10px 25px -5px rgba(0, 0, 0, 0.4)" 
-              : ["0 0px 0px 0px rgba(231,199,104,0)", "0 0px 15px 4px rgba(231,199,104,0.3)", "0 0px 0px 0px rgba(231,199,104,0)"]
+            boxShadow: isOpen
+              ? "0 0 25px 6px rgba(231,199,104,0.55)"
+              : [
+                  "0 0 0px 0px rgba(231,199,104,0.0)",
+                  "0 0 22px 6px rgba(231,199,104,0.55)",
+                  "0 0 0px 0px rgba(231,199,104,0.0)",
+                ],
           }}
           transition={{
             boxShadow: {
               repeat: Infinity,
-              duration: 3,
+              duration: 2.6,
               ease: "easeInOut"
             }
           }}
@@ -174,8 +165,13 @@ export default function EmployerAIAssistant() {
             <X className="w-6 h-6 animate-spin-once" />
           ) : (
             <div className="relative">
-              <MessageSquare className="w-6 h-6 animate-pulse-slow" />
-              <span className="absolute -top-1.5 -right-1.5 bg-[#E7C768] w-4.5 h-4.5 rounded-full border border-[#17344F] flex items-center justify-center text-[8.5px] font-black text-slate-900 font-mono">
+              <img
+                src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png"
+                alt="RR"
+                className="w-9 h-9 object-contain drop-shadow"
+                referrerPolicy="no-referrer"
+              />
+              <span className="absolute -top-1.5 -right-2 bg-gradient-to-br from-[#F4EE8E] to-[#D99E41] w-5 h-5 rounded-full border border-[#17344F] flex items-center justify-center text-[8.5px] font-black text-[#17344F] font-mono shadow">
                 AI
               </span>
             </div>
