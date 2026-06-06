@@ -2362,15 +2362,6 @@ export default function EmployerPanel() {
                 <span className="bg-emerald-950 text-[10px] text-[#E7C768] font-bold uppercase px-1.5 py-0.5 rounded font-mono">{balance} RR</span>
               </button>
 
-              <button
-                onClick={() => navigate(`/emp${employerId}/events`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "events" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
-              >
-                <span className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#D99E41]" /> События & Логи
-                </span>
-              </button>
-
               {isAdmin && (
                 <>
                   <div className="h-px bg-white/10 my-2"></div>
