@@ -458,7 +458,7 @@ export default function CompanyLanding() {
 
           {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL
               AND we are NOT on the /company sub-tab (company view is handled above). */}
-          {vacancyId && subTab !== "company" && selectedVacancy ? (
+          {vacancyId && subTab !== "company" && selectedVacancy && (selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active") ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
@@ -551,6 +551,24 @@ export default function CompanyLanding() {
                 Начать отбор в компанию <ChevronRight className="w-4 h-4" />
               </button>
 
+            </div>
+          ) : vacancyId && subTab !== "company" && selectedRaw ? (
+            <div className="bg-[#1D3E5E]/40 border border-amber-500/30 p-8 rounded-3xl text-center space-y-3">
+              <AlertCircle className="w-10 h-10 mx-auto text-amber-400" />
+              <h3 className="font-bold text-white text-lg">
+                {(selectedRaw?.status === "deleted")
+                  ? "Эта вакансия закрыта"
+                  : "Эта вакансия больше не активна"}
+              </h3>
+              <p className="text-sm text-slate-300">
+                Компания временно приостановила набор по этой позиции. Откликнуться на неё нельзя.
+              </p>
+              <button
+                onClick={() => navigate(`/com${companySlug}`)}
+                className="inline-flex items-center gap-2 bg-[#E7C768] text-[#112335] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#F4EE8E] transition"
+              >
+                Смотреть другие вакансии компании <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           ) : vacancyId && subTab !== "company" ? (
             <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
