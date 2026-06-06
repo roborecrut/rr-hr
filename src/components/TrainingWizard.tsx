@@ -4,6 +4,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
+import { useAIWait } from "@/components/AIWaitProvider";
 import { DocumentIngestField } from "@/components/DocumentIngestField";
 import type { JobProject } from "../types";
 
@@ -31,6 +32,7 @@ type QuestionRow = {
 type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; total_score: number };
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent }: Props) {
+  const { run: aiWaitRun } = useAIWait();
   const [projectId, setProjectId] = useState<string>("");
   const [stage, setStage] = useState<Stage>("professional");
   const [block, setBlock] = useState<BlockRow | null>(null);
@@ -92,9 +94,13 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     if (!project) return;
     setBusyMaterial(true);
     try {
-      const r = await callEdge<{ text: string }>("ai-generate-stage-material", {
-        project_id: project.id, stage, source_text: source || undefined,
+      const r = await aiWaitRun({
+        title: "Генерация учебного материала",
+        task: () => callEdge<{ text: string }>("ai-generate-stage-material", {
+          project_id: project.id, stage, source_text: source || undefined,
+        }),
       });
+      if (!r) return;
       setMaterials(r.text || "");
       addAuditEvent("success", "Материал сгенерирован ИИ", `${stage}: ${(r.text || "").length} симв.`);
     } catch (e: any) {
@@ -108,9 +114,13 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     try {
       // ensure latest materials are saved first
       await saveMaterials(true);
-      const r = await callEdge<{ count: number; total_score: number }>("ai-generate-stage-test", {
-        project_id: project.id, stage,
+      const r = await aiWaitRun({
+        title: "Генерация теста по материалу",
+        task: () => callEdge<{ count: number; total_score: number }>("ai-generate-stage-test", {
+          project_id: project.id, stage,
+        }),
       });
+      if (!r) return;
       // reload test
       const { data: t } = await supabase.from("training_stage_tests")
         .select("*").eq("project_id", project.id).eq("stage", stage).maybeSingle();

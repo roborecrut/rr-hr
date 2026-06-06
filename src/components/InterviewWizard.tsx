@@ -4,6 +4,7 @@ import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
+import { useAIWait } from "@/components/AIWaitProvider";
 import type { JobProject } from "../types";
 
 type Kind = "resume" | "checklist" | "situations";
@@ -30,6 +31,7 @@ const KINDS: { key: Kind; title: string; hint: string }[] = [
 const FN_URL = (fn: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`;
 
 export default function InterviewWizard({ projects, refreshProjects, addAuditEvent }: Props) {
+  const { run: aiWaitRun } = useAIWait();
   const [projectId, setProjectId] = useState("");
   const [kind, setKind] = useState<Kind>("resume");
   const [resumeMd, setResumeMd] = useState("");
@@ -98,14 +100,26 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     setBusy(true);
     try {
       if (kind === "resume") {
-        const r = await callEdge("ai-generate-interview-resume-criteria", { project_id: projectId });
+        const r = await aiWaitRun({
+          title: "Генерация критериев резюме",
+          task: () => callEdge("ai-generate-interview-resume-criteria", { project_id: projectId }),
+        });
+        if (!r) return;
         setResumeMd(r.criteria_md || "");
       } else if (kind === "checklist") {
-        await callEdge("ai-generate-interview-checklist", { project_id: projectId });
+        const r = await aiWaitRun({
+          title: "Генерация чек-листа интервью",
+          task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId }),
+        });
+        if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
         setChecklist((data as any)?.payload?.questions || []);
       } else {
-        await callEdge("ai-generate-interview-situations", { project_id: projectId });
+        const r = await aiWaitRun({
+          title: "Генерация ролевых ситуаций",
+          task: () => callEdge("ai-generate-interview-situations", { project_id: projectId }),
+        });
+        if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","situations").maybeSingle();
         setSituations((data as any)?.payload?.situations || []);
       }

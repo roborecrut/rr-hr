@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, Sparkles, Link2, Loader2 } from "lucide-react";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
+import { useAIWait } from "@/components/AIWaitProvider";
 import type { LoadingEntity } from "@/lib/loadingPhrases";
 
 type Entity = Exclude<LoadingEntity, "generic">;
@@ -43,6 +44,7 @@ export function DocumentIngestField({
   placeholder?: string;
   showDistribute?: boolean;
 }) {
+  const { run: aiWaitRun } = useAIWait();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [distributing, setDistributing] = useState(false);
@@ -62,10 +64,17 @@ export function DocumentIngestField({
     try {
       const { error: upErr } = await supabase.storage.from(BUCKET[entity]).upload(path, f, { upsert: false });
       if (upErr) throw upErr;
-      const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
-        body: { entity, entity_id: entityId, bucket: BUCKET[entity], file_path: path, filename: f.name },
+      const data = await aiWaitRun<any>({
+        title: "Распознавание документа",
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: { entity, entity_id: entityId, bucket: BUCKET[entity], file_path: path, filename: f.name },
+          });
+          if (error) throw new Error(error.message);
+          return data;
+        },
       });
-      if (error) throw new Error(error.message);
+      if (!data) return;
       const text = String(data?.text || "").slice(0, maxLength);
       onChange(text);
       toast.success("Документ разобран");
@@ -83,10 +92,17 @@ export function DocumentIngestField({
     if (!url.trim()) return;
     setBusy(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
-        body: { entity, entity_id: entityId, file_url: url.trim() },
+      const data = await aiWaitRun<any>({
+        title: "Разбор ссылки",
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: { entity, entity_id: entityId, file_url: url.trim() },
+          });
+          if (error) throw new Error(error.message);
+          return data;
+        },
       });
-      if (error) throw new Error(error.message);
+      if (!data) return;
       onChange(String(data?.text || "").slice(0, maxLength));
       setUrl(""); setUrlOpen(false);
       toast.success("Ссылка разобрана");
@@ -99,10 +115,17 @@ export function DocumentIngestField({
     if (!value.trim()) { toast.error("Сначала добавьте текст"); return; }
     setDistributing(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-distribute-text", {
-        body: { entity, entity_id: entityId, text: value.slice(0, maxLength) },
+      const data = await aiWaitRun<any>({
+        title: "ИИ разносит данные по полям",
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-distribute-text", {
+            body: { entity, entity_id: entityId, text: value.slice(0, maxLength) },
+          });
+          if (error) throw new Error(error.message);
+          return data;
+        },
       });
-      if (error) throw new Error(error.message);
+      if (!data) return;
       onDistributed?.(data?.fields || {});
       toast.success("ИИ разнёс данные по полям");
     } catch (e: any) {

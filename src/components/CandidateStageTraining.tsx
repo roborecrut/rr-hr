@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
+import { useAIWait } from "@/components/AIWaitProvider";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
@@ -17,6 +18,7 @@ type Q = { id: string; kind: "choice" | "text"; question: string; points: number
 export default function CandidateStageTraining({
   candidateId, projectId,
 }: { candidateId: string; projectId: string }) {
+  const { run: aiWaitRun } = useAIWait();
   const [progress, setProgress] = useState<Record<Stage, { passed: boolean; best: number; attempts: number }>>({
     professional: { passed: false, best: 0, attempts: 0 },
     product: { passed: false, best: 0, attempts: 0 },
@@ -100,9 +102,13 @@ export default function CandidateStageTraining({
     setChecking(true);
     try {
       const payload = questions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
-      const r = await callEdge<any>("ai-check-stage-answers", {
-        candidate_id: candidateId, project_id: projectId, stage: active, answers: payload,
+      const r = await aiWaitRun<any>({
+        title: "Проверка ответов",
+        task: () => callEdge<any>("ai-check-stage-answers", {
+          candidate_id: candidateId, project_id: projectId, stage: active, answers: payload,
+        }),
       });
+      if (!r) return;
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
       setProgress(p => ({ ...p, [active]: { passed: r.passed || p[active].passed, best: Math.max(p[active].best, r.score), attempts: r.attempts } }));
       setMode("result");
