@@ -38,41 +38,42 @@ body {
 }
 
 /* ============================================================
-   BRAND EDITOR STYLE — use these classes everywhere we render
-   editors, forms, tests, wizards, modals. Replaces dark-gray
-   surfaces. Light cards on light-gray page background.
+   BRAND EDITOR STYLE — Apple Liquid Glass поверх синего бренд-
+   градиента. Используется во ВСЕХ редакторах/формах/тестах:
+   карточка синяя (17344F → 265582), текст белый, заголовки —
+   золотой градиент, поля — стеклянные с подсветкой.
    ============================================================ */
-.editor-shell {
-  background: #FFFFFF;
-  border: 1px solid #DBDBDB;
-  border-radius: 1.25rem;
-  color: #1A1A1A;
-}
+.editor-shell,
 .editor-section {
-  background: #FFFFFF;
-  border: 1px solid #DBDBDB;
-  border-radius: 1rem;
-  color: #1A1A1A;
+  background: linear-gradient(135deg, #17344F 0%, #265582 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 1.25rem;
+  color: #FFFFFF;
+  box-shadow: 0 20px 60px -20px rgba(10,25,45,0.55);
 }
 .editor-label {
-  color: #1E4468;
-  font-weight: 600;
+  background: linear-gradient(135deg, #F4EE8E 0%, #D99E41 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
 }
-.editor-hint {
-  color: #6B7280;
-}
+.editor-hint { color: rgba(255,255,255,0.7); }
 .editor-field {
-  background: #FFFFFF;
-  border: 1px solid #DBDBDB;
-  color: #1A1A1A;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #FFFFFF;
   border-radius: 0.75rem;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
-.editor-field::placeholder { color: #9DA3AF; }
+.editor-field::placeholder { color: rgba(255,255,255,0.55); }
 .editor-field:focus,
 .editor-field:focus-visible {
   outline: none;
   border-color: #E7C768;
+  background: rgba(255,255,255,0.14);
   box-shadow: 0 0 0 3px rgba(231, 199, 104, 0.25);
 }
 .editor-field[aria-invalid="true"],
@@ -81,12 +82,17 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 76, 76, 0.18);
 }
 .editor-dropzone {
-  background: #FFFFFF;
-  border: 2px dashed #DBDBDB;
+  background: rgba(255,255,255,0.06);
+  border: 2px dashed rgba(255,255,255,0.25);
   border-radius: 1rem;
-  color: #1A1A1A;
+  color: #FFFFFF;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
-.editor-dropzone:hover { background: #FAFAFA; border-color: #E7C768; }
+.editor-dropzone:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: #E7C768;
+}
 
 .btn-brand-primary {
   background: linear-gradient(135deg, #FF1A1A 0%, #E54C00 100%);
@@ -126,15 +132,18 @@ body {
 }
 
 /* ============================================================
-   .brand-editor — drop this class on the root of ANY editor /
-   wizard / test / form to swap the legacy dark-gray skin for
-   the brand light skin. Scoped descendant overrides so we don't
-   have to rewrite hundreds of Tailwind utilities one by one.
+   .brand-editor — корень любого редактора/формы/мастера/теста.
+   Apple Liquid Glass: синий градиент-фон, белый текст,
+   золотые заголовки, стеклянные поля. Скоуп переопределяет
+   как тёмно-серое легаси (bg-black/40, text-slate-300), так и
+   белое легаси (bg-white, text-[#1A1A1A], text-[#1E4468],
+   border-[#DBDBDB]) — чтобы не править сотни классов руками.
    ============================================================ */
 .brand-editor {
-  background: #FFFFFF;
-  color: #1A1A1A;
-  border-color: #DBDBDB;
+  background: linear-gradient(135deg, #17344F 0%, #265582 100%) !important;
+  color: #FFFFFF !important;
+  border-color: rgba(255,255,255,0.12) !important;
+  box-shadow: 0 20px 60px -20px rgba(10,25,45,0.55);
 }
 .brand-editor input[type="text"],
 .brand-editor input[type="email"],
@@ -146,13 +155,15 @@ body {
 .brand-editor input:not([type]),
 .brand-editor textarea,
 .brand-editor select {
-  background-color: #FFFFFF !important;
-  border: 1px solid #DBDBDB !important;
-  color: #1A1A1A !important;
+  background-color: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: #FFFFFF !important;
   border-radius: 0.75rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 .brand-editor input::placeholder,
-.brand-editor textarea::placeholder { color: #9DA3AF !important; }
+.brand-editor textarea::placeholder { color: rgba(255,255,255,0.55) !important; }
 .brand-editor input:focus,
 .brand-editor input:focus-visible,
 .brand-editor textarea:focus,
@@ -160,6 +171,7 @@ body {
 .brand-editor select:focus,
 .brand-editor select:focus-visible {
   border-color: #E7C768 !important;
+  background-color: rgba(255,255,255,0.14) !important;
   box-shadow: 0 0 0 3px rgba(231, 199, 104, 0.25) !important;
   outline: none !important;
 }
@@ -169,15 +181,36 @@ body {
   border-color: #FF4C4C !important;
   box-shadow: 0 0 0 3px rgba(255, 76, 76, 0.18) !important;
 }
-/* text recolor for legacy dark-on-dark utilities */
-.brand-editor .text-white,
-.brand-editor .text-slate-100,
-.brand-editor .text-slate-200,
-.brand-editor .text-slate-300 { color: #1A1A1A !important; }
-.brand-editor .text-slate-400,
+/* legacy dark text utilities → white */
+.brand-editor .text-slate-900,
+.brand-editor .text-slate-800,
+.brand-editor .text-slate-700,
+.brand-editor .text-slate-600,
 .brand-editor .text-slate-500,
-.brand-editor .text-slate-600 { color: #6B7280 !important; }
-/* neutralize legacy dark surface utilities inside the editor */
+.brand-editor .text-slate-400,
+.brand-editor .text-slate-300,
+.brand-editor .text-slate-200,
+.brand-editor .text-slate-100,
+.brand-editor .text-white,
+.brand-editor .text-\[\#1A1A1A\],
+.brand-editor .text-\[\#1E4468\],
+.brand-editor .text-\[\#6B7280\] { color: #FFFFFF !important; }
+/* hints (smaller / mono) stay slightly dimmed */
+.brand-editor .text-\[10px\].text-\[\#6B7280\],
+.brand-editor .text-\[11px\].text-\[\#6B7280\],
+.brand-editor .editor-hint { color: rgba(255,255,255,0.7) !important; }
+/* legacy section headings → gold gradient */
+.brand-editor h1, .brand-editor h2, .brand-editor h3, .brand-editor h4,
+.brand-editor .editor-label,
+.brand-editor .text-\[\#E7C768\] {
+  background: linear-gradient(135deg, #F4EE8E 0%, #D99E41 100%) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+/* legacy surfaces → glass */
+.brand-editor .bg-white,
 .brand-editor .bg-black\/45,
 .brand-editor .bg-black\/40,
 .brand-editor .bg-black\/30,
@@ -185,10 +218,15 @@ body {
 .brand-editor .bg-slate-900\/60,
 .brand-editor .bg-slate-900\/80,
 .brand-editor .bg-slate-900,
-.brand-editor .bg-slate-800 { background-color: #FFFFFF !important; }
+.brand-editor .bg-slate-800 {
+  background-color: rgba(255,255,255,0.08) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
 .brand-editor .border-white\/5,
 .brand-editor .border-white\/10,
-.brand-editor .border-white\/20 { border-color: #DBDBDB !important; }
+.brand-editor .border-white\/20,
+.brand-editor .border-\[\#DBDBDB\] { border-color: rgba(255,255,255,0.18) !important; }
 
 .card-blur {
   background-color: rgba(30, 68, 104, 0.4);
