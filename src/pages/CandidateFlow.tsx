@@ -767,7 +767,7 @@ export default function CandidateFlow() {
 
       // 2. Resolve candidate. Prefer Supabase by public_id, then legacy API.
       let activeCand: any = null;
-      const pubId = activeId.startsWith("candidate") ? activeId.replace(/^candidate/, "") : activeId;
+      const pubId = activeId.replace(/^candidate/i, "").replace(/^cand/i, "");
       if (pubId) {
         const { data: cand } = await supabase
           .from("candidates")
