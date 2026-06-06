@@ -915,29 +915,27 @@ export default function EmployerPanel() {
   // Synchronized Full-Stack Fetching
   const fetchCompanies = async () => {
     try {
+      if (!isEmployerPublicIdCandidate(employerId)) {
+        setCompaniesList([]);
+        return;
+      }
       // Load companies owned by this employer directly from Supabase.
       // (No /api/companies endpoint exists — the dev/prod server returns index.html
       // with 200 OK for unknown routes, so a fetch() here would silently break JSON parsing.)
       const { supabase } = await import("@/integrations/supabase/client");
       let data: any[] = [];
-      if (employerId) {
-        const { data: emp, error: empErr } = await supabase
-          .from("employers")
-          .select("id")
-          .eq("public_id", employerId)
-          .maybeSingle();
-        if (empErr) console.error("fetchCompanies: employer lookup failed", empErr);
-        if (emp?.id) {
-          const r = await supabase
-            .from("companies")
-            .select("*")
-            .eq("owner_employer_id", emp.id)
-            .order("created_at", { ascending: false });
-          if (r.error) console.error("fetchCompanies: companies query failed", r.error);
-          data = (r.data as any[]) || [];
-        }
-      } else {
-        const r = await supabase.from("companies").select("*");
+      const { data: emp, error: empErr } = await supabase
+        .from("employers")
+        .select("id")
+        .eq("public_id", employerId)
+        .maybeSingle();
+      if (empErr) console.error("fetchCompanies: employer lookup failed", empErr);
+      if (emp?.id) {
+        const r = await supabase
+          .from("companies")
+          .select("*")
+          .eq("owner_employer_id", emp.id)
+          .order("created_at", { ascending: false });
         if (r.error) console.error("fetchCompanies: companies query failed", r.error);
         data = (r.data as any[]) || [];
       }
