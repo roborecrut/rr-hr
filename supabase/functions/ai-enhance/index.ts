@@ -21,11 +21,11 @@ const LIMITS: Record<string, number> = {
   about_text: 600,
   team: 500,
   team_text: 500,
-  payouts_text: 300,
+  payouts_text: 500,
   salaryTerms: 300,
-  schedule_text: 300,
+  schedule_text: 400,
   scheduleTerms: 300,
-  system_text: 600,
+  system_text: 1000,
   customWiki: 600,
   statsValClients: 16,
   statsLabelClients: 40,
@@ -36,18 +36,23 @@ const LIMITS: Record<string, number> = {
   // Vacancy fields
   roleName: 120,
   role_name: 120,
-  vacancy_text: 1500,
-  vacancyText: 1500,
-  tasks_activity_text: 1000,
-  tasksActivityText: 1000,
-  motivation_text: 500,
-  motivationText: 500,
-  motivation_text_detail: 800,
-  motivationTextDetail: 800,
-  onboarding_text: 1000,
-  onboardingText: 1000,
-  team_text_vac: 600,
-  system_text_vac: 600,
+  vacancy_text: 1200,
+  vacancyText: 1200,
+  tasks_activity_text: 1200,
+  tasksActivityText: 1200,
+  motivation_text: 300,
+  motivationText: 300,
+  motivation_text_detail: 1000,
+  motivationTextDetail: 1000,
+  onboarding_text: 1200,
+  onboardingText: 1200,
+  team_text_vac: 1000,
+  system_text_vac: 1000,
+  training_professional_text: 1500,
+  training_product_text: 1500,
+  training_systems_text: 1500,
+  training_wiki_text: 600,
+  training_regulations_text: 800,
 };
 const clampField = (field: string | undefined, val: unknown): string => {
   const v = typeof val === "string" ? val : String(val ?? "");
@@ -70,6 +75,10 @@ Deno.serve(async (req) => {
     hint?: string;
     template?: string;
     templates?: Record<string, string>;
+    /** Raw extracted text from uploaded file (≤5000 chars). */
+    file_context?: string;
+    /** Existing company data to seed shared fields (schedule/motivation/team/etc). */
+    company_context?: Record<string, any>;
   };
   if (!body?.mode) return jsonResponse({ error: "bad_body" }, 400);
 
@@ -79,9 +88,36 @@ Deno.serve(async (req) => {
 
   try {
     if (body.mode === "single") {
+      const limit = LIMITS[body.field ?? ""] ?? 600;
       const buildSingleMessages = (strict: boolean) => [
-        { role: "system" as const, content: `Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг. ВАЖНО: ответ должен быть не длиннее ${LIMITS[body.field ?? ""] ?? 600} символов.${body.template ? "\nОриентируйся на эталон заполнения по структуре, формату списков и тону. НЕ копируй эталон дословно — используй детали пользователя." : ""}${strict ? "\nНЕ вызывай никаких внешних инструментов, не ходи по URL, не делай поиск. Ответь сразу текстом из своей головы на основе данных пользователя." : ""}` },
-        { role: "user" as const, content: `Роль: ${body.role_name ?? "—"}\nКомпания: ${body.company_name ?? "—"}\nПоле: ${body.field}\n${body.template ? `\nЭталон заполнения для роли:\n${body.template}\n` : ""}\nИсходный текст пользователя:\n${body.value ?? ""}\n${body.hint ? `Подсказка: ${body.hint}` : ""}` },
+        {
+          role: "system" as const,
+          content:
+`Ты — старший HR-копирайтер. Переписываешь СТРОГО ОДНО поле «${body.field}» в продающем, чётком, человеческом стиле для лендинга вакансии/компании на русском языке.
+
+ПРАВИЛА ОТВЕТА:
+1. Верни ТОЛЬКО готовый текст этого поля. Никаких пояснений, JSON, markdown-обёрток, кавычек вокруг, заголовков.
+2. Жёсткий лимит — не длиннее ${limit} символов.
+3. Сохраняй формат поля: списки начинаются с «• », теги в квадратных скобках «[Тег] описание», эмодзи там, где это уместно по эталону.
+4. Никаких выдуманных цифр, ссылок, дат и имён. Если данных нет — пиши обобщённо, но конкретно.
+5. НЕ копируй эталон дословно — используй его только как образец структуры/тона.
+6. НЕ вызывай внешние инструменты, не ходи по URL, не делай поиск. Отвечай сразу.${strict ? "\n7. Если был соблазн вызвать инструмент — игнорируй, верни просто текст." : ""}`,
+        },
+        {
+          role: "user" as const,
+          content:
+`Поле: ${body.field}
+Роль (вакансия): ${body.role_name ?? "—"}
+Компания: ${body.company_name ?? "—"}
+${body.template ? `\nЭТАЛОН ФОРМАТА (только структура, не копировать дословно):\n${body.template}\n` : ""}
+Текущее значение поля от пользователя:
+"""
+${body.value ?? ""}
+"""
+${body.hint ? `\nДополнительный контекст: ${body.hint}` : ""}
+
+Перепиши значение поля «${body.field}» в продающем, лаконичном виде с сохранением формата. Верни ТОЛЬКО новый текст этого поля.`,
+        },
       ];
 
       let text = "";
@@ -116,10 +152,10 @@ Deno.serve(async (req) => {
       return jsonResponse({ value });
     }
 
-    const buildAllMessages = (strict: boolean) => [
-      { role: "system" as const, content: `Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений. Соблюдай лимиты длины: name≤80, description_text≤600, products_text≤500, mission_text≤500, team≤500, payouts_text≤300, schedule_text≤300, system_text≤600.${strict ? "\nКРИТИЧНО: НЕ вызывай никакие внешние инструменты/функции, НЕ ходи по URL из полей, НЕ делай поиск. Используй только данные из самого JSON. Верни валидный JSON-объект." : ""}` },
-      { role: "user" as const, content: `Контекст: роль ${body.role_name ?? "—"}, компания ${body.company_name ?? "—"}\n${body.templates ? `\nЭталоны заполнения для роли (используй как структурный ориентир, не копируй дословно):\n${JSON.stringify(body.templates, null, 2)}\n` : ""}\nИсходные поля:\n${JSON.stringify(body.fields ?? {}, null, 2)}\n${body.hint ? `\nПодсказка: ${body.hint}` : ""}` },
-    ];
+    const buildAllMessages = (strict: boolean) => {
+      if (body.mode === "all_vacancy") return buildVacancyMessages(body, strict);
+      return buildCompanyMessages(body, strict);
+    };
 
     let text = "";
     let raw: any = null;
