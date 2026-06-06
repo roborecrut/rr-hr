@@ -656,6 +656,8 @@ export default function EmployerPanel() {
       setNewCompanySalaryTerms("");
       setNewCompanyScheduleTerms("");
       setNewCompanyCustomWiki("");
+      setCompanyRawText("");
+      setNewCompanyFiles("");
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
