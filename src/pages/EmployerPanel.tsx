@@ -164,6 +164,7 @@ import OfferConsent from "../components/OfferConsent";
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { run: aiWaitRun } = useAIWait();
 
   // Derive active tab from subroute PATH
   let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" | "interviews" | "training" = "crm";
