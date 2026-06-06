@@ -1630,36 +1630,80 @@ export default function CandidateFlow() {
               <form onSubmit={handleSaveProfile} className="space-y-4 max-w-xl bg-black/25 p-6 rounded-2xl border border-white/5 text-left">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-300">ФИО Кандидата:</label>
-                    <input
-                      type="text"
-                      className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      value={profName}
-                      onChange={(e) => setProfName(e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-300">Email (Почта):</label>
                     <input
                       type="email"
                       className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
                       value={profEmail}
-                      onChange={(e) => setProfEmail(e.target.value)}
-                      required
+                      readOnly
                     />
                   </div>
-
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-300">Телефон:</label>
+                    <input
+                      type="tel"
+                      className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      value={profPhone}
+                      placeholder="+7 (900) 123-45-67"
+                      onChange={(e) => setProfPhone(e.target.value)}
+                    />
+                  </div>
                   <div className="space-y-1 md:col-span-2">
-                    <label className="text-xs font-bold text-slate-300">Никнейм в Телеграм (без @):</label>
+                    <label className="text-xs font-bold text-slate-300">Ссылка на резюме (URL):</label>
                     <input
                       type="text"
                       className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      value={profTelegram}
-                      placeholder="alex_ivanov_sale"
-                      onChange={(e) => setProfTelegram(e.target.value)}
+                      value={profResumeUrl}
+                      placeholder="https://hh.ru/..."
+                      onChange={(e) => setProfResumeUrl(e.target.value)}
                     />
+                  </div>
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-bold text-slate-300">Фото профиля:</label>
+                    <div className="flex items-center gap-3">
+                      {profAvatarUrl && <img src={profAvatarUrl} alt="avatar" className="w-12 h-12 rounded-xl object-cover border border-white/10" />}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f || !candidate) return;
+                          const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+                          const path = `${candidate.id}/${Date.now()}.${ext}`;
+                          const { error } = await supabase.storage.from("candidate-avatars").upload(path, f, { upsert: true, contentType: f.type });
+                          if (error) { setSaveProfileMsg("⚠️ " + error.message); return; }
+                          const { data } = await supabase.storage.from("candidate-avatars").createSignedUrl(path, 60 * 60 * 24 * 365);
+                          if (data?.signedUrl) setProfAvatarUrl(data.signedUrl);
+                        }}
+                        className="text-xs text-slate-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-white/10">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-2">Соцсети (только ссылки, без подтверждения)</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      ["social_telegram", "Telegram"],
+                      ["social_whatsapp", "WhatsApp"],
+                      ["social_instagram", "Instagram"],
+                      ["social_vk", "ВКонтакте"],
+                      ["social_max", "MAX"],
+                      ["social_setka", "Сетка"],
+                      ["social_github", "GitHub"],
+                    ].map(([k, label]) => (
+                      <div key={k} className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400">{label}</label>
+                        <input
+                          type="url"
+                          value={profSocials[k] || ""}
+                          onChange={(e) => setProfSocials({ ...profSocials, [k]: e.target.value })}
+                          placeholder="https://..."
+                          className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
