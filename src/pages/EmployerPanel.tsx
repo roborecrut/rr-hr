@@ -17,7 +17,6 @@ import {
   getRoleTemplates,
   mergedTemplate,
   saveRoleTemplates,
-  type VacancyFieldKey,
   type TrainingFieldKey,
 } from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
