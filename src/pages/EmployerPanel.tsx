@@ -220,7 +220,7 @@ export default function EmployerPanel() {
 
   // Vacancy States
   const [pausedProjectIds, setPausedProjectIds] = useState<string[]>([]);
-  const [setupCompanyName, setSetupCompanyName] = useState("ООО РобоРекрут инжиниринг");
+  const [setupCompanyName, setSetupCompanyName] = useState("");
   const [setupRoleName, setSetupRoleName] = useState("Менеджер по продажам");
   const [setupSalary, setSetupSalary] = useState("80000 - 120000 руб");
   const [setupSchedule, setSetupSchedule] = useState("5/2, гибридный график");
@@ -1497,8 +1497,11 @@ export default function EmployerPanel() {
   const openAddVacancyWizard = async () => {
     if (showAddNewVacancy) { await cancelAddVacancyWizard(); return; }
     try {
+      const selectedCompanyName = companiesList.some(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase())
+        ? setupCompanyName
+        : (companiesList[0]?.name || "");
       // Resolve the selected company id (by name, if any company was picked).
-      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const matched = companiesList.find(c => c.name.toLowerCase() === selectedCompanyName.toLowerCase());
       const companyId = (matched as any)?.id || null;
       const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
       if (error) throw error;
@@ -1506,6 +1509,7 @@ export default function EmployerPanel() {
       setDraftProjectId(d?.id || null);
       setDraftProjectPublicId(d?.public_id || null);
       // Reset wizard fields so the user starts clean.
+      setSetupCompanyName(selectedCompanyName);
       setSetupRoleName("");
       setSetupSalary("");
       setSetupSchedule("");
