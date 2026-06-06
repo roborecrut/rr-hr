@@ -1518,6 +1518,11 @@ export default function EmployerPanel() {
       setSetupTrainingWikiText("");
       setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
+      // Reset vacancy file-ingest state
+      setDraftVacancyFilePath(null);
+      setVacancyFileName("");
+      setVacancyUploadError("");
+      setVacancyRawText("");
       // Open vacancy editor IMMEDIATELY — restart happens in background
       setShowAddNewVacancy(true);
       try {
