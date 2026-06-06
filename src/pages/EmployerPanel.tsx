@@ -2286,12 +2286,21 @@ export default function EmployerPanel() {
     handleUpdateProfile();
   };
 
-  // Filtering candidates
-  const filteredCandidates = candidates.filter(cand => {
-    return cand.name.toLowerCase().includes(crmSearch.toLowerCase()) || 
-           cand.roleName.toLowerCase().includes(crmSearch.toLowerCase()) ||
-           cand.email.toLowerCase().includes(crmSearch.toLowerCase());
+  // Filtering candidates (search + role + company + stage)
+  const filteredCandidates = candidates.filter((cand: any) => {
+    const q = crmSearch.toLowerCase().trim();
+    if (q) {
+      const hay = `${cand.name || ""} ${cand.roleName || ""} ${cand.email || ""} ${cand.phone || ""} ${cand.companyName || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (crmFilterRole !== "all" && (cand.roleName || "") !== crmFilterRole) return false;
+    if (crmFilterCompany !== "all" && (cand.companyName || "") !== crmFilterCompany) return false;
+    if (crmFilterStage !== "all" && ((cand.crmStage || "registration") !== crmFilterStage)) return false;
+    return true;
   });
+
+  const crmRoleOptions = Array.from(new Set(candidates.map((c: any) => c.roleName).filter(Boolean))) as string[];
+  const crmCompanyOptions = Array.from(new Set(candidates.map((c: any) => c.companyName).filter(Boolean))) as string[];
 
   // Calculate stats
   const totalVerified = candidates.filter(c => c.currentStage === "certified").length;
