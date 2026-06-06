@@ -164,6 +164,11 @@ body {
 }
 .brand-editor input::placeholder,
 .brand-editor textarea::placeholder { color: rgba(255,255,255,0.55) !important; }
+.brand-editor select option,
+.brand-editor select optgroup {
+  background-color: #17344F !important;
+  color: #FFFFFF !important;
+}
 .brand-editor input:focus,
 .brand-editor input:focus-visible,
 .brand-editor textarea:focus,

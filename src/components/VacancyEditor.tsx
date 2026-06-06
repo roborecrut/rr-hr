@@ -65,7 +65,7 @@ const parseTagged = (raw: string): { title: string; desc: string }[] =>
   });
 
 const PreviewShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="mt-3 rounded-2xl border border-dashed border-[#E7C768]/30 bg-[#0E1F30]/70 p-4">
+  <div className="mt-3 rounded-2xl border border-dashed border-[#E7C768]/35 bg-white/5 p-4">
     <div className="mb-2 flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[#E7C768]/80">
       <Sparkles className="h-3 w-3" /> Превью на лендинге
     </div>
@@ -201,7 +201,7 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
   const clearField = (key: VacancyFieldKey) => set(key, "");
 
   return (
-    <div className="space-y-6">
+    <div className="brand-editor space-y-6 rounded-3xl bg-gradient-to-br from-[#17344F] to-[#265582]">
       {mode === "create" && (
         <div className="rounded-2xl border border-[#E7C768]/30 bg-[#E7C768]/5 p-4 text-xs text-slate-200">
           <strong className="text-[#E7C768]">15 полей вакансии.</strong> Заполните
@@ -270,7 +270,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
 }) => {
   const aiReady = useAIReady();
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#12283C]/80 p-4">
+    <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <label className="block text-xs font-bold text-slate-100">
@@ -320,7 +320,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
       <div className="mt-3">
         {field.multiline ? (
           <textarea
-            className="w-full rounded-xl border border-white/10 bg-[#112335] p-3 font-mono text-xs text-white focus:outline-[#E7C768]"
+            className="w-full rounded-xl border border-white/15 bg-white/10 p-3 font-mono text-xs text-white focus:outline-[#E7C768]"
             rows={field.rows ?? 4}
             maxLength={field.max}
             value={value}
@@ -330,7 +330,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
         ) : (
           <input
             type="text"
-            className="w-full rounded-xl border border-white/10 bg-[#112335] p-2.5 text-xs text-white focus:outline-[#E7C768]"
+            className="w-full rounded-xl border border-white/15 bg-white/10 p-2.5 text-xs text-white focus:outline-[#E7C768]"
             maxLength={field.max}
             value={value}
             onChange={(e) => onChange(e.target.value)}

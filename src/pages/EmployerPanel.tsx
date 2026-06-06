@@ -220,7 +220,7 @@ export default function EmployerPanel() {
 
   // Vacancy States
   const [pausedProjectIds, setPausedProjectIds] = useState<string[]>([]);
-  const [setupCompanyName, setSetupCompanyName] = useState("ООО РобоРекрут инжиниринг");
+  const [setupCompanyName, setSetupCompanyName] = useState("");
   const [setupRoleName, setSetupRoleName] = useState("Менеджер по продажам");
   const [setupSalary, setSetupSalary] = useState("80000 - 120000 руб");
   const [setupSchedule, setSetupSchedule] = useState("5/2, гибридный график");
@@ -261,7 +261,9 @@ export default function EmployerPanel() {
   // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
   const [roleTemplates, setRoleTemplates] = useState<Record<string, string>>({});
   const exampleFor = (field: string): string =>
-    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
+    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any) ||
+    VACANCY_FIELDS_BY_KEY[field as VacancyFieldKey]?.example ||
+    "";
   const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
 
   // Reload templates when the selected role changes and OVERWRITE all 15
@@ -1497,8 +1499,11 @@ export default function EmployerPanel() {
   const openAddVacancyWizard = async () => {
     if (showAddNewVacancy) { await cancelAddVacancyWizard(); return; }
     try {
+      const selectedCompanyName = companiesList.some(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase())
+        ? setupCompanyName
+        : (companiesList[0]?.name || "");
       // Resolve the selected company id (by name, if any company was picked).
-      const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const matched = companiesList.find(c => c.name.toLowerCase() === selectedCompanyName.toLowerCase());
       const companyId = (matched as any)?.id || null;
       const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
       if (error) throw error;
@@ -1506,6 +1511,7 @@ export default function EmployerPanel() {
       setDraftProjectId(d?.id || null);
       setDraftProjectPublicId(d?.public_id || null);
       // Reset wizard fields so the user starts clean.
+      setSetupCompanyName(selectedCompanyName);
       setSetupRoleName("");
       setSetupSalary("");
       setSetupSchedule("");
@@ -1970,7 +1976,11 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
       // Find the selected company to send its data as context.
-      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const safeCompanyName = companiesList.some(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase())
+        ? setupCompanyName
+        : (companiesList[0]?.name || "");
+      if (safeCompanyName !== setupCompanyName) setSetupCompanyName(safeCompanyName);
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (safeCompanyName || "").toLowerCase());
       const companyCtx: Record<string, any> = matchedCo ? {
         name: matchedCo.name,
         industry: matchedCo.industry,
@@ -1992,7 +2002,7 @@ export default function EmployerPanel() {
         title: "ИИ оформляет вакансию",
         task: () => aiEnhanceAll({
           mode: "all_vacancy",
-          company_name: setupCompanyName,
+          company_name: safeCompanyName,
           role_name: setupRoleName,
           templates: {
             vacancy_text: exampleFor("vacancy_text"),
@@ -2004,6 +2014,11 @@ export default function EmployerPanel() {
             onboarding_text: exampleFor("onboarding_text"),
             team_text: exampleFor("team_text"),
             system_text: exampleFor("system_text"),
+            training_professional_text: exampleFor("training_professional_text"),
+            training_product_text: exampleFor("training_product_text"),
+            training_systems_text: exampleFor("training_systems_text"),
+            training_wiki_text: exampleFor("training_wiki_text"),
+            training_regulations_text: exampleFor("training_regulations_text"),
           },
           fields: {
             role_name: setupRoleName,
@@ -2024,6 +2039,7 @@ export default function EmployerPanel() {
           },
           file_context: vacancyRawText || undefined,
           company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+          hint: vacancyRawText ? "Главный источник фактов — распознанный текст документа. Если должность пустая, извлеки role_name из документа." : undefined,
         }),
       });
       if (enhanced) {
@@ -2115,24 +2131,33 @@ export default function EmployerPanel() {
       } : {};
       Object.keys(companyCtx).forEach(k => { if (!companyCtx[k]) delete companyCtx[k]; });
 
-      const enhanced = await aiEnhanceAll({
-        mode: "all_vacancy",
-        company_name: ep.companyName,
-        role_name: ep.roleName,
-        fields,
-        templates: {
-          vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
-          tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
-          schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
-          motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
-          motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
-          payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
-          onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
-          team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
-          system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
-        },
-        file_context: editVacancyRawText || undefined,
-        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+      const enhanced = await aiWaitRun<any>({
+        title: "ИИ оформляет вакансию",
+        task: () => aiEnhanceAll({
+          mode: "all_vacancy",
+          company_name: ep.companyName,
+          role_name: ep.roleName,
+          fields,
+          templates: {
+            vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
+            tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
+            schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
+            motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
+            motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
+            payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
+            onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
+            team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
+            system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
+            training_professional_text: editRoleTemplates?.training_professional_text || exampleFor("training_professional_text"),
+            training_product_text: editRoleTemplates?.training_product_text || exampleFor("training_product_text"),
+            training_systems_text: editRoleTemplates?.training_systems_text || exampleFor("training_systems_text"),
+            training_wiki_text: editRoleTemplates?.training_wiki_text || exampleFor("training_wiki_text"),
+            training_regulations_text: editRoleTemplates?.training_regulations_text || exampleFor("training_regulations_text"),
+          },
+          file_context: editVacancyRawText || undefined,
+          company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+          hint: editVacancyRawText ? "Главный источник фактов — распознанный текст документа. Если должность пустая, извлеки role_name из документа." : undefined,
+        }),
       });
       if (enhanced) {
         // Map snake_case response back to JobProject camelCase fields.
@@ -2838,7 +2863,7 @@ export default function EmployerPanel() {
 
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
-                <div className="bg-[#1D3E5E]/95 border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
+                <div className="brand-editor bg-gradient-to-br from-[#17344F] to-[#265582] border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
                     <div>
                       <span className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Панель вакансии RR</span>
@@ -2895,9 +2920,9 @@ export default function EmployerPanel() {
                             value={setupCompanyName}
                             onChange={(e) => setSetupCompanyName(e.target.value)}
                           >
-                            <option value="">Выберите компанию...</option>
+                            <option value="" style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>Выберите компанию...</option>
                             {companiesList.map(c => (
-                              <option key={c.id} value={c.name}>{c.name}</option>
+                              <option key={c.id} value={c.name} style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>{c.name}</option>
                             ))}
                           </select>
                         ) : (
@@ -2927,12 +2952,12 @@ export default function EmployerPanel() {
                     </div>
 
                     {/* Pre-fill quick selector helper */}
-                    <div className="bg-black/20 p-3 rounded-2xl border border-white/5 space-y-2">
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/15 space-y-2">
                       <span className="text-[10px] uppercase font-bold text-slate-300 block">Быстрый подбор справочника:</span>
                       <input 
                         type="text" 
                         placeholder="Фильтровать профессии..." 
-                        className="bg-black/40 text-[10.5px] p-1.5 w-full rounded border border-white/10"
+                        className="bg-white/10 text-[10.5px] p-1.5 w-full rounded border border-white/15 text-white"
                         value={specialtySearch}
                         onChange={(e) => setSpecialtySearch(e.target.value)}
                       />
@@ -2949,7 +2974,7 @@ export default function EmployerPanel() {
                         return (
                           <div className="space-y-2 mt-1">
                             <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto pr-1">
-                              {filteredSpec.slice(0, 60).map(spec => (
+                              {filteredSpec.map(spec => (
                                 <button
                                   key={spec}
                                   type="button"
@@ -2982,7 +3007,7 @@ export default function EmployerPanel() {
                       })()}
                     </div>
 
-                    <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
+                    <div className="bg-white/5 border border-white/15 rounded-2xl p-3 text-[10px] text-white/70 leading-snug">
                       ℹ️ Логотип берётся из настроек компании. «График и тайм-слоты» включает в себя график работы, «Оплата и схема выплат» — условия оплаты. Базу знаний и регламенты вынесли в <strong className="text-[#E7C768]">Мастер Обучения</strong> на странице «Обучение».
                     </div>
 
@@ -4436,43 +4461,6 @@ export default function EmployerPanel() {
               </h2>
             </div>
 
-            {companiesList.some(c => c.name.toLowerCase() === editingProject.companyName?.toLowerCase()) && (
-              <div className="bg-green-500/10 border border-green-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-pulse">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-green-300 font-bold font-mono">🌟 ИИ-ПОРТАЛ СИНХРОНИЗАЦИИ:</span>
-                  <p className="text-xs text-slate-200">Найден зарегистрированный профиль компании "{editingProject.companyName}"</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const comp = companiesList.find(c => c.name.toLowerCase() === editingProject.companyName?.toLowerCase());
-                    if (comp) {
-                      setEditingProject({
-                        ...editingProject,
-                        logoUrl: comp.logoUrl || editingProject.logoUrl,
-                        customWiki: comp.customWiki || editingProject.customWiki,
-                        companyText: comp.description || editingProject.companyText,
-                        missionText: comp.missionText || editingProject.missionText,
-                        salaryTerms: comp.salaryTerms || editingProject.salaryTerms,
-                        scheduleTerms: comp.scheduleTerms || editingProject.scheduleTerms,
-                        statsValClients: comp.statsValClients || editingProject.statsValClients,
-                        statsLabelClients: comp.statsLabelClients || editingProject.statsLabelClients,
-                        statsValDialogs: comp.statsValDialogs || editingProject.statsValDialogs,
-                        statsLabelDialogs: comp.statsLabelDialogs || editingProject.statsLabelDialogs,
-                        statsValFounded: comp.statsValFounded || editingProject.statsValFounded,
-                        statsLabelFounded: comp.statsLabelFounded || editingProject.statsLabelFounded
-                      });
-                      addAuditEvent("success", "Бренд интегрирован", `Все ИИ-поля из организации "${comp.name}" успешно импортированы в лендинг вакансии.`);
-                    }
-                  }}
-                  className="px-3.5 py-1.5 text-xs font-bold rounded-xl text-green-950 bg-green-400 hover:bg-green-300 transition-all flex items-center justify-center gap-1 shadow-md shadow-green-950/20 self-start sm:self-center cursor-pointer select-none"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Перенести ИИ-поля в редактор лендинга
-                </button>
-              </div>
-            )}
-
 {/* Unified VacancyEditor — same look as the create wizard, with per-field live preview */}
             <form onSubmit={handleSaveEditedProject} className="space-y-5">
               {/* Document uploader — same UX as the create wizard, lets the
@@ -4526,9 +4514,9 @@ export default function EmployerPanel() {
                         value={editingProject.companyName || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
                       >
-                        <option value="">Выберите компанию...</option>
+                        <option value="" style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>Выберите компанию...</option>
                         {companiesList.map((c) => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
+                          <option key={c.id} value={c.name} style={{ backgroundColor: "#17344F", color: "#FFFFFF" }}>{c.name}</option>
                         ))}
                       </select>
                     ) : (
@@ -4571,7 +4559,6 @@ export default function EmployerPanel() {
                   <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
                     {Array.from(new Set([...jobTitlesList, ...BASIC_SPECIALTIES]))
                       .filter((s) => s.toLowerCase().includes(editSpecialtySearch.toLowerCase()))
-                      .slice(0, 40)
                       .map((spec) => (
                         <button
                           key={spec}

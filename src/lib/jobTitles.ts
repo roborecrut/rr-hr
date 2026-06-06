@@ -16,8 +16,7 @@ export async function fetchJobTitles(force = false): Promise<JobTitle[]> {
       .from("job_titles")
       .select("id, title, usage_count, is_basic")
       .order("usage_count", { ascending: false })
-      .order("title", { ascending: true })
-      .limit(2000);
+      .order("title", { ascending: true });
     if (error) throw error;
     cache = (data as JobTitle[]) || [];
     return cache;
