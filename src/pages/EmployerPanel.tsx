@@ -1387,7 +1387,7 @@ export default function EmployerPanel() {
       addAuditEvent("success", "Этап CRM обновлён", `Кандидат перемещён на этап: ${newStage}`);
     } catch (err: any) {
       console.error("Error updating CRM stage:", err);
-      addAuditEvent("error", "Ошибка CRM", err?.message || "Не удалось обновить этап");
+      addAuditEvent("warning", "Ошибка CRM", err?.message || "Не удалось обновить этап");
     }
   };
 
