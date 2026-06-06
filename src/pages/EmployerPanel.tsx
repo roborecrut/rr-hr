@@ -559,7 +559,10 @@ export default function EmployerPanel() {
           mode: "all_company",
           company_name: newCompanyName,
           fields,
-          hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+          hint: [
+            newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : "",
+            companyRawText ? `Извлечённый текст о компании из документа:\n${companyRawText}` : "",
+          ].filter(Boolean).join("\n\n") || undefined,
         }),
       });
       if (enriched) {
