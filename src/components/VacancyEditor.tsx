@@ -38,6 +38,8 @@ export interface VacancyEditorProps {
   mode?: "create" | "edit";
   /** Optional company name for the page title in preview (visual only). */
   companyName?: string;
+  /** Skip rendering these field keys (e.g. when role_name is shown elsewhere). */
+  hideKeys?: VacancyFieldKey[];
 }
 
 // ----------------------------------------------------------------------------
@@ -168,14 +170,17 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
   aiLoadingKey,
   mode = "edit",
   companyName,
+  hideKeys,
 }) => {
   const groups = useMemo(
     () =>
       VACANCY_FIELD_GROUPS.map((g) => ({
         ...g,
-        fields: VACANCY_FIELDS.filter((f) => f.group === g.id),
-      })),
-    [],
+        fields: VACANCY_FIELDS.filter(
+          (f) => f.group === g.id && !(hideKeys ?? []).includes(f.key),
+        ),
+      })).filter((g) => g.fields.length > 0),
+    [hideKeys],
   );
 
   const set = (key: VacancyFieldKey, val: string) => onChange({ [key]: val });

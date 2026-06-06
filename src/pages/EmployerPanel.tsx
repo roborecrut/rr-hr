@@ -189,6 +189,14 @@ export default function EmployerPanel() {
   const [setupOnboardingText, setSetupOnboardingText] = useState("");
   const [setupTeamText, setSetupTeamText] = useState("");
   const [setupSystemText, setSetupSystemText] = useState("");
+  // Training-group canonical fields (4/15) — also persisted on save.
+  const [setupTrainingProfessionalText, setSetupTrainingProfessionalText] = useState("");
+  const [setupTrainingProductText, setSetupTrainingProductText] = useState("");
+  const [setupTrainingSystemsText, setSetupTrainingSystemsText] = useState("");
+  const [setupTrainingWikiText, setSetupTrainingWikiText] = useState("");
+  const [setupTrainingRegulationsText, setSetupTrainingRegulationsText] = useState("");
+  // AI-enhance loading state for the in-wizard VacancyEditor.
+  const [wizardAiKey, setWizardAiKey] = useState<VacancyFieldKey | null>(null);
 
   // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
   // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
@@ -1247,6 +1255,11 @@ export default function EmployerPanel() {
       setSetupOnboardingText("");
       setSetupTeamText("");
       setSetupSystemText("");
+      setSetupTrainingProfessionalText("");
+      setSetupTrainingProductText("");
+      setSetupTrainingSystemsText("");
+      setSetupTrainingWikiText("");
+      setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
       pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       try {
@@ -1344,6 +1357,11 @@ export default function EmployerPanel() {
         onboarding_text: setupOnboardingText || null,
         team_text: setupTeamText || null,
         system_text: setupSystemText || null,
+        training_professional_text: setupTrainingProfessionalText || null,
+        training_product_text: setupTrainingProductText || null,
+        training_systems_text: setupTrainingSystemsText || null,
+        training_wiki_text: setupTrainingWikiText || null,
+        training_regulations_text: setupTrainingRegulationsText || null,
         is_published: true,
       };
       const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
@@ -2579,70 +2597,109 @@ export default function EmployerPanel() {
                       ℹ️ Логотип берётся из настроек компании. «График и тайм-слоты» включает в себя график работы, «Оплата и схема выплат» — условия оплаты. Базу знаний и регламенты вынесли в <strong className="text-[#E7C768]">Мастер Обучения</strong> на странице «Обучение».
                     </div>
 
-                    {/* Extended landing sections: each maps to a vacancy landing page block. */}
-                    {[
-                      { label: "Обязанности, требования, условия (для блока Vacancy: разделы выводятся автоматически из строк)", field: "vacancy_text" as const, value: setupVacancyText, set: setSetupVacancyText, rows: 6, max: 1500, placeholder: "• Ведение переговоров с клиентами по готовой базе\n• Уверенный пользователь ПК\n• Базовые навыки общения" },
-                      { label: "Ежедневный процесс (3 таба, формат [Название] Описание):", field: "tasks_activity_text" as const, value: setupTasksActivityText, set: setSetupTasksActivityText, rows: 4, max: 1000, placeholder: "• [📞 Консультация] Открыть Wiki и направить ссылку на тариф\n• [📝 Ведение CRM] Добавить заметку по итогам звонка\n• [🤝 Возражения] Объяснить ценность ИИ-сервисов" },
-                      { label: "График работы и тайм-слоты:", field: "schedule_text" as const, value: setupScheduleText, set: setSetupScheduleText, rows: 3, max: 300, placeholder: "5/2, 09:00–18:00, гибрид. Понедельник — общий созвон 10:00." },
-                      { label: "Мотивация и преимущества (краткий текст):", field: "motivation_text" as const, value: setupMotivationText, set: setSetupMotivationText, rows: 2, max: 500, placeholder: "Бонусы за результат, обучение за счёт компании, гибкий график." },
-                      { label: "Развёрнутая мотивация (списком, каждая строка — отдельный бонус):", field: "motivation_text_detail" as const, value: setupMotivationDetail, set: setSetupMotivationDetail, rows: 4, max: 800, placeholder: "• Премии до 30% за высокую скорость\n• Еженедельные выплаты\n• Компенсация интернета" },
-                      { label: "Оплата и схема выплат:", field: "payouts_text" as const, value: setupPayoutsText, set: setSetupPayoutsText, rows: 3, max: 300, placeholder: "Оклад 60 000 ₽ + % с продаж. Выплаты 5 и 20 числа." },
-                      { label: "Оформление (этапы от интервью до выхода + типы оформления):", field: "onboarding_text" as const, value: setupOnboardingText, set: setSetupOnboardingText, rows: 6, max: 1000, placeholder: "• [📝 Интервью] ИИ-собеседование за 10 минут\n• [📚 Кейс-тест] Проверка навыков\n• [🤖 Обучение] Wiki и симуляции\n• [🤝 Стажировка] Первые звонки с куратором\n• [✍️ Оформление] Самозанятость / ИП / ГПХ / ТК РФ" },
-                      { label: "Команда (формат [Отдел] Имя — роль):", field: "team_text_vac" as const, value: setupTeamText, set: setSetupTeamText, rows: 4, max: 600, placeholder: "• [Продажи] Иван — РОП\n• [Маркетинг] Мария — таргетолог" },
-                      { label: "Система работы (формат [Раздел] Описание регламента):", field: "system_text_vac" as const, value: setupSystemText, set: setSetupSystemText, rows: 4, max: 600, placeholder: "• [CRM] Bitrix24, обязательное заполнение карточек\n• [Связь] Telegram-каналы команды" },
-                    ].map(({ label, field, value, set, rows, max, placeholder }) => {
-                      const example = exampleFor(field) || placeholder;
-                      const isOpen = !!showExampleFor[field];
-                      return (
-                      <div key={field}>
-                        <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between gap-2">
-                          <span className="truncate">{label}</span>
-                          <span className="flex items-center gap-2 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setShowExampleFor(p => ({ ...p, [field]: !p[field] }))}
-                              className="text-[10px] text-[#E7C768] hover:underline font-semibold"
-                            >
-                              {isOpen ? "Скрыть пример" : "📋 Показать пример"}
-                            </button>
-                            <span className="text-[10px] text-slate-400 font-mono">до {max}</span>
-                          </span>
-                        </label>
-                        {isOpen && example && (
-                          <div className="mb-2 bg-[#0F2A42]/70 border border-[#E7C768]/25 rounded-xl p-2.5 text-[10.5px] text-slate-300 whitespace-pre-wrap leading-relaxed">
-                            <div className="text-[9px] uppercase text-[#E7C768]/80 font-bold tracking-wider mb-1">Эталон для роли «{setupRoleName || "—"}»</div>
-                            {example}
-                            <button
-                              type="button"
-                              onClick={() => set(example)}
-                              className="block mt-2 text-[10px] text-[#E7C768] hover:underline font-semibold"
-                            >
-                              ↓ Подставить пример в поле
-                            </button>
-                          </div>
-                        )}
-                        <div className="relative">
-                          <textarea
-                            rows={rows}
-                            maxLength={max}
-                            className="w-full bg-[#17344F]/60 text-xs p-2.5 pr-9 rounded-xl border border-white/10 focus:outline-[#E7C768]"
-                            value={value}
-                            onChange={(e) => set(e.target.value)}
-                            placeholder={isOpen ? "" : "Нажмите «📋 Показать пример», чтобы увидеть эталонное заполнение для этой роли"}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleEnhanceVacancyField(field, value, set)}
-                            disabled={enhancingVacFields[field]}
-                            className="absolute right-2 top-2 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
-                            title="Оформить красиво ИИ"
-                          >
-                            <Sparkles className={`w-3.5 h-3.5 ${enhancingVacFields[field] ? "animate-spin text-yellow-400" : ""}`} />
-                          </button>
-                        </div>
-                      </div>
-                      );
-                    })}
+                    {/* Unified 15-field editor with per-block live preview. */}
+                    <VacancyEditor
+                      mode="create"
+                      companyName={setupCompanyName}
+                      hideKeys={["role_name"]}
+                      aiLoadingKey={wizardAiKey}
+                      values={{
+                        vacancy_text: setupVacancyText,
+                        tasks_activity_text: setupTasksActivityText,
+                        schedule_text: setupScheduleText,
+                        motivation_text: setupMotivationText,
+                        motivation_text_detail: setupMotivationDetail,
+                        payouts_text: setupPayoutsText,
+                        onboarding_text: setupOnboardingText,
+                        team_text: setupTeamText,
+                        system_text: setupSystemText,
+                        training_professional_text: setupTrainingProfessionalText,
+                        training_product_text: setupTrainingProductText,
+                        training_systems_text: setupTrainingSystemsText,
+                        training_wiki_text: setupTrainingWikiText,
+                        training_regulations_text: setupTrainingRegulationsText,
+                      }}
+                      onChange={(patch) => {
+                        for (const [k, v] of Object.entries(patch)) {
+                          const val = v ?? "";
+                          switch (k as VacancyFieldKey) {
+                            case "vacancy_text": setSetupVacancyText(val); break;
+                            case "tasks_activity_text": setSetupTasksActivityText(val); break;
+                            case "schedule_text": setSetupScheduleText(val); break;
+                            case "motivation_text": setSetupMotivationText(val); break;
+                            case "motivation_text_detail": setSetupMotivationDetail(val); break;
+                            case "payouts_text": setSetupPayoutsText(val); break;
+                            case "onboarding_text": setSetupOnboardingText(val); break;
+                            case "team_text": setSetupTeamText(val); break;
+                            case "system_text": setSetupSystemText(val); break;
+                            case "training_professional_text": setSetupTrainingProfessionalText(val); break;
+                            case "training_product_text": setSetupTrainingProductText(val); break;
+                            case "training_systems_text": setSetupTrainingSystemsText(val); break;
+                            case "training_wiki_text": setSetupTrainingWikiText(val); break;
+                            case "training_regulations_text": setSetupTrainingRegulationsText(val); break;
+                          }
+                        }
+                      }}
+                      onAIEnhance={async (key) => {
+                        setWizardAiKey(key);
+                        try {
+                          const { aiEnhanceSingle } = await import("@/lib/aiClient");
+                          const field = VACANCY_FIELDS_BY_KEY[key];
+                          const getters: Record<VacancyFieldKey, string> = {
+                            role_name: setupRoleName,
+                            vacancy_text: setupVacancyText,
+                            tasks_activity_text: setupTasksActivityText,
+                            schedule_text: setupScheduleText,
+                            motivation_text: setupMotivationText,
+                            motivation_text_detail: setupMotivationDetail,
+                            payouts_text: setupPayoutsText,
+                            onboarding_text: setupOnboardingText,
+                            team_text: setupTeamText,
+                            system_text: setupSystemText,
+                            training_professional_text: setupTrainingProfessionalText,
+                            training_product_text: setupTrainingProductText,
+                            training_systems_text: setupTrainingSystemsText,
+                            training_wiki_text: setupTrainingWikiText,
+                            training_regulations_text: setupTrainingRegulationsText,
+                          };
+                          const value = await aiEnhanceSingle({
+                            field: key,
+                            value: getters[key] || "",
+                            company_name: setupCompanyName,
+                            role_name: setupRoleName,
+                            template: field.example,
+                            hint: `canonical_format:${field.preview}`,
+                          });
+                          if (value) {
+                            // Reuse the same switch via onChange-style patch.
+                            const setters: Record<VacancyFieldKey, (v: string) => void> = {
+                              role_name: () => {},
+                              vacancy_text: setSetupVacancyText,
+                              tasks_activity_text: setSetupTasksActivityText,
+                              schedule_text: setSetupScheduleText,
+                              motivation_text: setSetupMotivationText,
+                              motivation_text_detail: setSetupMotivationDetail,
+                              payouts_text: setSetupPayoutsText,
+                              onboarding_text: setSetupOnboardingText,
+                              team_text: setSetupTeamText,
+                              system_text: setSetupSystemText,
+                              training_professional_text: setSetupTrainingProfessionalText,
+                              training_product_text: setSetupTrainingProductText,
+                              training_systems_text: setSetupTrainingSystemsText,
+                              training_wiki_text: setSetupTrainingWikiText,
+                              training_regulations_text: setSetupTrainingRegulationsText,
+                            };
+                            setters[key](value);
+                            addAuditEvent("success", "Поле улучшено ИИ", `Раздел "${field.label}" переписан в каноническом формате.`);
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          addAuditEvent("warning", "Ошибка ИИ", "Не удалось улучшить раздел.");
+                        } finally {
+                          setWizardAiKey(null);
+                        }
+                      }}
+                    />
 
                     <button
                       type="submit"
