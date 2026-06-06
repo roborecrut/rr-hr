@@ -1,5 +1,5 @@
 // Animated waiting phrases for AI calls, grouped by entity context.
-export type LoadingEntity = "company" | "vacancy" | "training" | "generic";
+export type LoadingEntity = "company" | "vacancy" | "training" | "interview" | "generic";
 
 export const LOADING_PHRASES: Record<LoadingEntity, string[]> = {
   company: [
@@ -31,6 +31,15 @@ export const LOADING_PHRASES: Record<LoadingEntity, string[]> = {
     "Готовлю модули профессии…",
     "Составляю тест по продукту…",
     "Проверяю ответы кандидата…",
+  ],
+  interview: [
+    "Изучаю резюме кандидата…",
+    "Сверяю опыт с требованиями…",
+    "Готовлю вопросы чек-листа…",
+    "Оцениваю ответ на вопрос…",
+    "Считаю баллы по этапам…",
+    "Анализирую ролевые ответы…",
+    "Формирую итоговый комментарий…",
   ],
   generic: [
     "Думаю…",

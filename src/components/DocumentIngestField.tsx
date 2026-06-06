@@ -14,6 +14,7 @@ const BUCKET: Record<Entity, string> = {
   company: "company-uploads",
   vacancy: "vacancy-uploads",
   training: "training-uploads",
+  interview: "interview-uploads",
 };
 
 // Universal file/URL → ProTalk → markdown → entity field component.

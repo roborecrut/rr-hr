@@ -4,7 +4,7 @@
  * On success stores a candidate session and calls onSuccess(publicId).
  */
 import { useState } from "react";
-import { X, Mail, Lock, Loader, CheckCircle } from "lucide-react";
+import { X, Mail, Lock, Loader, CheckCircle, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveCandidateSession } from "@/lib/candidateSession";
 
@@ -21,6 +21,7 @@ type Props = {
 type Tab = "signup" | "login";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9 ()\-]{7,20}$/;
 
 export default function CandidateAuthModal({
   isOpen, onClose, projectId, companyId, roleName, companyName, onSuccess,
@@ -29,6 +30,7 @@ export default function CandidateAuthModal({
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
+  const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
@@ -38,6 +40,7 @@ export default function CandidateAuthModal({
   const errorText = (code: string) => ({
     bad_email: "Введите корректный email",
     bad_password: "Пароль должен быть не короче 8 символов",
+    bad_phone: "Введите корректный номер телефона",
     email_taken: "Этот email уже зарегистрирован — войдите",
     bad_credentials: "Неверный email или пароль",
     wrong_password: "Этот email уже используется с другим паролем",
@@ -49,12 +52,13 @@ export default function CandidateAuthModal({
     if (!EMAIL_RE.test(email.trim())) { setErr("Введите корректный email"); return; }
     if (pw.length < 8) { setErr("Пароль должен быть не короче 8 символов"); return; }
     if (tab === "signup" && pw !== pw2) { setErr("Пароли не совпадают"); return; }
+    if (tab === "signup" && !PHONE_RE.test(phone.trim())) { setErr("Введите корректный номер телефона"); return; }
 
     setBusy(true);
     try {
       const rpc = tab === "signup" ? "candidate_email_signup" : "candidate_email_login";
       const args: any = tab === "signup"
-        ? { _email: email.trim(), _password: pw, _project: projectId, _company: companyId || null }
+        ? { _email: email.trim(), _password: pw, _project: projectId, _company: companyId || null, _phone: phone.trim() }
         : { _email: email.trim(), _password: pw };
       const { data, error } = await supabase.rpc(rpc, args);
       if (error) throw error;
@@ -150,6 +154,19 @@ export default function CandidateAuthModal({
                     <input
                       type="password" autoComplete="new-password" value={pw2}
                       onChange={e => setPw2(e.target.value)} placeholder="••••••••"
+                      className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
+                    />
+                  </div>
+                </label>
+              )}
+              {tab === "signup" && (
+                <label className="block">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Телефон</span>
+                  <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <input
+                      type="tel" inputMode="tel" autoComplete="tel" value={phone}
+                      onChange={e => setPhone(e.target.value)} placeholder="+7 (900) 123-45-67"
                       className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
                     />
                   </div>

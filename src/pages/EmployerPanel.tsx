@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
+import InterviewWizard from "../components/InterviewWizard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import {
@@ -4131,50 +4132,11 @@ export default function EmployerPanel() {
           )}
 
           {activeTab === "interviews" && (
-            <div className="space-y-6">
-              <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
-                    <MessageSquare className="w-6 h-6" />
-                  </div>
-                  <div className="text-left">
-                    <h2 className="text-xl font-bold text-white">Конструктор ИИ-Интервью</h2>
-                    <p className="text-xs text-slate-300">3 этапа: Резюме → Чек-лист (20 вопросов) → Ситуации (3 кейса). Используется ИИ для генерации и редактирования.</p>
-                  </div>
-                </div>
-                {projects.length === 0 && (
-                  <p className="text-xs text-amber-300 pt-2">Сначала создайте вакансию во вкладке «3. Вакансии &amp; ИИ» — интервью настраиваются под конкретную вакансию.</p>
-                )}
-              </div>
-
-              <div className="grid lg:grid-cols-3 gap-4">
-                {[
-                  { stepNum: "1", title: "Резюме", desc: "Скрининг и оценка структуры опыта. ИИ формирует критерии и автоматически проставляет баллы." },
-                  { stepNum: "2", title: "Чек-лист", desc: "20 вопросов от ИИ — генерация на основе базы знаний и регламентов вакансии." },
-                  { stepNum: "3", title: "Ситуации", desc: "3 диалоговых кейса — поведенческая оценка кандидата в реальных сценариях." },
-                ].map(s => (
-                  <div key={s.stepNum} className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3 text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 rounded-full bg-[#E7C768] text-[#17344F] font-bold flex items-center justify-center text-sm">{s.stepNum}</span>
-                      <h3 className="font-bold text-[#E7C768]">{s.title}</h3>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">{s.desc}</p>
-                    <div className="space-y-2 pt-2">
-                      <button className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-200 font-semibold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Upload className="w-3.5 h-3.5" /> Загрузить базу знаний / регламент
-                      </button>
-                      <button className="w-full bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-xs text-[#E7C768] font-bold px-3 py-2 rounded-xl flex items-center justify-center gap-2">
-                        <Wand2 className="w-3.5 h-3.5" /> Сгенерировать ИИ
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-4 text-xs text-amber-100 leading-relaxed">
-                Эти настройки автоматически подтянутся в лендинг вакансии и в кабинет кандидата, который придёт по ссылке. Конструктор полей и сохранение в БД — в следующей итерации.
-              </div>
-            </div>
+            <InterviewWizard
+              projects={projects}
+              addAuditEvent={addAuditEvent}
+              refreshProjects={fetchData}
+            />
           )}
 
           {activeTab === "training" && (

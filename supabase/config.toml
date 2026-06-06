@@ -38,3 +38,24 @@ verify_jwt = false
 
 [functions.ai-list-stage-questions]
 verify_jwt = false
+
+[functions.ai-generate-interview-resume-criteria]
+verify_jwt = false
+
+[functions.ai-generate-interview-checklist]
+verify_jwt = false
+
+[functions.ai-generate-interview-situations]
+verify_jwt = false
+
+[functions.ai-interview-screen-resume]
+verify_jwt = false
+
+[functions.ai-interview-grade-checklist]
+verify_jwt = false
+
+[functions.ai-interview-grade-situations]
+verify_jwt = false
+
+[functions.ai-list-interview-checklist]
+verify_jwt = false
