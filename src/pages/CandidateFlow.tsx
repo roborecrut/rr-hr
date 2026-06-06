@@ -444,6 +444,8 @@ export default function CandidateFlow() {
   const [projectFull, setProjectFull] = useState<any | null>(null);
   const [companyFull, setCompanyFull] = useState<any | null>(null);
   const [employerContacts, setEmployerContacts] = useState<{ email?: string|null; phone?: string|null; telegram?: string|null }>({});
+  // Loading state for the initial session/project resolution.
+  const [sessionLoading, setSessionLoading] = useState(true);
   // Multi-application switcher (item 10)
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [appsMenuOpen, setAppsMenuOpen] = useState(false);
@@ -711,11 +713,20 @@ export default function CandidateFlow() {
     });
     
     if (candIndex !== -1 && (parts[candIndex].toLowerCase() === "candidate" || parts[candIndex].toLowerCase() === "cand")) {
+      setSessionLoading(false);
       return;
     }
 
     let activeId = localStorage.getItem("cand_session_id") || "";
-    
+    // Treat a bare numeric first segment as a candidate public_id
+    // (e.g. /200002/terms/vacancy). The dispatcher has already verified
+    // that such a path belongs to a real candidate before mounting us.
+    const barePidMode = candIndex === -1 && parts[0] && /^\d{4,}$/.test(parts[0]);
+    if (barePidMode) {
+      activeId = `candidate${parts[0]}`;
+      localStorage.setItem("cand_session_id", activeId);
+    }
+
     if (candIndex !== -1) {
       activeId = parts[candIndex];
       localStorage.setItem("cand_session_id", activeId);
@@ -865,7 +876,11 @@ export default function CandidateFlow() {
             parsedSubTab = parts[4] || "";
           }
         } else {
-          if (parts[0] && parts[0].startsWith("candidate")) {
+          if (barePidMode) {
+            // /{pid}/{tab}/{subtab?}
+            parsedTab = parts[1] || "profile";
+            parsedSubTab = parts[2] || "";
+          } else if (parts[0] && parts[0].startsWith("candidate")) {
             parsedTab = parts[1] || "profile";
             parsedSubTab = parts[2] || "";
           } else if (parts[0] === "candidate") {
@@ -883,7 +898,9 @@ export default function CandidateFlow() {
           setInterviewSubTabState(parsedSubTab || "resume");
         }
 
-        // Fetch corresponding project details
+        // Fetch corresponding project details. Prefer slug from canonical URL
+        // (/com…/vac…/cand…/…); otherwise always fall back to the candidate's
+        // bound project_id so the vacancy block is populated automatically.
         const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
         if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
@@ -935,6 +952,8 @@ export default function CandidateFlow() {
       }
     } catch (err) {
       console.error("Error loading candidate session:", err);
+    } finally {
+      setSessionLoading(false);
     }
   };
 
@@ -1490,6 +1509,34 @@ export default function CandidateFlow() {
     { id: "training", title: "📚 ИИ обучение", desc: "Курс и тесты" },
     { id: "certified", title: "🏆 Сертификат", desc: "Мой диплом" }
   ];
+
+  // Initial-load gate: avoid flashing the empty cabinet (or the
+  // "no vacancy" message) while we still resolve the session.
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#17344F] to-[#265582] text-slate-200 text-sm">
+        Загружаем кабинет…
+      </div>
+    );
+  }
+  if (!candidate) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#17344F] to-[#265582] text-center p-6">
+        <div className="max-w-md space-y-4">
+          <div className="text-[#E7C768] font-extrabold text-lg">Кабинет не найден</div>
+          <p className="text-slate-300 text-sm">
+            Похоже, сессия истекла или ссылка устарела. Войдите ещё раз через страницу вакансии.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="bg-[#E7C768] text-[#17344F] font-bold text-xs py-2.5 px-5 rounded-xl hover:bg-[#F4EE8E] transition"
+          >
+            На главную
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">

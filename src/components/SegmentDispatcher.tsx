@@ -18,7 +18,7 @@ import CompanyLanding from "../pages/CompanyLanding";
 export default function SegmentDispatcher() {
   const { firstSeg = "" } = useParams();
   const { navigate, path } = useRouter();
-  const [resolved, setResolved] = useState<"checking" | "render">("render");
+  const [resolved, setResolved] = useState<"checking" | "render" | "candidate">("checking");
 
   // New + legacy URL prefixes
   if (/^(emp|employer)[A-Za-z0-9_-]+$/.test(firstSeg)) return <EmployerPanel />;
@@ -34,11 +34,26 @@ export default function SegmentDispatcher() {
     return <CompanyLanding />;
   }
 
-  // Legacy slug → redirect to /com{public_id}
+  // Bare candidate public_id (e.g. /200002/...), or legacy company slug.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setResolved("checking");
+
+      // Bare numeric → maybe a candidate public_id.
+      if (/^\d{4,}$/.test(firstSeg)) {
+        const { data: cand } = await supabase
+          .from("candidates")
+          .select("public_id")
+          .eq("public_id", firstSeg)
+          .maybeSingle();
+        if (cancelled) return;
+        if (cand?.public_id) {
+          setResolved("candidate");
+          return;
+        }
+      }
+
       const { data } = await supabase
         .from("companies")
         .select("public_id, slug, legacy_slug")
@@ -56,6 +71,13 @@ export default function SegmentDispatcher() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstSeg]);
 
-  if (resolved === "checking") return null;
+  if (resolved === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-slate-400 text-sm">
+        Загрузка…
+      </div>
+    );
+  }
+  if (resolved === "candidate") return <CandidateFlow />;
   return <CompanyLanding />;
 }
