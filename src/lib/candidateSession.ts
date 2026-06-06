@@ -10,6 +10,7 @@ export type CandidateSession = {
   project_id?: string | null;
   company_id?: string | null;
   email?: string | null;
+  full_name?: string | null;
   applications?: CandidateApplication[];
 };
 
