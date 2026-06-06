@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import TrainingCoursePreview from "../components/TrainingCoursePreview";
 import CandidateStageTraining from "../components/CandidateStageTraining";
 import CandidateInterview from "../components/CandidateInterview";
+import { useAIWait } from "@/components/AIWaitProvider";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
@@ -434,6 +435,7 @@ const getSmartDefaultAnswer = (q: string, role: string): string => {
 
 export default function CandidateFlow() {
   const { path, navigate } = useRouter();
+  const { run: aiWaitRun } = useAIWait();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Active state ids
@@ -1272,15 +1274,19 @@ export default function CandidateFlow() {
     setResumeAnalysing(true);
     try {
       const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "resume",
-        candidate_id: candidate.id,
-        project_id: candidate.projectId,
-        payload: {
-          role_name: candidate.roleName,
-          resume: resumeTextEntry + (resumeFile ? ` [Файл: ${resumeFile.name}]` : ""),
-        },
+      const result: any = await aiWaitRun({
+        title: "Оценка резюме",
+        task: () => aiEvaluate({
+          mode: "resume",
+          candidate_id: candidate.id,
+          project_id: candidate.projectId,
+          payload: {
+            role_name: candidate.roleName,
+            resume: resumeTextEntry + (resumeFile ? ` [Файл: ${resumeFile.name}]` : ""),
+          },
+        }),
       });
+      if (!result) return;
       const feedback = result?.summary || `Сильные стороны: ${(result?.strengths || []).join(", ")}\nПробелы: ${(result?.gaps || []).join(", ")}`;
       setResumeFeedback(feedback);
       await refreshCandidate();
@@ -1301,15 +1307,19 @@ export default function CandidateFlow() {
     }
     try {
       const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "checklist",
-        candidate_id: candidate.id,
-        project_id: candidate.projectId,
-        payload: {
-          is_system: isSys,
-          answers: isSys ? checklistSysAnswers : checklistAnswers,
-        },
+      const result: any = await aiWaitRun({
+        title: "Проверка чек-листа",
+        task: () => aiEvaluate({
+          mode: "checklist",
+          candidate_id: candidate.id,
+          project_id: candidate.projectId,
+          payload: {
+            is_system: isSys,
+            answers: isSys ? checklistSysAnswers : checklistAnswers,
+          },
+        }),
       });
+      if (!result) return;
       const feedback = `Итог: ${result?.total ?? "—"}/100\n` +
         (result?.items || []).map((it: any, i: number) => `${i+1}. ${it.feedback || ""}`).join("\n");
       if (isSys) setChecklistSysFeedback(feedback);
@@ -1337,12 +1347,16 @@ export default function CandidateFlow() {
     setSitEvaluatingId(targetSit.id);
     try {
       const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "situations",
-        candidate_id: candidate?.id,
-        project_id: candidate?.projectId,
-        payload: { answers: [{ question: targetSit.title || targetSit.desc, answer: userMsgText }] },
+      const result: any = await aiWaitRun({
+        title: "Оценка ответа",
+        task: () => aiEvaluate({
+          mode: "situations",
+          candidate_id: candidate?.id,
+          project_id: candidate?.projectId,
+          payload: { answers: [{ question: targetSit.title || targetSit.desc, answer: userMsgText }] },
+        }),
       });
+      if (result) {
       {
         targetSit.score = result?.total ?? result?.items?.[0]?.score ?? 85;
         targetSit.feedback = result?.advice || result?.items?.[0]?.feedback || "Прекрасно обыграли ситуацию!";
@@ -1353,6 +1367,7 @@ export default function CandidateFlow() {
         targetSit.submitted = true;
         setSituationsList(currentList);
         await refreshCandidate();
+      }
       }
     } catch (e) {
       console.error(e);
@@ -1372,12 +1387,16 @@ export default function CandidateFlow() {
         answer: sit.transcript.map((t: any) => `${t.sender === "user" ? "Вы" : "Робот"}: ${t.text}`).join("\n")
       }));
       const { aiEvaluate } = await import("@/lib/aiClient");
-      await aiEvaluate({
-        mode: "situations",
-        candidate_id: candidate.id,
-        project_id: candidate.projectId,
-        payload: { answers: formattedCaseAnswers },
+      const ok = await aiWaitRun({
+        title: "Итоговая оценка ролевых ситуаций",
+        task: () => aiEvaluate({
+          mode: "situations",
+          candidate_id: candidate.id,
+          project_id: candidate.projectId,
+          payload: { answers: formattedCaseAnswers },
+        }),
       });
+      if (!ok) return;
       await refreshCandidate();
       await updateStageOnBackend("scoring");
       setActiveTab("scoring");
@@ -1467,12 +1486,16 @@ export default function CandidateFlow() {
     try {
       const bIdx = getTrainingBlockIdx();
       const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "training_block",
-        candidate_id: candidate.id,
-        project_id: candidate.projectId,
-        payload: { block_index: bIdx, answers: trainingAnswers },
+      const result: any = await aiWaitRun({
+        title: "Проверка экзамена",
+        task: () => aiEvaluate({
+          mode: "training_block",
+          candidate_id: candidate.id,
+          project_id: candidate.projectId,
+          payload: { block_index: bIdx, answers: trainingAnswers },
+        }),
       });
+      if (!result) return;
       setTrainingExamScore(result?.block_score ?? 0);
       setTrainingExamFeedback(result?.summary || "");
       setTrainingExamSubmitted(true);

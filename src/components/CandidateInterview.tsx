@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
+import { useAIWait } from "@/components/AIWaitProvider";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -29,6 +30,7 @@ async function call(fn: string, body: any) {
 }
 
 export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
+  const { run: aiWaitRun } = useAIWait();
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
 
@@ -73,7 +75,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     if (!resumeText.trim() || resumeText.length < 50) { alert("Введите резюме (минимум 50 символов)"); return; }
     setBusy(true);
     try {
-      const r = await call("ai-interview-screen-resume", { project_id: projectId, candidate_id: candidateId, resume_text: resumeText });
+      const r = await aiWaitRun<any>({
+        title: "Оценка резюме",
+        task: () => call("ai-interview-screen-resume", { project_id: projectId, candidate_id: candidateId, resume_text: resumeText }),
+      });
+      if (!r) return;
       setResumeResult(r.result);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
@@ -87,7 +93,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     try {
       const { error: upErr } = await supabase.storage.from("candidate-resumes").upload(path, f, { upsert: false });
       if (upErr) throw upErr;
-      const r = await call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: "candidate-resumes", file_path: path, filename: f.name });
+      const r = await aiWaitRun<any>({
+        title: "Распознавание резюме",
+        task: () => call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: "candidate-resumes", file_path: path, filename: f.name }),
+      });
+      if (!r) return;
       const text = String(r?.text || "").slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setResumeText(text);
@@ -105,7 +115,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     }
     setBusy(true);
     try {
-      const r = await call("ai-interview-grade-checklist", { project_id: projectId, candidate_id: candidateId, answers });
+      const r = await aiWaitRun<any>({
+        title: "Проверка чек-листа",
+        task: () => call("ai-interview-grade-checklist", { project_id: projectId, candidate_id: candidateId, answers }),
+      });
+      if (!r) return;
       setChecklistScore(r.score);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
@@ -117,7 +131,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     }
     setBusy(true);
     try {
-      const r = await call("ai-interview-grade-situations", { project_id: projectId, candidate_id: candidateId, answers: sitAnswers });
+      const r = await aiWaitRun<any>({
+        title: "Оценка ролевых ответов",
+        task: () => call("ai-interview-grade-situations", { project_id: projectId, candidate_id: candidateId, answers: sitAnswers }),
+      });
+      if (!r) return;
       setSituationsScore(r.score);
       setSituationsFeedback(r.items || []);
       const avg = Math.round(((resumeResult?.score || 0) + (checklistScore || 0) + r.score) / 3);
