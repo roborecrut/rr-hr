@@ -30,7 +30,7 @@ export function saveCandidateSession(s: CandidateSession) {
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
     // Backwards-compat for CandidateFlow which reads `cand_session_id`.
-    localStorage.setItem("cand_session_id", s.public_id || s.candidate_id);
+    localStorage.setItem("cand_session_id", s.public_id ? `candidate${s.public_id}` : s.candidate_id);
     localStorage.setItem("cand_role", "candidate");
   } catch {}
 }

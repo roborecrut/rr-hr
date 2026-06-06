@@ -59,7 +59,7 @@ export default function CandidateAuthModal({
       const rpc = tab === "signup" ? "candidate_email_signup" : "candidate_email_login";
       const args: any = tab === "signup"
         ? { _email: email.trim(), _password: pw, _project: projectId, _company: companyId || null, _phone: phone.trim() }
-        : { _email: email.trim(), _password: pw };
+        : { _email: email.trim(), _password: pw, _project: projectId };
       const { data, error } = await supabase.rpc(rpc, args);
       if (error) throw error;
       const res = data as any;
