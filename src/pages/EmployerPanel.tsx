@@ -3153,7 +3153,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyName||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("name", newCompanyName)}
                             disabled={enhancingFields["name"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3173,7 +3173,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyIndustry||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("industry", newCompanyIndustry)}
                             disabled={enhancingFields["industry"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3194,7 +3194,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyStaff||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("staff", newCompanyStaff)}
                             disabled={enhancingFields["staff"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3216,7 +3216,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanySite||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("sites", newCompanySite)}
                             disabled={enhancingFields["sites"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3236,7 +3236,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyLogo||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("logoUrl", newCompanyLogo)}
                             disabled={enhancingFields["logoUrl"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3263,7 +3263,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyDescription||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
                           disabled={enhancingFields["descriptionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3284,7 +3284,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyProducts||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
                           disabled={enhancingFields["productsText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3305,7 +3305,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyMissionText||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("missionText", newCompanyMissionText)}
                           disabled={enhancingFields["missionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3333,7 +3333,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValClients||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValClients", newCompanyStatsValClients)}
                               disabled={enhancingFields["statsValClients"]}
                               className="absolute right-2"
@@ -3363,7 +3363,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValDialogs||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValDialogs", newCompanyStatsValDialogs)}
                               disabled={enhancingFields["statsValDialogs"]}
                               className="absolute right-2"
@@ -3395,7 +3395,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValFounded||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValFounded", newCompanyStatsValFounded)}
                               disabled={enhancingFields["statsValFounded"]}
                               className="absolute right-2"
@@ -3428,7 +3428,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanySalaryTerms||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("salaryTerms", newCompanySalaryTerms)}
                             disabled={enhancingFields["salaryTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3448,7 +3448,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyScheduleTerms||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("scheduleTerms", newCompanyScheduleTerms)}
                             disabled={enhancingFields["scheduleTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3469,7 +3469,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyCustomWiki||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("customWiki", newCompanyCustomWiki)}
                           disabled={enhancingFields["customWiki"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
