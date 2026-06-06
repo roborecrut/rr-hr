@@ -1,65 +1,94 @@
-## Что происходит (диагностика)
+# План: глобальное окно ожидания ИИ + единые мульт-роботы RR
 
-**Баг 1 — старая вакансия на лендинге.** В БД у проекта `vac400004` сейчас `role_name = "Бармен"`, но `is_published = false`. `CompanyLanding.tsx` грузит вакансии запросом `.eq("is_published", true)`, не находит её, и в фолбэке берёт `mapped[0]` — это другая, давно опубликованная вакансия компании ("Менеджер по продажам"). Поэтому страница показывает чужую вакансию вместо запрошенной.
+## 1. Новый глобальный компонент `AIWaitOverlay`
 
-**Баг 2 — что с лендингом при удалении.** Сейчас при удалении вакансии в `EmployerPanel` выполняется `supabase.from("projects").delete()` — физическое удаление. Это:
-- ломает ссылки на лендинг (404 / показ другой вакансии из-за фолбэка выше);
-- каскадом удаляет/обнуляет связанных кандидатов, интервью, обучение, CRM-заметки, транзакции по ссылке;
-- освобождает `public_id 400004`, и следующая вакансия может занять тот же URL.
+Файл: `src/components/AIWaitOverlay.tsx` + контекст `src/components/AIWaitProvider.tsx`.
 
-То же касается удаления компании.
+API (через React Context):
+```ts
+const { run } = useAIWait();
+await run({
+  title: "Создание вакансии",
+  task: () => aiRestart(employerPublicId),  // любая Promise-функция
+  timeoutMs: 120_000,                       // дефолт 120 сек
+  autoCloseOnSuccess: true,                 // п.1 — не блокирует, можно false
+});
+```
 
-## План
+Состояния окна (модалка по центру, затемнённый фон, нельзя закрыть кликом вне):
+- **loading** — картинка `RR7.png` (робот с часами), справа speech-bubble с зацикленной анимацией: 10 фраз ("Ожидайте…", "Я думаю…", "Подбираю слова…", "Сверяюсь с базой знаний…", "Минутку…", "Анализирую контекст…", "Формирую ответ…", "Уточняю детали…", "Почти готово…", "Полирую формулировки…") с эффектом печатания + троеточие. Под облаком — "Не закрывайте окно, идёт генерация" и таймер вперёд в секундах.
+- **success** — картинка `RR6.png`, в бабле "Готово! Ответ получен", слева от картинки кнопка **Далее** (закрывает окно). Если `autoCloseOnSuccess=true` — закрывается само через ~0.8 сек.
+- **error / timeout** — картинка `RR9.png`, в бабле "Я сломался…" + причина, кнопки **Повторить** (перевызывает ту же `task`) и **Отмена**.
 
-### 1. Чинить лендинг вакансии (срочно)
+Реализация:
+- Один портал на всё приложение, монтируется в `App.tsx` (`<AIWaitProvider>` оборачивает Router).
+- Таймаут через `Promise.race` с `setTimeout`.
+- Бабл — `framer-motion` (уже не подключен — используем CSS keyframes из `tailwind.config.ts`, расширим набором `typing`/`dots`).
+- Превью изображения — `<img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR7.png">` и т.д.
 
-В `src/pages/CompanyLanding.tsx`:
-- Если в URL указан `vacancyId`, грузим **именно** этот проект по `public_id`/`slug` без фильтра `is_published`. Список других вакансий компании в правой колонке — по-прежнему только опубликованные.
-- Если найденный проект `is_published = false` или имеет статус `archived`/`deleted` — рендерим состояние «Вакансия больше не активна» (заголовок, пояснение, кнопка «Смотреть другие вакансии компании» → `/com{slug}`). Не открываем чат-консультанта, не показываем кнопки «Откликнуться» / «Войти кандидатом».
-- Если в URL вакансии нет (`/com{slug}`) — поведение прежнее, показываем только опубликованные.
+## 2. Удаление `AIDialogPanel` и `pushAILog`
 
-### 2. Мягкое удаление вместо физического
+- Убрать монтирование `AIDialogPanel` в `App.tsx` (если есть) и удалить файл.
+- Удалить все `pushAILog(...)` из `src/lib/aiClient.ts` и страниц.
+- Технический лог больше не показываем нигде.
 
-Добавляем единый жизненный цикл для вакансий и компаний:
+## 3. Изменение запуска создания вакансии (п.1 — не ждать рестарт)
 
-**Миграция** (`projects` и `companies`):
-- enum `entity_status` со значениями `active`, `archived`, `deleted`;
-- колонка `status entity_status NOT NULL DEFAULT 'active'`;
-- колонки `archived_at`, `deleted_at timestamptz`;
-- индекс по `(company_id, status)`.
+Сейчас в `EmployerPanel.tsx` создание вакансии вызывает `aiRestart` и ждёт. Меняем на:
+- Открываем редактор вакансии **сразу** (оптимистично).
+- Параллельно запускаем `run({ task: () => aiRestart(...), autoCloseOnSuccess: true })` — окно ожидания всплывает поверх редактора, но редактор уже видим и интерактивен после закрытия.
+- Если рестарт упал → `AIWaitOverlay` сам предложит **Повторить/Отмена**; редактор остаётся открытым.
 
-**RPC** (security definer, проверяют владельца через `employers.user_id = auth.uid()` или admin):
-- `project_archive(_id uuid)` — `status='archived'`, `is_published=false`, `archived_at=now()`. Идемпотентно.
-- `project_restore(_id uuid)` — `status='active'` (публикация остаётся выключенной, чтобы пользователь сам решил).
-- `project_soft_delete(_id uuid)` — `status='deleted'`, `is_published=false`, `deleted_at=now()`. Никакого `DELETE FROM projects`.
-- Аналогично `company_archive` / `company_restore` / `company_soft_delete`. Удаление компании каскадно ставит её активным вакансиям `status='archived'`.
+## 4. Подключение `run(...)` ко всем точкам вызова ИИ
 
-Связанные данные (`candidates`, `interviews`, `candidate_*`, `transactions`, `crm_notes`, `messages_recruiter`) **остаются** привязаны к проекту/компании — никакой потери CRM и контактов. `public_id`/`slug` сохраняются, новый проект не может занять тот же номер.
+Обернуть в `useAIWait().run(...)`:
+- `aiCompanyAnalyze` — клик "Сделать красиво/анализ компании" в редакторе компании (`EmployerPanel.tsx`, `CompanySections`).
+- `aiEnhanceSingle` / `aiEnhanceAll` — кнопки AI/«Сделать красиво» в `VacancyEditor`, `CompanySections`, редакторах интервью/чеклиста/обучения.
+- `aiRestart` — создание вакансии / ручной рестарт.
+- `aiGenerateOnboarding`, `ai-generate-stage-material`, `ai-generate-stage-test`, `ai-generate-training-material`, `ai-generate-training-quiz`, `ai-generate-interview-checklist`, `ai-generate-interview-situations`, `ai-generate-interview-resume-criteria` — генерации в редакторах обучения/интервью/скрининга.
+- `ai-check-stage-answers`, `ai-check-text-answer`, `ai-interview-grade-checklist`, `ai-interview-grade-situations`, `ai-interview-screen-resume`, `aiEvaluate` — проверки/оценивание ответов кандидата (`CandidateFlow`, `CandidateInterview`, `CandidateStageTraining`).
+- `ai-distribute-text`, `ai-ingest-document` — обработка документов в `DocumentIngestField` и мастере компании.
+- `aiChat` — НЕ оборачиваем (стримящийся чат с консультантом).
 
-### 3. UI работодателя — подтверждения и действия
+Каждой точке передаём осмысленный `title` (например "Улучшаю описание роли", "Проверяю ответы", "Генерирую программу обучения").
 
-В `src/pages/EmployerPanel.tsx`:
-- Заменить нынешнюю кнопку «Удалить вакансию» на меню «Архивировать / Удалить» с `AlertDialog`:
-  - **Архивировать** — мягкий вариант по умолчанию. Текст диалога: «Вакансия станет недоступна кандидатам. Кандидаты, статистика, переписка и платежи сохранятся. Восстановить можно в любой момент».
-  - **Удалить** — то же, что архивировать + помечает `deleted`. Текст: «Кандидаты больше не смогут зайти в личный кабинет по этой вакансии. Данные остаются в CRM, номер вакансии не будет переиспользован».
-- Аналогичный диалог при отключении/удалении компании с пометкой, что все её вакансии будут заархивированы.
-- В списке проектов помечать `archived`/`deleted` бейджем и блокировать публикацию для `deleted`.
-- Заменить вызовы `supabase.from("projects").delete()` на новые RPC (черновики без `role_name` и опубликований по-прежнему можно жёстко удалять — отдельная ветка для «Отменить создание»).
+## 5. Замена всех ссылок `i.ibb.co` на Supabase Storage
 
-### 4. Лендинг компании при неактивной компании
+Маппинг по смыслу (использовать только эти URL):
+```
+RR-Logo.png  → шапка/футер лендинга (LandingPage, MainCatalogPage, AdminPanel, CompanyLanding, JobVacancyLanding)
+RR2.png      — Mascot "recruitment" (планшет/ручка) — формы и сбор данных
+RR3.png      — Mascot "greeting" (рупор) — приветствия, оповещения, тосты
+RR4.png      — Mascot "serious" — предупреждения, подтверждения удаления
+RR5.png      — Mascot "narrator" — радостные/успешные крупные сцены
+RR6.png      — Mascot "chat" / AIWaitOverlay success
+RR7.png      — AIWaitOverlay loading
+RR8.png      — иконка для блоков тестов и таймера тестирования (CandidateStageTraining, тесты в интервью)
+RR9.png      — AIWaitOverlay error, экраны "Вакансия не активна", 404, любые ошибочные состояния
+```
+Файлы для правки:
+- `src/components/Mascot.tsx` — переписать `MASCOT_SRC` целиком на новые URL.
+- `src/pages/LandingPage.tsx` (логотип x2), `MainCatalogPage.tsx`, `AdminPanel.tsx`, `CompanyLanding.tsx`, `JobVacancyLanding.tsx`, `CandidateFlow.tsx`, `EmployerPanel.tsx` — заменить любые оставшиеся `i.ibb.co`-ссылки на соответствующий RR-N.png из таблицы.
+- На экране "Вакансия закрыта" в `CandidateFlow.tsx` и `CompanyLanding.tsx` дополнительно добавить `RR9.png`.
 
-В `CompanyLanding.tsx`: если у компании `status != 'active'` или `is_published = false` — показывать заглушку «Компания временно не принимает отклики» и не давать переходить в вакансии/чат. Текущая загрузка по `slug` остаётся, но без фильтра `is_published`, чтобы корректно отрисовать состояние.
+## 6. Проверка
 
-### 5. Доступ кандидатов
+- `bun run build` зелёный.
+- Вручную проверить: создание вакансии (окно ожидания не блокирует), кнопка «AI» в поле вакансии (overlay), кнопка «Сделать красиво» в компании (overlay), таймаут симулировать через искусственный `delay`.
 
-- Гварды на роуты кандидата (`CandidateFlow`, `SegmentDispatcher`): если связанный `project.status != 'active'` или `is_published = false` — показывать экран «Эта вакансия больше не активна», без перехода в этапы.
-- В `candidate_email_signup` / `candidate_email_login` запретить новые регистрации в неактивные проекты (`status != 'active'`). Уже зарегистрированных кандидатов просто блокируем на уровне UI — их записи в CRM работодателя остаются.
+## Технические детали
 
-### Технические детали (для разработчика)
+- AIWaitProvider — `useState<{status, title, error, task, startedAt}>`, плюс `useEffect` с интервалом 1с для таймера, плюс `useEffect` с интервалом 2.5с для смены фразы.
+- Анимация печатания — `@keyframes typing` (ширина 0→100%) + `@keyframes blink-caret`, добавить в `tailwind.config.ts` как `animation: { typing: ..., dots: ... }`.
+- Точка отмены — `AbortController` пробрасывается в task опционально (большинство наших `supabase.functions.invoke` отмену не поддерживают — тогда просто скрываем оверлей, запрос завершится в фоне; это допустимо).
+- Все картинки грузить с `loading="eager"` и `referrerPolicy="no-referrer"`.
 
-- `is_published` остаётся флагом «черновик ↔ опубликован», `status` — жизненный цикл. Логика отображения: вакансия видна публично только при `status='active' AND is_published=true`.
-- Все `delete` запросы по `projects`/`companies` (кроме явных «отменить черновик») заменить.
-- Никаких изменений в `transactions`, `wallets`, `payments_robokassa` — они уже привязаны по `employer_id`/`ref_id`, soft-delete их не затрагивает.
-- `JobVacancyLanding` (`/job`) использует собственный source — поправим в той же ветке только если есть аналогичный фолбэк.
+Файлы создаются:
+- `src/components/AIWaitOverlay.tsx`
+- `src/components/AIWaitProvider.tsx` (экспорт `useAIWait`)
 
-После одобрения плана — миграция, затем правки фронтенда и проверка по URL `/com300002/vac400004/vacancy`.
+Файлы удаляются:
+- `src/components/AIDialogPanel.tsx`
+
+Файлы изменяются:
+- `src/App.tsx`, `src/lib/aiClient.ts`, `src/components/Mascot.tsx`, `tailwind.config.ts`, плюс перечисленные страницы и редакторы.

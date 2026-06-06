@@ -343,7 +343,7 @@ export default function CompanyLanding() {
               title="На страницу компании"
             >
               <img
-                src={company?.logo_url || selectedVacancy?.logoUrl || "https://i.ibb.co/WWRbtPq0/RR-Logo.png"}
+                src={company?.logo_url || selectedVacancy?.logoUrl || "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png"}
                 alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"

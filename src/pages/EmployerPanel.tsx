@@ -22,7 +22,7 @@ import {
 } from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
-import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
+import { useAIWait } from "../components/AIWaitProvider";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import {
@@ -164,6 +164,7 @@ import OfferConsent from "../components/OfferConsent";
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { run: aiWaitRun } = useAIWait();
 
   // Derive active tab from subroute PATH
   let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" | "interviews" | "training" = "crm";
@@ -449,7 +450,7 @@ export default function EmployerPanel() {
   const [newCompanyStaff, setNewCompanyStaff] = useState("");
   const [newCompanyDesc, setNewCompanyDesc] = useState("");
   const [newCompanySite, setNewCompanySite] = useState("");
-  const DEFAULT_LOGO_URL = "https://i.ibb.co/WWRbtPq0/RR-Logo.png";
+  const DEFAULT_LOGO_URL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png";
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
@@ -482,14 +483,15 @@ export default function EmployerPanel() {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      pushAILog("ai-enhance:single", "request", { field: fieldName, value: currentVal, company_id: draftCompanyId });
-      const newVal = await aiEnhanceSingle({
-        field: fieldName,
-        value: currentVal,
-        company_name: newCompanyName,
-        hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
+      const newVal = await aiWaitRun({
+        title: `ИИ улучшает поле «${fieldName}»`,
+        task: () => aiEnhanceSingle({
+          field: fieldName,
+          value: currentVal,
+          company_name: newCompanyName,
+          hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
+        }),
       });
-      pushAILog("ai-enhance:single", "response", newVal);
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
@@ -514,7 +516,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-enhance:single", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
@@ -546,14 +547,15 @@ export default function EmployerPanel() {
         statsValFounded: newCompanyStatsValFounded,
         statsLabelFounded: newCompanyStatsLabelFounded,
       };
-      pushAILog("ai-enhance:all_company", "request", fields);
-      const enriched = await aiEnhanceAll({
-        mode: "all_company",
-        company_name: newCompanyName,
-        fields,
-        hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+      const enriched = await aiWaitRun({
+        title: "ИИ упаковывает бренд компании",
+        task: () => aiEnhanceAll({
+          mode: "all_company",
+          company_name: newCompanyName,
+          fields,
+          hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+        }),
       });
-      pushAILog("ai-enhance:all_company", "response", enriched);
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
@@ -578,7 +580,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-enhance:all_company", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
@@ -590,14 +591,16 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
       const { aiCompanyAnalyze } = await import("@/lib/aiClient");
-      pushAILog("ai-company-analyze", "request", { company_id: draftCompanyId, file_url: draftFilePath, filename });
-      const { fields: payload, raw } = await aiCompanyAnalyze({
-        company_id: draftCompanyId || undefined,
-        employer_public_id: employerId,
-        file_url: draftFilePath || undefined,
-        raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
+      const res = await aiWaitRun({
+        title: `ИИ читает файл ${filename}`,
+        task: () => aiCompanyAnalyze({
+          company_id: draftCompanyId || undefined,
+          employer_public_id: employerId,
+          file_url: draftFilePath || undefined,
+          raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
+        }),
       });
-      pushAILog("ai-company-analyze", "response", raw || payload);
+      const payload = res?.fields || {};
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
         if (payload.industry) setNewCompanyIndustry(payload.industry);
@@ -619,7 +622,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-company-analyze", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
@@ -651,10 +653,15 @@ export default function EmployerPanel() {
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
-      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
-      const { aiRestart } = await import("@/lib/aiClient");
-      await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
       setShowAddCompany(true);
+      try {
+        const { aiRestart } = await import("@/lib/aiClient");
+        aiWaitRun({
+          title: "Подготовка ИИ-ассистента компании",
+          task: () => aiRestart(employerId),
+          fireAndForget: true,
+        });
+      } catch {}
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания компании", err?.message || "RPC error");
@@ -718,14 +725,16 @@ export default function EmployerPanel() {
     setNewCompanyStatsLabelFounded(lbl.founded || "");
     setNewCompanyStatsLabelClients(lbl.employees || "");
     setNewCompanyStatsLabelDialogs(lbl.turnover || "");
-    pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+    // Open editor immediately — restart fires in background with overlay UI
+    setShowAddCompany(true);
     try {
       const { aiRestart } = await import("@/lib/aiClient");
-      await aiRestart(employerId)
-        .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
-        .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+      aiWaitRun({
+        title: "Подготовка ИИ-ассистента компании",
+        task: () => aiRestart(employerId),
+        fireAndForget: true,
+      });
     } catch {}
-    setShowAddCompany(true);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
 
@@ -1470,14 +1479,16 @@ export default function EmployerPanel() {
       setSetupTrainingWikiText("");
       setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
-      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
+      // Open vacancy editor IMMEDIATELY — restart happens in background
+      setShowAddNewVacancy(true);
       try {
         const { aiRestart } = await import("@/lib/aiClient");
-        await aiRestart(employerId)
-          .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
-          .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
+        aiWaitRun({
+          title: "Подготовка ИИ-ассистента вакансии",
+          task: () => aiRestart(employerId),
+          fireAndForget: true,
+        });
       } catch {}
-      setShowAddNewVacancy(true);
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
@@ -2050,7 +2061,7 @@ export default function EmployerPanel() {
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
             <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
+              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
               alt="RR Робот Рекрутер" 
               className="w-10 h-10 object-contain drop-shadow" 
               referrerPolicy="no-referrer"
@@ -4206,7 +4217,7 @@ export default function EmployerPanel() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
+              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
               alt="RR Logo" 
               className="w-8 h-8 object-contain" 
               referrerPolicy="no-referrer"
@@ -4656,7 +4667,7 @@ export default function EmployerPanel() {
       )}
 
       <EmployerAIAssistant />
-      <AIDialogPanel />
+      
     </div>
   );
 }

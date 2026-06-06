@@ -16,12 +16,14 @@ import OfferPage from "./pages/OfferPage";
 import { PaymentSuccessPage, PaymentFailPage } from "./pages/PaymentResultPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
 import SessionBootstrap from "./components/SessionBootstrap";
+import { AIWaitProvider } from "./components/AIWaitProvider";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <SessionBootstrap />
-      <Routes>
+      <AIWaitProvider>
+        <SessionBootstrap />
+        <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
         <Route path="/vacancy" element={<MainCatalogPage />} />
@@ -41,7 +43,8 @@ export default function App() {
         <Route path="/:firstSeg" element={<SegmentDispatcher />} />
         <Route path="/:firstSeg/*" element={<SegmentDispatcher />} />
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+        </Routes>
+      </AIWaitProvider>
     </BrowserRouter>
   );
 }

@@ -288,7 +288,7 @@ export default function JobVacancyLanding() {
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
             <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
+              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
               alt="RR Робот Рекрутер" 
               className="w-10 h-10 object-contain drop-shadow" 
               referrerPolicy="no-referrer"
