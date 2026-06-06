@@ -433,6 +433,7 @@ export type Database = {
           crm_stage_manual: boolean
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           email: string | null
+          full_name: string | null
           id: string
           landing_slug: string | null
           last_login_at: string | null
@@ -469,6 +470,7 @@ export type Database = {
           crm_stage_manual?: boolean
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
+          full_name?: string | null
           id?: string
           landing_slug?: string | null
           last_login_at?: string | null
@@ -505,6 +507,7 @@ export type Database = {
           crm_stage_manual?: boolean
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
+          full_name?: string | null
           id?: string
           landing_slug?: string | null
           last_login_at?: string | null
@@ -2062,6 +2065,17 @@ export type Database = {
             Args: {
               _company?: string
               _email: string
+              _password: string
+              _phone?: string
+              _project: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _full_name?: string
               _password: string
               _phone?: string
               _project: string
