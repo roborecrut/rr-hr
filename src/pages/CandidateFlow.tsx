@@ -2111,9 +2111,9 @@ export default function CandidateFlow() {
         {/* Tab 3: Interview module */}
         {activeTab === "interview" && (
           <div className="space-y-6">
-            {projectId && candidate?.id ? (
+            {candidate?.projectId && candidate?.id ? (
               <CandidateInterview
-                projectId={projectId}
+                projectId={candidate.projectId}
                 candidateId={candidate.id}
                 onCompleted={(passed) => { if (passed) setActiveTab("training"); }}
               />
