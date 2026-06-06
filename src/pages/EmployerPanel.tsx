@@ -4406,26 +4406,6 @@ export default function EmployerPanel() {
         onClose={() => setSelectedCandidateId(null)}
       />
 
-      {/* FOOTER AREA */}
-      <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center font-normal">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <RRImage 
-              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
-              w={32}
-              alt="RR Logo" 
-              className="w-8 h-8 object-contain" 
-              referrerPolicy="no-referrer"
-            />
-            <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
-          </div>
-
-          <div className="text-xs text-slate-400 font-semibold">
-            Безоговорочная роботизация подбора персонала
-          </div>
-        </div>
-      </footer>
-
       {/* MODAL WINDOW FOR PAYMENT */}
       {selectedPlanToBuy && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
