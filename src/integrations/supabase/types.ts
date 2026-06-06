@@ -324,32 +324,38 @@ export type Database = {
       }
       candidate_training_progress: {
         Row: {
+          answers: Json | null
           candidate_id: string
           created_at: string
           finished_at: string | null
           id: string
           is_completed: boolean
           lesson_id: string
+          passed: boolean | null
           quiz_feedback: string | null
           score: number | null
         }
         Insert: {
+          answers?: Json | null
           candidate_id: string
           created_at?: string
           finished_at?: string | null
           id?: string
           is_completed?: boolean
           lesson_id: string
+          passed?: boolean | null
           quiz_feedback?: string | null
           score?: number | null
         }
         Update: {
+          answers?: Json | null
           candidate_id?: string
           created_at?: string
           finished_at?: string | null
           id?: string
           is_completed?: boolean
           lesson_id?: string
+          passed?: boolean | null
           quiz_feedback?: string | null
           score?: number | null
         }
@@ -1458,52 +1464,76 @@ export type Database = {
       }
       training_blocks: {
         Row: {
+          ai_generated_at: string | null
+          block_key: string | null
           created_at: string
           description: string | null
           id: string
           legacy_public_id: string | null
+          materials_files: Json | null
+          materials_links: Json | null
+          materials_md: string | null
           motivation_text_detail: string | null
           onboarding_text: string | null
           order_index: number
+          pass_score: number | null
           project_id: string
           public_id: string | null
           title: string
+          total_score: number | null
           training_professional_text: string | null
           training_regulations_text: string | null
           training_systems_text: string | null
           training_wiki_text: string | null
+          updated_at: string
         }
         Insert: {
+          ai_generated_at?: string | null
+          block_key?: string | null
           created_at?: string
           description?: string | null
           id?: string
           legacy_public_id?: string | null
+          materials_files?: Json | null
+          materials_links?: Json | null
+          materials_md?: string | null
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           order_index?: number
+          pass_score?: number | null
           project_id: string
           public_id?: string | null
           title: string
+          total_score?: number | null
           training_professional_text?: string | null
           training_regulations_text?: string | null
           training_systems_text?: string | null
           training_wiki_text?: string | null
+          updated_at?: string
         }
         Update: {
+          ai_generated_at?: string | null
+          block_key?: string | null
           created_at?: string
           description?: string | null
           id?: string
           legacy_public_id?: string | null
+          materials_files?: Json | null
+          materials_links?: Json | null
+          materials_md?: string | null
           motivation_text_detail?: string | null
           onboarding_text?: string | null
           order_index?: number
+          pass_score?: number | null
           project_id?: string
           public_id?: string | null
           title?: string
+          total_score?: number | null
           training_professional_text?: string | null
           training_regulations_text?: string | null
           training_systems_text?: string | null
           training_wiki_text?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1543,6 +1573,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "training_lessons_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "training_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_questions: {
+        Row: {
+          block_id: string
+          created_at: string
+          expected_answer: string | null
+          explanation: string | null
+          id: string
+          kind: string
+          options: Json
+          order_no: number
+          points: number
+          question: string
+          updated_at: string
+        }
+        Insert: {
+          block_id: string
+          created_at?: string
+          expected_answer?: string | null
+          explanation?: string | null
+          id?: string
+          kind: string
+          options?: Json
+          order_no?: number
+          points?: number
+          question: string
+          updated_at?: string
+        }
+        Update: {
+          block_id?: string
+          created_at?: string
+          expected_answer?: string | null
+          explanation?: string | null
+          id?: string
+          kind?: string
+          options?: Json
+          order_no?: number
+          points?: number
+          question?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_questions_block_id_fkey"
             columns: ["block_id"]
             isOneToOne: false
             referencedRelation: "training_blocks"
