@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useRouter } from "./RouterContext";
 import { supabase } from "@/integrations/supabase/client";
-import { resolveProfilePathForUser } from "@/lib/links";
+import { readCachedEmployerPublicIdForUser, resolveProfilePathForUser } from "@/lib/links";
 import Mascot from "./Mascot";
 import { X, Chrome, Gift } from "lucide-react";
 import OfferConsent from "./OfferConsent";
@@ -52,13 +52,11 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
     setErrorText(""); setIsLoading(true);
     try {
       try { localStorage.setItem("rr_offer_accepted", "1"); } catch {}
-      // If we already know this browser's employer public_id, redirect straight
-      // to /emp{pid}/profile to avoid a flash of /employer/profile while the
-      // SessionBootstrap re-resolves it from the database.
       let employerRedirect = "/employer/profile";
       try {
-        const cachedPid = localStorage.getItem("employer_session_id");
-        if (cachedPid && /^[A-Za-z0-9_-]+$/.test(cachedPid)) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const cachedPid = user ? readCachedEmployerPublicIdForUser(user.id) : null;
+        if (cachedPid) {
           employerRedirect = `/emp${cachedPid}/profile`;
         }
       } catch { /* ignore */ }
