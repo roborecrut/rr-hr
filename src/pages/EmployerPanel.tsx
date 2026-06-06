@@ -189,6 +189,14 @@ export default function EmployerPanel() {
   const [setupOnboardingText, setSetupOnboardingText] = useState("");
   const [setupTeamText, setSetupTeamText] = useState("");
   const [setupSystemText, setSetupSystemText] = useState("");
+  // Training-group canonical fields (4/15) — also persisted on save.
+  const [setupTrainingProfessionalText, setSetupTrainingProfessionalText] = useState("");
+  const [setupTrainingProductText, setSetupTrainingProductText] = useState("");
+  const [setupTrainingSystemsText, setSetupTrainingSystemsText] = useState("");
+  const [setupTrainingWikiText, setSetupTrainingWikiText] = useState("");
+  const [setupTrainingRegulationsText, setSetupTrainingRegulationsText] = useState("");
+  // AI-enhance loading state for the in-wizard VacancyEditor.
+  const [wizardAiKey, setWizardAiKey] = useState<VacancyFieldKey | null>(null);
 
   // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
   // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
