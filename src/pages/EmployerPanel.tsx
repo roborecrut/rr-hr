@@ -457,6 +457,9 @@ export default function EmployerPanel() {
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
+  // Raw extracted company text from the uploaded document (≤5000 chars).
+  // Editable in a large textarea, also passed to «Оформить красиво» as a hint.
+  const [companyRawText, setCompanyRawText] = useState("");
 
   // New fields per spec: "Описание компании и чем занимается" + "Основные продукты"
   const [newCompanyDescription, setNewCompanyDescription] = useState("");
