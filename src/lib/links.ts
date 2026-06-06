@@ -29,13 +29,13 @@ export function isEmployerPublicIdCandidate(publicId: string | null | undefined)
 }
 
 export function parseEmployerPublicIdFromPath(pathname: string): string | null {
-  const empMatch = pathname.match(/^\/emp([A-Za-z0-9_-]+)(?:\/|$)/);
-  if (isEmployerPublicIdCandidate(empMatch?.[1])) return empMatch![1];
-
   // Legacy concatenated URL only: /employer100003/profile.
   // Must NOT match /employer/profile, otherwise it becomes fake id `loyer`.
   const legacyMatch = pathname.match(/^\/employer([A-Za-z0-9_-]+)(?:\/|$)/);
   if (isEmployerPublicIdCandidate(legacyMatch?.[1])) return legacyMatch![1];
+
+  const empMatch = pathname.match(/^\/emp([A-Za-z0-9_-]+)(?:\/|$)/);
+  if (isEmployerPublicIdCandidate(empMatch?.[1])) return empMatch![1];
   return null;
 }
 
