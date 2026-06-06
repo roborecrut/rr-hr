@@ -4557,7 +4557,6 @@ export default function EmployerPanel() {
                   <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
                     {Array.from(new Set([...jobTitlesList, ...BASIC_SPECIALTIES]))
                       .filter((s) => s.toLowerCase().includes(editSpecialtySearch.toLowerCase()))
-                      .slice(0, 40)
                       .map((spec) => (
                         <button
                           key={spec}
