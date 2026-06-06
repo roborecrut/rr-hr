@@ -2048,8 +2048,9 @@ export default function EmployerPanel() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img 
+            <RRImage 
               src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
+              w={40}
               alt="RR Робот Рекрутер" 
               className="w-10 h-10 object-contain drop-shadow" 
               referrerPolicy="no-referrer"
@@ -4204,8 +4205,9 @@ export default function EmployerPanel() {
       <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center font-normal">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img 
+            <RRImage 
               src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
+              w={32}
               alt="RR Logo" 
               className="w-8 h-8 object-contain" 
               referrerPolicy="no-referrer"
