@@ -1962,6 +1962,25 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ-форматирование", "Оформляем все поля новой вакансии с помощью ИИ ProTalk...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      // Find the selected company to send its data as context.
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const companyCtx: Record<string, any> = matchedCo ? {
+        name: matchedCo.name,
+        industry: matchedCo.industry,
+        staff: matchedCo.staff,
+        website: matchedCo.website || matchedCo.sites,
+        description_text: matchedCo.description_text,
+        products_text: matchedCo.products_text,
+        mission_text: matchedCo.mission_text || matchedCo.missionText,
+        team_text: matchedCo.team_text,
+        payouts_text: matchedCo.payouts_text,
+        schedule_text: matchedCo.schedule_text,
+        system_text: matchedCo.system_text,
+        about_text: matchedCo.about_text,
+      } : {};
+      // Drop empty values to keep prompt clean.
+      Object.keys(companyCtx).forEach((k) => { if (!companyCtx[k]) delete companyCtx[k]; });
+
       const enhanced = await aiEnhanceAll({
         mode: "all_vacancy",
         company_name: setupCompanyName,
@@ -1974,29 +1993,45 @@ export default function EmployerPanel() {
           motivation_text_detail: exampleFor("motivation_text_detail"),
           payouts_text: exampleFor("payouts_text"),
           onboarding_text: exampleFor("onboarding_text"),
-          team_text_vac: exampleFor("team_text_vac"),
-          system_text_vac: exampleFor("system_text_vac"),
+          team_text: exampleFor("team_text"),
+          system_text: exampleFor("system_text"),
         },
         fields: {
-          roleName: setupRoleName,
-          vacancyText: setupVacancyText, tasksActivityText: setupTasksActivityText,
-          motivationText: setupMotivationText, motivationTextDetail: setupMotivationDetail,
-          schedule_text: setupScheduleText, payouts_text: setupPayoutsText,
-          onboardingText: setupOnboardingText, team_text_vac: setupTeamText,
-          system_text_vac: setupSystemText,
+          role_name: setupRoleName,
+          vacancy_text: setupVacancyText,
+          tasks_activity_text: setupTasksActivityText,
+          motivation_text: setupMotivationText,
+          motivation_text_detail: setupMotivationDetail,
+          schedule_text: setupScheduleText,
+          payouts_text: setupPayoutsText,
+          onboarding_text: setupOnboardingText,
+          team_text: setupTeamText,
+          system_text: setupSystemText,
+          training_professional_text: setupTrainingProfessionalText,
+          training_product_text: setupTrainingProductText,
+          training_systems_text: setupTrainingSystemsText,
+          training_wiki_text: setupTrainingWikiText,
+          training_regulations_text: setupTrainingRegulationsText,
         },
+        file_context: vacancyRawText || undefined,
+        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
-        if (enhanced.roleName) setSetupRoleName(enhanced.roleName);
-        if (enhanced.vacancyText) setSetupVacancyText(enhanced.vacancyText);
-        if (enhanced.tasksActivityText) setSetupTasksActivityText(enhanced.tasksActivityText);
-        if (enhanced.motivationText) setSetupMotivationText(enhanced.motivationText);
-        if (enhanced.motivationTextDetail) setSetupMotivationDetail(enhanced.motivationTextDetail);
+        if (enhanced.role_name) setSetupRoleName(enhanced.role_name);
+        if (enhanced.vacancy_text) setSetupVacancyText(enhanced.vacancy_text);
+        if (enhanced.tasks_activity_text) setSetupTasksActivityText(enhanced.tasks_activity_text);
+        if (enhanced.motivation_text) setSetupMotivationText(enhanced.motivation_text);
+        if (enhanced.motivation_text_detail) setSetupMotivationDetail(enhanced.motivation_text_detail);
         if (enhanced.schedule_text) setSetupScheduleText(enhanced.schedule_text);
         if (enhanced.payouts_text) setSetupPayoutsText(enhanced.payouts_text);
-        if (enhanced.onboardingText) setSetupOnboardingText(enhanced.onboardingText);
-        if (enhanced.team_text_vac) setSetupTeamText(enhanced.team_text_vac);
-        if (enhanced.system_text_vac) setSetupSystemText(enhanced.system_text_vac);
+        if (enhanced.onboarding_text) setSetupOnboardingText(enhanced.onboarding_text);
+        if (enhanced.team_text) setSetupTeamText(enhanced.team_text);
+        if (enhanced.system_text) setSetupSystemText(enhanced.system_text);
+        if (enhanced.training_professional_text) setSetupTrainingProfessionalText(enhanced.training_professional_text);
+        if (enhanced.training_product_text) setSetupTrainingProductText(enhanced.training_product_text);
+        if (enhanced.training_systems_text) setSetupTrainingSystemsText(enhanced.training_systems_text);
+        if (enhanced.training_wiki_text) setSetupTrainingWikiText(enhanced.training_wiki_text);
+        if (enhanced.training_regulations_text) setSetupTrainingRegulationsText(enhanced.training_regulations_text);
         addAuditEvent("success", "Оформление завершено", "Все поля успешно облагорожены ИИ в единую продающую форму.");
       }
     } catch (err) {
