@@ -175,6 +175,25 @@ export default function EmployerPanel() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
+  const [authReady, setAuthReady] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      setAuthUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuthUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+    });
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Derive active tab from subroute PATH
   let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "interviews" | "training" = "crm";
