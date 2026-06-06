@@ -2017,12 +2017,10 @@ export type Database = {
         }
       }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
-      candidate_email_login:
-        | { Args: { _email: string; _password: string }; Returns: Json }
-        | {
-            Args: { _email: string; _password: string; _project?: string }
-            Returns: Json
-          }
+      candidate_email_login: {
+        Args: { _email: string; _password: string; _project?: string }
+        Returns: Json
+      }
       candidate_email_signup:
         | {
             Args: {
