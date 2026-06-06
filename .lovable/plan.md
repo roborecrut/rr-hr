@@ -1,95 +1,106 @@
-# Итерация 3 (продолжение) + универсальная загрузка документов
+# Финал Итерации 3 — Конструктор обучения и поэтапное прохождение
 
-## A. Storage buckets (создаются миграцией один раз)
+## 1. Модель обучения: 3 последовательных этапа
 
-Через `supabase--storage_create_bucket`:
-- `company-uploads` (private) — временные файлы для разбора компании
-- `vacancy-uploads` (private) — временные файлы для разбора вакансии
-- `training-uploads` (private) — временные файлы для разбора обучающих материалов
-- `training-materials` (private) — постоянное хранилище материалов курсов (PDF, видео-превью, доки)
+Курс обучения = ровно 3 этапа, идут строго по очереди:
 
-RLS на `storage.objects`:
-- INSERT/SELECT/DELETE для аутентифицированного владельца проекта/компании (path prefix `{owner_id}/...`)
-- service_role полный доступ (для edge-функций)
+1. **Профессиональное обучение** (`stage = 'professional'`) — все модули по навыкам/обязанностям + 1 общий тест по всем модулям этапа.
+2. **Продуктовое обучение** (`stage = 'product'`) — модули по продуктам/услугам компании + тест.
+3. **Системное обучение** (`stage = 'system'`) — регламенты, CRM, условия работы (объединяет system/wiki/regulations) + тест.
 
-Auto-cleanup: edge-функция `ai-ingest-document` после успешного парсинга удаляет файл из `*-uploads`.
+Кандидат не видит этап N+1, пока не сдал тест этапа N. Тест можно перепроходить **неограниченное число раз** до набора `pass_score` (по умолчанию 70/100).
 
-## B. Универсальный поток «Загрузить документ → ИИ-разбор»
+## 2. Изменения в БД (миграция)
 
-### Компонент `<DocumentIngestField>` (новый, frontend)
-Props: `entity: 'company'|'vacancy'|'training'`, `entityId: uuid`, `value: string`, `onChange(text)`, `onAIDistribute?()`, `maxLength=10000`, `placeholderHint`.
+Добавляем поле `stage` в `training_blocks`:
+- `stage text not null default 'professional'` со значениями `professional|product|system`.
+- Один блок = один модуль (несколько модулей на этап разрешены).
+- `materials_md` — учебный материал модуля (Markdown, ≤10 000 симв), оформлен ИИ, редактируется человеком.
+- Существующие `pass_score` (70), `total_score` оставляем.
 
-UI:
-1. Кнопка «📎 Загрузить файл» (pdf/docx/txt/md, до 10 MB) + кнопка «🎤 Вставить ссылку».
-2. Большая textarea (10000 знаков, счётчик), `value` биндится к полю сущности (`companies.about_text` / `projects.{поле}` / `training_blocks.materials_md`).
-3. Под textarea — кнопка **«Внести через ИИ»** (видна только когда есть текст). Вызывает `ai-distribute-text` для разнесения по полям.
-4. Во время ожидания ответа — анимированный плейсхолдер из массива фраз для текущей сущности (например, для company: «Изучаю миссию…», «Считаю команду…», «Разбираю продукт…»; для vacancy: «Анализирую обязанности…», «Подбираю мотивацию…»; для training: «Готовлю урок…», «Формирую тесты…»). Фразы меняются раз в 2 сек с `fade-in`.
+Тест хранится **на этап**, а не на модуль. Создаём `training_stage_tests`:
+```
+id uuid pk
+project_id uuid → projects
+stage text ('professional'|'product'|'system')
+questions jsonb  -- массив вопросов с correct/expected_answer (для бэкенда)
+pass_score int default 70
+total_score int default 100
+ai_generated_at timestamptz
+unique(project_id, stage)
+```
 
-### Edge-функция `ai-ingest-document`
-Вход: `{ entity, entity_id, file_path?, file_url?, prompt_hint? }`.
-- Если `file_path` (в `*-uploads` бакете) — выписать signed URL (1 час).
-- Сформировать промпт под сущность (есть шаблоны для company/vacancy/training).
-- Отправить в ProTalk (`_shared/protalk.ts`, callProTalk) с URL и инструкцией «верни оформленный markdown-текст, до 10000 символов».
-- Вернуть `{ text }`.
-- В finally: удалить файл из storage (`*-uploads`).
+Прогресс кандидата по этапу: `candidate_stage_progress`:
+```
+candidate_id uuid, stage text, attempts int default 0,
+best_score int, passed_at timestamptz, last_answers jsonb,
+pk (candidate_id, stage)
+```
 
-### Edge-функция `ai-distribute-text` (новая)
-Вход: `{ entity, entity_id, text }`.
-- Для `company`: вызывает существующий `ai-company-analyze` (или передаёт raw_text).
-- Для `vacancy`: вызывает существующий `ai-enhance` mode `all_vacancy` с `hint: text`.
-- Для `training`: вызывает новый `ai-generate-training-material` (см. C).
-Возвращает `{ fields }` или `{ block_id }`.
+GRANTs: `authenticated` — select/insert/update/delete своих строк; `service_role` — all. RLS: владелец вакансии (employer) видит/правит `training_stage_tests`; кандидат видит только вопросы своего проекта (без `correct/expected_answer` — фильтруется на сервере).
 
-## C. Обучение — edge-функции (B2 из плана)
+## 3. Edge Functions
 
-### `ai-generate-training-material`
-Вход: `{ project_id, block_key, source_text?, source_file_url? }`.
-- Берёт 15 полей вакансии + `source_text` (если есть).
-- ProTalk-промпт: «Сгенерируй учебный материал в markdown (1500–3000 слов) для блока {block_key} по вакансии {role}. Структура: цели → ключевые знания → примеры → чек-лист».
-- Пишет в `training_blocks.materials_md`, ставит `ai_generated_at = now()`.
+### `ai-generate-stage-material` (обновление существующего ai-generate-training-material)
+Вход: `{ project_id, stage }`. Собирает **весь контекст этапа**:
+- вакансия: role_name, responsibilities, requirements, conditions, motivation;
+- компания (для product/system): description_text, products_text, mission_text, system_text, payouts_text, schedule_text;
+- ранее сохранённые `training_*_text` поля;
+- доп. источник из `DocumentIngestField` (опционально).
 
-### `ai-generate-training-quiz`
-Вход: `{ block_id }`.
-- Берёт `materials_md` блока.
-- ProTalk-промпт: «Сгенерируй 20 вопросов JSON: 10 choice (вопрос + 4 варианта, 1 правильный, с уклоном в негативные формулировки), 10 text (вопрос + эталон ответа). Каждый по 5 баллов, проходной 70».
-- Парсит JSON, удаляет старые `training_questions` блока, вставляет новые. Обновляет `total_score`/`pass_score`.
+Возвращает Markdown-материал 1500–3000 слов, сохраняет в `training_blocks` (создаёт модули по разделам H2). Первичка делается ИИ; человек редактирует.
 
-### `ai-check-text-answer`
-Вход: `{ question_id, answer }`.
-- Берёт `expected_answer` + `points`.
-- ProTalk-промпт: «Оцени ответ кандидата на вопрос. Эталон: …. Ответ: …. Верни JSON {score: 0..points, feedback}».
-- Возвращает `{ score, feedback }`.
+### `ai-generate-stage-test` (новый, заменяет ai-generate-training-quiz)
+Вход: `{ project_id, stage }`. Берёт **все `materials_md` модулей этапа** и склеивает.
+Просит ИИ сгенерить 20 вопросов (10 choice с уклоном в негативные формулировки + 10 text). Сохраняет в `training_stage_tests.questions` с полями `correct` / `expected_answer` — они нужны позже для проверки.
 
-## D. UI работодателя — «Конструктор обучения» (B3)
+### `ai-check-stage-answers` (обновление ai-check-text-answer)
+Вход: `{ candidate_id, stage, answers: [{question_id, value}] }`. Серверно:
+- choice: сравнивает с `correct` локально (5 баллов).
+- text: для каждого вопроса вызывает ProTalk и **передаёт в промпт эталонный `expected_answer`** + ответ кандидата, просит вернуть 0–5 баллов и краткий комментарий.
+- Суммирует, обновляет `candidate_stage_progress` (attempts++, best_score, passed_at если ≥ pass_score), возвращает `{ score, passed, per_question }`.
 
-Новая вкладка в `EmployerPanel` (внутри карточки вакансии): «Обучение».
-Для каждого из 5 блоков (`professional`, `product`, `systems`, `wiki`, `regulations`):
-- Карточка с заголовком, прогрессом (есть материал? есть тест? сколько вопросов?).
-- Раздел «Материал»: `<DocumentIngestField entity="training">` + кнопка «Сгенерировать материал ИИ» (вызывает `ai-generate-training-material`).
-- Раздел «Тест»: список вопросов с inline-редактором (текст, варианты, правильный, баллы). Кнопки: «Добавить вопрос», «Сгенерировать тест ИИ».
-- Поле «Проходной балл» + авто-сумма `total_score`.
-- Кнопка «Опубликовать блок».
+### `ai-list-stage-questions` (новый, read-only для кандидата)
+Возвращает вопросы этапа БЕЗ `correct`/`expected_answer`. Используется в кабинете кандидата.
 
-## E. UI кандидата (B4) — кратко, отдельным шагом
+Все функции — `verify_jwt = false`, валидируют JWT/сессию в коде.
 
-В `CandidateFlow` (этап `training`) — список 5 блоков, страница материала (markdown через `react-markdown` + Tailwind prose), страница теста (по 1 вопросу), итог с записью в `candidate_training_progress`.
+## 4. Фронтенд
 
-## Технические детали
-- Установить `react-markdown` + `remark-gfm` (~80KB).
-- Использовать существующие `_shared/protalk.ts` и шаблон edge-функций (CORS из `_shared/cors.ts`).
-- Все новые edge-функции с `verify_jwt = false`, валидация прав внутри (по auth-header → `getUserFromAuthHeader`).
-- Промпты для анимированного ожидания — статика в `src/lib/loadingPhrases.ts`.
+### Работодатель: `TrainingWizard` — переписать на 3 вкладки этапов
+Для каждого этапа:
+- `DocumentIngestField` (entity=`training`, stage в payload) — загрузка материалов;
+- кнопка **«Оформить материалы ИИ»** → `ai-generate-stage-material` → показывает `LoadingPhrase` с фразами по обучению;
+- список модулей этапа: каждый — заголовок + Markdown-редактор (textarea + `react-markdown` preview, 10 000 симв);
+- кнопка **«Сгенерировать тест ИИ»** → `ai-generate-stage-test`;
+- список вопросов теста с возможностью отредактировать формулировку, варианты и эталон (видно только работодателю).
+- Сохранение по кнопке (upsert модулей и теста).
 
-## Порядок выполнения этой итерации
-1. Миграция storage buckets + RLS policies.
-2. Установка `react-markdown` + создание `src/lib/loadingPhrases.ts`.
-3. Edge-функции: `ai-ingest-document`, `ai-distribute-text`, `ai-generate-training-material`, `ai-generate-training-quiz`, `ai-check-text-answer`.
-4. Frontend компонент `<DocumentIngestField>`.
-5. Встройка в редактор компании, вакансии (VacancyEditor) — поля верхнего уровня (`about_text`, `responsibilities`, etc.).
-6. UI «Конструктор обучения» в `EmployerPanel`.
-7. (Следующее сообщение) UI кандидата.
+### Кандидат: `CandidateFlow` → новая вкладка «📚 Обучение»
+- Прогресс-бар по 3 этапам.
+- Текущий этап: вывод модулей через `react-markdown`, кнопка «Перейти к тесту» появляется после прочтения.
+- Тест: рендер 20 вопросов, отправка ответов в `ai-check-stage-answers`.
+- Если `score < pass_score` — сообщение «Не сдан, попробуй ещё раз», кнопка «Перепройти тест» (без лимита попыток).
+- Если сдан — открывается следующий этап; если все 3 сданы — `training_completed_at` на кандидате.
 
-## Открытые вопросы
-1. **Лимит хранения файла**: считать ли 10 MB достаточным или нужно больше (видео)?
-2. **Видео-материалы** в обучении: только ссылки на YouTube/RuTube или нужна загрузка видео-файлов в `training-materials` (это уже большие объёмы)?
-3. **Сразу 5 edge-функций** в одной итерации — ок или дробить по 2?
+## 5. Технические детали (для разработчика)
+
+- Миграция: `add column stage`, новые таблицы + GRANTs + RLS + индексы `(project_id, stage)`, `(candidate_id, stage)`.
+- `src/integrations/supabase/types.ts` обновится автоматически.
+- Markdown: уже добавлены `react-markdown` + `remark-gfm`.
+- Подсказки `LoadingPhrase` для `training` уже есть (`src/lib/loadingPhrases.ts`) — расширить фразами «Готовлю модули профессии…», «Составляю тест по продукту…», «Проверяю ответы…».
+- При проверке текстовых ответов промпт ProTalk:
+  ```
+  Эталон: {expected_answer}
+  Ответ кандидата: {value}
+  Оцени от 0 до 5 баллов по смысловому совпадению с эталоном. Верни JSON {"score":N,"comment":"..."}.
+  ```
+- `correct`/`expected_answer` НИКОГДА не отдаются на клиент кандидата (фильтр в `ai-list-stage-questions`).
+- Старый `ai-generate-training-quiz` и `training_questions` оставляем как legacy; новые этапные тесты идут через `training_stage_tests`.
+
+## Порядок выполнения
+1. Миграция БД (этап + новые таблицы + GRANT/RLS).
+2. 4 edge-функции (material, test, check, list).
+3. Перепись `TrainingWizard` на 3 этапа.
+4. Вкладка «Обучение» в `CandidateFlow` с поэтапной разблокировкой.
+5. Smoke-тест через curl: материалы → тест → проверка ответов с пересдачей.
