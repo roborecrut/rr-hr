@@ -4614,7 +4614,7 @@ export default function EmployerPanel() {
               />
 
               {/* Bottom control buttons */}
-              <div className="pt-4 border-t border-white/10 flex gap-3 sticky bottom-0 bg-[#1D3E5E]/95 backdrop-blur-sm -mx-6 sm:-mx-8 px-6 sm:px-8 py-4">
+              <div className="pt-4 border-t border-white/10 flex gap-3 sticky bottom-0 bg-gradient-to-r from-[#17344F]/95 to-[#265582]/95 backdrop-blur-sm -mx-6 sm:-mx-8 px-6 sm:px-8 py-4">
                 <button
                   type="submit"
                   disabled={isSavingEdit}
