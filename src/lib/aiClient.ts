@@ -60,6 +60,10 @@ export async function aiEnhanceAll(opts: {
   company_name?: string;
   hint?: string;
   templates?: Record<string, string>;
+  /** Up to 5000 chars of parsed-from-file context (raw text from document). */
+  file_context?: string;
+  /** Existing company record (for shared schedule/motivation/team/system fields). */
+  company_context?: Record<string, any>;
 }): Promise<Record<string, any>> {
   const data = await invoke<{ fields: Record<string, any> }>("ai-enhance", opts);
   return data?.fields || {};
