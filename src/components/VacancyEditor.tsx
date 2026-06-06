@@ -14,6 +14,7 @@ import {
   Wand2,
   Eraser,
 } from "lucide-react";
+import { useAIReady } from "../lib/aiReady";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
@@ -267,6 +268,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
   onClear,
   hasRoleTemplate,
 }) => {
+  const aiReady = useAIReady();
   return (
     <div className="rounded-2xl border border-white/10 bg-[#12283C]/80 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -277,7 +279,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
           <p className="mt-0.5 text-[11px] text-slate-400">{field.hint}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {onAIEnhance && (
+          {onAIEnhance && aiReady && (
             <button
               type="button"
               onClick={onAIEnhance}
