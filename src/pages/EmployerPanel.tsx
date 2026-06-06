@@ -2632,7 +2632,7 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      {aiReady && (<button
                         type="button"
                         onClick={handleBeautifyNewVacancyWithAI}
                         disabled={isGenerating || isParsingFile}
@@ -2640,7 +2640,7 @@ export default function EmployerPanel() {
                       >
                         <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
                         {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                      </button>
+                      </button>)}
                       <button
                         type="button"
                         onClick={cancelAddVacancyWizard}
@@ -3074,7 +3074,7 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Интерактивный ИИ-профиль организации</h4>
                     </div>
                     
-                    <button
+                    {aiReady && (<button
                       type="button"
                       onClick={handleEnhanceAllFields}
                       disabled={isEnhancingAll || isParsingFile}
@@ -3082,7 +3082,7 @@ export default function EmployerPanel() {
                     >
                       <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
                       {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                    </button>
+                    </button>)}
                   </div>
 
                   {/* Drag-Drop / click base file uploader with ProTalk integration */}
