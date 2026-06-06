@@ -10,8 +10,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   cacheEmployerPublicId,
   clearCachedEmployerPublicId,
-  EMPLOYER_SESSION_ID_KEY,
-  EMPLOYER_SESSION_USER_ID_KEY,
   readCachedEmployerPublicIdForUser,
 } from "@/lib/links";
 
