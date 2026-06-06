@@ -430,13 +430,13 @@ export default function CompanyLanding() {
               companySlug={companySlug}
               currentVacancy={vacancyId ? selectedVacancy : null}
               onOpenVacancy={(v) =>
-                navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)
+                navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)
               }
               onBackToVacancy={
                 vacancyId && selectedVacancy
                   ? () =>
                       navigate(
-                        `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}`,
+                        `/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}/vacancy`,
                       )
                   : undefined
               }
@@ -560,7 +560,7 @@ export default function CompanyLanding() {
                 {vacancies.map((v) => (
                   <div
                     key={v.id}
-                    onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}`)}
+                    onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
                     className={`cursor-pointer border p-4 rounded-2xl text-left transition ${
                       selectedVacancy?.id === v.id
                         ? "bg-[#E7C768]/15 border-[#E7C768]/70 ring-1 ring-[#E7C768]/50"
