@@ -1752,7 +1752,7 @@ export default function CandidateFlow() {
                   <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">📞 Контактные данные</h3>
                   <div className="flex items-center gap-3">
                     <img
-                      src={(candidate as any)?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${candidate?.id || 'me'}`}
+                      src={profAvatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${candidate?.id || 'me'}`}
                       alt="avatar"
                       className="w-14 h-14 rounded-xl border border-white/10 object-cover"
                       referrerPolicy="no-referrer"
@@ -1761,11 +1761,11 @@ export default function CandidateFlow() {
                       <div className="text-slate-400 text-[9px] uppercase">Email:</div>
                       <div className="text-[#E7C768] font-mono text-[11px] truncate">{candidate?.email || "—"}</div>
                       <div className="text-slate-400 text-[9px] uppercase mt-1.5">Телефон:</div>
-                      <div className="text-white font-bold">{(candidate as any)?.phone || "—"}</div>
+                      <div className="text-white font-bold">{profPhone || "—"}</div>
                     </div>
                   </div>
-                  {(candidate as any)?.resumeUrl && (
-                    <a href={(candidate as any).resumeUrl} target="_blank" rel="noreferrer" className="text-[#E7C768] text-xs underline flex items-center gap-1">
+                  {profResumeUrl && (
+                    <a href={profResumeUrl} target="_blank" rel="noreferrer" className="text-[#E7C768] text-xs underline flex items-center gap-1">
                       📄 Ссылка на резюме <ExternalLink className="w-3 h-3"/>
                     </a>
                   )}
