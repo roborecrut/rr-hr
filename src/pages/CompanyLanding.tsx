@@ -617,7 +617,7 @@ export default function CompanyLanding() {
       </main>
 
       {/* Candidate email auth modal — only meaningful when a vacancy is selected */}
-      {selectedVacancy && (
+      {selectedVacancy && selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active" && (
         <CandidateAuthModal
           isOpen={showApplyModal}
           onClose={() => setShowApplyModal(false)}
