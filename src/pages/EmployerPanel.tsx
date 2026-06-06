@@ -2678,7 +2678,8 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                <div className="crm-scroll overflow-x-auto pb-3">
+                  <div className="flex gap-3 min-w-max">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2692,9 +2693,10 @@ export default function EmployerPanel() {
                     const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
 
                     return (
-                      <div 
-                        key={column.stage} 
-                        className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow"
+                      <div
+                        key={column.stage}
+                        className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
+                        style={{ width: 260, minWidth: 220, resize: "horizontal", overflow: "auto" }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -2706,7 +2708,7 @@ export default function EmployerPanel() {
                         }}
                       >
                         <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
-                          <span className="truncate">{column.title}</span>
+                          <span className="whitespace-nowrap">{column.title}</span>
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
@@ -2735,30 +2737,42 @@ export default function EmployerPanel() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               )}
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden shadow-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl shadow-xl">
+                  <div className="crm-scroll overflow-x-auto">
+                    <table className="text-left text-xs" style={{ minWidth: "1100px" }}>
                       <thead>
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
-                          <th className="p-4">ФИО Кандидата</th>
-                          <th className="p-4">Интерес / Должность</th>
-                          <th className="p-4">Текущий Этап</th>
-                          <th className="p-4 text-center">Резюме</th>
-                          <th className="p-4 text-center">Чек-лист</th>
-                          <th className="p-4 text-center">Ситуации</th>
-                          <th className="p-4 text-center">Средний Балл</th>
-                          <th className="p-4 text-right">Действия</th>
+                          {[
+                            { label: "ФИО Кандидата", w: 240, align: "left" },
+                            { label: "Компания", w: 180, align: "left" },
+                            { label: "Вакансия", w: 200, align: "left" },
+                            { label: "Текущий Этап", w: 170, align: "left" },
+                            { label: "Резюме", w: 90, align: "center" },
+                            { label: "Чек-лист", w: 90, align: "center" },
+                            { label: "Ситуации", w: 90, align: "center" },
+                            { label: "Средний", w: 90, align: "center" },
+                            { label: "Действия", w: 140, align: "right" },
+                          ].map((h, i) => (
+                            <th
+                              key={i}
+                              className={`p-3 text-${h.align} whitespace-nowrap`}
+                              style={{ minWidth: h.w, width: h.w, resize: "horizontal", overflow: "auto" }}
+                            >
+                              {h.label}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filteredCandidates.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
+                            <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
                           </tr>
                         ) : (
                           filteredCandidates.map(cand => {
@@ -2769,13 +2783,14 @@ export default function EmployerPanel() {
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
-                                <td className="p-4 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
+                                <td className="p-3 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
                                   {(cand as any).phone && <div className="text-[10px] text-slate-500 font-normal">{(cand as any).phone}</div>}
                                 </td>
-                                <td className="p-4">{cand.roleName}</td>
-                                <td className="p-4">
+                                <td className="p-3 text-slate-200">{(cand as any).companyName || "—"}</td>
+                                <td className="p-3 text-slate-200">{cand.roleName || "—"}</td>
+                                <td className="p-3">
                                   <select 
                                     className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768]"
                                     value={(cand as any).crmStage || "registration"}
@@ -2791,13 +2806,13 @@ export default function EmployerPanel() {
                                     <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
-                                <td className="p-4 text-center">
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
+                                <td className="p-3 text-center">
                                   <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
                                 </td>
-                                <td className="p-4 text-right">
+                                <td className="p-3 text-right">
                                   <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
                                 </td>
                               </tr>
