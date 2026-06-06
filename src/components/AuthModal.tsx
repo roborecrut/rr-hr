@@ -52,7 +52,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
     setErrorText(""); setIsLoading(true);
     try {
       try { localStorage.setItem("rr_offer_accepted", "1"); } catch {}
-      let employerRedirect = "/employer/profile";
+      let employerRedirect = "/setup";
       try {
         const { data: { user } } = await supabase.auth.getUser();
         const cachedPid = user ? readCachedEmployerPublicIdForUser(user.id) : null;
