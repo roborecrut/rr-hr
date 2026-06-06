@@ -2078,6 +2078,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_offer: { Args: { _version?: string }; Returns: Json }
       admin_delete_job_title: { Args: { _id: string }; Returns: Json }
       admin_job_title_upsert_interview_template: {
         Args: { _overwrite?: boolean; _patch: Json; _title: string }

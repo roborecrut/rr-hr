@@ -159,6 +159,7 @@ import {
   SystemView
 } from "../components/VacancySections";
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
+import OfferConsent from "../components/OfferConsent";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
@@ -367,6 +368,7 @@ export default function EmployerPanel() {
   const [purchaseError, setPurchaseError] = useState<string>("");
   const [isBuying, setIsBuying] = useState<string | null>(null);
   const [isToppingUp, setIsToppingUp] = useState(false);
+  const [topupOfferOk, setTopupOfferOk] = useState<boolean>(true);
 
   const [tariffLevel, setTariffLevel] = useState<"bronze" | "silver" | "gold">("bronze");
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
@@ -1325,12 +1327,26 @@ export default function EmployerPanel() {
       alert("Начальный минимальный платеж 100 рублей.");
       return;
     }
+    if (!topupOfferOk) {
+      alert("Для оплаты необходимо согласие с публичной офертой.");
+      return;
+    }
     setIsToppingUp(true);
     try {
-      const { error } = await supabase.rpc("topup_rr", { _amount_rub: topupAmountRub });
-      if (error) throw new Error(error.message || "Не удалось пополнить баланс");
-      addAuditEvent("success", "Баланс пополнен", `Зачислено: +${topupAmountRub} RR`);
-      await fetchBillingState();
+      const { data, error } = await supabase.functions.invoke("robokassa-create", {
+        body: { amount_rub: topupAmountRub, offer_accepted: true },
+      });
+      if (error) throw new Error(error.message || "Не удалось создать счёт");
+      const resp: any = data;
+      if (!resp?.ok || !resp?.payment_url) {
+        throw new Error(
+          resp?.error === "robokassa_not_configured"
+            ? "Платёжная система ещё не подключена администратором. Попробуйте позже."
+            : (resp?.error || "Не удалось получить ссылку на оплату"),
+        );
+      }
+      addAuditEvent("info", "Переход на оплату", `Счёт №${resp.inv_id} на ${topupAmountRub} ₽ (Робокасса)`);
+      window.location.href = resp.payment_url as string;
     } catch (err: any) {
       alert(translateBillingError(err.message));
     } finally {
@@ -3775,13 +3791,19 @@ export default function EmployerPanel() {
                       </div>
                       <button
                         type="submit"
-                        disabled={isToppingUp || topupAmountRub < 100}
+                        disabled={isToppingUp || topupAmountRub < 100 || !topupOfferOk}
                         className="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 text-[#17344F] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl mt-3 transition"
                       >
-                        {isToppingUp ? "Обработка..." : "🚀 Пополнить баланс"}
+                        {isToppingUp ? "Перенаправляем на оплату..." : "🚀 Оплатить через Робокассу"}
                       </button>
                     </div>
                   </div>
+
+                  <OfferConsent checked={topupOfferOk} onChange={setTopupOfferOk} context="pay" />
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Оплата проводится через систему «Робокасса». Принимаем карты МИР, Visa, Mastercard и другие способы.
+                    После успешной оплаты RR начисляются автоматически (обычно в течение минуты).
+                  </p>
                 </form>
               </div>
 
