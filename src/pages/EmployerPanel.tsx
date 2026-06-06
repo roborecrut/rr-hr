@@ -2079,6 +2079,11 @@ export default function EmployerPanel() {
         }),
       });
       if (enhanced) {
+        // Tell the role-change effect to skip its destructive overwrite this
+        // time — we've just put authoritative AI values into every field.
+        if (enhanced.role_name && enhanced.role_name !== setupRoleName) {
+          skipRoleAutoFillRef.current = true;
+        }
         if (enhanced.role_name) setSetupRoleName(enhanced.role_name);
         if (enhanced.vacancy_text) setSetupVacancyText(enhanced.vacancy_text);
         if (enhanced.tasks_activity_text) setSetupTasksActivityText(enhanced.tasks_activity_text);
