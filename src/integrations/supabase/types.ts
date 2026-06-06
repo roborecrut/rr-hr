@@ -856,6 +856,44 @@ export type Database = {
         }
         Relationships: []
       }
+      interview_blocks: {
+        Row: {
+          ai_generated_at: string | null
+          created_at: string
+          id: string
+          kind: string
+          payload: Json
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          payload?: Json
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          payload?: Json
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_blocks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_messages: {
         Row: {
           created_at: string
@@ -1339,6 +1377,7 @@ export type Database = {
           custom_wiki: string | null
           employer_id: string
           id: string
+          interview_pass_score: number
           is_published: boolean
           legacy_public_id: string | null
           legacy_slug: string | null
@@ -1381,6 +1420,7 @@ export type Database = {
           custom_wiki?: string | null
           employer_id: string
           id?: string
+          interview_pass_score?: number
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
@@ -1423,6 +1463,7 @@ export type Database = {
           custom_wiki?: string | null
           employer_id?: string
           id?: string
+          interview_pass_score?: number
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
