@@ -1510,6 +1510,34 @@ export default function CandidateFlow() {
     { id: "certified", title: "🏆 Сертификат", desc: "Мой диплом" }
   ];
 
+  // Initial-load gate: avoid flashing the empty cabinet (or the
+  // "no vacancy" message) while we still resolve the session.
+  if (sessionLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#17344F] to-[#265582] text-slate-200 text-sm">
+        Загружаем кабинет…
+      </div>
+    );
+  }
+  if (!candidate) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#17344F] to-[#265582] text-center p-6">
+        <div className="max-w-md space-y-4">
+          <div className="text-[#E7C768] font-extrabold text-lg">Кабинет не найден</div>
+          <p className="text-slate-300 text-sm">
+            Похоже, сессия истекла или ссылка устарела. Войдите ещё раз через страницу вакансии.
+          </p>
+          <button
+            onClick={() => navigate("/")}
+            className="bg-[#E7C768] text-[#17344F] font-bold text-xs py-2.5 px-5 rounded-xl hover:bg-[#F4EE8E] transition"
+          >
+            На главную
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
       
