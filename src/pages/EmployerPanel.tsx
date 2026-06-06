@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";

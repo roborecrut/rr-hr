@@ -8,6 +8,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
+import RRImage from "@/components/RRImage";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CandidateDetailsModal from "@/components/CandidateDetailsModal";
