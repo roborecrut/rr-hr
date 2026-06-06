@@ -17,16 +17,6 @@ import {
   Plus, Minus, X,
 } from "lucide-react";
 
-type JobTitleRow = {
-  id: string;
-  title: string;
-  title_norm: string;
-  usage_count: number;
-  is_basic: boolean;
-  field_templates: Record<string, string>;
-  created_at: string;
-};
-
 type SectionKey =
   | "clients" | "candidates" | "companies" | "vacancies"
   | "interviews" | "trainings" | "mailings" | "roles"
