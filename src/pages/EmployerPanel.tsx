@@ -1368,6 +1368,29 @@ export default function EmployerPanel() {
     }
   };
 
+  // Move candidate in the CRM funnel (8-stage). Marks the stage as manual,
+  // disabling automatic recalculation from triggers.
+  const handleUpdateCrmStage = async (
+    candId: string,
+    newStage: "registration" | "screening" | "checklist" | "situations" | "professional" | "product" | "systems" | "certified",
+  ) => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const cand: any = candidates.find((c: any) => c.id === candId);
+      const uuid = cand?.uuid;
+      if (!uuid) return;
+      const { error } = await supabase.rpc("employer_set_candidate_crm_stage" as any, {
+        _candidate: uuid, _stage: newStage,
+      });
+      if (error) throw error;
+      setCandidates(prev => prev.map((c: any) => c.id === candId ? ({ ...c, crmStage: newStage }) : c));
+      addAuditEvent("success", "Этап CRM обновлён", `Кандидат перемещён на этап: ${newStage}`);
+    } catch (err: any) {
+      console.error("Error updating CRM stage:", err);
+      addAuditEvent("error", "Ошибка CRM", err?.message || "Не удалось обновить этап");
+    }
+  };
+
   // Open the vacancy wizard: create a draft project + restart the ProTalk
   // dialog so the user starts with a clean session, mirroring the company
   // wizard flow.
