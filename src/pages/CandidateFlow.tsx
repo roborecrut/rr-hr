@@ -1755,6 +1755,7 @@ export default function CandidateFlow() {
                   <div className="text-[10px] font-bold uppercase text-slate-400 mb-2">Соцсети (только ссылки, без подтверждения)</div>
                   </div>
                 <div className="pt-2 border-t border-white/10 space-y-3">
+                  {null}
                   <div className="text-[10px] font-bold uppercase text-slate-400">Смена пароля (необязательно)</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="space-y-1">
