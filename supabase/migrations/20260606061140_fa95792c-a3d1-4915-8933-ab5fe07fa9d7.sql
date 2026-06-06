@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.candidate_email_login(text, text);
