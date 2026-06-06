@@ -4162,6 +4162,11 @@ export default function EmployerPanel() {
         </main>
       </div>
 
+      <CandidateDetailsModal
+        candidateId={selectedCandidateId}
+        onClose={() => setSelectedCandidateId(null)}
+      />
+
       {/* FOOTER AREA */}
       <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center font-normal">
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
