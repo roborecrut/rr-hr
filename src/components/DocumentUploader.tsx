@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { FileText, Sparkles, RefreshCw, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAIWait } from "@/components/AIWaitProvider";
+import { useAIReady, waitForAIReady, requestAIRestartOverlay } from "@/lib/aiReady";
 import { toast } from "sonner";
 
 /**
@@ -82,6 +83,7 @@ export function DocumentUploader({
   disabled = false,
 }: DocumentUploaderProps) {
   const { run: aiWaitRun } = useAIWait();
+  const aiReady = useAIReady();
   const inputId = useId();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -141,6 +143,13 @@ export function DocumentUploader({
 
   async function recognize() {
     if (!filePath) return;
+    if (!aiReady) {
+      // ProTalk /restart still in flight — surface the overlay and wait for it
+      // before sending a second request to the same dialog.
+      requestAIRestartOverlay();
+      toast.message("ИИ ещё готовится — подождите пару секунд…");
+      await waitForAIReady();
+    }
     setParsing(true);
     onAudit?.("info", "ИИ разбор документа", `ProTalk считывает «${fileName}»…`);
     try {
@@ -247,10 +256,12 @@ export function DocumentUploader({
           <button
             type="button"
             onClick={recognize}
+            disabled={!aiReady}
+            title={aiReady ? undefined : "ИИ ещё готовится — кнопка станет активной через пару секунд"}
             className="btn-brand-secondary px-5 py-2.5 text-xs flex items-center justify-center gap-1.5 shadow-md"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Распознать документ
+            {aiReady ? "Распознать документ" : "ИИ готовится…"}
           </button>
         </div>
       ) : null}
