@@ -1357,6 +1357,11 @@ export default function EmployerPanel() {
         onboarding_text: setupOnboardingText || null,
         team_text: setupTeamText || null,
         system_text: setupSystemText || null,
+        training_professional_text: setupTrainingProfessionalText || null,
+        training_product_text: setupTrainingProductText || null,
+        training_systems_text: setupTrainingSystemsText || null,
+        training_wiki_text: setupTrainingWikiText || null,
+        training_regulations_text: setupTrainingRegulationsText || null,
         is_published: true,
       };
       const upd = await supabase.from("projects").update(patch).eq("id", draftProjectId);
