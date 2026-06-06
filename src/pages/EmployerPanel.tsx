@@ -2262,6 +2262,19 @@ export default function EmployerPanel() {
     ? Math.round(candidates.reduce((acc, c) => acc + (c.scores?.overallScore || 70), 0) / candidates.length)
     : 78;
 
+  const isEmployerIdReady = isEmployerPublicIdCandidate(employerId);
+  if (!isEmployerIdReady) {
+    return (
+      <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased flex items-center justify-center px-4">
+        <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-6 shadow-xl text-center max-w-sm w-full space-y-3">
+          <Mascot state="thinking" size="md" className="mx-auto" />
+          <h1 className="text-lg font-black text-[#E7C768]">Загружаем кабинет</h1>
+          <p className="text-xs text-slate-300">Получаем ваш реальный ID работодателя из базы.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Render content area based on six main tabs
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
