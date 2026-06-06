@@ -30,6 +30,46 @@ import {
   type VacancyFieldKey,
   type VacancyField,
 } from "../lib/fieldFormats";
+
+// ---------------------------------------------------------------------------
+// Mapping helpers: JobProject (camelCase) ↔ VacancyFormValues (snake_case keys
+// matching `public.projects` columns and the canonical 15-field spec).
+// ---------------------------------------------------------------------------
+const CAMEL_BY_KEY: Record<VacancyFieldKey, string> = {
+  role_name: "roleName",
+  vacancy_text: "vacancyText",
+  tasks_activity_text: "tasksActivityText",
+  schedule_text: "scheduleText",
+  motivation_text: "motivationText",
+  motivation_text_detail: "motivationTextDetail",
+  payouts_text: "payoutsText",
+  onboarding_text: "onboardingText",
+  team_text: "teamText",
+  system_text: "systemText",
+  training_professional_text: "trainingProfessionalText",
+  training_product_text: "trainingProductText",
+  training_systems_text: "trainingSystemsText",
+  training_wiki_text: "trainingWikiText",
+  training_regulations_text: "trainingRegulationsText",
+};
+
+function projectToVacancyValues(p: any): Partial<Record<VacancyFieldKey, string>> {
+  const out: Partial<Record<VacancyFieldKey, string>> = {};
+  for (const key of Object.keys(CAMEL_BY_KEY) as VacancyFieldKey[]) {
+    out[key] = p?.[CAMEL_BY_KEY[key]] ?? "";
+  }
+  return out;
+}
+
+function vacancyValuesToCamel(
+  patch: Partial<Record<VacancyFieldKey, string>>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(patch)) {
+    out[CAMEL_BY_KEY[k as VacancyFieldKey]] = v ?? "";
+  }
+  return out;
+}
 import {
   Users,
   Smartphone,
