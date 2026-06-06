@@ -3078,16 +3078,6 @@ export default function EmployerPanel() {
                       <span className="text-xs font-bold text-green-300 block font-mono">ПАНЕЛЬ УПАКОВКИ БРЕНДА RR</span>
                       <h4 className="text-sm font-semibold text-white">Интерактивный ИИ-профиль организации</h4>
                     </div>
-                    
-                    {aiReady && (<button
-                      type="button"
-                      onClick={handleEnhanceAllFields}
-                      disabled={isEnhancingAll || isParsingFile}
-                      className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
-                      {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                    </button>)}
                   </div>
 
                   {/* Drag-Drop / click base file uploader with ProTalk integration */}
@@ -3130,16 +3120,56 @@ export default function EmployerPanel() {
                       {newCompanyFiles ? (
                         <span className="text-yellow-400">Документ загружен: {newCompanyFiles} ✓</span>
                       ) : (
-                        <span>Загрузить регламент / вакансию для автозаполнения ИИ</span>
+                        <span>Загрузите презентацию или описание компании — я распознаю текст и сам аккуратно заполню все поля ниже, копировать вручную не придётся</span>
                       )}
                     </div>
                     <span className="text-[10px] text-slate-400 block font-mono">
                       {isParsingFile 
-                        ? "⚡ ИИ от ProTalk анализирует регламент, заполняет все поля..." 
-                        : "ИИ автоматически разберет файл и заполнит ВСЕ поля ниже через структурированный JSON"
+                        ? "⚡ ИИ от ProTalk извлекает текст о компании из документа..." 
+                        : "Поддерживаются PDF, DOCX, TXT, MD. Текст появится в большом поле ниже — его можно отредактировать перед оформлением."
                       }
                     </span>
                   </div>
+
+                  {/* Raw extracted text from the document — editable, capped at 5000 chars.
+                      Passed to «Оформить красиво» as additional context. */}
+                  {(() => {
+                    const totalChars =
+                      (newCompanyName + newCompanyIndustry + newCompanyStaff + newCompanySite +
+                       newCompanyDescription + newCompanyProducts + newCompanyMissionText +
+                       newCompanyDesc + newCompanySalaryTerms + newCompanyScheduleTerms +
+                       newCompanyCustomWiki + companyRawText).trim().length;
+                    const canEnhanceAll = aiReady && totalChars >= 50;
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Текст о компании из документа (редактируется, до 5000 симв.)
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">{companyRawText.length} / 5000</span>
+                        </div>
+                        <textarea
+                          value={companyRawText}
+                          onChange={(e) => setCompanyRawText(e.target.value.slice(0, 5000))}
+                          placeholder="Здесь появится распознанный текст из загруженного файла. Можно также вставить или дописать описание компании вручную."
+                          className="w-full bg-black/40 text-xs pl-3 pr-3 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none min-h-[180px]"
+                          maxLength={5000}
+                        />
+                        <div className="flex justify-center pt-1">
+                          <button
+                            type="button"
+                            onClick={handleEnhanceAllFields}
+                            disabled={!canEnhanceAll || isEnhancingAll || isParsingFile}
+                            title={canEnhanceAll ? "Оформить все поля красиво через ИИ" : "Заполните поля минимум на 50 символов суммарно"}
+                            className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
+                            {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* FIELD GRID SECTIONS */}
                   <div className="space-y-6">
