@@ -4447,13 +4447,22 @@ export default function EmployerPanel() {
                 </button>
                 <button
                   type="button"
+                  onClick={handleArchiveEditedProject}
+                  disabled={isDeletingProject}
+                  className="cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
+                  title="Скрыть вакансию от кандидатов, сохранив все данные"
+                >
+                  В архив
+                </button>
+                <button
+                  type="button"
                   onClick={handleDeleteEditedProject}
                   disabled={isDeletingProject}
                   className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
-                  title="Удалить вакансию из базы данных"
+                  title="Закрыть вакансию (CRM-данные сохраняются, номер не переиспользуется)"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {isDeletingProject ? "Удаляем..." : "Удалить вакансию"}
+                  {isDeletingProject ? "Обновляем..." : "Закрыть вакансию"}
                 </button>
               </div>
             </form>
