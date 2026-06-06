@@ -158,6 +158,7 @@ import {
   TeamView,
   SystemView
 } from "../components/VacancySections";
+import CandidateDetailsModal from "../components/CandidateDetailsModal";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
