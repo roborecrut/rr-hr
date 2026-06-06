@@ -2,15 +2,20 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  *
- * Admin panel — manages job_titles.field_templates.
+ * Admin CRM. Sections: Clients (employers), Candidates, Companies, Vacancies,
+ * Interviews, Trainings, Mailings, Roles, Accounts, AI.
  * Access: only users with role 'admin'.
  */
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { aiEnhanceSingle } from "@/lib/aiClient";
-import { Search, Trash2, Save, Sparkles, PlusCircle, ShieldCheck, LogOut, Loader2, RefreshCw, Star } from "lucide-react";
+import CandidateDetailsModal from "@/components/CandidateDetailsModal";
+import {
+  Search, ShieldCheck, LogOut, Loader2, RefreshCw, Users, Building2, Briefcase,
+  MessageSquare, GraduationCap, Mail, KeyRound, Wallet, Sparkles, ArrowLeft,
+  Plus, Minus, X,
+} from "lucide-react";
 
 type JobTitleRow = {
   id: string;
@@ -22,55 +27,36 @@ type JobTitleRow = {
   created_at: string;
 };
 
-const FIELDS: { key: string; label: string; group: "Вакансия" | "Обучение" }[] = [
-  { key: "vacancy_text",            label: "Требования / описание вакансии",  group: "Вакансия" },
-  { key: "tasks_activity_text",     label: "Задачи и активности",             group: "Вакансия" },
-  { key: "schedule_text",           label: "График работы",                    group: "Вакансия" },
-  { key: "motivation_text",         label: "Мотивация (кратко)",               group: "Вакансия" },
-  { key: "payouts_text",            label: "Оплата и выплаты",                 group: "Вакансия" },
-  { key: "team_text_vac",           label: "Команда",                          group: "Вакансия" },
-  { key: "system_text_vac",         label: "Системы и инструменты",            group: "Вакансия" },
-  { key: "training_intro_text",     label: "Введение в обучение",              group: "Обучение" },
-  { key: "training_professional_text", label: "Профессиональный блок",         group: "Обучение" },
-  { key: "training_product_text",   label: "Продуктовый блок",                 group: "Обучение" },
-  { key: "training_systems_text",   label: "Системы и инструменты (обучение)", group: "Обучение" },
-  { key: "training_wiki_text",      label: "База знаний / Wiki",               group: "Обучение" },
-  { key: "training_regulations_text", label: "Регламенты",                     group: "Обучение" },
+type SectionKey =
+  | "clients" | "candidates" | "companies" | "vacancies"
+  | "interviews" | "trainings" | "mailings" | "roles"
+  | "accounts" | "ai";
+
+const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
+  { key: "clients",    label: "Клиенты",   icon: Users },
+  { key: "candidates", label: "Кандидаты", icon: Users },
+  { key: "companies",  label: "Компании",  icon: Building2 },
+  { key: "vacancies",  label: "Вакансии",  icon: Briefcase },
+  { key: "interviews", label: "Интервью",  icon: MessageSquare },
+  { key: "trainings",  label: "Обучения",  icon: GraduationCap },
+  { key: "mailings",   label: "Рассылки",  icon: Mail },
+  { key: "roles",      label: "Роли",      icon: KeyRound },
+  { key: "accounts",   label: "Счета",     icon: Wallet },
+  { key: "ai",         label: "ИИ",        icon: Sparkles },
 ];
 
-function countFilled(t: Record<string, string> | null | undefined) {
-  if (!t) return 0;
-  let n = 0;
-  for (const f of FIELDS) if ((t[f.key] || "").trim()) n++;
-  return n;
-}
-
-interface PaymentLog {
-  id: string;
-  companyName: string;
-  amount: number;
-  itemType: string;
-  itemName: string;
-  status: string;
-  createdAt: string;
+function classifyClient(c: any): { key: string; label: string; color: string } {
+  if (c.has_topup && c.balance > 0) return { key: "paying",  label: "Платящий", color: "emerald" };
+  if ((c.candidates_count || 0) > 0) return { key: "active",  label: "Активный", color: "sky" };
+  if ((c.projects_count || 0) > 0)   return { key: "trial",   label: "В работе", color: "amber" };
+  return { key: "new", label: "Новый", color: "slate" };
 }
 
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-
-  const [rows, setRows] = useState<JobTitleRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "basic" | "custom" | "empty">("all");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const [editTitle, setEditTitle] = useState("");
-  const [editIsBasic, setEditIsBasic] = useState(false);
-  const [editTpl, setEditTpl] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [enhancing, setEnhancing] = useState<Record<string, boolean>>({});
+  const [section, setSection] = useState<SectionKey>("clients");
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   // Access gate
@@ -92,120 +78,6 @@ export default function AdminPanel() {
       setAuthChecked(true);
     })();
   }, []);
-
-  const loadRows = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.rpc("admin_list_job_titles" as any);
-      if (error) throw error;
-      const list = (data || []) as JobTitleRow[];
-      setRows(list);
-      if (!selectedId && list.length) selectRow(list[0]);
-    } catch (err: any) {
-      setToast({ kind: "err", text: err?.message || "Не удалось загрузить должности" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAdmin) loadRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
-
-  const selectRow = (r: JobTitleRow) => {
-    setSelectedId(r.id);
-    setEditTitle(r.title);
-    setEditIsBasic(!!r.is_basic);
-    const tpl: Record<string, string> = {};
-    for (const f of FIELDS) tpl[f.key] = (r.field_templates as any)?.[f.key] || "";
-    setEditTpl(tpl);
-  };
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (q && !r.title.toLowerCase().includes(q)) return false;
-      const filled = countFilled(r.field_templates);
-      if (filter === "basic" && !r.is_basic) return false;
-      if (filter === "custom" && r.is_basic) return false;
-      if (filter === "empty" && filled > 0) return false;
-      return true;
-    });
-  }, [rows, search, filter]);
-
-  const handleSave = async () => {
-    if (!editTitle.trim()) {
-      setToast({ kind: "err", text: "Укажите название должности" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const patch: Record<string, string> = {};
-      for (const f of FIELDS) patch[f.key] = (editTpl[f.key] || "").trim();
-      const { error } = await supabase.rpc("admin_job_title_upsert_templates" as any, {
-        _title: editTitle.trim(),
-        _patch: patch,
-        _overwrite: true,
-        _is_basic: editIsBasic,
-      });
-      if (error) throw error;
-      setToast({ kind: "ok", text: "Сохранено" });
-      await loadRows();
-    } catch (err: any) {
-      setToast({ kind: "err", text: err?.message || "Ошибка сохранения" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selectedId) return;
-    if (!window.confirm(`Удалить должность «${editTitle}»? Действие необратимо.`)) return;
-    try {
-      const { error } = await supabase.rpc("admin_delete_job_title" as any, { _id: selectedId });
-      if (error) throw error;
-      setSelectedId(null);
-      setEditTitle("");
-      setEditTpl({});
-      await loadRows();
-      setToast({ kind: "ok", text: "Должность удалена" });
-    } catch (err: any) {
-      setToast({ kind: "err", text: err?.message || "Ошибка удаления" });
-    }
-  };
-
-  const handleAddNew = () => {
-    const name = window.prompt("Название новой должности:");
-    if (!name || !name.trim()) return;
-    setSelectedId(null);
-    setEditTitle(name.trim());
-    setEditIsBasic(true);
-    const tpl: Record<string, string> = {};
-    for (const f of FIELDS) tpl[f.key] = "";
-    setEditTpl(tpl);
-  };
-
-  const handleEnhance = async (key: string) => {
-    setEnhancing((p) => ({ ...p, [key]: true }));
-    try {
-      const value = await aiEnhanceSingle({
-        field: key,
-        value: editTpl[key] || "",
-        role_name: editTitle,
-        hint: "Сделай эталонный шаблон для этой должности: живой язык, 3–6 предложений или маркированных пунктов, конкретика (цифры, инструменты, примеры).",
-      });
-      if (value) setEditTpl((p) => ({ ...p, [key]: value }));
-    } catch (err: any) {
-      setToast({ kind: "err", text: err?.message || "AI ошибка" });
-    } finally {
-      setEnhancing((p) => ({ ...p, [key]: false }));
-    }
-  };
-
-  const handleClearField = (key: string) => {
-    setEditTpl((p) => ({ ...p, [key]: "" }));
-  };
 
   // Auto-clear toast
   useEffect(() => {
@@ -242,8 +114,6 @@ export default function AdminPanel() {
     );
   }
 
-  const selectedFilled = countFilled(editTpl);
-
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased">
       <header className="sticky top-0 z-40 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
@@ -252,22 +122,15 @@ export default function AdminPanel() {
             <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col leading-tight">
               <span className="text-base font-bold text-[#E7C768]">Админ-панель</span>
-              <span className="text-[10px] uppercase tracking-wider text-slate-300">Шаблоны должностей</span>
+              <span className="text-[10px] uppercase tracking-wider text-slate-300">CRM администратора</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={loadRows}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5"
-              title="Обновить"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> Обновить
-            </button>
-            <button
               onClick={() => navigate("/employer")}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5"
+              className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 flex items-center gap-1.5"
             >
-              Кабинет
+              <ArrowLeft className="w-3.5 h-3.5" /> Кабинет
             </button>
             <button
               onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
@@ -290,202 +153,467 @@ export default function AdminPanel() {
       )}
 
       <main className="max-w-[1500px] mx-auto py-6 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: list */}
-        <aside className="lg:col-span-4 space-y-3">
-          <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 shadow-xl space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  className="w-full bg-[#17344F]/60 text-xs text-white pl-8 pr-3 py-2 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                  placeholder="Поиск должности..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-              <button
-                onClick={handleAddNew}
-                className="p-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-200"
-                title="Добавить новую"
-              >
-                <PlusCircle className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex gap-1.5 text-[10px] font-bold uppercase tracking-wider">
-              {([
-                ["all", "Все"],
-                ["basic", "Базовые"],
-                ["custom", "Польз."],
-                ["empty", "Пустые"],
-              ] as const).map(([k, l]) => (
+        <aside className="lg:col-span-2">
+          <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-3 space-y-1 sticky top-20">
+            {SECTIONS.map((s) => {
+              const Icon = s.icon;
+              const active = section === s.key;
+              return (
                 <button
-                  key={k}
-                  onClick={() => setFilter(k)}
-                  className={`px-2 py-1 rounded-lg border transition ${
-                    filter === k
-                      ? "bg-[#E7C768]/20 border-[#E7C768]/50 text-[#E7C768]"
-                      : "bg-white/5 border-white/10 text-slate-300 hover:bg-white/10"
+                  key={s.key}
+                  onClick={() => setSection(s.key)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition ${
+                    active ? "bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/40" : "text-slate-300 hover:bg-white/5"
                   }`}
                 >
-                  {l}
+                  <Icon className="w-3.5 h-3.5" /> {s.label}
                 </button>
-              ))}
-            </div>
-
-            <div className="text-[10px] text-slate-400 font-mono">
-              Всего: {rows.length} • Показано: {filtered.length}
-            </div>
-          </div>
-
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-2 max-h-[70vh] overflow-y-auto">
-            {loading ? (
-              <div className="p-6 text-center text-slate-400 text-xs flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Загрузка...
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="p-6 text-center text-slate-400 text-xs">Ничего не найдено</div>
-            ) : (
-              <ul className="space-y-1">
-                {filtered.map((r) => {
-                  const filled = countFilled(r.field_templates);
-                  const pct = Math.round((filled / FIELDS.length) * 100);
-                  return (
-                    <li key={r.id}>
-                      <button
-                        onClick={() => selectRow(r)}
-                        className={`w-full text-left p-2.5 rounded-2xl transition border ${
-                          selectedId === r.id
-                            ? "bg-[#E7C768]/15 border-[#E7C768]/50"
-                            : "bg-white/5 hover:bg-white/10 border-transparent"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {r.is_basic && <Star className="w-3 h-3 text-[#E7C768] flex-shrink-0" />}
-                            <span className="text-sm font-semibold truncate">{r.title}</span>
-                          </div>
-                          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${
-                            filled === FIELDS.length ? "bg-emerald-500/20 text-emerald-300" :
-                            filled === 0 ? "bg-rose-500/20 text-rose-300" : "bg-amber-500/20 text-amber-300"
-                          }`}>
-                            {filled}/{FIELDS.length}
-                          </span>
-                        </div>
-                        <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
-                          <span>Исп.: {r.usage_count || 0}</span>
-                          <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
-                            <div className="h-full bg-[#E7C768]/60" style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+              );
+            })}
           </div>
         </aside>
 
-        {/* Right: editor */}
-        <section className="lg:col-span-8 space-y-4">
-          {!editTitle && !selectedId ? (
-            <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-12 text-center text-slate-400">
-              Выберите должность слева или добавьте новую
-            </div>
-          ) : (
-            <>
-              <div className="bg-[#1D3E5E]/85 border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
-                  <div className="flex-1 space-y-1.5">
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300 block">
-                      Название должности
-                    </label>
-                    <input
-                      type="text"
-                      className="w-full bg-[#17344F]/60 text-base font-semibold text-white px-3 py-2 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                    />
-                  </div>
-                  <label className="flex items-center gap-2 text-xs text-slate-300 select-none cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={editIsBasic}
-                      onChange={(e) => setEditIsBasic(e.target.checked)}
-                      className="w-4 h-4 accent-[#E7C768]"
-                    />
-                    <Star className="w-3.5 h-3.5 text-[#E7C768]" /> Базовая должность
-                  </label>
-                </div>
+        <section className="lg:col-span-10 space-y-4">
+          {section === "clients"    && <ClientsSection setToast={setToast} />}
+          {section === "candidates" && <CandidatesSection />}
+          {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
+          {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
+          {section === "interviews" && <SimpleTable table="interviews"  title="Интервью" />}
+          {section === "trainings"  && <SimpleTable table="candidate_training_progress" title="Прогресс обучения" />}
+          {section === "mailings"   && <MailingsSection />}
+          {section === "roles"      && <RolesSection setToast={setToast} />}
+          {section === "accounts"   && <AccountsSection setToast={setToast} />}
+          {section === "ai"         && <AISection />}
+        </section>
+      </main>
+    </div>
+  );
+}
 
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="text-xs text-slate-300">
-                    Заполнено полей: <strong className="text-[#E7C768]">{selectedFilled}/{FIELDS.length}</strong>
-                  </div>
-                  <div className="flex gap-2">
-                    {selectedId && (
-                      <button
-                        onClick={handleDelete}
-                        className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-500/20 hover:bg-rose-500/40 border border-rose-500/30 text-rose-200 flex items-center gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Удалить
-                      </button>
-                    )}
-                    <button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-lg flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                      Сохранить
-                    </button>
-                  </div>
-                </div>
-              </div>
+/* ============== Sections ============== */
 
-              {(["Вакансия", "Обучение"] as const).map((group) => (
-                <div key={group} className="bg-[#1D3E5E]/70 border border-white/10 rounded-3xl p-5 shadow-xl space-y-4">
-                  <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide">
-                    {group}
-                  </h3>
-                  {FIELDS.filter((f) => f.group === group).map((f) => (
-                    <div key={f.key} className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <label className="text-xs font-semibold text-slate-200">{f.label}</label>
-                        <div className="flex gap-1.5">
-                          <button
-                            onClick={() => handleEnhance(f.key)}
-                            disabled={!!enhancing[f.key]}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-[#E7C768]/15 hover:bg-[#E7C768]/30 border border-[#E7C768]/30 text-[#E7C768] flex items-center gap-1 disabled:opacity-50"
-                          >
-                            {enhancing[f.key] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                            AI
-                          </button>
-                          <button
-                            onClick={() => handleClearField(f.key)}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300"
-                          >
-                            Очистить
-                          </button>
-                        </div>
+function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [view, setView] = useState<"kanban" | "table">("kanban");
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("admin_list_employers" as any);
+    if (error) setToast({ kind: "err", text: error.message });
+    else setRows((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) => !q ||
+      (r.name || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q) ||
+      (r.public_id || "").toLowerCase().includes(q));
+  }, [rows, search]);
+
+  const COLS = [
+    { key: "new", label: "Новые" },
+    { key: "trial", label: "В работе" },
+    { key: "active", label: "Активные" },
+    { key: "paying", label: "Платящие" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+        <h2 className="text-base font-bold text-[#E7C768]">Клиенты (работодатели) — {rows.length}</h2>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск..."
+              className="bg-[#17344F]/60 text-xs text-white pl-8 pr-3 py-2 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]" />
+          </div>
+          <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1">
+            <button onClick={() => setView("kanban")} className={`px-3 py-1 text-[11px] font-bold rounded-lg ${view === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300"}`}>Канбан</button>
+            <button onClick={() => setView("table")}  className={`px-3 py-1 text-[11px] font-bold rounded-lg ${view === "table"  ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300"}`}>Таблица</button>
+          </div>
+          <button onClick={load} className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Обновить
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-slate-400 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Загрузка...</div>
+      ) : view === "kanban" ? (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {COLS.map((col) => {
+            const items = filtered.filter((r) => classifyClient(r).key === col.key);
+            return (
+              <div key={col.key} className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-3 min-h-[300px]">
+                <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
+                  <span>{col.label}</span>
+                  <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{items.length}</span>
+                </div>
+                <div className="space-y-2 mt-2">
+                  {items.length === 0 ? <div className="text-center py-6 text-slate-500 text-[11px]">Пусто</div> : items.map((r) => (
+                    <div key={r.id} className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl">
+                      <div className="text-xs font-bold text-[#E7C768] truncate">{r.name || r.email || `Emp #${r.public_id}`}</div>
+                      <div className="text-[10px] text-slate-300 truncate">{r.email}</div>
+                      <div className="flex justify-between text-[10px] font-mono mt-1">
+                        <span className="text-slate-400">Вакансий: {r.projects_count}</span>
+                        <span className="text-[#E7C768] font-bold">{r.balance} RR</span>
                       </div>
-                      <textarea
-                        rows={Math.max(3, Math.min(8, ((editTpl[f.key] || "").match(/\n/g)?.length || 0) + 3))}
-                        className="w-full bg-[#17344F]/60 text-xs text-white p-3 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768] resize-y leading-relaxed"
-                        value={editTpl[f.key] || ""}
-                        onChange={(e) => setEditTpl((p) => ({ ...p, [f.key]: e.target.value }))}
-                        placeholder="Эталонное содержание этого поля для должности..."
-                      />
                     </div>
                   ))}
                 </div>
-              ))}
-            </>
-          )}
-        </section>
-      </main>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="p-3">ID</th><th className="p-3">Имя / Email</th><th className="p-3">Контакты</th>
+                  <th className="p-3">Вакансий</th><th className="p-3">Кандидатов</th>
+                  <th className="p-3">Баланс RR</th><th className="p-3">Статус</th><th className="p-3">Создан</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r) => {
+                  const cls = classifyClient(r);
+                  return (
+                    <tr key={r.id} className="hover:bg-white/5">
+                      <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
+                      <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 text-[10px]">{r.contact_phone || "—"} {r.contact_telegram && `· ${r.contact_telegram}`}</td>
+                      <td className="p-3 text-center">{r.projects_count}</td>
+                      <td className="p-3 text-center">{r.candidates_count}</td>
+                      <td className="p-3 text-center font-mono text-[#E7C768] font-bold">{r.balance}</td>
+                      <td className="p-3"><span className={`text-[10px] font-bold px-2 py-0.5 rounded bg-${cls.color}-500/20 text-${cls.color}-300`}>{cls.label}</span></td>
+                      <td className="p-3 text-[10px] text-slate-400">{r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CandidatesSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [stage, setStage] = useState<string>("all");
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.rpc("admin_list_candidates" as any);
+    setRows((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return rows.filter((r) =>
+      (stage === "all" || r.crm_stage === stage) &&
+      (!q || (r.email || "").toLowerCase().includes(q) || (r.role_name || "").toLowerCase().includes(q) || (r.company_name || "").toLowerCase().includes(q))
+    );
+  }, [rows, search, stage]);
+
+  const STAGES = ["all", "registration", "screening", "checklist", "situations", "professional", "product", "systems", "certified"];
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+        <h2 className="text-base font-bold text-[#E7C768]">Кандидаты — {rows.length}</h2>
+        <div className="flex items-center gap-2">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск..."
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10" />
+          <select value={stage} onChange={(e) => setStage(e.target.value)}
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10">
+            {STAGES.map((s) => <option key={s} value={s} className="bg-slate-900">{s === "all" ? "Все этапы" : s}</option>)}
+          </select>
+        </div>
+      </div>
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr><th className="p-3">ID</th><th className="p-3">Email</th><th className="p-3">Роль</th><th className="p-3">Компания</th><th className="p-3">Этап</th><th className="p-3">Балл</th><th className="p-3">Создан</th></tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r) => (
+                  <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r.id)}>
+                    <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
+                    <td className="p-3">{r.email || "—"}</td>
+                    <td className="p-3">{r.role_name || r.project_role || "—"}</td>
+                    <td className="p-3">{r.company_name || "—"}</td>
+                    <td className="p-3"><span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#E7C768]/15 text-[#E7C768]">{r.crm_stage}</span></td>
+                    <td className="p-3 font-mono text-[#E7C768]">{r.overall_score ? Math.round(Number(r.overall_score)) : "—"}</td>
+                    <td className="p-3 text-[10px] text-slate-400">{r.created_at ? new Date(r.created_at).toLocaleDateString() : ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <CandidateDetailsModal candidateId={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+function SimpleTable({ table, title }: { table: string; title: string }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      const { data } = await (supabase as any).from(table).select("*").limit(500).order("created_at", { ascending: false });
+      setRows(((data as any[]) || []));
+      setLoading(false);
+    })();
+  }, [table]);
+  const cols = rows[0] ? Object.keys(rows[0]).slice(0, 8) : [];
+  return (
+    <div className="space-y-3">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
+        <h2 className="text-base font-bold text-[#E7C768]">{title} — {rows.length}</h2>
+      </div>
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
+      ) : rows.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">Нет данных</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr>{cols.map((c) => <th key={c} className="p-2.5">{c}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {rows.map((r, i) => (
+                  <tr key={r.id || i} className="hover:bg-white/5">
+                    {cols.map((c) => {
+                      const v = (r as any)[c];
+                      const str = v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v).slice(0, 60) : String(v).slice(0, 80);
+                      return <td key={c} className="p-2.5 align-top">{str}</td>;
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MailingsSection() {
+  return (
+    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-8 text-center space-y-3">
+      <Mail className="w-10 h-10 mx-auto text-[#E7C768]" />
+      <h2 className="text-base font-bold text-[#E7C768]">Рассылки</h2>
+      <p className="text-xs text-slate-300 max-w-md mx-auto">
+        Конструктор массовых рассылок будет здесь. Отправка работает в кабинете работодателя (CRM → Рассылка). В следующих итерациях добавим централизованные шаблоны и кампании.
+      </p>
+    </div>
+  );
+}
+
+function RolesSection({ setToast }: { setToast: (t: any) => void }) {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("admin_list_users" as any);
+    if (error) setToast({ kind: "err", text: error.message });
+    else setUsers((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const toggle = async (uid: string, role: string, enabled: boolean) => {
+    const { error } = await supabase.rpc("admin_set_role" as any, { _user: uid, _role: role, _enabled: enabled });
+    if (error) setToast({ kind: "err", text: error.message });
+    else { setToast({ kind: "ok", text: "Роль обновлена" }); load(); }
+  };
+
+  const ROLES = ["admin", "moderator", "employer", "candidate"];
+  const filtered = users.filter((u) => !search || (u.email || "").toLowerCase().includes(search.toLowerCase()) || (u.display_name || "").toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
+        <h2 className="text-base font-bold text-[#E7C768]">Роли — {users.length} пользователей</h2>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск..."
+          className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10" />
+      </div>
+      {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr><th className="p-3">Пользователь</th>{ROLES.map((r) => <th key={r} className="p-3 text-center">{r}</th>)}</tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((u) => {
+                  const userRoles: string[] = u.roles || [];
+                  return (
+                    <tr key={u.user_id} className="hover:bg-white/5">
+                      <td className="p-3"><div className="font-bold">{u.display_name || "—"}</div><div className="text-[10px] text-slate-400">{u.email}</div></td>
+                      {ROLES.map((r) => {
+                        const has = userRoles.includes(r);
+                        return (
+                          <td key={r} className="p-3 text-center">
+                            <button onClick={() => toggle(u.user_id, r, !has)}
+                              className={`w-6 h-6 rounded border text-xs font-bold ${has ? "bg-emerald-500/30 border-emerald-400 text-emerald-100" : "bg-white/5 border-white/10 text-slate-500 hover:bg-white/10"}`}>
+                              {has ? "✓" : ""}
+                            </button>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [txs, setTxs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const [emp, t] = await Promise.all([
+      supabase.rpc("admin_list_employers" as any),
+      (supabase as any).from("transactions").select("*").order("created_at", { ascending: false }).limit(200),
+    ]);
+    if ((emp as any).error) setToast({ kind: "err", text: (emp as any).error.message });
+    setRows(((emp as any).data as any[]) || []);
+    setTxs(((t as any).data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const adjust = async (employerId: string, delta: number) => {
+    const note = window.prompt(`Комментарий к ${delta > 0 ? "начислению" : "списанию"} ${Math.abs(delta)} RR:`, "Корректировка администратором");
+    if (note === null) return;
+    const { error } = await supabase.rpc("admin_wallet_adjust" as any, { _employer: employerId, _delta: delta, _note: note });
+    if (error) setToast({ kind: "err", text: error.message });
+    else { setToast({ kind: "ok", text: "Баланс обновлён" }); load(); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+        <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы</h2>
+      </div>
+      {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
+        <>
+          <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                  <tr><th className="p-3">ID</th><th className="p-3">Клиент</th><th className="p-3">Баланс RR</th><th className="p-3">Корректировка</th></tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {rows.map((r) => (
+                    <tr key={r.id} className="hover:bg-white/5">
+                      <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
+                      <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 font-mono text-[#E7C768] font-bold">{r.balance}</td>
+                      <td className="p-3 flex items-center gap-1">
+                        {[100, 500, 1000].map((d) => (
+                          <React.Fragment key={d}>
+                            <button onClick={() => adjust(r.id, d)} className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-[10px] font-bold flex items-center gap-0.5"><Plus className="w-3 h-3" />{d}</button>
+                            <button onClick={() => adjust(r.id, -d)} className="px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 text-[10px] font-bold flex items-center gap-0.5"><Minus className="w-3 h-3" />{d}</button>
+                          </React.Fragment>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+            <h3 className="text-sm font-bold text-[#E7C768] mb-3">Последние транзакции</h3>
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full text-left text-[11px]">
+                <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
+                  <tr><th className="p-2.5">Дата</th><th className="p-2.5">Тип</th><th className="p-2.5">Сумма</th><th className="p-2.5">Кошелёк</th><th className="p-2.5">Заметка</th></tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {txs.map((t) => (
+                    <tr key={t.id}>
+                      <td className="p-2.5 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
+                      <td className="p-2.5">{t.type}</td>
+                      <td className="p-2.5 font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
+                      <td className="p-2.5 font-mono text-[10px] text-slate-400">{(t.wallet_id || "").slice(0, 8)}</td>
+                      <td className="p-2.5">{t.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function AISection() {
+  const fns = [
+    "ai-chat","ai-check-stage-answers","ai-check-text-answer","ai-company-analyze",
+    "ai-distribute-text","ai-enhance","ai-evaluate","ai-generate-interview-checklist",
+    "ai-generate-interview-resume-criteria","ai-generate-interview-situations",
+    "ai-generate-onboarding","ai-generate-stage-material","ai-generate-stage-test",
+    "ai-generate-training-material","ai-generate-training-quiz","ai-ingest-document",
+    "ai-interview-grade-checklist","ai-interview-grade-situations","ai-interview-screen-resume",
+    "ai-list-interview-checklist","ai-list-stage-questions","ai-restart",
+  ];
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+        <h2 className="text-base font-bold text-[#E7C768]">ИИ — функции и настройки</h2>
+        <p className="text-xs text-slate-300 mt-1">Список развернутых edge-функций. Редактирование промптов будет добавлено в следующих итерациях (после выноса промптов в БД).</p>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+        {fns.map((f) => (
+          <a key={f} href={`https://supabase.com/dashboard/project/rjhtauzookkvlipvqpvr/functions/${f}/logs`} target="_blank" rel="noreferrer"
+            className="bg-[#1D3E5E]/60 hover:bg-[#1D3E5E]/90 border border-white/10 hover:border-[#E7C768]/50 rounded-xl p-3 text-xs font-mono text-slate-200 transition">
+            {f}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
     </div>
   );
 }
