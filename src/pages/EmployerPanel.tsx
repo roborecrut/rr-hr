@@ -2118,6 +2118,18 @@ export default function EmployerPanel() {
         company_name: ep.companyName,
         role_name: ep.roleName,
         fields,
+        templates: {
+          vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
+          tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
+          schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
+          motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
+          motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
+          payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
+          onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
+          team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
+          system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
+        },
+        file_context: editVacancyRawText || undefined,
         company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
