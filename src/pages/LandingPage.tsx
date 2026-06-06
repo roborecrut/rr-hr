@@ -269,16 +269,50 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="bg-[#17344F] text-white py-12 px-4 md:px-8 border-t-2 border-[#E7C768]">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
-            <div className="text-left font-bold text-sm text-[#E7C768]">
-              © 2026 Робот Рекрутер RR
-              <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-left">
+          {/* Бренд */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+              <div className="font-bold text-sm text-[#E7C768]">
+                © 2026 Робот Рекрутер RR
+                <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>
+              </div>
             </div>
           </div>
-          <div className="text-xs text-slate-300">
-            Безоговорочная роботизация подбора персонала
+
+          {/* Реквизиты */}
+          <div className="space-y-2 text-[11px] text-slate-300 leading-relaxed md:col-span-2">
+            <h3 className="text-[10px] uppercase tracking-widest text-[#E7C768] font-mono font-black">Реквизиты</h3>
+            <p className="font-bold text-white">ООО «РентРоп»</p>
+            <p>Юридический адрес: 115191, г. Москва, пер. Духовской, д. 17, стр. 15, помещ. 11Н/2</p>
+            <p>ОГРН: 1217700234157 · ИНН: 7726477438</p>
+            <p>
+              E-mail: <a href="mailto:info@arenda-ropa.com" className="text-[#E7C768] hover:underline">info@arenda-ropa.com</a> ·{" "}
+              <a href="/offer" className="text-[#E7C768] hover:underline">Публичная оферта</a>
+            </p>
+            <p className="text-[10px] text-slate-400 pt-1">Принимаем к оплате: МИР · Visa · Mastercard · через Робокассу</p>
+          </div>
+
+          {/* Продукт компании РентРОП */}
+          <div className="space-y-3">
+            <h3 className="text-[10px] uppercase tracking-widest text-[#E7C768] font-mono font-black">Продукт компании</h3>
+            <a
+              href="https://rent-rop.com/?utm_source=hr-rr&utm_medium=footer&utm_campaign=hr-rr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs px-5 py-3 rounded-xl shadow hover:brightness-110 transition"
+            >
+              Продукт компании РентРОП
+            </a>
+            <a
+              href="https://rent-rop.com/?utm_source=hr-rr&utm_medium=footer&utm_campaign=hr-rr"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block text-[11px] text-slate-300 hover:text-[#E7C768] underline underline-offset-2 break-all"
+            >
+              rent-rop.com
+            </a>
           </div>
         </div>
       </footer>
