@@ -1669,74 +1669,41 @@ export default function CandidateFlow() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* 1. Google + Telegram metadata details */}
+                {/* 1. Контакты + соцсети */}
                 <div className="bg-black/25 p-5 rounded-2xl border border-white/5 space-y-4 text-left">
-                  <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">🌐 Регистрация & Интеграции</h3>
-                  
-                  {/* Google Profile Data */}
-                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Google Auth</div>
-                      <span className="text-[10px] text-emerald-400 font-semibold">● Активен</span>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <img 
-                        src={candidate?.googleAvatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${candidate?.id || 'alex'}`} 
-                        alt="Google avatar" 
-                        className="w-11 h-11 rounded-xl border border-white/10 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="text-xs min-w-0">
-                        <div className="text-slate-400 text-[9px] uppercase tracking-wide">ФИО в Google:</div>
-                        <strong className="text-white font-bold block truncate">{candidate?.googleName || candidate?.name || "Алексей Иванов"}</strong>
-                        <div className="text-slate-400 text-[9px] uppercase tracking-wide mt-2">Почта Google:</div>
-                        <span className="text-[#E7C768] font-mono text-[11px] block truncate">{candidate?.googleEmail || candidate?.email || "ivanov@example.com"}</span>
-                      </div>
+                  <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">📞 Контактные данные</h3>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={(candidate as any)?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${candidate?.id || 'me'}`}
+                      alt="avatar"
+                      className="w-14 h-14 rounded-xl border border-white/10 object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="text-xs min-w-0">
+                      <div className="text-slate-400 text-[9px] uppercase">Email:</div>
+                      <div className="text-[#E7C768] font-mono text-[11px] truncate">{candidate?.email || "—"}</div>
+                      <div className="text-slate-400 text-[9px] uppercase mt-1.5">Телефон:</div>
+                      <div className="text-white font-bold">{(candidate as any)?.phone || "—"}</div>
                     </div>
                   </div>
-
-                  {/* Telegram Profile Data */}
-                  <div className="p-3.5 rounded-xl bg-white/5 border border-white/5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider">Telegram Bot</div>
-                      <span className={candidate?.telegramId ? "text-emerald-400 text-[10px] font-semibold" : "text-yellow-400 text-[10px] font-semibold"}>
-                        {candidate?.telegramId ? "● Привязан" : "○ Не привязан"}
-                      </span>
-                    </div>
-                    <div className="flex items-start gap-2.5">
-                      <img 
-                        src={candidate?.telegramAvatar || `https://api.dicebear.com/7.x/identicon/svg?seed=tg_${candidate?.id || 'demo'}`} 
-                        alt="Telegram avatar" 
-                        className="w-11 h-11 rounded-xl border border-white/10 shrink-0"
-                        referrerPolicy="no-referrer"
-                      />
-                      <div className="text-xs min-w-0 space-y-1">
-                        <div>
-                          <div className="text-slate-400 text-[9px] uppercase tracking-wide">ФИО в Telegram:</div>
-                          <strong className="text-white font-bold block truncate">
-                            {candidate?.telegramFirstName || "Алексей"} {candidate?.telegramLastName || "Иванов"}
-                          </strong>
-                        </div>
-                        <div>
-                          <div className="text-slate-400 text-[9px] uppercase tracking-wide">ID Телеграм:</div>
-                          <span className="text-slate-300 font-mono text-[11px] block">{candidate?.telegramId || "123456789 (тест)"}</span>
-                        </div>
-                        <div>
-                          <div className="text-slate-400 text-[9px] uppercase tracking-wide">Юзернейм:</div>
-                          {candidate?.telegramUsername ? (
-                            <a 
-                              href={`https://t.me/${candidate.telegramUsername}`} 
-                              target="_blank" 
-                              className="text-[#E7C768] font-extrabold hover:text-[#f3da82] underline flex items-center gap-1 text-[11px] mt-0.5" 
-                              rel="noreferrer"
-                            >
-                              @{candidate.telegramUsername} <ExternalLink className="w-3 h-3 shrink-0" />
-                            </a>
-                          ) : (
-                            <span className="text-slate-450 italic text-[10px]">не привязан</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                  {(candidate as any)?.resumeUrl && (
+                    <a href={(candidate as any).resumeUrl} target="_blank" rel="noreferrer" className="text-[#E7C768] text-xs underline flex items-center gap-1">
+                      📄 Ссылка на резюме <ExternalLink className="w-3 h-3"/>
+                    </a>
+                  )}
+                  <div className="pt-2 border-t border-white/5 space-y-1.5">
+                    <div className="text-[10px] uppercase text-slate-400 font-bold">Соцсети</div>
+                    {[
+                      ["social_telegram","Telegram"],["social_whatsapp","WhatsApp"],["social_instagram","Instagram"],
+                      ["social_vk","ВКонтакте"],["social_max","MAX"],["social_setka","Сетка"],["social_github","GitHub"],
+                    ].map(([k,label]) => {
+                      const v = (candidate as any)?.[k.replace('social_','social')];
+                      return v ? (
+                        <a key={k} href={v} target="_blank" rel="noreferrer" className="block text-xs text-slate-200 hover:text-[#E7C768] truncate">{label}: <span className="text-[#E7C768] underline">{v}</span></a>
+                      ) : (
+                        <div key={k} className="text-[10px] text-slate-500">{label}: <span className="italic">не указано</span></div>
+                      );
+                    })}
                   </div>
                 </div>
 
