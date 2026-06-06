@@ -656,6 +656,7 @@ export default function CandidateFlow() {
     try {
       const sess = getCandidateSession();
       const patch: any = {
+        full_name: profName.trim(),
         phone: profPhone,
         resume_url: profResumeUrl,
         avatar_url: profAvatarUrl,
@@ -701,7 +702,7 @@ export default function CandidateFlow() {
         await (supabase as any).from("candidates").update(patch).eq("id", candidate.id);
       }
       const nextEmail = wantEmailChange ? profEmail.trim().toLowerCase() : candidate.email;
-      setCandidate({ ...candidate, ...(patch as any), email: nextEmail });
+      setCandidate({ ...candidate, ...(patch as any), name: profName.trim() || candidate.name, email: nextEmail });
       setProfCurrentPw(""); setProfNewPw(""); setProfNewPw2("");
       setEditingProfile(false);
       setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
@@ -1794,6 +1795,17 @@ export default function CandidateFlow() {
             {editingProfile ? (
               <form onSubmit={handleSaveProfile} className="space-y-4 max-w-xl bg-black/25 p-6 rounded-2xl border border-white/5 text-left">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-bold text-slate-300">ФИО:</label>
+                    <input
+                      type="text"
+                      autoComplete="name"
+                      className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      value={profName}
+                      onChange={(e) => setProfName(e.target.value)}
+                      placeholder="Иванов Иван Иванович"
+                    />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-300">Email (Почта):</label>
                     <input
