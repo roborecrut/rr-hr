@@ -1369,6 +1369,20 @@ export default function EmployerPanel() {
         motivation_text: ep.motivationText ?? null,
         custom_wiki: ep.customWiki ?? null,
         logo_url: ep.logoUrl ?? null,
+        // 15 canonical vacancy fields
+        vacancy_text: ep.vacancyText ?? null,
+        tasks_activity_text: ep.tasksActivityText ?? null,
+        schedule_text: ep.scheduleText ?? null,
+        motivation_text_detail: ep.motivationTextDetail ?? null,
+        payouts_text: ep.payoutsText ?? null,
+        onboarding_text: ep.onboardingText ?? null,
+        team_text: ep.teamText ?? null,
+        system_text: ep.systemText ?? null,
+        training_professional_text: ep.trainingProfessionalText ?? null,
+        training_product_text: ep.trainingProductText ?? null,
+        training_systems_text: ep.trainingSystemsText ?? null,
+        training_wiki_text: ep.trainingWikiText ?? null,
+        training_regulations_text: ep.trainingRegulationsText ?? null,
       };
       const upd = await supabase.from("projects").update(patch).eq("id", ep.id);
       if (upd.error) throw new Error(upd.error.message || "Не удалось сохранить изменения вакансии.");
