@@ -4,12 +4,13 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 
-type Entity = "company" | "vacancy" | "training";
+type Entity = "company" | "vacancy" | "training" | "resume";
 
 const PROMPTS: Record<Entity, string> = {
   company: "Сформируй структурированное описание компании в Markdown: миссия, продукты/услуги, команда, условия, мотивация, культура. До 10 000 символов.",
   vacancy: "Сформируй структурированное описание вакансии в Markdown: роль, обязанности, требования, условия, мотивация и выплаты, график, обучение. До 10 000 символов.",
   training: "Сформируй учебный материал в Markdown с заголовками, списками, примерами и итоговым чек-листом. До 10 000 символов.",
+  resume: "Извлеки полный текст резюме кандидата и оформи его в чистом Markdown: ФИО, контакты, цель, опыт работы (по местам), навыки, образование, достижения, языки. Не добавляй ничего от себя. До 10 000 символов.",
 };
 
 Deno.serve(async (req) => {
@@ -25,7 +26,7 @@ Deno.serve(async (req) => {
   if (!body || !body.entity || (!body.file_path && !body.file_url)) {
     return jsonResponse({ error: "bad_body" }, 400);
   }
-  if (!["company","vacancy","training"].includes(body.entity)) {
+  if (!["company","vacancy","training","resume"].includes(body.entity)) {
     return jsonResponse({ error: "bad_entity" }, 400);
   }
 
