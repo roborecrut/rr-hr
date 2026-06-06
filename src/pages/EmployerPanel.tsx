@@ -718,11 +718,16 @@ export default function EmployerPanel() {
     setNewCompanyStatsLabelFounded(lbl.founded || "");
     setNewCompanyStatsLabelClients(lbl.employees || "");
     setNewCompanyStatsLabelDialogs(lbl.turnover || "");
+    // Open editor immediately — restart fires in background with overlay UI
+    setShowAddCompany(true);
     try {
       const { aiRestart } = await import("@/lib/aiClient");
-      await aiRestart(employerId)
+      aiWaitRun({
+        title: "Подготовка ИИ-ассистента компании",
+        task: () => aiRestart(employerId),
+        fireAndForget: true,
+      });
     } catch {}
-    setShowAddCompany(true);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
 
@@ -1467,11 +1472,16 @@ export default function EmployerPanel() {
       setSetupTrainingWikiText("");
       setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
+      // Open vacancy editor IMMEDIATELY — restart happens in background
+      setShowAddNewVacancy(true);
       try {
         const { aiRestart } = await import("@/lib/aiClient");
-        await aiRestart(employerId)
+        aiWaitRun({
+          title: "Подготовка ИИ-ассистента вакансии",
+          task: () => aiRestart(employerId),
+          fireAndForget: true,
+        });
       } catch {}
-      setShowAddNewVacancy(true);
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
