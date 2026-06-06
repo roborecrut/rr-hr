@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import { useAIWait } from "../components/AIWaitProvider";
+import { useAIReady } from "../lib/aiReady";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import {
