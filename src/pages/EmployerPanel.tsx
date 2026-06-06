@@ -2675,6 +2675,7 @@ export default function EmployerPanel() {
                       companyName={setupCompanyName}
                       hideKeys={["role_name"]}
                       aiLoadingKey={wizardAiKey}
+                      roleTemplates={roleTplToFields(roleTemplates)}
                       values={{
                         vacancy_text: setupVacancyText,
                         tasks_activity_text: setupTasksActivityText,
@@ -2773,19 +2774,41 @@ export default function EmployerPanel() {
                       }}
                     />
 
-                    <button
-                      type="submit"
-                      disabled={isGenerating}
-                      className="cursor-pointer w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
-                        </>
-                      ) : (
-                        "Сохранить и синхронизировать"
-                      )}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={isGenerating}
+                        className="cursor-pointer flex-1 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
+                          </>
+                        ) : (
+                          "Сохранить и синхронизировать"
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!window.confirm("Отменить создание вакансии? Черновик будет удалён.")) return;
+                          // Force-delete the draft (not just empty ones).
+                          try {
+                            if (draftProjectId) {
+                              await supabase.from("projects").delete().eq("id", draftProjectId);
+                            }
+                          } catch (e) { console.warn("force-delete draft failed", e); }
+                          setShowAddNewVacancy(false);
+                          setDraftProjectId(null);
+                          setDraftProjectPublicId(null);
+                          addAuditEvent("info", "Создание отменено", "Черновик вакансии удалён.");
+                          fetchData();
+                        }}
+                        className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        <Trash2 className="w-4 h-4" /> Отмена и удалить черновик
+                      </button>
+                    </div>
                   </form>
                 </div>
               )}
