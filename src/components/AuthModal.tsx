@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import Mascot from "./Mascot";
 import { X, Chrome, Gift } from "lucide-react";
+import OfferConsent from "./OfferConsent";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   const [errorText, setErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [offerOk, setOfferOk] = useState(true);
 
   if (!isOpen) return null;
 
@@ -43,13 +45,18 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
   };
 
   const handleGoogle = async () => {
+    if (!offerOk) {
+      setErrorText("Для регистрации необходимо согласие с публичной офертой.");
+      return;
+    }
     setErrorText(""); setIsLoading(true);
     try {
+      try { localStorage.setItem("rr_offer_accepted", "1"); } catch {}
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}${intent === "employer" ? "/employer/profile" : "/main"}`,
-          queryParams: { intent },
+          queryParams: { intent, offer_accepted: "1" },
         },
       });
       if (error) throw error;
@@ -104,9 +111,9 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
           {/* Google Login Button */}
           <button
             type="button"
-            disabled={isLoading}
+            disabled={isLoading || !offerOk}
             onClick={handleGoogle}
-            className="w-full bg-gradient-to-r from-amber-400/10 to-[#E7C768]/10 hover:from-amber-400/20 hover:to-[#E7C768]/20 border-2 border-[#E7C768]/40 disabled:opacity-50 text-white font-black py-5 px-5 rounded-2xl flex items-center justify-between gap-3 transition-all duration-150 shadow-xl transform active:scale-98 cursor-pointer group"
+            className="w-full bg-gradient-to-r from-amber-400/10 to-[#E7C768]/10 hover:from-amber-400/20 hover:to-[#E7C768]/20 border-2 border-[#E7C768]/40 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black py-5 px-5 rounded-2xl flex items-center justify-between gap-3 transition-all duration-150 shadow-xl transform active:scale-98 cursor-pointer group"
           >
             <div className="flex items-center gap-3">
               <div className="bg-[#E7C768]/20 p-2 rounded-xl">
@@ -121,6 +128,8 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
               +1000 RR
             </span>
           </button>
+
+          <OfferConsent checked={offerOk} onChange={setOfferOk} context="register" />
         </div>
 
         {/* Error / Success Banners */}
