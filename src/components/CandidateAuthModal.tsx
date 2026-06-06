@@ -159,6 +159,19 @@ export default function CandidateAuthModal({
                   </div>
                 </label>
               )}
+              {tab === "signup" && (
+                <label className="block">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Телефон</span>
+                  <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">
+                    <Phone className="w-4 h-4 text-slate-400" />
+                    <input
+                      type="tel" inputMode="tel" autoComplete="tel" value={phone}
+                      onChange={e => setPhone(e.target.value)} placeholder="+7 (900) 123-45-67"
+                      className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
+                    />
+                  </div>
+                </label>
+              )}
             </div>
 
             {err && (
