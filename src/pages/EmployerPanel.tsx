@@ -449,7 +449,7 @@ export default function EmployerPanel() {
   const [newCompanyStaff, setNewCompanyStaff] = useState("");
   const [newCompanyDesc, setNewCompanyDesc] = useState("");
   const [newCompanySite, setNewCompanySite] = useState("");
-  const DEFAULT_LOGO_URL = "https://i.ibb.co/WWRbtPq0/RR-Logo.png";
+  const DEFAULT_LOGO_URL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png";
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
@@ -2050,7 +2050,7 @@ export default function EmployerPanel() {
         <div className="flex items-center justify-between gap-4 w-full">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
             <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
+              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
               alt="RR Робот Рекрутер" 
               className="w-10 h-10 object-contain drop-shadow" 
               referrerPolicy="no-referrer"
@@ -4206,7 +4206,7 @@ export default function EmployerPanel() {
         <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <img 
-              src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" 
+              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
               alt="RR Logo" 
               className="w-8 h-8 object-contain" 
               referrerPolicy="no-referrer"

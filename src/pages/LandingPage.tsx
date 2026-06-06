@@ -73,7 +73,7 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full max-w-7xl mx-auto">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+            <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col text-left">
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">Робот Рекрутер</span>
               <span className="text-[10px] font-mono tracking-wider uppercase text-slate-300">Автоматизация найма</span>
@@ -273,7 +273,7 @@ export default function LandingPage() {
           {/* Бренд */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <img src="https://i.ibb.co/WWRbtPq0/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+              <img src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
               <div className="font-bold text-sm text-[#E7C768]">
                 © 2026 Робот Рекрутер RR
                 <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>

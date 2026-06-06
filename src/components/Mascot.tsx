@@ -15,11 +15,11 @@ interface MascotProps {
 }
 
 const MASCOT_URLS: Record<MascotState, string> = {
-  chat: "https://i.ibb.co/k68Ls3Fn/RR6.png",
-  narrator: "https://i.ibb.co/kZf1Vt5/RR5.png",
-  serious: "https://i.ibb.co/B5hb87Qz/RR4.png",
-  greeting: "https://i.ibb.co/1GqTNLY8/RR3.png",
-  recruitment: "https://i.ibb.co/FkP8MgVf/RR2.png",
+  chat: "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR6.png",
+  narrator: "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR5.png",
+  serious: "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR4.png",
+  greeting: "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR3.png",
+  recruitment: "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR2.png",
 };
 
 const SIZE_CLASSES = {
