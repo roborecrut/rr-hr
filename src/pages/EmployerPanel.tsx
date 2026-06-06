@@ -1063,6 +1063,7 @@ export default function EmployerPanel() {
         setCandidates(
           (candRows || []).map((c: any) => ({
             id: `candidate${c.public_id}`,
+            uuid: c.id,
             publicId: c.public_id,
             name: c.resume_name || `Кандидат #${c.public_id}`,
             email: c.email || "",
