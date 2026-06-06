@@ -55,6 +55,7 @@ export default function SessionBootstrap() {
           if (here === target) return true;
           if (
             here === "/" || here === "/main" || here === "/auth" ||
+            here === "/setup" ||
             here.startsWith("/employer")
           ) {
             window.history.replaceState({}, "", target);
@@ -83,6 +84,7 @@ export default function SessionBootstrap() {
               here === "/" ||
               here === "/main" ||
               here === "/auth" ||
+              here === "/setup" ||
               here.startsWith("/employer")
             ) {
               window.history.replaceState({}, "", target);
