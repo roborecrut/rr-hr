@@ -29,13 +29,23 @@ export function isEmployerPublicIdCandidate(publicId: string | null | undefined)
 }
 
 export function parseEmployerPublicIdFromPath(pathname: string): string | null {
-  // Legacy concatenated URL only: /employer100003/profile.
-  // Must NOT match /employer/profile, otherwise it becomes fake id `loyer`.
-  const legacyMatch = pathname.match(/^\/employer([A-Za-z0-9_-]+)(?:\/|$)/);
-  if (isEmployerPublicIdCandidate(legacyMatch?.[1])) return legacyMatch![1];
+  const firstSegment = (pathname || "").split("/").filter(Boolean)[0] || "";
+  const lower = firstSegment.toLowerCase();
 
-  const empMatch = pathname.match(/^\/emp([A-Za-z0-9_-]+)(?:\/|$)/);
-  if (isEmployerPublicIdCandidate(empMatch?.[1])) return empMatch![1];
+  // Canonical URL: /emp100003/profile. Check the full first segment instead
+  // of a loose regexp so `/employer/profile` can never become id `loyer`.
+  if (lower.startsWith("emp") && !lower.startsWith("employer")) {
+    const pid = firstSegment.slice(3);
+    if (isEmployerPublicIdCandidate(pid)) return pid;
+  }
+
+  // Legacy concatenated URL only: /employer100003/profile.
+  // Plain `/employer/profile` is a route prefix, not an employer id.
+  if (lower.startsWith("employer") && lower.length > "employer".length) {
+    const pid = firstSegment.slice("employer".length);
+    if (isEmployerPublicIdCandidate(pid)) return pid;
+  }
+
   return null;
 }
 
