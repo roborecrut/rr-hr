@@ -756,6 +756,59 @@ export default function EmployerPanel() {
   const [editRoleTemplates, setEditRoleTemplates] = useState<Record<string, string>>({});
   const [editSpecialtySearch, setEditSpecialtySearch] = useState("");
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // Load per-role templates for the currently edited project so the editor's
+  // "Шаблон должности" button uses values specific to the chosen role.
+  useEffect(() => {
+    const role = editingProject?.roleName?.trim();
+    if (!role) { setEditRoleTemplates({}); return; }
+    let cancelled = false;
+    (async () => {
+      const tpl = await getRoleTemplates(role);
+      if (!cancelled) setEditRoleTemplates((tpl as Record<string, string>) || {});
+    })();
+    return () => { cancelled = true; };
+  }, [editingProject?.roleName]);
+
+  // Bulk-overwrite all 15 fields of the edited project from the current role's
+  // template (used by an explicit button next to the role selector).
+  const applyRoleTemplateToEditing = async () => {
+    if (!editingProject?.roleName?.trim()) return;
+    const tpl = await getRoleTemplates(editingProject.roleName);
+    setEditRoleTemplates((tpl as Record<string, string>) || {});
+    const mapped = roleTplToFields(tpl as any);
+    const valueFor = (key: VacancyFieldKey) =>
+      (mapped[key] && mapped[key]!.trim()) || VACANCY_FIELDS_BY_KEY[key].example;
+    if (!window.confirm(`Заменить все 15 полей шаблоном для должности «${editingProject.roleName}»?`)) return;
+    const patch: Partial<Record<VacancyFieldKey, string>> = {};
+    (Object.keys(CAMEL_BY_KEY) as VacancyFieldKey[]).forEach((k) => {
+      if (k === "role_name") return;
+      patch[k] = valueFor(k);
+    });
+    setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) } as any);
+  };
+
+  // Permanently delete the currently edited project from the database.
+  const handleDeleteEditedProject = async () => {
+    if (!editingProject) return;
+    if (!window.confirm(
+      `Удалить вакансию «${editingProject.roleName}» полностью? Это действие нельзя отменить.`,
+    )) return;
+    setIsDeletingProject(true);
+    try {
+      const { error } = await supabase.from("projects").delete().eq("id", editingProject.id);
+      if (error) throw error;
+      addAuditEvent("warning", "Вакансия удалена", `«${editingProject.roleName}» удалена из базы.`);
+      setProjects((prev) => prev.filter((p) => p.id !== editingProject.id));
+      setEditingProject(null);
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      alert("Не удалось удалить вакансию: " + (err?.message || err));
+    } finally {
+      setIsDeletingProject(false);
+    }
+  };
   
   // Custom Interview and Training builder states
   const [activeEditTab, setActiveEditTab] = useState<"landing" | "training">("landing");
