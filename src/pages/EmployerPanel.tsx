@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import { useAIWait } from "../components/AIWaitProvider";
+import { useAIReady } from "../lib/aiReady";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import {
@@ -166,6 +167,7 @@ export default function EmployerPanel() {
   const { path, navigate } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { run: aiWaitRun } = useAIWait();
+  const aiReady = useAIReady();
 
   // Derive active tab from subroute PATH
   let activeTab: "crm" | "vacancies" | "companies" | "tariff" | "profile" | "events" | "interviews" | "training" = "crm";
@@ -2630,7 +2632,7 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
+                      {aiReady && (<button
                         type="button"
                         onClick={handleBeautifyNewVacancyWithAI}
                         disabled={isGenerating || isParsingFile}
@@ -2638,7 +2640,7 @@ export default function EmployerPanel() {
                       >
                         <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
                         {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                      </button>
+                      </button>)}
                       <button
                         type="button"
                         onClick={cancelAddVacancyWizard}
@@ -3072,7 +3074,7 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Интерактивный ИИ-профиль организации</h4>
                     </div>
                     
-                    <button
+                    {aiReady && (<button
                       type="button"
                       onClick={handleEnhanceAllFields}
                       disabled={isEnhancingAll || isParsingFile}
@@ -3080,7 +3082,7 @@ export default function EmployerPanel() {
                     >
                       <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
                       {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                    </button>
+                    </button>)}
                   </div>
 
                   {/* Drag-Drop / click base file uploader with ProTalk integration */}
@@ -3151,6 +3153,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("name", newCompanyName)}
                             disabled={enhancingFields["name"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3170,6 +3173,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("industry", newCompanyIndustry)}
                             disabled={enhancingFields["industry"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3190,6 +3194,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("staff", newCompanyStaff)}
                             disabled={enhancingFields["staff"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3211,6 +3216,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("sites", newCompanySite)}
                             disabled={enhancingFields["sites"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3230,6 +3236,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("logoUrl", newCompanyLogo)}
                             disabled={enhancingFields["logoUrl"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3256,7 +3263,8 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
+                          style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
                           disabled={enhancingFields["descriptionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
                           title="Оформить описание ИИ"
@@ -3276,7 +3284,8 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
+                          style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
                           disabled={enhancingFields["productsText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
                           title="Сформулировать продукты"
@@ -3296,7 +3305,8 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("missionText", newCompanyMissionText)}
+                          style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("missionText", newCompanyMissionText)}
                           disabled={enhancingFields["missionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
                           title="Дополнить слоган ИИ"
@@ -3323,7 +3333,8 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              onClick={() => handleEnhanceSingleField("statsValClients", newCompanyStatsValClients)}
+                              style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("statsValClients", newCompanyStatsValClients)}
                               disabled={enhancingFields["statsValClients"]}
                               className="absolute right-2"
                             >
@@ -3352,7 +3363,8 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              onClick={() => handleEnhanceSingleField("statsValDialogs", newCompanyStatsValDialogs)}
+                              style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("statsValDialogs", newCompanyStatsValDialogs)}
                               disabled={enhancingFields["statsValDialogs"]}
                               className="absolute right-2"
                             >
@@ -3383,7 +3395,8 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              onClick={() => handleEnhanceSingleField("statsValFounded", newCompanyStatsValFounded)}
+                              style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("statsValFounded", newCompanyStatsValFounded)}
                               disabled={enhancingFields["statsValFounded"]}
                               className="absolute right-2"
                             >
@@ -3415,6 +3428,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("salaryTerms", newCompanySalaryTerms)}
                             disabled={enhancingFields["salaryTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3434,6 +3448,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
+                            style={{ display: aiReady ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("scheduleTerms", newCompanyScheduleTerms)}
                             disabled={enhancingFields["scheduleTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3454,7 +3469,8 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          onClick={() => handleEnhanceSingleField("customWiki", newCompanyCustomWiki)}
+                          style={{ display: aiReady ? undefined : "none" }}
+                            onClick={() => handleEnhanceSingleField("customWiki", newCompanyCustomWiki)}
                           disabled={enhancingFields["customWiki"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
                           title="Структурировать Wiki ИИ"

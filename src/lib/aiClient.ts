@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { beginAIRestart, endAIRestart } from "./aiReady";
 
 // Lightweight wrapper around supabase.functions.invoke for our AI edge functions.
 // Throws on transport/server errors. Returns the parsed JSON body.
@@ -86,7 +87,12 @@ export async function aiGenerateOnboarding(opts: {
 }
 
 export async function aiRestart(employer_public_id?: string): Promise<void> {
-  await invoke("ai-restart", { employer_public_id });
+  beginAIRestart();
+  try {
+    await invoke("ai-restart", { employer_public_id });
+  } finally {
+    endAIRestart();
+  }
 }
 
 export async function aiCompanyAnalyze(opts: {
