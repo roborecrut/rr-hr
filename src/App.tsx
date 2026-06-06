@@ -17,12 +17,14 @@ import { PaymentSuccessPage, PaymentFailPage } from "./pages/PaymentResultPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
 import SessionBootstrap from "./components/SessionBootstrap";
 import { AIWaitProvider } from "./components/AIWaitProvider";
+import { AIRestartGate } from "./components/AIRestartGate";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AIWaitProvider>
         <SessionBootstrap />
+        <AIRestartGate />
         <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
