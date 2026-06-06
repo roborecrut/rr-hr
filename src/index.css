@@ -4,6 +4,22 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --color-gold-text: #E7C768;
+  /* ===== Brand palette (single source of truth for ALL editors/forms/tests) ===== */
+  --color-brand-blue-1: #17344F;
+  --color-brand-blue-2: #265582;
+  --color-brand-blue: #1E4468;
+  --color-brand-gold-1: #F4EE8E;
+  --color-brand-gold-2: #D99E41;
+  --color-brand-gold: #E7C768;
+  --color-brand-ink: #1A1A1A;
+  --color-brand-surface: #EFEFEF;
+  --color-brand-border: #DBDBDB;
+  --color-brand-border-focus: #E7C768;
+  --color-brand-border-error: #FF4C4C;
+  --color-brand-btn-1: #FF1A1A;
+  --color-brand-btn-2: #E54C00;
+  --color-brand-btn-off: #E0E3EB;
+  --color-brand-btn-off-text: #9DA3AF;
 }
 
 body {
@@ -19,6 +35,94 @@ body {
 
 .gold-gradient {
   background: linear-gradient(135deg, #F4EE8E 0%, #D99E41 100%);
+}
+
+/* ============================================================
+   BRAND EDITOR STYLE — use these classes everywhere we render
+   editors, forms, tests, wizards, modals. Replaces dark-gray
+   surfaces. Light cards on light-gray page background.
+   ============================================================ */
+.editor-shell {
+  background: #FFFFFF;
+  border: 1px solid #DBDBDB;
+  border-radius: 1.25rem;
+  color: #1A1A1A;
+}
+.editor-section {
+  background: #FFFFFF;
+  border: 1px solid #DBDBDB;
+  border-radius: 1rem;
+  color: #1A1A1A;
+}
+.editor-label {
+  color: #1E4468;
+  font-weight: 600;
+}
+.editor-hint {
+  color: #6B7280;
+}
+.editor-field {
+  background: #FFFFFF;
+  border: 1px solid #DBDBDB;
+  color: #1A1A1A;
+  border-radius: 0.75rem;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.editor-field::placeholder { color: #9DA3AF; }
+.editor-field:focus,
+.editor-field:focus-visible {
+  outline: none;
+  border-color: #E7C768;
+  box-shadow: 0 0 0 3px rgba(231, 199, 104, 0.25);
+}
+.editor-field[aria-invalid="true"],
+.editor-field.is-error {
+  border-color: #FF4C4C;
+  box-shadow: 0 0 0 3px rgba(255, 76, 76, 0.18);
+}
+.editor-dropzone {
+  background: #FFFFFF;
+  border: 2px dashed #DBDBDB;
+  border-radius: 1rem;
+  color: #1A1A1A;
+}
+.editor-dropzone:hover { background: #FAFAFA; border-color: #E7C768; }
+
+.btn-brand-primary {
+  background: linear-gradient(135deg, #FF1A1A 0%, #E54C00 100%);
+  color: #FFFFFF;
+  border: none;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  transition: filter .15s ease, transform .05s ease;
+}
+.btn-brand-primary:hover { filter: brightness(1.05); }
+.btn-brand-primary:active { transform: translateY(1px); }
+.btn-brand-primary:disabled,
+.btn-brand-primary[disabled] {
+  background: #E0E3EB;
+  color: #9DA3AF;
+  cursor: not-allowed;
+  filter: none;
+}
+.btn-brand-secondary {
+  background: linear-gradient(135deg, #17344F 0%, #265582 100%);
+  color: #FFFFFF;
+  border: none;
+  font-weight: 700;
+  border-radius: 0.75rem;
+}
+.btn-brand-secondary:disabled {
+  background: #E0E3EB;
+  color: #9DA3AF;
+  cursor: not-allowed;
+}
+.btn-brand-gold {
+  background: linear-gradient(135deg, #F4EE8E 0%, #D99E41 100%);
+  color: #1A1A1A;
+  border: none;
+  font-weight: 700;
+  border-radius: 0.75rem;
 }
 
 .card-blur {
