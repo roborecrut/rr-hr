@@ -2598,26 +2598,20 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-stretch">
                   {/* View selectors */}
                   <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1">
-                    <button 
-                      onClick={() => setCrmViewMode("kanban")} 
+                    <button
+                      onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
                     >
                       Канбан
                     </button>
-                    <button 
-                      onClick={() => setCrmViewMode("table")} 
+                    <button
+                      onClick={() => setCrmViewMode("table")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "table" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
                     >
                       Таблица
-                    </button>
-                    <button 
-                      onClick={() => setCrmViewMode("mailing")} 
-                      className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "mailing" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
-                    >
-                      Рассылка
                     </button>
                   </div>
 
@@ -2626,12 +2620,59 @@ export default function EmployerPanel() {
                     <Search className="w-3.5 h-3.5 text-slate-400 mr-2" />
                     <input
                       type="text"
-                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-32"
-                      placeholder="Искать ФИО..."
+                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-44"
+                      placeholder="Поиск ФИО / email / телефон..."
                       value={crmSearch}
                       onChange={(e) => setCrmSearch(e.target.value)}
                     />
                   </div>
+
+                  <select
+                    value={crmFilterCompany}
+                    onChange={(e) => setCrmFilterCompany(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по компании"
+                  >
+                    <option value="all">Все компании</option>
+                    {crmCompanyOptions.map((co) => <option key={co} value={co}>{co}</option>)}
+                  </select>
+
+                  <select
+                    value={crmFilterRole}
+                    onChange={(e) => setCrmFilterRole(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по вакансии"
+                  >
+                    <option value="all">Все вакансии</option>
+                    {crmRoleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+
+                  <select
+                    value={crmFilterStage}
+                    onChange={(e) => setCrmFilterStage(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по этапу"
+                  >
+                    <option value="all">Все этапы</option>
+                    <option value="registration">1. Регистрация</option>
+                    <option value="screening">2. Скрининг</option>
+                    <option value="checklist">3. Чеклист</option>
+                    <option value="situations">4. Ситуации</option>
+                    <option value="professional">5. Профессия</option>
+                    <option value="product">6. Продукт</option>
+                    <option value="systems">7. Система</option>
+                    <option value="certified">8. Сертификат</option>
+                  </select>
+
+                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmSearch(""); }}
+                      className="text-[11px] font-bold text-[#E7C768] underline px-1"
+                    >
+                      Сбросить
+                    </button>
+                  )}
                 </div>
               </div>
 
