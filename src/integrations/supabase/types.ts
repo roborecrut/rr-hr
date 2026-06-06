@@ -1268,9 +1268,11 @@ export type Database = {
           training_intro_text: string | null
           training_product_text: string | null
           training_prof_text: string | null
+          training_professional_text: string | null
           training_published: boolean
           training_regulations_text: string | null
           training_system_text: string | null
+          training_systems_text: string | null
           training_wiki_text: string | null
           updated_at: string
           vacancy_text: string | null
@@ -1308,9 +1310,11 @@ export type Database = {
           training_intro_text?: string | null
           training_product_text?: string | null
           training_prof_text?: string | null
+          training_professional_text?: string | null
           training_published?: boolean
           training_regulations_text?: string | null
           training_system_text?: string | null
+          training_systems_text?: string | null
           training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
@@ -1348,9 +1352,11 @@ export type Database = {
           training_intro_text?: string | null
           training_product_text?: string | null
           training_prof_text?: string | null
+          training_professional_text?: string | null
           training_published?: boolean
           training_regulations_text?: string | null
           training_system_text?: string | null
+          training_systems_text?: string | null
           training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
@@ -1456,30 +1462,48 @@ export type Database = {
           description: string | null
           id: string
           legacy_public_id: string | null
+          motivation_text_detail: string | null
+          onboarding_text: string | null
           order_index: number
           project_id: string
           public_id: string | null
           title: string
+          training_professional_text: string | null
+          training_regulations_text: string | null
+          training_systems_text: string | null
+          training_wiki_text: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           legacy_public_id?: string | null
+          motivation_text_detail?: string | null
+          onboarding_text?: string | null
           order_index?: number
           project_id: string
           public_id?: string | null
           title: string
+          training_professional_text?: string | null
+          training_regulations_text?: string | null
+          training_systems_text?: string | null
+          training_wiki_text?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           legacy_public_id?: string | null
+          motivation_text_detail?: string | null
+          onboarding_text?: string | null
           order_index?: number
           project_id?: string
           public_id?: string | null
           title?: string
+          training_professional_text?: string | null
+          training_regulations_text?: string | null
+          training_systems_text?: string | null
+          training_wiki_text?: string | null
         }
         Relationships: [
           {
@@ -1844,6 +1868,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      job_titles_list_public: {
+        Args: never
+        Returns: {
+          has_template: boolean
+          id: string
+          is_basic: boolean
+          title: string
+          title_norm: string
+          usage_count: number
+        }[]
       }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
       project_create_draft: { Args: { _company: string }; Returns: Json }
