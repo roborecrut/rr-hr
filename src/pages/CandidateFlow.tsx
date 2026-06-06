@@ -636,6 +636,10 @@ export default function CandidateFlow() {
   });
   const [saveProfileMsg, setSaveProfileMsg] = useState("");
   const [certSavedMsg, setCertSavedMsg] = useState("");
+  // Optional credentials change (email/password)
+  const [profCurrentPw, setProfCurrentPw] = useState("");
+  const [profNewPw, setProfNewPw] = useState("");
+  const [profNewPw2, setProfNewPw2] = useState("");
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -648,12 +652,48 @@ export default function CandidateFlow() {
         avatar_url: profAvatarUrl,
         ...profSocials,
       };
+      const wantEmailChange = !!profEmail && profEmail.trim().toLowerCase() !== (candidate.email || "").toLowerCase();
+      const wantPwChange = !!profNewPw;
+      if (wantPwChange && profNewPw.length < 8) {
+        setSaveProfileMsg("⚠️ Новый пароль должен быть не короче 8 символов");
+        return;
+      }
+      if (wantPwChange && profNewPw !== profNewPw2) {
+        setSaveProfileMsg("⚠️ Пароли не совпадают");
+        return;
+      }
+      if (wantPwChange && !profCurrentPw) {
+        setSaveProfileMsg("⚠️ Введите текущий пароль для смены");
+        return;
+      }
+
       if (sess?.token) {
-        await (supabase as any).rpc("candidate_update_profile", { _token: sess.token, _patch: patch });
+        const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc("candidate_update_profile", {
+          _token: sess.token,
+          _patch: patch,
+          _new_email: wantEmailChange ? profEmail.trim() : null,
+          _new_password: wantPwChange ? profNewPw : null,
+          _current_password: wantPwChange ? profCurrentPw : null,
+        });
+        if (rpcErr) throw rpcErr;
+        if (rpcRes && rpcRes.ok === false) {
+          const msg = ({
+            bad_email: "Введите корректный e-mail",
+            email_taken: "Этот e-mail уже используется другим аккаунтом",
+            bad_password: "Пароль должен быть не короче 8 символов",
+            wrong_current_password: "Текущий пароль введён неверно",
+            bad_token: "Сессия истекла, войдите заново",
+            no_token: "Сессия не найдена, войдите заново",
+          } as Record<string,string>)[rpcRes.error] || "Не удалось сохранить";
+          setSaveProfileMsg("⚠️ " + msg);
+          return;
+        }
       } else {
         await (supabase as any).from("candidates").update(patch).eq("id", candidate.id);
       }
-      setCandidate({ ...candidate, ...(patch as any) });
+      const nextEmail = wantEmailChange ? profEmail.trim().toLowerCase() : candidate.email;
+      setCandidate({ ...candidate, ...(patch as any), email: nextEmail });
+      setProfCurrentPw(""); setProfNewPw(""); setProfNewPw2("");
       setEditingProfile(false);
       setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
       setTimeout(() => setSaveProfileMsg(""), 3000);
