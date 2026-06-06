@@ -801,6 +801,9 @@ export type Database = {
           interview_setup_credits: number
           landing_credits: number
           legacy_public_id: string | null
+          offer_accepted: boolean
+          offer_accepted_at: string | null
+          offer_version: string | null
           plan: string | null
           public_id: string | null
           ref_by: string | null
@@ -823,6 +826,9 @@ export type Database = {
           interview_setup_credits?: number
           landing_credits?: number
           legacy_public_id?: string | null
+          offer_accepted?: boolean
+          offer_accepted_at?: string | null
+          offer_version?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
@@ -845,6 +851,9 @@ export type Database = {
           interview_setup_credits?: number
           landing_credits?: number
           legacy_public_id?: string | null
+          offer_accepted?: boolean
+          offer_accepted_at?: string | null
+          offer_version?: string | null
           plan?: string | null
           public_id?: string | null
           ref_by?: string | null
@@ -1151,6 +1160,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "payments_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments_robokassa: {
+        Row: {
+          amount_rub: number
+          created_at: string
+          description: string | null
+          employer_id: string
+          id: string
+          inv_id: number
+          offer_accepted: boolean
+          paid_at: string | null
+          raw_payload: Json | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_rub: number
+          created_at?: string
+          description?: string | null
+          employer_id: string
+          id?: string
+          inv_id?: number
+          offer_accepted?: boolean
+          paid_at?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_rub?: number
+          created_at?: string
+          description?: string | null
+          employer_id?: string
+          id?: string
+          inv_id?: number
+          offer_accepted?: boolean
+          paid_at?: string | null
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_robokassa_employer_id_fkey"
             columns: ["employer_id"]
             isOneToOne: false
             referencedRelation: "employers"
@@ -2215,6 +2274,14 @@ export type Database = {
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }
         Returns: boolean
+      }
+      robokassa_create_invoice: {
+        Args: { _amount_rub: number; _offer_accepted?: boolean }
+        Returns: Json
+      }
+      robokassa_mark_paid: {
+        Args: { _amount: number; _inv_id: number; _payload: Json }
+        Returns: Json
       }
       slugify_ru: { Args: { _input: string }; Returns: string }
       spend_fixed: { Args: { _item: string; _project: string }; Returns: Json }

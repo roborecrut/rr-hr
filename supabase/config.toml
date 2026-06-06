@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.ai-list-interview-checklist]
 verify_jwt = false
+
+[functions.robokassa-result]
+verify_jwt = false
+
+[functions.robokassa-create]
+verify_jwt = true

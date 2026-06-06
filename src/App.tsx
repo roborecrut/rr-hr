@@ -12,6 +12,8 @@ import AdminPanel from "./pages/AdminPanel";
 import JobVacancyLanding from "./pages/JobVacancyLanding";
 import CompanyLanding from "./pages/CompanyLanding";
 import NotFoundPage from "./pages/NotFoundPage";
+import OfferPage from "./pages/OfferPage";
+import { PaymentSuccessPage, PaymentFailPage } from "./pages/PaymentResultPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
 import SessionBootstrap from "./components/SessionBootstrap";
 
@@ -32,6 +34,9 @@ export default function App() {
         <Route path="/candidate" element={<CandidateFlow />} />
         <Route path="/candidate/*" element={<CandidateFlow />} />
         <Route path="/company/:slug" element={<CompanyLanding />} />
+        <Route path="/offer" element={<OfferPage />} />
+        <Route path="/payment/success" element={<PaymentSuccessPage />} />
+        <Route path="/payment/fail" element={<PaymentFailPage />} />
         {/* Concatenated dynamic segment: /employer{id}/..., /candidate{id}/..., or company slug */}
         <Route path="/:firstSeg" element={<SegmentDispatcher />} />
         <Route path="/:firstSeg/*" element={<SegmentDispatcher />} />
