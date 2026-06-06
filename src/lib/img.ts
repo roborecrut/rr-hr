@@ -7,12 +7,13 @@
  * <RRImage> falls back to the original URL via onError.
  */
 
-export function rrImg(url: string | null | undefined, width: number, quality = 75): string {
-  if (!url) return "";
-  if (!/\/storage\/v1\/object\/public\//.test(url)) return url;
-  const transformed = url.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  // dpr-aware: request 2x for crisp display on retina, capped at 1600px
-  const w = Math.min(1600, Math.round(width * 2));
-  const sep = transformed.includes("?") ? "&" : "?";
-  return `${transformed}${sep}width=${w}&quality=${quality}`;
+// NOTE: We previously rewrote Supabase Storage URLs through the
+// /storage/v1/render/image/ transform endpoint to downscale images by display
+// width. That made logos/robot images render too narrow when transforms were
+// disabled on the bucket (the resized image kept native aspect but became
+// blurry / squashed). For now we return the original URL untouched — browsers
+// already cache the original, and weight optimization should be done at the
+// upload step, not via on-the-fly width clipping.
+export function rrImg(url: string | null | undefined, _width?: number, _quality?: number): string {
+  return url || "";
 }
