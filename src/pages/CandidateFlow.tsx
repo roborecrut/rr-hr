@@ -776,6 +776,7 @@ export default function CandidateFlow() {
       let activeCand: any = null;
       let cabinetProject: any = null;
       let cabinetCompany: any = null;
+      let cabinetEmployerContacts: any = null;
       const pubId = activeId.replace(/^candidate/i, "").replace(/^cand/i, "");
       if (savedSession?.token && (savedSession.public_id === pubId || savedSession.candidate_id === pubId || !pubId)) {
         activeCand = {
@@ -818,6 +819,7 @@ export default function CandidateFlow() {
             };
             cabinetProject = rpcRes.project || null;
             cabinetCompany = rpcRes.company || null;
+            cabinetEmployerContacts = rpcRes.employer_contacts || null;
           }
         } catch {}
         if (!activeCand) {
@@ -936,6 +938,11 @@ export default function CandidateFlow() {
           } as any);
           setProjectFull(p);
           if (cabinetCompany) setCompanyFull(cabinetCompany);
+          if (cabinetEmployerContacts) setEmployerContacts({
+            email: cabinetEmployerContacts.email,
+            phone: cabinetEmployerContacts.phone,
+            telegram: cabinetEmployerContacts.telegram,
+          });
         } else if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
           if (resProj && resProj.ok) {
