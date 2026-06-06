@@ -912,6 +912,7 @@ export type Database = {
           created_by: string | null
           field_templates: Json
           id: string
+          interview_template: Json
           is_basic: boolean
           title: string
           title_norm: string | null
@@ -922,6 +923,7 @@ export type Database = {
           created_by?: string | null
           field_templates?: Json
           id?: string
+          interview_template?: Json
           is_basic?: boolean
           title: string
           title_norm?: string | null
@@ -932,6 +934,7 @@ export type Database = {
           created_by?: string | null
           field_templates?: Json
           id?: string
+          interview_template?: Json
           is_basic?: boolean
           title?: string
           title_norm?: string | null
@@ -1937,6 +1940,10 @@ export type Database = {
     }
     Functions: {
       admin_delete_job_title: { Args: { _id: string }; Returns: Json }
+      admin_job_title_upsert_interview_template: {
+        Args: { _overwrite?: boolean; _patch: Json; _title: string }
+        Returns: Json
+      }
       admin_job_title_upsert_templates: {
         Args: {
           _is_basic?: boolean
@@ -2019,6 +2026,10 @@ export type Database = {
       }
       is_project_owner: { Args: { _project: string }; Returns: boolean }
       is_project_published: { Args: { _project: string }; Returns: boolean }
+      job_title_get_interview_template: {
+        Args: { _title: string }
+        Returns: Json
+      }
       job_title_get_templates: { Args: { _title: string }; Returns: Json }
       job_title_save_templates: {
         Args: { _patch: Json; _title: string }
@@ -2031,6 +2042,7 @@ export type Database = {
           created_by: string | null
           field_templates: Json
           id: string
+          interview_template: Json
           is_basic: boolean
           title: string
           title_norm: string | null
