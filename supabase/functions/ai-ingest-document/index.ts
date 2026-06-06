@@ -36,9 +36,9 @@ Deno.serve(async (req) => {
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   let sourceUrl = body.file_url || "";
   if (body.bucket && body.file_path) {
-    const { data, error } = await admin.storage.from(body.bucket).createSignedUrl(body.file_path, 3600);
-    if (error || !data?.signedUrl) return jsonResponse({ error: "sign_failed: " + (error?.message || "") }, 500);
-    sourceUrl = data.signedUrl;
+    const { data } = admin.storage.from(body.bucket).getPublicUrl(body.file_path);
+    if (!data?.publicUrl) return jsonResponse({ error: "public_url_failed" }, 500);
+    sourceUrl = data.publicUrl;
   }
 
   const chatId = buildChatId({ userId: user?.id });
