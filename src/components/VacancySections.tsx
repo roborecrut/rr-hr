@@ -585,17 +585,35 @@ export const TeamView: React.FC<SectionProps> = ({ project, onChangeText, isEdit
       currentDept = l.replace(/^(\[Отдел\]|Отдел:|\[Департамент\])\s*/i, "").trim();
       activeMembers = [];
     } else {
-      const dashIx = l.indexOf("-");
-      if (dashIx !== -1) {
-        const name = l.substring(0, dashIx).trim();
-        const rest = l.substring(dashIx + 1).trim();
-        const dotIx = rest.indexOf(".");
-        const role = dotIx !== -1 ? rest.substring(0, dotIx).trim() : "Куратор";
-        const desc = dotIx !== -1 ? rest.substring(dotIx + 1).trim() : rest;
-        activeMembers.push({ title: name, subtitle: role, text: desc });
+      // Try format: "[Tag] Name — Role/desc"  or  "[Tag] Name - Role/desc"
+      const tagMatch = l.match(/^\[([^\]]+)\]\s*(.+)$/);
+      if (tagMatch) {
+        const tag = tagMatch[1].trim();
+        const rest = tagMatch[2].trim();
+        const sepMatch = rest.match(/\s+[—–-]\s+/);
+        if (sepMatch) {
+          const sepIx = rest.indexOf(sepMatch[0]);
+          const name = rest.substring(0, sepIx).trim();
+          const desc = rest.substring(sepIx + sepMatch[0].length).trim();
+          activeMembers.push({ title: name, subtitle: tag, text: desc });
+        } else {
+          activeMembers.push({ title: rest, subtitle: tag, text: rest });
+        }
       } else {
-        const fallback = defaultMentors[idx % defaultMentors.length] || { title: "Сотрудник", subtitle: "Куратор новичков", text: l };
-        activeMembers.push({ title: fallback.title, subtitle: fallback.subtitle, text: l });
+        // Fallback format: "Name - Role. Description"
+        const sepMatch = l.match(/\s+[—–-]\s+/);
+        if (sepMatch) {
+          const sepIx = l.indexOf(sepMatch[0]);
+          const name = l.substring(0, sepIx).trim();
+          const rest = l.substring(sepIx + sepMatch[0].length).trim();
+          const dotIx = rest.indexOf(".");
+          const role = dotIx !== -1 ? rest.substring(0, dotIx).trim() : "Куратор";
+          const desc = dotIx !== -1 ? rest.substring(dotIx + 1).trim() : rest;
+          activeMembers.push({ title: name, subtitle: role, text: desc });
+        } else {
+          const fallback = defaultMentors[idx % defaultMentors.length] || { title: "Сотрудник", subtitle: "Куратор новичков", text: l };
+          activeMembers.push({ title: fallback.title, subtitle: fallback.subtitle, text: l });
+        }
       }
     }
   });
