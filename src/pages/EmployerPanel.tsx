@@ -2362,7 +2362,7 @@ export default function EmployerPanel() {
                                 key={cand.id}
                                 draggable
                                 onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
-                                onClick={() => setSelectedCandidateId((cand as any).publicId ? cand.id : cand.id)}
+                                onClick={() => setSelectedCandidateId((cand as any).uuid || null)}
                                 className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm space-y-1.5"
                               >
                                 <div className="text-xs font-bold text-[#E7C768] hover:underline">
