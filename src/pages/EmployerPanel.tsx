@@ -3790,13 +3790,19 @@ export default function EmployerPanel() {
                       </div>
                       <button
                         type="submit"
-                        disabled={isToppingUp || topupAmountRub < 100}
+                        disabled={isToppingUp || topupAmountRub < 100 || !topupOfferOk}
                         className="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 text-[#17344F] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl mt-3 transition"
                       >
-                        {isToppingUp ? "Обработка..." : "🚀 Пополнить баланс"}
+                        {isToppingUp ? "Перенаправляем на оплату..." : "🚀 Оплатить через Робокассу"}
                       </button>
                     </div>
                   </div>
+
+                  <OfferConsent checked={topupOfferOk} onChange={setTopupOfferOk} context="pay" />
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Оплата проводится через систему «Робокасса». Принимаем карты МИР, Visa, Mastercard и другие способы.
+                    После успешной оплаты RR начисляются автоматически (обычно в течение минуты).
+                  </p>
                 </form>
               </div>
 
