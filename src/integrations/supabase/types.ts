@@ -284,6 +284,53 @@ export type Database = {
           },
         ]
       }
+      candidate_stage_progress: {
+        Row: {
+          attempts: number
+          best_score: number
+          candidate_id: string
+          created_at: string
+          last_answers: Json | null
+          last_feedback: Json | null
+          last_score: number | null
+          passed_at: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          best_score?: number
+          candidate_id: string
+          created_at?: string
+          last_answers?: Json | null
+          last_feedback?: Json | null
+          last_score?: number | null
+          passed_at?: string | null
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          best_score?: number
+          candidate_id?: string
+          created_at?: string
+          last_answers?: Json | null
+          last_feedback?: Json | null
+          last_score?: number | null
+          passed_at?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_stage_progress_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_stages_history: {
         Row: {
           candidate_id: string
@@ -1479,6 +1526,7 @@ export type Database = {
           pass_score: number | null
           project_id: string
           public_id: string | null
+          stage: string
           title: string
           total_score: number | null
           training_professional_text: string | null
@@ -1503,6 +1551,7 @@ export type Database = {
           pass_score?: number | null
           project_id: string
           public_id?: string | null
+          stage?: string
           title: string
           total_score?: number | null
           training_professional_text?: string | null
@@ -1527,6 +1576,7 @@ export type Database = {
           pass_score?: number | null
           project_id?: string
           public_id?: string | null
+          stage?: string
           title?: string
           total_score?: number | null
           training_professional_text?: string | null
@@ -1670,6 +1720,50 @@ export type Database = {
             columns: ["lesson_id"]
             isOneToOne: false
             referencedRelation: "training_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      training_stage_tests: {
+        Row: {
+          ai_generated_at: string | null
+          created_at: string
+          id: string
+          pass_score: number
+          project_id: string
+          questions: Json
+          stage: string
+          total_score: number
+          updated_at: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          created_at?: string
+          id?: string
+          pass_score?: number
+          project_id: string
+          questions?: Json
+          stage: string
+          total_score?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          created_at?: string
+          id?: string
+          pass_score?: number
+          project_id?: string
+          questions?: Json
+          stage?: string
+          total_score?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "training_stage_tests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
