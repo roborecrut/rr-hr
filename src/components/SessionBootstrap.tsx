@@ -10,9 +10,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 const REF_KEY = "rr_ref";
 const DONE_KEY = "rr_bootstrap_done";
+const EMP_PID_KEY = "employer_session_id"; // shared cache w/ EmployerPanel
+const EMP_PID_USER_KEY = "employer_session_user_id";
 
 export default function SessionBootstrap() {
   useEffect(() => {
+    // Clean up the OAuth redirect: Supabase implicit-flow appends a "#"
+    // (sometimes with access_token) to the URL. Once the SDK has parsed it,
+    // the bare "#" lingers in the address bar and is included in cache keys.
+    try {
+      if (window.location.hash === "" || /^#$/.test(window.location.hash)) {
+        const clean = window.location.pathname + window.location.search;
+        window.history.replaceState({}, "", clean);
+      }
+    } catch { /* ignore */ }
+
     // 1. Capture ?ref= from current URL (persists across Google OAuth redirect)
     try {
       const url = new URL(window.location.href);
@@ -29,6 +41,29 @@ export default function SessionBootstrap() {
       const alreadyDone = !!localStorage.getItem(doneKey);
       const ref = localStorage.getItem(REF_KEY) || undefined;
 
+      // Fast-path redirect using the cached employer public_id (only when
+      // it was cached for THIS user — never reuse another user's id).
+      const tryCachedRedirect = (): boolean => {
+        try {
+          const cachedUser = localStorage.getItem(EMP_PID_USER_KEY);
+          const cachedPid = localStorage.getItem(EMP_PID_KEY);
+          if (cachedUser !== session.user.id || !cachedPid) return false;
+          const here = window.location.pathname;
+          const target = `/emp${cachedPid}/profile`;
+          if (here === target) return true;
+          if (
+            here === "/" || here === "/main" || here === "/auth" ||
+            here.startsWith("/employer")
+          ) {
+            window.history.replaceState({}, "", target);
+            window.dispatchEvent(new PopStateEvent("popstate"));
+            return true;
+          }
+        } catch { /* ignore */ }
+        return false;
+      };
+      const fastRedirected = tryCachedRedirect();
+
       const redirectToEmployerProfile = async () => {
         try {
           const { data: emp } = await supabase
@@ -37,6 +72,11 @@ export default function SessionBootstrap() {
             .eq("user_id", session.user.id)
             .maybeSingle();
           if (emp?.public_id) {
+            // Persist cache tied to user — next sign-in is instant.
+            try {
+              localStorage.setItem(EMP_PID_KEY, emp.public_id);
+              localStorage.setItem(EMP_PID_USER_KEY, session.user.id);
+            } catch { /* ignore */ }
             const target = `/emp${emp.public_id}/profile`;
             const here = window.location.pathname;
             // Only auto-redirect from the auth/landing/legacy paths

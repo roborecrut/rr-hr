@@ -52,10 +52,20 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
     setErrorText(""); setIsLoading(true);
     try {
       try { localStorage.setItem("rr_offer_accepted", "1"); } catch {}
+      // If we already know this browser's employer public_id, redirect straight
+      // to /emp{pid}/profile to avoid a flash of /employer/profile while the
+      // SessionBootstrap re-resolves it from the database.
+      let employerRedirect = "/employer/profile";
+      try {
+        const cachedPid = localStorage.getItem("employer_session_id");
+        if (cachedPid && /^[A-Za-z0-9_-]+$/.test(cachedPid)) {
+          employerRedirect = `/emp${cachedPid}/profile`;
+        }
+      } catch { /* ignore */ }
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}${intent === "employer" ? "/employer/profile" : "/main"}`,
+          redirectTo: `${window.location.origin}${intent === "employer" ? employerRedirect : "/main"}`,
           queryParams: { intent, offer_accepted: "1" },
         },
       });

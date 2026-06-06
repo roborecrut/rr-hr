@@ -1209,6 +1209,7 @@ export default function EmployerPanel() {
         if (!cancelled && own?.public_id) {
           setEmployerId(own.public_id);
           localStorage.setItem("employer_session_id", own.public_id);
+          try { localStorage.setItem("employer_session_user_id", user.id); } catch {}
           return;
         }
       }
