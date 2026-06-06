@@ -367,6 +367,7 @@ export default function EmployerPanel() {
   const [purchaseError, setPurchaseError] = useState<string>("");
   const [isBuying, setIsBuying] = useState<string | null>(null);
   const [isToppingUp, setIsToppingUp] = useState(false);
+  const [topupOfferOk, setTopupOfferOk] = useState<boolean>(true);
 
   const [tariffLevel, setTariffLevel] = useState<"bronze" | "silver" | "gold">("bronze");
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
