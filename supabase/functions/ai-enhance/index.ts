@@ -20,7 +20,7 @@ const LIMITS: Record<string, number> = {
   missionText: 500,
   about_text: 600,
   team: 500,
-  team_text: 500,
+  team_text: 1000,
   payouts_text: 500,
   salaryTerms: 300,
   schedule_text: 400,
