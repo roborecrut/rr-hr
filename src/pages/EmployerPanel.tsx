@@ -1255,6 +1255,11 @@ export default function EmployerPanel() {
       setSetupOnboardingText("");
       setSetupTeamText("");
       setSetupSystemText("");
+      setSetupTrainingProfessionalText("");
+      setSetupTrainingProductText("");
+      setSetupTrainingSystemsText("");
+      setSetupTrainingWikiText("");
+      setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
       pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       try {
