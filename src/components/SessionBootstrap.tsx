@@ -67,6 +67,15 @@ export default function SessionBootstrap() {
             localStorage.removeItem(REF_KEY);
           }
         }
+        // Фиксируем принятие оферты, если флаг был выставлен на форме регистрации.
+        try {
+          if (localStorage.getItem("rr_offer_accepted") === "1") {
+            await supabase.rpc("accept_offer", { _version: "2026-06-06" });
+            localStorage.removeItem("rr_offer_accepted");
+          }
+        } catch (e) {
+          console.warn("[accept_offer] failed", e);
+        }
         await redirectToEmployerProfile();
       }, 0);
     });
