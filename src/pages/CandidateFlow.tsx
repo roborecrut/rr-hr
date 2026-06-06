@@ -1894,12 +1894,21 @@ export default function CandidateFlow() {
                         onChange={async (e) => {
                           const f = e.target.files?.[0];
                           if (!f || !candidate) return;
-                          const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
-                          const path = `${candidate.id}/${Date.now()}.${ext}`;
-                          const { error } = await supabase.storage.from("candidate-avatars").upload(path, f, { upsert: true, contentType: f.type });
-                          if (error) { setSaveProfileMsg("⚠️ " + error.message); return; }
-                          const { data } = await supabase.storage.from("candidate-avatars").createSignedUrl(path, 60 * 60 * 24 * 365);
-                          if (data?.signedUrl) setProfAvatarUrl(data.signedUrl);
+                          const sess = getCandidateSession();
+                          if (!sess?.token) { setSaveProfileMsg("⚠️ Сессия истекла"); return; }
+                          const form = new FormData();
+                          form.append("token", sess.token);
+                          form.append("kind", "avatar");
+                          form.append("file", f);
+                          const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/candidate-upload-file`, {
+                            method: "POST",
+                            headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+                            body: form,
+                          });
+                          const j = await res.json().catch(() => null);
+                          if (!res.ok || !j?.ok) { setSaveProfileMsg("⚠️ " + (j?.error || `HTTP ${res.status}`)); return; }
+                          if (j.publicUrl) setProfAvatarUrl(j.publicUrl);
+                          else if (j.signedUrl) setProfAvatarUrl(j.signedUrl);
                         }}
                         className="text-xs text-slate-200"
                       />
