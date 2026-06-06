@@ -23,7 +23,16 @@ export default function SegmentDispatcher() {
   // New + legacy URL prefixes
   if (/^(emp|employer)[A-Za-z0-9_-]+$/.test(firstSeg)) return <EmployerPanel />;
   if (/^(cand|candidate)[A-Za-z0-9_-]+$/.test(firstSeg)) return <CandidateFlow />;
-  if (/^com\d+$/.test(firstSeg)) return <CompanyLanding />;
+  if (/^com\d+$/.test(firstSeg)) {
+    // /com{cid}/vac{vid}/cand{pid}/... should render the candidate cabinet,
+    // not the company landing (otherwise the landing treats `cand…` as an
+    // unknown sub-tab and redirects back to the company tab).
+    const segments = path.split("/").filter(Boolean);
+    if (segments.some((s) => /^(cand|candidate)[A-Za-z0-9_-]+$/.test(s))) {
+      return <CandidateFlow />;
+    }
+    return <CompanyLanding />;
+  }
 
   // Legacy slug → redirect to /com{public_id}
   useEffect(() => {
