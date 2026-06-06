@@ -628,6 +628,7 @@ export default function EmployerPanel() {
   const [editorSubTab, setEditorSubTab] = useState<string>("company");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [inlineEditSection, setInlineEditSection] = useState<string | null>(null);
+  const [aiEnhancingField, setAiEnhancingField] = useState<VacancyFieldKey | null>(null);
   
   // Custom Interview and Training builder states
   const [activeEditTab, setActiveEditTab] = useState<"landing" | "training">("landing");
