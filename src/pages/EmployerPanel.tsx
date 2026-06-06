@@ -797,6 +797,11 @@ export default function EmployerPanel() {
 
   // Project (Vacancy) edit state
   const [editingProject, setEditingProject] = useState<JobProject | null>(null);
+  // Raw OCR/AI-extracted text from a document uploaded inside the vacancy
+  // EDITOR modal — fed into `handleEnhanceAllVacancyLandingFields` as
+  // `file_context` so beautify-all reads facts from the uploaded file.
+  const [editVacancyRawText, setEditVacancyRawText] = useState<string>("");
+  const [isEnhancingAllVacEdit, setIsEnhancingAllVacEdit] = useState(false);
   const [editorSubTab, setEditorSubTab] = useState<string>("company");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [inlineEditSection, setInlineEditSection] = useState<string | null>(null);
@@ -2113,6 +2118,18 @@ export default function EmployerPanel() {
         company_name: ep.companyName,
         role_name: ep.roleName,
         fields,
+        templates: {
+          vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
+          tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
+          schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
+          motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
+          motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
+          payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
+          onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
+          team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
+          system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
+        },
+        file_context: editVacancyRawText || undefined,
         company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
@@ -3179,7 +3196,7 @@ export default function EmployerPanel() {
                           </button>
 
                           <button
-                            onClick={() => setEditingProject(proj)}
+                            onClick={() => { setEditVacancyRawText(""); setEditingProject(proj); }}
                             className="cursor-pointer flex-1 bg-[#E7C768]/10 hover:bg-[#E7C768]/20 text-[#E7C768] text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-[#E7C768]/25"
                           >
                             🛠 Редактировать
@@ -4386,7 +4403,7 @@ export default function EmployerPanel() {
       {/* MODAL WINDOW: EDIT VACANCY DETAILS AND SUBPAGES TEXTS */}
       {editingProject && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/60 p-6 sm:p-8 rounded-3xl w-full max-w-6xl text-left text-white shadow-2xl relative max-h-[95vh] overflow-y-auto space-y-5 animate-fadeIn">
+          <div className="brand-editor bg-gradient-to-br from-[#17344F] to-[#265582] border-2 border-[#E7C768]/60 p-6 sm:p-8 rounded-3xl w-full max-w-6xl text-left text-white shadow-2xl relative max-h-[95vh] overflow-y-auto space-y-5 animate-fadeIn">
             <button 
               onClick={() => setEditingProject(null)} 
               className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold cursor-pointer bg-white/5 border border-white/5 w-8 h-8 rounded-full flex items-center justify-center transition"
@@ -4395,7 +4412,7 @@ export default function EmployerPanel() {
             </button>
 
             <div className="border-b border-white/10 pb-3">
-              <span className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase font-mono tracking-wider flex items-center gap-1.5 bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">
                 <span className="w-2 h-2 rounded-full bg-[#E7C768] animate-pulse" />
                 Редактирование &bull; ID вакансии: {editingProject.id}
               </span>
@@ -4443,8 +4460,45 @@ export default function EmployerPanel() {
 
 {/* Unified VacancyEditor — same look as the create wizard, with per-field live preview */}
             <form onSubmit={handleSaveEditedProject} className="space-y-5">
+              {/* Document uploader — same UX as the create wizard, lets the
+                  user upload an updated regulation/file and re-beautify all
+                  15 fields using its content. */}
+              {(() => {
+                const ep: any = editingProject;
+                const total = (
+                  (ep.roleName || "") + (ep.vacancyText || "") + (ep.tasksActivityText || "") +
+                  (ep.scheduleText || "") + (ep.motivationText || "") + (ep.motivationTextDetail || "") +
+                  (ep.payoutsText || "") + (ep.onboardingText || "") + (ep.teamText || "") +
+                  (ep.systemText || "") + (ep.trainingProfessionalText || "") + (ep.trainingProductText || "") +
+                  (ep.trainingSystemsText || "") + (ep.trainingWikiText || "") + (ep.trainingRegulationsText || "") +
+                  editVacancyRawText
+                ).trim().length;
+                const canBeautify = aiReady && total >= 50;
+                return (
+                  <DocumentUploader
+                    entity="vacancy"
+                    entityId={editingProject.id}
+                    pathPrefix={editingProject.id}
+                    rawText={editVacancyRawText}
+                    onRawTextChange={setEditVacancyRawText}
+                    maxChars={5000}
+                    title="Распознавание условий вакансии из файла"
+                    hint="Шаг 1 — загрузите регламент/описание. Шаг 2 — «Распознать документ». Шаг 3 — «Оформить красиво», и ИИ обновит все 15 полей вакансии, опираясь на текст файла + уже заполненные данные."
+                    onEnhance={async () => {
+                      setIsEnhancingAllVacEdit(true);
+                      try { await handleEnhanceAllVacancyLandingFields(); }
+                      finally { setIsEnhancingAllVacEdit(false); }
+                    }}
+                    enhanceBusy={isEnhancingAllVacEdit || isEnhancingAllVac}
+                    canEnhance={canBeautify}
+                    enhanceHint={canBeautify ? "Оформить все 15 полей вакансии через ИИ" : "Заполните поля минимум на 50 символов суммарно (или загрузите файл)"}
+                    onAudit={addAuditEvent}
+                  />
+                );
+              })()}
+
               {/* Company + Role pickers (same UX as the create wizard). */}
-              <div className="rounded-2xl border border-[#E7C768]/30 bg-[#0E1F30]/60 p-4 space-y-3">
+              <div className="rounded-2xl border border-[#E7C768]/30 bg-white/5 p-4 space-y-3">
                 <span className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] font-bold block">
                   Компания и должность
                 </span>
@@ -4453,7 +4507,7 @@ export default function EmployerPanel() {
                     <label className="text-xs font-bold text-slate-200 block mb-1">Компания:</label>
                     {companiesList.length > 0 ? (
                       <select
-                        className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        className="w-full bg-white/10 text-xs p-2.5 rounded-xl border border-white/15 text-white focus:outline-[#E7C768]"
                         value={editingProject.companyName || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
                       >
@@ -4465,7 +4519,7 @@ export default function EmployerPanel() {
                     ) : (
                       <input
                         type="text"
-                        className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        className="w-full bg-white/10 text-xs p-2.5 rounded-xl border border-white/15 text-white focus:outline-[#E7C768]"
                         value={editingProject.companyName || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
                       />
@@ -4476,7 +4530,7 @@ export default function EmployerPanel() {
                     <div className="flex gap-2">
                       <input
                         type="text"
-                        className="flex-1 bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        className="flex-1 bg-white/10 text-xs p-2.5 rounded-xl border border-white/15 text-white focus:outline-[#E7C768]"
                         value={editingProject.roleName || ""}
                         onChange={(e) => setEditingProject({ ...editingProject, roleName: e.target.value } as any)}
                       />
@@ -4491,11 +4545,11 @@ export default function EmployerPanel() {
                     </div>
                   </div>
                 </div>
-                <div className="bg-black/20 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+                <div className="bg-white/5 p-2.5 rounded-xl border border-white/10 space-y-1.5">
                   <input
                     type="text"
                     placeholder="Фильтровать справочник профессий..."
-                    className="bg-black/40 text-[10.5px] p-1.5 w-full rounded border border-white/10 text-white"
+                    className="bg-white/10 text-[10.5px] p-1.5 w-full rounded border border-white/15 text-white"
                     value={editSpecialtySearch}
                     onChange={(e) => setEditSpecialtySearch(e.target.value)}
                   />
@@ -4511,7 +4565,7 @@ export default function EmployerPanel() {
                             setEditingProject({ ...editingProject, roleName: spec } as any);
                             setEditSpecialtySearch("");
                           }}
-                          className="bg-[#1D3E5E]/85 border border-white/5 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition"
+                          className="bg-white/10 border border-white/15 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition"
                         >
                           💼 {spec}
                         </button>
@@ -4560,7 +4614,7 @@ export default function EmployerPanel() {
               />
 
               {/* Bottom control buttons */}
-              <div className="pt-4 border-t border-white/10 flex gap-3 sticky bottom-0 bg-[#1D3E5E]/95 backdrop-blur-sm -mx-6 sm:-mx-8 px-6 sm:px-8 py-4">
+              <div className="pt-4 border-t border-white/10 flex gap-3 sticky bottom-0 bg-gradient-to-r from-[#17344F]/95 to-[#265582]/95 backdrop-blur-sm -mx-6 sm:-mx-8 px-6 sm:px-8 py-4">
                 <button
                   type="submit"
                   disabled={isSavingEdit}
