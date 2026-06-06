@@ -614,6 +614,3 @@ function AISection() {
     </div>
   );
 }
-    </div>
-  );
-}
