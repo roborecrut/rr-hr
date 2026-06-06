@@ -3093,7 +3093,7 @@ export default function EmployerPanel() {
                         const file = e.dataTransfer.files[0];
                         setNewCompanyFiles(file.name);
                         addAuditEvent("info", "Файл загружен", `Прикреплен регламент: ${file.name}`);
-                        (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
+                        (async () => { await uploadCompanyFile(file); })();
                       }
                     }}
                     className={`cursor-pointer border-2 border-dashed rounded-2xl p-4 text-center space-y-1.5 transition-all ${
@@ -3111,7 +3111,7 @@ export default function EmployerPanel() {
                           const file = e.target.files[0];
                           setNewCompanyFiles(file.name);
                           addAuditEvent("info", "Файл загружен", `Прикреплен файл: ${file.name}`);
-                          (async () => { await uploadCompanyFile(file); parseCompanyFileWithAI(file.name); })();
+                          (async () => { await uploadCompanyFile(file); })();
                         }
                       }}
                     />
@@ -3126,10 +3126,25 @@ export default function EmployerPanel() {
                     <span className="text-[10px] text-slate-400 block font-mono">
                       {isParsingFile 
                         ? "⚡ ИИ от ProTalk извлекает текст о компании из документа..." 
-                        : "Поддерживаются PDF, DOCX, TXT, MD. Текст появится в большом поле ниже — его можно отредактировать перед оформлением."
+                        : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки нажмите кнопку «Распознать документ через ИИ» — текст появится в поле ниже."
                       }
                     </span>
                   </div>
+
+                  {/* Step 2: explicit «Распознать документ» trigger — appears once the
+                      file is uploaded to storage but text has not been extracted yet. */}
+                  {draftFilePath && !isParsingFile && (
+                    <div className="flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => parseCompanyFileWithAI(newCompanyFiles || "документ")}
+                        className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 hover:from-green-500 hover:to-teal-500 transition-all shadow-md shadow-emerald-900/30 flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Распознать документ через ИИ
+                      </button>
+                    </div>
+                  )}
 
                   {/* Raw extracted text from the document — editable, capped at 5000 chars.
                       Passed to «Оформить красиво» as additional context. */}
