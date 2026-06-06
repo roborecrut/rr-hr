@@ -12,6 +12,7 @@ import {
   ListChecks,
   RotateCcw,
   Wand2,
+  Eraser,
 } from "lucide-react";
 import {
   VACANCY_FIELDS,
@@ -40,6 +41,10 @@ export interface VacancyEditorProps {
   companyName?: string;
   /** Skip rendering these field keys (e.g. when role_name is shown elsewhere). */
   hideKeys?: VacancyFieldKey[];
+  /** Per-role template values (from job_titles.field_templates). Used by the
+   *  "Шаблон" button — if a per-role template is available, prefer it over the
+   *  generic `field.example`. */
+  roleTemplates?: Partial<Record<VacancyFieldKey, string>>;
 }
 
 // ----------------------------------------------------------------------------
@@ -171,6 +176,7 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
   mode = "edit",
   companyName,
   hideKeys,
+  roleTemplates,
 }) => {
   const groups = useMemo(
     () =>
@@ -185,10 +191,13 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
 
   const set = (key: VacancyFieldKey, val: string) => onChange({ [key]: val });
 
-  const resetToTemplate = (key: VacancyFieldKey) => {
+  const applyTemplate = (key: VacancyFieldKey) => {
     const f = VACANCY_FIELDS_BY_KEY[key];
-    set(key, f.example);
+    const tpl = (roleTemplates?.[key] || "").trim();
+    set(key, tpl || f.example);
   };
+
+  const clearField = (key: VacancyFieldKey) => set(key, "");
 
   return (
     <div className="space-y-6">
@@ -221,7 +230,9 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
                 onChange={(v) => set(f.key, v)}
                 onAIEnhance={onAIEnhance ? () => onAIEnhance(f.key) : undefined}
                 aiLoading={aiLoadingKey === f.key}
-                onReset={() => resetToTemplate(f.key)}
+                onApplyTemplate={() => applyTemplate(f.key)}
+                onClear={() => clearField(f.key)}
+                hasRoleTemplate={Boolean((roleTemplates?.[f.key] || "").trim())}
               />
             ))}
           </div>
@@ -241,7 +252,9 @@ interface FieldRowProps {
   onChange: (v: string) => void;
   onAIEnhance?: () => void;
   aiLoading?: boolean;
-  onReset: () => void;
+  onApplyTemplate: () => void;
+  onClear: () => void;
+  hasRoleTemplate?: boolean;
 }
 
 const FieldRow: React.FC<FieldRowProps> = ({
@@ -250,7 +263,9 @@ const FieldRow: React.FC<FieldRowProps> = ({
   onChange,
   onAIEnhance,
   aiLoading,
-  onReset,
+  onApplyTemplate,
+  onClear,
+  hasRoleTemplate,
 }) => {
   return (
     <div className="rounded-2xl border border-white/10 bg-[#12283C]/80 p-4">
@@ -276,12 +291,26 @@ const FieldRow: React.FC<FieldRowProps> = ({
           )}
           <button
             type="button"
-            onClick={onReset}
+            onClick={onApplyTemplate}
             className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition hover:bg-white/10"
-            title="Подставить эталонный шаблон"
+            title={
+              hasRoleTemplate
+                ? "Подставить шаблон для выбранной должности"
+                : "Подставить общий шаблон-пример"
+            }
           >
             <RotateCcw className="h-3 w-3" />
-            Шаблон
+            {hasRoleTemplate ? "Шаблон должности" : "Шаблон"}
+          </button>
+          <button
+            type="button"
+            onClick={onClear}
+            disabled={!value}
+            className="flex items-center gap-1 rounded-lg border border-red-400/30 bg-red-400/10 px-2 py-1 text-[10px] font-bold text-red-300 transition hover:bg-red-400/20 disabled:opacity-40"
+            title="Очистить поле"
+          >
+            <Eraser className="h-3 w-3" />
+            Сброс
           </button>
         </div>
       </div>
