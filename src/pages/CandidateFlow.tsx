@@ -713,11 +713,20 @@ export default function CandidateFlow() {
     });
     
     if (candIndex !== -1 && (parts[candIndex].toLowerCase() === "candidate" || parts[candIndex].toLowerCase() === "cand")) {
+      setSessionLoading(false);
       return;
     }
 
     let activeId = localStorage.getItem("cand_session_id") || "";
-    
+    // Treat a bare numeric first segment as a candidate public_id
+    // (e.g. /200002/terms/vacancy). The dispatcher has already verified
+    // that such a path belongs to a real candidate before mounting us.
+    const barePidMode = candIndex === -1 && parts[0] && /^\d{4,}$/.test(parts[0]);
+    if (barePidMode) {
+      activeId = `candidate${parts[0]}`;
+      localStorage.setItem("cand_session_id", activeId);
+    }
+
     if (candIndex !== -1) {
       activeId = parts[candIndex];
       localStorage.setItem("cand_session_id", activeId);
@@ -867,7 +876,11 @@ export default function CandidateFlow() {
             parsedSubTab = parts[4] || "";
           }
         } else {
-          if (parts[0] && parts[0].startsWith("candidate")) {
+          if (barePidMode) {
+            // /{pid}/{tab}/{subtab?}
+            parsedTab = parts[1] || "profile";
+            parsedSubTab = parts[2] || "";
+          } else if (parts[0] && parts[0].startsWith("candidate")) {
             parsedTab = parts[1] || "profile";
             parsedSubTab = parts[2] || "";
           } else if (parts[0] === "candidate") {
@@ -885,7 +898,9 @@ export default function CandidateFlow() {
           setInterviewSubTabState(parsedSubTab || "resume");
         }
 
-        // Fetch corresponding project details
+        // Fetch corresponding project details. Prefer slug from canonical URL
+        // (/com…/vac…/cand…/…); otherwise always fall back to the candidate's
+        // bound project_id so the vacancy block is populated automatically.
         const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
         if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
@@ -937,6 +952,8 @@ export default function CandidateFlow() {
       }
     } catch (err) {
       console.error("Error loading candidate session:", err);
+    } finally {
+      setSessionLoading(false);
     }
   };
 
