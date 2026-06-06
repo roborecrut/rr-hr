@@ -2074,17 +2074,66 @@ export default function EmployerPanel() {
     addAuditEvent("info", "Полное ИИ-Оформление", "Запускаем полную реконструкцию контента лендинга через ИИ ProTalk...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
+      const ep: any = editingProject;
+      // Build canonical snake_case 15 fields payload.
+      const fields: Record<string, string> = {
+        role_name: ep.roleName || "",
+        vacancy_text: ep.vacancyText || "",
+        tasks_activity_text: ep.tasksActivityText || "",
+        schedule_text: ep.scheduleText || ep.scheduleTerms || "",
+        motivation_text: ep.motivationText || "",
+        motivation_text_detail: ep.motivationTextDetail || "",
+        payouts_text: ep.payoutsText || ep.salaryTerms || "",
+        onboarding_text: ep.onboardingText || "",
+        team_text: ep.teamText || "",
+        system_text: ep.systemText || "",
+        training_professional_text: ep.trainingProfessionalText || ep.trainingProfText || "",
+        training_product_text: ep.trainingProductText || "",
+        training_systems_text: ep.trainingSystemsText || ep.trainingSystemText || "",
+        training_wiki_text: ep.trainingWikiText || "",
+        training_regulations_text: ep.trainingRegulationsText || "",
+      };
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (ep.companyName || "").toLowerCase());
+      const companyCtx: Record<string, any> = matchedCo ? {
+        name: matchedCo.name, industry: matchedCo.industry, staff: matchedCo.staff,
+        website: matchedCo.website || matchedCo.sites,
+        description_text: matchedCo.description_text, products_text: matchedCo.products_text,
+        mission_text: matchedCo.mission_text || matchedCo.missionText,
+        team_text: matchedCo.team_text, payouts_text: matchedCo.payouts_text,
+        schedule_text: matchedCo.schedule_text, system_text: matchedCo.system_text,
+        about_text: matchedCo.about_text,
+      } : {};
+      Object.keys(companyCtx).forEach(k => { if (!companyCtx[k]) delete companyCtx[k]; });
+
       const enhanced = await aiEnhanceAll({
         mode: "all_vacancy",
-        company_name: editingProject.companyName,
-        role_name: editingProject.roleName,
-        fields: editingProject as any,
+        company_name: ep.companyName,
+        role_name: ep.roleName,
+        fields,
+        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
       });
       if (enhanced) {
+        // Map snake_case response back to JobProject camelCase fields.
         setEditingProject({
           ...editingProject,
-          ...enhanced
-        });
+          roleName: enhanced.role_name ?? ep.roleName,
+          vacancyText: enhanced.vacancy_text ?? ep.vacancyText,
+          tasksActivityText: enhanced.tasks_activity_text ?? ep.tasksActivityText,
+          scheduleText: enhanced.schedule_text ?? ep.scheduleText,
+          scheduleTerms: enhanced.schedule_text ?? ep.scheduleTerms,
+          motivationText: enhanced.motivation_text ?? ep.motivationText,
+          motivationTextDetail: enhanced.motivation_text_detail ?? ep.motivationTextDetail,
+          payoutsText: enhanced.payouts_text ?? ep.payoutsText,
+          salaryTerms: enhanced.payouts_text ?? ep.salaryTerms,
+          onboardingText: enhanced.onboarding_text ?? ep.onboardingText,
+          teamText: enhanced.team_text ?? ep.teamText,
+          systemText: enhanced.system_text ?? ep.systemText,
+          trainingProfessionalText: enhanced.training_professional_text ?? ep.trainingProfessionalText,
+          trainingProductText: enhanced.training_product_text ?? ep.trainingProductText,
+          trainingSystemsText: enhanced.training_systems_text ?? ep.trainingSystemsText,
+          trainingWikiText: enhanced.training_wiki_text ?? ep.trainingWikiText,
+          trainingRegulationsText: enhanced.training_regulations_text ?? ep.trainingRegulationsText,
+        } as any);
         addAuditEvent("success", "Лендинг полностью оформлен!", "ИИ составил цельную, привлекательную картину вакансии.");
       }
     } catch (err) {
