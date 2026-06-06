@@ -4300,9 +4300,88 @@ export default function EmployerPanel() {
 
 {/* Unified VacancyEditor — same look as the create wizard, with per-field live preview */}
             <form onSubmit={handleSaveEditedProject} className="space-y-5">
+              {/* Company + Role pickers (same UX as the create wizard). */}
+              <div className="rounded-2xl border border-[#E7C768]/30 bg-[#0E1F30]/60 p-4 space-y-3">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] font-bold block">
+                  Компания и должность
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">Компания:</label>
+                    {companiesList.length > 0 ? (
+                      <select
+                        className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.companyName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
+                      >
+                        <option value="">Выберите компанию...</option>
+                        {companiesList.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.companyName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">Должность:</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.roleName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, roleName: e.target.value } as any)}
+                      />
+                      <button
+                        type="button"
+                        onClick={applyRoleTemplateToEditing}
+                        className="px-3 py-2 rounded-xl bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-[#E7C768] text-[10px] font-bold transition whitespace-nowrap"
+                        title="Заменить все 15 полей шаблоном для выбранной должности"
+                      >
+                        Применить шаблон ко всем 15 полям
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-black/20 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder="Фильтровать справочник профессий..."
+                    className="bg-black/40 text-[10.5px] p-1.5 w-full rounded border border-white/10 text-white"
+                    value={editSpecialtySearch}
+                    onChange={(e) => setEditSpecialtySearch(e.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
+                    {Array.from(new Set([...jobTitlesList, ...BASIC_SPECIALTIES]))
+                      .filter((s) => s.toLowerCase().includes(editSpecialtySearch.toLowerCase()))
+                      .slice(0, 40)
+                      .map((spec) => (
+                        <button
+                          key={spec}
+                          type="button"
+                          onClick={() => {
+                            setEditingProject({ ...editingProject, roleName: spec } as any);
+                            setEditSpecialtySearch("");
+                          }}
+                          className="bg-[#1D3E5E]/85 border border-white/5 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition"
+                        >
+                          💼 {spec}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
               <VacancyEditor
                 mode="edit"
                 companyName={editingProject.companyName}
+                hideKeys={["role_name"]}
+                roleTemplates={roleTplToFields(editRoleTemplates)}
                 values={projectToVacancyValues(editingProject)}
                 onChange={(patch) => setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) })}
                 aiLoadingKey={aiEnhancingField}
@@ -4352,6 +4431,16 @@ export default function EmployerPanel() {
                   className="cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 rounded-xl text-slate-300 font-bold transition text-sm"
                 >
                   Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteEditedProject}
+                  disabled={isDeletingProject}
+                  className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
+                  title="Удалить вакансию из базы данных"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeletingProject ? "Удаляем..." : "Удалить вакансию"}
                 </button>
               </div>
             </form>
