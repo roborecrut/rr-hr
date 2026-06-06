@@ -22,7 +22,7 @@ import {
 } from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
-import AIDialogPanel, { pushAILog } from "../components/AIDialogPanel";
+import { useAIWait } from "../components/AIWaitProvider";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import {
@@ -482,14 +482,12 @@ export default function EmployerPanel() {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      pushAILog("ai-enhance:single", "request", { field: fieldName, value: currentVal, company_id: draftCompanyId });
       const newVal = await aiEnhanceSingle({
         field: fieldName,
         value: currentVal,
         company_name: newCompanyName,
         hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
       });
-      pushAILog("ai-enhance:single", "response", newVal);
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
         else if (fieldName === "industry") setNewCompanyIndustry(newVal);
@@ -514,7 +512,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-enhance:single", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
@@ -546,14 +543,12 @@ export default function EmployerPanel() {
         statsValFounded: newCompanyStatsValFounded,
         statsLabelFounded: newCompanyStatsLabelFounded,
       };
-      pushAILog("ai-enhance:all_company", "request", fields);
       const enriched = await aiEnhanceAll({
         mode: "all_company",
         company_name: newCompanyName,
         fields,
         hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
       });
-      pushAILog("ai-enhance:all_company", "response", enriched);
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
         if (enriched.industry) setNewCompanyIndustry(enriched.industry);
@@ -578,7 +573,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-enhance:all_company", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
     } finally {
       setIsEnhancingAll(false);
@@ -590,14 +584,12 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
       const { aiCompanyAnalyze } = await import("@/lib/aiClient");
-      pushAILog("ai-company-analyze", "request", { company_id: draftCompanyId, file_url: draftFilePath, filename });
       const { fields: payload, raw } = await aiCompanyAnalyze({
         company_id: draftCompanyId || undefined,
         employer_public_id: employerId,
         file_url: draftFilePath || undefined,
         raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
       });
-      pushAILog("ai-company-analyze", "response", raw || payload);
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
         if (payload.industry) setNewCompanyIndustry(payload.industry);
@@ -619,7 +611,6 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      pushAILog("ai-company-analyze", "error", String((err as Error).message));
       addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
     } finally {
       setIsParsingFile(false);
@@ -651,9 +642,7 @@ export default function EmployerPanel() {
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
-      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       const { aiRestart } = await import("@/lib/aiClient");
-      await aiRestart(employerId).then((r) => pushAILog("ai-restart", "response", r ?? "ok")).catch((e) => pushAILog("ai-restart", "error", String(e.message)));
       setShowAddCompany(true);
     } catch (err: any) {
       console.error(err);
@@ -718,12 +707,9 @@ export default function EmployerPanel() {
     setNewCompanyStatsLabelFounded(lbl.founded || "");
     setNewCompanyStatsLabelClients(lbl.employees || "");
     setNewCompanyStatsLabelDialogs(lbl.turnover || "");
-    pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
     try {
       const { aiRestart } = await import("@/lib/aiClient");
       await aiRestart(employerId)
-        .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
-        .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
     } catch {}
     setShowAddCompany(true);
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
@@ -1470,12 +1456,9 @@ export default function EmployerPanel() {
       setSetupTrainingWikiText("");
       setSetupTrainingRegulationsText("");
       setSpecialtySearch("");
-      pushAILog("ai-restart", "request", { employer_public_id: employerId, message: "/restart" });
       try {
         const { aiRestart } = await import("@/lib/aiClient");
         await aiRestart(employerId)
-          .then((r) => pushAILog("ai-restart", "response", r ?? "ok"))
-          .catch((e) => pushAILog("ai-restart", "error", String(e.message)));
       } catch {}
       setShowAddNewVacancy(true);
     } catch (err: any) {
@@ -4656,7 +4639,7 @@ export default function EmployerPanel() {
       )}
 
       <EmployerAIAssistant />
-      <AIDialogPanel />
+      
     </div>
   );
 }
