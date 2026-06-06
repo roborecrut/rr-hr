@@ -2353,10 +2353,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className="max-w-7xl mx-auto py-8 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full flex-1">
+      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-7xl"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className="lg:col-span-3 space-y-6">
+        <aside className={`${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2499,7 +2499,7 @@ export default function EmployerPanel() {
         </aside>
 
         {/* Right Side Main Workspaces */}
-        <main className="lg:col-span-9 space-y-6">
+        <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (
