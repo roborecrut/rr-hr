@@ -1212,19 +1212,19 @@ export default function EmployerPanel() {
   // or fall back to the first existing employer (admin/demo case).
   useEffect(() => {
     if (isEmployerPublicIdCandidate(employerId)) return;
+    if (!authReady) return;
     let cancelled = false;
     (async () => {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      if (authUserId) {
         const { data: own } = await supabase
           .from("employers")
           .select("public_id")
-          .eq("user_id", user.id)
+          .eq("user_id", authUserId)
           .maybeSingle();
         if (!cancelled && own?.public_id) {
           setEmployerId(own.public_id);
-          cacheEmployerPublicId(own.public_id, user.id);
+          cacheEmployerPublicId(own.public_id, authUserId);
           if (path === "/setup" || path === "/employer" || path.startsWith("/employer/")) {
             navigate(`/emp${own.public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
           }
@@ -1245,7 +1245,7 @@ export default function EmployerPanel() {
       }
     })();
     return () => { cancelled = true; };
-  }, [employerId, path, navigate, activeTab]);
+  }, [employerId, path, navigate, activeTab, authReady, authUserId]);
 
   // Load profile email for the authenticated user
   useEffect(() => {
