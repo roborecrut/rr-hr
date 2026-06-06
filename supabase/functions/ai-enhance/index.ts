@@ -79,14 +79,31 @@ Deno.serve(async (req) => {
 
   try {
     if (body.mode === "single") {
-      const { text, raw } = await callProTalk({
-        messages: [
-          { role: "system", content: `Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг. ВАЖНО: ответ должен быть не длиннее ${LIMITS[body.field ?? ""] ?? 600} символов.${body.template ? "\nОриентируйся на эталон заполнения по структуре, формату списков и тону. НЕ копируй эталон дословно — используй детали пользователя." : ""}` },
-          { role: "user", content: `Роль: ${body.role_name ?? "—"}\nКомпания: ${body.company_name ?? "—"}\nПоле: ${body.field}\n${body.template ? `\nЭталон заполнения для роли:\n${body.template}\n` : ""}\nИсходный текст пользователя:\n${body.value ?? ""}\n${body.hint ? `Подсказка: ${body.hint}` : ""}` },
-        ],
-        chatId, socialId,
-      });
-      const value = clampField(body.field, text.trim());
+      const buildSingleMessages = (strict: boolean) => [
+        { role: "system" as const, content: `Ты — редактор HR-контента. Улучшаешь текст одного поля вакансии или компании, делая его профессиональным и продающим. Возвращай ТОЛЬКО улучшенный текст без комментариев и без кавычек вокруг. ВАЖНО: ответ должен быть не длиннее ${LIMITS[body.field ?? ""] ?? 600} символов.${body.template ? "\nОриентируйся на эталон заполнения по структуре, формату списков и тону. НЕ копируй эталон дословно — используй детали пользователя." : ""}${strict ? "\nНЕ вызывай никаких внешних инструментов, не ходи по URL, не делай поиск. Ответь сразу текстом из своей головы на основе данных пользователя." : ""}` },
+        { role: "user" as const, content: `Роль: ${body.role_name ?? "—"}\nКомпания: ${body.company_name ?? "—"}\nПоле: ${body.field}\n${body.template ? `\nЭталон заполнения для роли:\n${body.template}\n` : ""}\nИсходный текст пользователя:\n${body.value ?? ""}\n${body.hint ? `Подсказка: ${body.hint}` : ""}` },
+      ];
+
+      let text = "";
+      let raw: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const r = await callProTalk({ messages: buildSingleMessages(attempt > 0), chatId, socialId });
+        text = (r.text || "").trim();
+        raw = r.raw;
+        if (text) break;
+      }
+      if (!text) {
+        await logToDb({
+          user_message: `enhance.single field=${body.field}`,
+          bot_reply: "",
+          channel_id: chatId, user_social_id: socialId,
+          channel_name: "ai-enhance:single", server_name: "ai-enhance",
+          function_call_params: JSON.stringify({ field: body.field, role: body.role_name, company: body.company_name }),
+          function_error: "ai_empty_response",
+        });
+        return jsonResponse({ error: "ai_empty_response" }, 502);
+      }
+      const value = clampField(body.field, text);
       await logToDb({
         user_message: `enhance.single field=${body.field}`,
         bot_reply: value,
@@ -99,14 +116,31 @@ Deno.serve(async (req) => {
       return jsonResponse({ value });
     }
 
-    const { text, raw } = await callProTalk({
-      messages: [
-        { role: "system", content: "Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений. Соблюдай лимиты длины: name≤80, description_text≤600, products_text≤500, mission_text≤500, team≤500, payouts_text≤300, schedule_text≤300, system_text≤600." },
-        { role: "user", content: `Контекст: роль ${body.role_name ?? "—"}, компания ${body.company_name ?? "—"}\n${body.templates ? `\nЭталоны заполнения для роли (используй как структурный ориентир, не копируй дословно):\n${JSON.stringify(body.templates, null, 2)}\n` : ""}\nИсходные поля:\n${JSON.stringify(body.fields ?? {}, null, 2)}\n${body.hint ? `\nПодсказка: ${body.hint}` : ""}` },
-      ],
-      chatId, socialId,
-    });
-    const parsed = tryParseJson<Record<string, string>>(text) ?? {};
+    const buildAllMessages = (strict: boolean) => [
+      { role: "system" as const, content: `Ты — редактор HR-контента. Тебе дают JSON с полями вакансии или компании. Верни ТОЛЬКО JSON с теми же ключами, но с улучшенными значениями. Без markdown-обёрток, без пояснений. Соблюдай лимиты длины: name≤80, description_text≤600, products_text≤500, mission_text≤500, team≤500, payouts_text≤300, schedule_text≤300, system_text≤600.${strict ? "\nКРИТИЧНО: НЕ вызывай никакие внешние инструменты/функции, НЕ ходи по URL из полей, НЕ делай поиск. Используй только данные из самого JSON. Верни валидный JSON-объект." : ""}` },
+      { role: "user" as const, content: `Контекст: роль ${body.role_name ?? "—"}, компания ${body.company_name ?? "—"}\n${body.templates ? `\nЭталоны заполнения для роли (используй как структурный ориентир, не копируй дословно):\n${JSON.stringify(body.templates, null, 2)}\n` : ""}\nИсходные поля:\n${JSON.stringify(body.fields ?? {}, null, 2)}\n${body.hint ? `\nПодсказка: ${body.hint}` : ""}` },
+    ];
+
+    let text = "";
+    let raw: any = null;
+    let parsed: Record<string, string> | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const r = await callProTalk({ messages: buildAllMessages(attempt > 0), chatId, socialId });
+      text = r.text || "";
+      raw = r.raw;
+      parsed = tryParseJson<Record<string, string>>(text);
+      if (parsed && Object.keys(parsed).length > 0) break;
+    }
+    if (!parsed || Object.keys(parsed).length === 0) {
+      await logToDb({
+        user_message: `enhance.${body.mode}`, bot_reply: text,
+        channel_id: chatId, user_social_id: socialId,
+        channel_name: `ai-enhance:${body.mode}`, server_name: "ai-enhance",
+        function_call_params: JSON.stringify({ role: body.role_name, company: body.company_name }),
+        function_error: "ai_empty_response",
+      });
+      return jsonResponse({ error: "ai_empty_response" }, 502);
+    }
     const obj: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed)) obj[k] = clampField(k, v);
     await logToDb({

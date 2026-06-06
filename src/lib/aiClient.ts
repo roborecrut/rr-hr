@@ -4,9 +4,24 @@ import { supabase } from "@/integrations/supabase/client";
 // Throws on transport/server errors. Returns the parsed JSON body.
 async function invoke<T = any>(fn: "ai-chat" | "ai-enhance" | "ai-evaluate" | "ai-generate-onboarding" | "ai-restart" | "ai-company-analyze", body: any): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
-  if (error) throw new Error(error.message || `invoke_${fn}_failed`);
+  const friendly = (code: string): string => {
+    if (code === "ai_empty_response") return "ИИ не вернул ответ. Попробуйте ещё раз.";
+    return code;
+  };
+  if (error) {
+    // supabase-js wraps non-2xx as FunctionsHttpError; body may be on `context`
+    let serverCode = "";
+    try {
+      const ctx: any = (error as any).context;
+      if (ctx && typeof ctx.json === "function") {
+        const j = await ctx.json();
+        serverCode = j?.error || "";
+      }
+    } catch { /* ignore */ }
+    throw new Error(friendly(serverCode) || error.message || `invoke_${fn}_failed`);
+  }
   if (data && typeof data === "object" && "error" in data && (data as any).error) {
-    throw new Error(String((data as any).error));
+    throw new Error(friendly(String((data as any).error)));
   }
   return data as T;
 }
