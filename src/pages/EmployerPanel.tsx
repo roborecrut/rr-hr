@@ -2129,24 +2129,33 @@ export default function EmployerPanel() {
       } : {};
       Object.keys(companyCtx).forEach(k => { if (!companyCtx[k]) delete companyCtx[k]; });
 
-      const enhanced = await aiEnhanceAll({
-        mode: "all_vacancy",
-        company_name: ep.companyName,
-        role_name: ep.roleName,
-        fields,
-        templates: {
-          vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
-          tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
-          schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
-          motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
-          motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
-          payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
-          onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
-          team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
-          system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
-        },
-        file_context: editVacancyRawText || undefined,
-        company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+      const enhanced = await aiWaitRun<any>({
+        title: "ИИ оформляет вакансию",
+        task: () => aiEnhanceAll({
+          mode: "all_vacancy",
+          company_name: ep.companyName,
+          role_name: ep.roleName,
+          fields,
+          templates: {
+            vacancy_text: editRoleTemplates?.vacancy_text || exampleFor("vacancy_text"),
+            tasks_activity_text: editRoleTemplates?.tasks_activity_text || exampleFor("tasks_activity_text"),
+            schedule_text: editRoleTemplates?.schedule_text || exampleFor("schedule_text"),
+            motivation_text: editRoleTemplates?.motivation_text || exampleFor("motivation_text"),
+            motivation_text_detail: editRoleTemplates?.motivation_text_detail || exampleFor("motivation_text_detail"),
+            payouts_text: editRoleTemplates?.payouts_text || exampleFor("payouts_text"),
+            onboarding_text: editRoleTemplates?.onboarding_text || exampleFor("onboarding_text"),
+            team_text: editRoleTemplates?.team_text || exampleFor("team_text"),
+            system_text: editRoleTemplates?.system_text || exampleFor("system_text"),
+            training_professional_text: editRoleTemplates?.training_professional_text || exampleFor("training_professional_text"),
+            training_product_text: editRoleTemplates?.training_product_text || exampleFor("training_product_text"),
+            training_systems_text: editRoleTemplates?.training_systems_text || exampleFor("training_systems_text"),
+            training_wiki_text: editRoleTemplates?.training_wiki_text || exampleFor("training_wiki_text"),
+            training_regulations_text: editRoleTemplates?.training_regulations_text || exampleFor("training_regulations_text"),
+          },
+          file_context: editVacancyRawText || undefined,
+          company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+          hint: editVacancyRawText ? "Главный источник фактов — распознанный текст документа. Если должность пустая, извлеки role_name из документа." : undefined,
+        }),
       });
       if (enhanced) {
         // Map snake_case response back to JobProject camelCase fields.
