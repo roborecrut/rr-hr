@@ -49,7 +49,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     if (!projectId) return;
     (async () => {
       const [{ data: blocks }, { data: pr }] = await Promise.all([
-        supabase.from("interview_blocks").select("*").eq("project_id", projectId),
+        (supabase as any).from("interview_blocks").select("*").eq("project_id", projectId),
         supabase.from("projects").select("interview_pass_score,role_name").eq("id", projectId).maybeSingle(),
       ]);
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
@@ -76,11 +76,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const saveBlock = async (k: Kind, payload: any) => {
     setSaving(true);
     try {
-      const { data: existing } = await supabase.from("interview_blocks").select("id").eq("project_id", projectId).eq("kind", k).maybeSingle();
+      const { data: existing } = await (supabase as any).from("interview_blocks").select("id").eq("project_id", projectId).eq("kind", k).maybeSingle();
       if (existing?.id) {
-        await supabase.from("interview_blocks").update({ payload }).eq("id", existing.id);
+        await (supabase as any).from("interview_blocks").update({ payload }).eq("id", existing.id);
       } else {
-        await supabase.from("interview_blocks").insert({ project_id: projectId, kind: k, payload });
+        await (supabase as any).from("interview_blocks").insert({ project_id: projectId, kind: k, payload });
       }
       addAuditEvent("success", "Сохранено", `Заготовка интервью (${k}) сохранена`);
     } catch (e: any) {
@@ -89,7 +89,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   };
 
   const savePassScore = async () => {
-    await supabase.from("projects").update({ interview_pass_score: passScore }).eq("id", projectId);
+    await (supabase as any).from("projects").update({ interview_pass_score: passScore }).eq("id", projectId);
     addAuditEvent("success", "Сохранено", `Проходной балл интервью: ${passScore}`);
   };
 
@@ -102,11 +102,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
         setResumeMd(r.criteria_md || "");
       } else if (kind === "checklist") {
         await callEdge("ai-generate-interview-checklist", { project_id: projectId });
-        const { data } = await supabase.from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
+        const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
         setChecklist((data as any)?.payload?.questions || []);
       } else {
         await callEdge("ai-generate-interview-situations", { project_id: projectId });
-        const { data } = await supabase.from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","situations").maybeSingle();
+        const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","situations").maybeSingle();
         setSituations((data as any)?.payload?.situations || []);
       }
       addAuditEvent("success", "ИИ сгенерировал", `${kind}`);
@@ -175,7 +175,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                 {busy ? <RefreshCw className="w-3.5 h-3.5 animate-spin"/> : <Wand2 className="w-3.5 h-3.5"/>} Сгенерировать ИИ
               </button>
             </div>
-            {busy && <LoadingPhrase kind="interview" />}
+            {busy && <LoadingPhrase entity="interview" />}
 
             {kind === "resume" && (
               <div className="space-y-2">
