@@ -1315,6 +1315,10 @@ export default function EmployerPanel() {
         .eq("user_id", user.id)
         .maybeSingle();
       if (!emp) return;
+      if (isEmployerPublicIdCandidate((emp as any).public_id)) {
+        cacheEmployerPublicId((emp as any).public_id, user.id);
+        if ((emp as any).public_id !== employerId) setEmployerId((emp as any).public_id);
+      }
       setBalance(Number(((emp as any).wallets?.[0]?.units_balance ?? (emp as any).wallets?.units_balance) || 0));
       setInterviewCredits(Number((emp as any).interview_credits || 0));
       setTrainingCredits(Number((emp as any).training_credits || 0));
