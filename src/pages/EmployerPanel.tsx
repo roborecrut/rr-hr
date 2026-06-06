@@ -483,11 +483,14 @@ export default function EmployerPanel() {
     setEnhancingFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      const newVal = await aiEnhanceSingle({
-        field: fieldName,
-        value: currentVal,
-        company_name: newCompanyName,
-        hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
+      const newVal = await aiWaitRun({
+        title: `ИИ улучшает поле «${fieldName}»`,
+        task: () => aiEnhanceSingle({
+          field: fieldName,
+          value: currentVal,
+          company_name: newCompanyName,
+          hint: `industry=${newCompanyIndustry}; staff=${newCompanyStaff}; description=${newCompanyDesc}; site=${newCompanySite}; mission=${newCompanyMissionText}`,
+        }),
       });
       if (newVal) {
         if (fieldName === "name") setNewCompanyName(newVal);
@@ -544,11 +547,14 @@ export default function EmployerPanel() {
         statsValFounded: newCompanyStatsValFounded,
         statsLabelFounded: newCompanyStatsLabelFounded,
       };
-      const enriched = await aiEnhanceAll({
-        mode: "all_company",
-        company_name: newCompanyName,
-        fields,
-        hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+      const enriched = await aiWaitRun({
+        title: "ИИ упаковывает бренд компании",
+        task: () => aiEnhanceAll({
+          mode: "all_company",
+          company_name: newCompanyName,
+          fields,
+          hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+        }),
       });
       if (enriched) {
         if (enriched.name) setNewCompanyName(enriched.name);
@@ -585,12 +591,16 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
     try {
       const { aiCompanyAnalyze } = await import("@/lib/aiClient");
-      const { fields: payload, raw } = await aiCompanyAnalyze({
-        company_id: draftCompanyId || undefined,
-        employer_public_id: employerId,
-        file_url: draftFilePath || undefined,
-        raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
+      const res = await aiWaitRun({
+        title: `ИИ читает файл ${filename}`,
+        task: () => aiCompanyAnalyze({
+          company_id: draftCompanyId || undefined,
+          employer_public_id: employerId,
+          file_url: draftFilePath || undefined,
+          raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
+        }),
       });
+      const payload = res?.fields || {};
       if (payload) {
         if (payload.name) setNewCompanyName(payload.name);
         if (payload.industry) setNewCompanyIndustry(payload.industry);
