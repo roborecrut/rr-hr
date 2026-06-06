@@ -428,6 +428,8 @@ export type Database = {
           auth_kind: string
           company_id: string | null
           created_at: string
+          crm_stage: Database["public"]["Enums"]["crm_stage"]
+          crm_stage_manual: boolean
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           email: string | null
           id: string
@@ -452,6 +454,8 @@ export type Database = {
           auth_kind?: string
           company_id?: string | null
           created_at?: string
+          crm_stage?: Database["public"]["Enums"]["crm_stage"]
+          crm_stage_manual?: boolean
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
           id?: string
@@ -476,6 +480,8 @@ export type Database = {
           auth_kind?: string
           company_id?: string | null
           created_at?: string
+          crm_stage?: Database["public"]["Enums"]["crm_stage"]
+          crm_stage_manual?: boolean
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
           id?: string
@@ -1953,6 +1959,8 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_list_candidates: { Args: never; Returns: Json }
+      admin_list_employers: { Args: never; Returns: Json }
       admin_list_job_titles: {
         Args: never
         Returns: {
@@ -1964,6 +1972,19 @@ export type Database = {
           title_norm: string
           usage_count: number
         }[]
+      }
+      admin_list_users: { Args: never; Returns: Json }
+      admin_set_role: {
+        Args: {
+          _enabled: boolean
+          _role: Database["public"]["Enums"]["app_role"]
+          _user: string
+        }
+        Returns: Json
+      }
+      admin_wallet_adjust: {
+        Args: { _delta: number; _employer: string; _note: string }
+        Returns: Json
       }
       apply_transaction: {
         Args: {
@@ -2008,13 +2029,25 @@ export type Database = {
         }
         Returns: Json
       }
+      candidate_full_details: { Args: { _candidate: string }; Returns: Json }
       candidate_list_applications: {
         Args: { _email: string; _password: string }
         Returns: Json
       }
+      candidate_recalc_crm_stage: {
+        Args: { _id: string }
+        Returns: Database["public"]["Enums"]["crm_stage"]
+      }
       company_create_draft: { Args: never; Returns: Json }
       company_finalize: { Args: { _id: string }; Returns: Json }
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
+      employer_set_candidate_crm_stage: {
+        Args: {
+          _candidate: string
+          _stage: Database["public"]["Enums"]["crm_stage"]
+        }
+        Returns: Json
+      }
       get_my_referees: { Args: never; Returns: Json }
       get_my_referrer: { Args: never; Returns: Json }
       has_role: {
@@ -2091,6 +2124,15 @@ export type Database = {
         | "interview"
         | "scoring"
         | "training"
+        | "certified"
+      crm_stage:
+        | "registration"
+        | "screening"
+        | "checklist"
+        | "situations"
+        | "professional"
+        | "product"
+        | "systems"
         | "certified"
       message_sender: "candidate" | "recruiter" | "ai"
       question_category:
@@ -2237,6 +2279,16 @@ export const Constants = {
         "interview",
         "scoring",
         "training",
+        "certified",
+      ],
+      crm_stage: [
+        "registration",
+        "screening",
+        "checklist",
+        "situations",
+        "professional",
+        "product",
+        "systems",
         "certified",
       ],
       message_sender: ["candidate", "recruiter", "ai"],

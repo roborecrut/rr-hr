@@ -70,6 +70,11 @@ export interface Candidate {
   projectId: string; // Attached to which Employer Onboarding system
   roleName: string;
   currentStage: "terms" | "interview" | "scoring" | "training" | "certified";
+  crmStage?: "registration" | "screening" | "checklist" | "situations" | "professional" | "product" | "systems" | "certified";
+  publicId?: string;
+  companyId?: string;
+  companySlug?: string;
+  companyName?: string;
   resumeName?: string;
   resumeText?: string;
   scores?: CandidateScores;

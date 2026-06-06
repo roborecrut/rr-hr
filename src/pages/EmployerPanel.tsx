@@ -158,6 +158,7 @@ import {
   TeamView,
   SystemView
 } from "../components/VacancySections";
+import CandidateDetailsModal from "../components/CandidateDetailsModal";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
@@ -198,6 +199,7 @@ export default function EmployerPanel() {
   // CRM States
   const [crmSearch, setCrmSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
   // Mailing States
   const [mailingSegment, setMailingSegment] = useState<string>("all");
@@ -1062,14 +1064,21 @@ export default function EmployerPanel() {
         setCandidates(
           (candRows || []).map((c: any) => ({
             id: `candidate${c.public_id}`,
+            uuid: c.id,
             publicId: c.public_id,
             name: c.resume_name || `Кандидат #${c.public_id}`,
-            email: "",
+            email: c.email || "",
             projectId: c.project_id,
+            companyId: c.company_id,
+            companyName: c.projects?.companies?.name,
+            companySlug: c.projects?.companies?.slug,
             roleName: c.role_name || c.projects?.role_name || "",
             currentStage: c.current_stage,
+            crmStage: c.crm_stage,
             createdAt: c.created_at,
             registeredVia: c.registered_via,
+            resumeText: c.resume_text,
+            resumeName: c.resume_name,
           })) as any,
         );
       }
@@ -1357,6 +1366,29 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error("Error modifying candidate stage:", err);
+    }
+  };
+
+  // Move candidate in the CRM funnel (8-stage). Marks the stage as manual,
+  // disabling automatic recalculation from triggers.
+  const handleUpdateCrmStage = async (
+    candId: string,
+    newStage: "registration" | "screening" | "checklist" | "situations" | "professional" | "product" | "systems" | "certified",
+  ) => {
+    try {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const cand: any = candidates.find((c: any) => c.id === candId);
+      const uuid = cand?.uuid;
+      if (!uuid) return;
+      const { error } = await supabase.rpc("employer_set_candidate_crm_stage" as any, {
+        _candidate: uuid, _stage: newStage,
+      });
+      if (error) throw error;
+      setCandidates(prev => prev.map((c: any) => c.id === candId ? ({ ...c, crmStage: newStage }) : c));
+      addAuditEvent("success", "Этап CRM обновлён", `Кандидат перемещён на этап: ${newStage}`);
+    } catch (err: any) {
+      console.error("Error updating CRM stage:", err);
+      addAuditEvent("warning", "Ошибка CRM", err?.message || "Не удалось обновить этап");
     }
   };
 
@@ -2052,11 +2084,33 @@ export default function EmployerPanel() {
               </button>
 
               <button
+                onClick={() => navigate(`/emp${employerId}/training`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 4. Обучение (ИИ)
+                </span>
+                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
+              </button>
+
+              <button
+                onClick={() => navigate(`/emp${employerId}/interviews`)}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 5. Интервью (ИИ)
+                </span>
+                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
+              </button>
+
+              <div className="h-px bg-white/10 my-2"></div>
+
+              <button
                 onClick={() => { navigate(`/emp${employerId}/crm`); setCrmViewMode("kanban"); }}
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "crm" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-[#D99E41]" /> 4. CRM & Воронка
+                  <Users className="w-4 h-4 text-[#D99E41]" /> CRM & Воронка
                 </span>
                 <span className="bg-amber-900/40 text-[10px] text-[#E7C768] px-1.5 py-0.5 rounded font-mono">{candidates.length}</span>
               </button>
@@ -2066,7 +2120,7 @@ export default function EmployerPanel() {
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "tariff" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-[#D99E41]" /> 5. Тариф & Счета
+                  <CreditCard className="w-4 h-4 text-[#D99E41]" /> Тариф & Счета
                 </span>
                 <span className="bg-emerald-950 text-[10px] text-[#E7C768] font-bold uppercase px-1.5 py-0.5 rounded font-mono">{balance} RR</span>
               </button>
@@ -2076,29 +2130,24 @@ export default function EmployerPanel() {
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "events" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#D99E41]" /> 6. События & Логи
+                  <Activity className="w-4 h-4 text-[#D99E41]" /> События & Логи
                 </span>
               </button>
 
-              <div className="h-px bg-white/10 my-2"></div>
-
-              <button
-                onClick={() => navigate(`/emp${employerId}/interviews`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
-              >
-                <span className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 7. Интервью (ИИ)
-                </span>
-              </button>
-
-              <button
-                onClick={() => navigate(`/emp${employerId}/training`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
-              >
-                <span className="flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 8. Обучение (ИИ)
-                </span>
-              </button>
+              {isAdmin && (
+                <>
+                  <div className="h-px bg-white/10 my-2"></div>
+                  <button
+                    onClick={() => navigate(`/admin`)}
+                    className="w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/40 text-indigo-100"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-indigo-300" /> Админ-панель
+                    </span>
+                    <span className="text-[10px] bg-indigo-900/60 text-indigo-200 px-1.5 py-0.5 rounded font-mono">CRM</span>
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -2272,36 +2321,35 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                   {[
-                    { stage: "terms", title: "1. Ознакомление", bg: "bg-blue-650/40 border-blue-500/20" },
-                    { stage: "interview", title: "2. Собеседование (ИИ)", bg: "bg-amber-650/40 border-amber-500/20" },
-                    { stage: "training", title: "3. Обучение Wiki", bg: "bg-sky-650/40 border-sky-500/20" },
-                    { stage: "certified", title: "4. Сдал & Обучен 🎓", bg: "bg-emerald-650/40 border-emerald-500/20" }
+                    { stage: "registration", title: "1. Регистрация" },
+                    { stage: "screening",    title: "2. Скрининг" },
+                    { stage: "checklist",    title: "3. Чеклист" },
+                    { stage: "situations",   title: "4. Ситуации" },
+                    { stage: "professional", title: "5. Профессия" },
+                    { stage: "product",      title: "6. Продукт" },
+                    { stage: "systems",      title: "7. Система" },
+                    { stage: "certified",    title: "8. Сертификат 🎓" },
                   ].map(column => {
-                    const colCandidates = filteredCandidates.filter(c => {
-                      if (column.stage === "interview") {
-                        return c.currentStage === "interview" || c.currentStage === "scoring";
-                      }
-                      return c.currentStage === column.stage;
-                    });
+                    const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
 
                     return (
                       <div 
                         key={column.stage} 
-                        className={`bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-3 space-y-3 min-h-[350px] shadow`}
+                        className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow"
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => {
+                        onDrop={async () => {
                           // Drag & drop triggers action
                           const draggedId = localStorage.getItem("dragged_candidate_id");
                           if (draggedId) {
-                            handleUpdateCandidateStage(draggedId, column.stage as any);
+                            await handleUpdateCrmStage(draggedId, column.stage as any);
                             localStorage.removeItem("dragged_candidate_id");
                           }
                         }}
                       >
                         <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
-                          <span>{column.title}</span>
+                          <span className="truncate">{column.title}</span>
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
@@ -2314,54 +2362,14 @@ export default function EmployerPanel() {
                                 key={cand.id}
                                 draggable
                                 onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
-                                className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-3 rounded-xl transition cursor-grab shadow-sm active:cursor-grabbing space-y-2"
+                                onClick={() => setSelectedCandidateId((cand as any).uuid || null)}
+                                className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm space-y-1.5"
                               >
-                                <div className="text-xs font-bold text-[#E7C768] hover:underline" onClick={() => setSelectedCandidate(cand)}>
+                                <div className="text-xs font-bold text-[#E7C768] hover:underline">
                                   {cand.name}
                                 </div>
                                 <div className="text-[10px] text-slate-300 line-clamp-1">{cand.roleName}</div>
-
-                                {/* Dynamic Score Indicator if interview has elements */}
-                                {cand.scores && (
-                                  <div className="flex justify-between items-center text-[10px] bg-black/40 p-1.5 rounded border border-white/5 font-mono">
-                                    <span className="text-slate-400">Балл ИИ:</span>
-                                    <span className="text-[#E7C768] font-bold">
-                                      {Math.round(((cand.scores.resumeScore || 70) + (cand.scores.checklistScore || 80) + (cand.scores.situationsScore || 75)) / 3)}/100
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Interactive Stage Promotional arrows */}
-                                <div className="flex justify-between gap-1 pt-1 border-t border-white/5">
-                                  <button
-                                    disabled={cand.currentStage === "terms"}
-                                    onClick={() => {
-                                      const prevStageMap: Record<string, any> = { "interview": "terms", "scoring": "interview", "training": "interview", "certified": "training" };
-                                      handleUpdateCandidateStage(cand.id, prevStageMap[cand.currentStage] || "terms");
-                                    }}
-                                    className="cursor-pointer bg-white/5 hover:bg-white/15 px-1 py-0.5 rounded text-[9px] text-gray-300 font-bold disabled:opacity-30"
-                                    title="На уровень назад"
-                                  >
-                                    ◀
-                                  </button>
-                                  <button
-                                    onClick={() => setSelectedCandidate(cand)}
-                                    className="cursor-pointer text-[10px] text-sky-300 hover:text-white font-bold"
-                                  >
-                                    Инфо
-                                  </button>
-                                  <button
-                                    disabled={cand.currentStage === "certified"}
-                                    onClick={() => {
-                                      const nextStageMap: Record<string, any> = { "terms": "interview", "interview": "training", "scoring": "training", "training": "certified" };
-                                      handleUpdateCandidateStage(cand.id, nextStageMap[cand.currentStage] || "certified");
-                                    }}
-                                    className="cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-700 hover:shadow py-0.5 px-2 rounded text-[9px] text-white font-black"
-                                    title="Продвинуть кандидата вперед"
-                                  >
-                                    ▶
-                                  </button>
-                                </div>
+                                {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
                               </div>
                             ))
                           )}
@@ -2403,7 +2411,7 @@ export default function EmployerPanel() {
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
-                                <td className="p-4 font-bold text-white">
+                                <td className="p-4 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
                                 </td>
@@ -2411,13 +2419,17 @@ export default function EmployerPanel() {
                                 <td className="p-4">
                                   <select 
                                     className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768]"
-                                    value={cand.currentStage}
-                                    onChange={(e) => handleUpdateCandidateStage(cand.id, e.target.value as any)}
+                                    value={(cand as any).crmStage || "registration"}
+                                    onChange={(e) => handleUpdateCrmStage(cand.id, e.target.value as any)}
                                   >
-                                    <option value="terms" className="bg-slate-900">Ознакомление</option>
-                                    <option value="interview" className="bg-slate-900">ИИ Интервью</option>
-                                    <option value="training" className="bg-slate-900">Обучение</option>
-                                    <option value="certified" className="bg-slate-900">Обучен 🎓</option>
+                                    <option value="registration" className="bg-slate-900">1. Регистрация</option>
+                                    <option value="screening" className="bg-slate-900">2. Скрининг</option>
+                                    <option value="checklist" className="bg-slate-900">3. Чеклист</option>
+                                    <option value="situations" className="bg-slate-900">4. Ситуации</option>
+                                    <option value="professional" className="bg-slate-900">5. Профессия</option>
+                                    <option value="product" className="bg-slate-900">6. Продукт</option>
+                                    <option value="systems" className="bg-slate-900">7. Система</option>
+                                    <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
                                 <td className="p-4 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
@@ -2427,7 +2439,7 @@ export default function EmployerPanel() {
                                   <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
                                 </td>
                                 <td className="p-4 text-right">
-                                  <button onClick={() => setSelectedCandidate(cand)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
+                                  <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
                                 </td>
                               </tr>
                             );
@@ -4149,6 +4161,11 @@ export default function EmployerPanel() {
 
         </main>
       </div>
+
+      <CandidateDetailsModal
+        candidateId={selectedCandidateId}
+        onClose={() => setSelectedCandidateId(null)}
+      />
 
       {/* FOOTER AREA */}
       <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center font-normal">
