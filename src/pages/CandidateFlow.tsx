@@ -782,6 +782,35 @@ export default function CandidateFlow() {
         setProfName(activeCand.name || "");
         setProfEmail(activeCand.email || "");
         setProfTelegram(activeCand.telegramUsername || "");
+        // Load extended profile (phone/avatar/resume/socials) directly from DB
+        try {
+          const { data: dbCand } = await (supabase as any)
+            .from("candidates")
+            .select("phone,avatar_url,resume_url,social_telegram,social_whatsapp,social_instagram,social_vk,social_max,social_setka,social_github")
+            .eq("id", activeCand.id)
+            .maybeSingle();
+          if (dbCand) {
+            setProfPhone(dbCand.phone || "");
+            setProfAvatarUrl(dbCand.avatar_url || "");
+            setProfResumeUrl(dbCand.resume_url || "");
+            setProfSocials({
+              social_telegram: dbCand.social_telegram || "",
+              social_whatsapp: dbCand.social_whatsapp || "",
+              social_instagram: dbCand.social_instagram || "",
+              social_vk: dbCand.social_vk || "",
+              social_max: dbCand.social_max || "",
+              social_setka: dbCand.social_setka || "",
+              social_github: dbCand.social_github || "",
+            });
+            setCandidate({
+              ...activeCand,
+              phone: dbCand.phone, avatarUrl: dbCand.avatar_url, resumeUrl: dbCand.resume_url,
+              socialTelegram: dbCand.social_telegram, socialWhatsapp: dbCand.social_whatsapp,
+              socialInstagram: dbCand.social_instagram, socialVk: dbCand.social_vk,
+              socialMax: dbCand.social_max, socialSetka: dbCand.social_setka, socialGithub: dbCand.social_github,
+            } as any);
+          }
+        } catch {}
 
         // Determine tabs
         let parsedTab = "profile";
