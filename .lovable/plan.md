@@ -1,87 +1,95 @@
-# План: фиксы редактора вакансии + Итерация 3 (Обучение)
+# Итерация 3 (продолжение) + универсальная загрузка документов
 
-## Часть A. Фиксы карточек вакансии (быстрые, 1 итерация)
+## A. Storage buckets (создаются миграцией один раз)
 
-### A1. Шаблоны привязаны к выбранной должности
-Сейчас `getRoleTemplates(setupRoleName)` загружается один раз и кнопка «Шаблон» в `VacancyEditor` всегда подставляет `field.example` (дефолт для «Менеджер по продажам»).
-- В `VacancyEditor` добавить проп `roleTemplates?: Partial<Record<VacancyFieldKey, string>>`.
-- Кнопка «Шаблон» теперь подставляет `roleTemplates[key] ?? field.example`.
-- Добавить кнопку **«Сброс»** (очистить поле) рядом с «Шаблон» и «AI».
-- В create-режиме при смене `setupRoleName` подгружать шаблоны и **перезаписывать все 15 полей** значениями `roleTemplates[key] ?? field.example` (с подтверждением, если в форме уже что-то введено вручную).
-- В edit-режиме (см. A3) — то же самое при смене должности.
+Через `supabase--storage_create_bucket`:
+- `company-uploads` (private) — временные файлы для разбора компании
+- `vacancy-uploads` (private) — временные файлы для разбора вакансии
+- `training-uploads` (private) — временные файлы для разбора обучающих материалов
+- `training-materials` (private) — постоянное хранилище материалов курсов (PDF, видео-превью, доки)
 
-### A2. Кнопки «Удалить вакансию» и «Отмена создания»
-- В карточке редактирования (`handleSaveEditedProject` форма): добавить красную кнопку «Удалить вакансию» → confirm → `supabase.from('projects').delete().eq('id', editing.id)` → закрыть карточку, обновить список, аудит-лог.
-- В карточке создания (wizard): кнопка «Отмена» → если был создан черновик (`project_create_draft`) — удалить его из БД, закрыть мастер, сбросить состояние.
+RLS на `storage.objects`:
+- INSERT/SELECT/DELETE для аутентифицированного владельца проекта/компании (path prefix `{owner_id}/...`)
+- service_role полный доступ (для edge-функций)
 
-### A3. Смена компании/должности в карточке редактирования
-- В редактор (mode="edit") добавить тот же блок «Компания + Должность» что и в wizard'е (autocomplete по `companiesList` и `jobTitlesList`).
-- При смене должности — подгрузить шаблоны (`getRoleTemplates`) и предложить перезаписать поля.
-- При смене компании — обновить `company_id` и `companyName` в `editing`.
-- Сохранение этих полей идёт в общем `handleSaveEditedProject`.
+Auto-cleanup: edge-функция `ai-ingest-document` после успешного парсинга удаляет файл из `*-uploads`.
 
-## Часть B. Итерация 3 — Страница «Обучение для кандидатов»
+## B. Универсальный поток «Загрузить документ → ИИ-разбор»
 
-### B1. Схема БД (миграция)
-Расширяем `training_blocks` + новые таблицы:
+### Компонент `<DocumentIngestField>` (новый, frontend)
+Props: `entity: 'company'|'vacancy'|'training'`, `entityId: uuid`, `value: string`, `onChange(text)`, `onAIDistribute?()`, `maxLength=10000`, `placeholderHint`.
 
-```
-training_blocks (already exists, расширить):
-  + materials_md        TEXT      -- развёрнутый материал в markdown
-  + materials_links     JSONB     -- [{title, url, kind: 'video'|'doc'|'link'}]
-  + materials_files     JSONB     -- [{name, storage_path, mime, size}]
-  + pass_score          INT       -- проходной балл (например 70)
-  + total_score         INT       -- сумма баллов по тесту (автосчёт)
-  + ai_generated_at     TIMESTAMP
+UI:
+1. Кнопка «📎 Загрузить файл» (pdf/docx/txt/md, до 10 MB) + кнопка «🎤 Вставить ссылку».
+2. Большая textarea (10000 знаков, счётчик), `value` биндится к полю сущности (`companies.about_text` / `projects.{поле}` / `training_blocks.materials_md`).
+3. Под textarea — кнопка **«Внести через ИИ»** (видна только когда есть текст). Вызывает `ai-distribute-text` для разнесения по полям.
+4. Во время ожидания ответа — анимированный плейсхолдер из массива фраз для текущей сущности (например, для company: «Изучаю миссию…», «Считаю команду…», «Разбираю продукт…»; для vacancy: «Анализирую обязанности…», «Подбираю мотивацию…»; для training: «Готовлю урок…», «Формирую тесты…»). Фразы меняются раз в 2 сек с `fade-in`.
 
-training_questions (новая):
-  id, block_id (FK), order_no,
-  kind: 'choice'|'text',
-  question TEXT, 
-  options JSONB,          -- для choice: [{text, is_correct}]
-  expected_answer TEXT,   -- для text: эталон для ProTalk
-  points INT DEFAULT 1,
-  explanation TEXT
-```
-Storage bucket: `training-materials` (private, RLS — только владелец проекта).
+### Edge-функция `ai-ingest-document`
+Вход: `{ entity, entity_id, file_path?, file_url?, prompt_hint? }`.
+- Если `file_path` (в `*-uploads` бакете) — выписать signed URL (1 час).
+- Сформировать промпт под сущность (есть шаблоны для company/vacancy/training).
+- Отправить в ProTalk (`_shared/protalk.ts`, callProTalk) с URL и инструкцией «верни оформленный markdown-текст, до 10000 символов».
+- Вернуть `{ text }`.
+- В finally: удалить файл из storage (`*-uploads`).
 
-### B2. Edge-функции
-- `ai-generate-training-material` — на вход block_key + 15 полей вакансии → markdown-материал (1500–3000 слов, с заголовками, списками, примерами).
-- `ai-generate-training-quiz` — на вход материал → 20 вопросов: 10 негативных choice («Что НЕ является…») + 10 text. Чёткая JSON-схема.
-- `ai-check-text-answer` (ProTalk) — проверяет текстовый ответ кандидата против `expected_answer`, возвращает `{ score, feedback }`.
+### Edge-функция `ai-distribute-text` (новая)
+Вход: `{ entity, entity_id, text }`.
+- Для `company`: вызывает существующий `ai-company-analyze` (или передаёт raw_text).
+- Для `vacancy`: вызывает существующий `ai-enhance` mode `all_vacancy` с `hint: text`.
+- Для `training`: вызывает новый `ai-generate-training-material` (см. C).
+Возвращает `{ fields }` или `{ block_id }`.
 
-### B3. UI работодателя: «Конструктор обучения»
-Новая вкладка/секция в `EmployerPanel` → «Обучение вакансии {role}». Для каждого из 6 блоков (профессия, продукт, системы, wiki, регламенты, мотивация — выровнять с 5 training-полями + общий «Адаптация»):
-- Кнопка «Создать материал ИИ» → markdown-редактор (react-md-editor или textarea с preview).
-- Загрузка файлов (`storage`), добавление видео-ссылок.
-- Кнопка «Сгенерировать тест» → 20 вопросов в редакторе:
-  - Для choice: вопрос + 4 варианта (radio, отметка правильного), баллы.
-  - Для text: вопрос + эталон + баллы.
-- Поле «Проходной балл», авто-сумма total_score.
-- Все правки сохраняются в `training_blocks` / `training_questions`.
+## C. Обучение — edge-функции (B2 из плана)
 
-### B4. UI кандидата
-В `CandidateFlow` (этап `training`) — для каждого блока:
-- Подстраница `/training/{block}` с красиво оформленным markdown-материалом (Tailwind prose), список файлов/видео.
-- Подстраница `/training/{block}/quiz` — 20 вопросов, по одному на экран; choice проверяется локально, text → `ai-check-text-answer`.
-- Итог: набранные баллы vs проходной; запись в `candidate_training_progress` (расширить `score`, `passed`, `answers JSONB`).
+### `ai-generate-training-material`
+Вход: `{ project_id, block_key, source_text?, source_file_url? }`.
+- Берёт 15 полей вакансии + `source_text` (если есть).
+- ProTalk-промпт: «Сгенерируй учебный материал в markdown (1500–3000 слов) для блока {block_key} по вакансии {role}. Структура: цели → ключевые знания → примеры → чек-лист».
+- Пишет в `training_blocks.materials_md`, ставит `ai_generated_at = now()`.
 
-### B5. Цены/лимиты
-Использовать существующий `spend_fixed(_project, 'training_setup')` — генерация всех 6 блоков за одно списание (300 RR из `purchase_fixed`).
+### `ai-generate-training-quiz`
+Вход: `{ block_id }`.
+- Берёт `materials_md` блока.
+- ProTalk-промпт: «Сгенерируй 20 вопросов JSON: 10 choice (вопрос + 4 варианта, 1 правильный, с уклоном в негативные формулировки), 10 text (вопрос + эталон ответа). Каждый по 5 баллов, проходной 70».
+- Парсит JSON, удаляет старые `training_questions` блока, вставляет новые. Обновляет `total_score`/`pass_score`.
 
-## Технические детали (не для пользователя)
-- Markdown: `@uiw/react-md-editor` (~50KB) или `react-markdown` + textarea для редактора.
-- Storage RLS: `storage.objects` policy `is_project_owner(project_id)` через path-prefix `{project_id}/...`.
-- AI вызовы — через существующий `LOVABLE_API_KEY` + ProTalk для проверки текстовых.
+### `ai-check-text-answer`
+Вход: `{ question_id, answer }`.
+- Берёт `expected_answer` + `points`.
+- ProTalk-промпт: «Оцени ответ кандидата на вопрос. Эталон: …. Ответ: …. Верни JSON {score: 0..points, feedback}».
+- Возвращает `{ score, feedback }`.
 
-## Порядок выполнения
-1. **Сейчас**: A1 + A2 + A3 (~1 итерация, чисто фронт + 1 удаление).
-2. **Следом (Итерация 3, шаг 1)**: миграция БД из B1 + storage bucket.
-3. **Итерация 3, шаг 2**: edge-функции B2.
-4. **Итерация 3, шаг 3**: UI работодателя B3.
-5. **Итерация 3, шаг 4**: UI кандидата B4.
+## D. UI работодателя — «Конструктор обучения» (B3)
 
-## Вопросы перед стартом
-1. По удалению вакансии — мягкое (флаг `archived`) или жёсткое `DELETE`?
-2. В Итерации 3 — оставляем ровно 5 блоков обучения (из 15 полей) или добавляем 6-й «Мотивация и онбординг»?
-3. Markdown-редактор: `@uiw/react-md-editor` (WYSIWYG-подобный) или простой textarea + live-preview справа?
+Новая вкладка в `EmployerPanel` (внутри карточки вакансии): «Обучение».
+Для каждого из 5 блоков (`professional`, `product`, `systems`, `wiki`, `regulations`):
+- Карточка с заголовком, прогрессом (есть материал? есть тест? сколько вопросов?).
+- Раздел «Материал»: `<DocumentIngestField entity="training">` + кнопка «Сгенерировать материал ИИ» (вызывает `ai-generate-training-material`).
+- Раздел «Тест»: список вопросов с inline-редактором (текст, варианты, правильный, баллы). Кнопки: «Добавить вопрос», «Сгенерировать тест ИИ».
+- Поле «Проходной балл» + авто-сумма `total_score`.
+- Кнопка «Опубликовать блок».
+
+## E. UI кандидата (B4) — кратко, отдельным шагом
+
+В `CandidateFlow` (этап `training`) — список 5 блоков, страница материала (markdown через `react-markdown` + Tailwind prose), страница теста (по 1 вопросу), итог с записью в `candidate_training_progress`.
+
+## Технические детали
+- Установить `react-markdown` + `remark-gfm` (~80KB).
+- Использовать существующие `_shared/protalk.ts` и шаблон edge-функций (CORS из `_shared/cors.ts`).
+- Все новые edge-функции с `verify_jwt = false`, валидация прав внутри (по auth-header → `getUserFromAuthHeader`).
+- Промпты для анимированного ожидания — статика в `src/lib/loadingPhrases.ts`.
+
+## Порядок выполнения этой итерации
+1. Миграция storage buckets + RLS policies.
+2. Установка `react-markdown` + создание `src/lib/loadingPhrases.ts`.
+3. Edge-функции: `ai-ingest-document`, `ai-distribute-text`, `ai-generate-training-material`, `ai-generate-training-quiz`, `ai-check-text-answer`.
+4. Frontend компонент `<DocumentIngestField>`.
+5. Встройка в редактор компании, вакансии (VacancyEditor) — поля верхнего уровня (`about_text`, `responsibilities`, etc.).
+6. UI «Конструктор обучения» в `EmployerPanel`.
+7. (Следующее сообщение) UI кандидата.
+
+## Открытые вопросы
+1. **Лимит хранения файла**: считать ли 10 MB достаточным или нужно больше (видео)?
+2. **Видео-материалы** в обучении: только ссылки на YouTube/RuTube или нужна загрузка видео-файлов в `training-materials` (это уже большие объёмы)?
+3. **Сразу 5 edge-функций** в одной итерации — ок или дробить по 2?
