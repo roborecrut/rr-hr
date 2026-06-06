@@ -3114,15 +3114,12 @@ export default function EmployerPanel() {
                       e.preventDefault();
                       if (e.dataTransfer.files && e.dataTransfer.files[0]) {
                         const file = e.dataTransfer.files[0];
-                        setNewCompanyFiles(file.name);
-                        addAuditEvent("info", "Файл загружен", `Прикреплен регламент: ${file.name}`);
+                        addAuditEvent("info", "Загрузка файла", `Загружаем «${file.name}» в Supabase…`);
                         (async () => { await uploadCompanyFile(file); })();
                       }
                     }}
-                    className={`cursor-pointer border-2 border-dashed rounded-2xl p-4 text-center space-y-1.5 transition-all ${
-                      isParsingFile 
-                        ? "border-[#E7C768] bg-[#FFF9E5] animate-pulse" 
-                        : "border-[#DBDBDB] bg-white hover:bg-[#FAFAFA]"
+                    className={`editor-dropzone cursor-pointer border-2 border-dashed rounded-2xl p-4 text-center space-y-1.5 transition-all ${
+                      isParsingFile || isUploadingFile ? "animate-pulse" : ""
                     }`}
                   >
                     <input 
@@ -3132,31 +3129,37 @@ export default function EmployerPanel() {
                       onChange={(e) => {
                         if (e.target.files && e.target.files[0]) {
                           const file = e.target.files[0];
-                          setNewCompanyFiles(file.name);
-                          addAuditEvent("info", "Файл загружен", `Прикреплен файл: ${file.name}`);
+                          addAuditEvent("info", "Загрузка файла", `Загружаем «${file.name}» в Supabase…`);
                           (async () => { await uploadCompanyFile(file); })();
                         }
                       }}
                     />
-                    <div className="text-xs text-[#1A1A1A] font-bold flex items-center justify-center gap-2">
-                      <FileText className="w-4 h-4 text-[#1E4468]" />
-                      {newCompanyFiles ? (
-                        <span className="text-[#D99E41]">Документ загружен: {newCompanyFiles} ✓</span>
+                    <div className="text-xs text-white font-bold flex items-center justify-center gap-2">
+                      <FileText className="w-4 h-4 text-[#E7C768]" />
+                      {isUploadingFile ? (
+                        <span className="text-[#E7C768]">Загружаем «{newCompanyFiles || "файл"}» в Supabase Storage…</span>
+                      ) : draftFilePath && newCompanyFiles ? (
+                        <span className="text-[#E7C768]">Файл загружен в Supabase: {newCompanyFiles} ✓</span>
                       ) : (
-                        <span>Загрузите презентацию или описание компании — я распознаю текст и сам аккуратно заполню все поля ниже, копировать вручную не придётся</span>
+                        <span>Загрузите презентацию или описание компании — затем нажмите кнопку «Отправить документ в ProTalk» и ИИ извлечёт текст</span>
                       )}
                     </div>
-                    <span className="text-[10px] text-[#6B7280] block font-mono">
+                    <span className="text-[10px] text-white/70 block font-mono">
                       {isParsingFile 
-                        ? "⚡ ИИ от ProTalk извлекает текст о компании из документа..." 
-                        : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки нажмите кнопку «Распознать документ через ИИ» — текст появится в поле ниже."
+                        ? "⚡ ProTalk извлекает текст о компании из документа…" 
+                        : isUploadingFile
+                          ? "Файл сейчас сохраняется в облако…"
+                          : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки появится кнопка «Отправить документ в ProTalk»."
                       }
                     </span>
+                    {uploadError ? (
+                      <div className="text-[10px] text-[#FF4C4C] mt-1">{uploadError}</div>
+                    ) : null}
                   </div>
 
                   {/* Step 2: explicit «Распознать документ» trigger — appears once the
                       file is uploaded to storage but text has not been extracted yet. */}
-                  {draftFilePath && !isParsingFile && (
+                  {draftFilePath && !isParsingFile && !isUploadingFile && (
                     <div className="flex justify-center">
                       <button
                         type="button"
@@ -3164,7 +3167,7 @@ export default function EmployerPanel() {
                         className="btn-brand-secondary px-5 py-2.5 text-xs flex items-center justify-center gap-1.5 shadow-md"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        Распознать документ через ИИ
+                        Отправить документ в ProTalk
                       </button>
                     </div>
                   )}
