@@ -457,6 +457,9 @@ export default function EmployerPanel() {
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
+  // Raw extracted company text from the uploaded document (≤5000 chars).
+  // Editable in a large textarea, also passed to «Оформить красиво» as a hint.
+  const [companyRawText, setCompanyRawText] = useState("");
 
   // New fields per spec: "Описание компании и чем занимается" + "Основные продукты"
   const [newCompanyDescription, setNewCompanyDescription] = useState("");
@@ -556,7 +559,10 @@ export default function EmployerPanel() {
           mode: "all_company",
           company_name: newCompanyName,
           fields,
-          hint: newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : undefined,
+          hint: [
+            newCompanyFiles ? `attached files: ${String(newCompanyFiles)}` : "",
+            companyRawText ? `Извлечённый текст о компании из документа:\n${companyRawText}` : "",
+          ].filter(Boolean).join("\n\n") || undefined,
         }),
       });
       if (enriched) {
@@ -591,41 +597,38 @@ export default function EmployerPanel() {
 
   const parseCompanyFileWithAI = async (filename: string) => {
     setIsParsingFile(true);
-    addAuditEvent("info", "ИИ разбор регламента", `ИИ-Копирайтер ProTalk считывает и структурирует файл: ${filename}...`);
+    addAuditEvent("info", "ИИ разбор документа", `ИИ-Копирайтер ProTalk считывает текст из файла: ${filename}...`);
     try {
-      const { aiCompanyAnalyze } = await import("@/lib/aiClient");
-      const res = await aiWaitRun({
+      const filePath = draftFilePath;
+      const res = await aiWaitRun<any>({
         title: `ИИ читает файл ${filename}`,
-        task: () => aiCompanyAnalyze({
-          company_id: draftCompanyId || undefined,
-          employer_public_id: employerId,
-          file_url: draftFilePath || undefined,
-          raw_text: draftFilePath ? undefined : `Имя файла: ${filename}\nОписание (если есть): ${newCompanyDescription || newCompanyDesc}`,
-        }),
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: {
+              entity: "company",
+              entity_id: draftCompanyId || undefined,
+              bucket: filePath ? "company-uploads" : undefined,
+              file_path: filePath || undefined,
+              filename,
+              max_chars: 5000,
+            },
+          });
+          if (error) throw new Error(error.message);
+          return data;
+        },
       });
-      const payload = res?.fields || {};
-      if (payload) {
-        if (payload.name) setNewCompanyName(payload.name);
-        if (payload.industry) setNewCompanyIndustry(payload.industry);
-        if (payload.website) setNewCompanySite(payload.website);
-        if (payload.staff) setNewCompanyStaff(payload.staff);
-        if (payload.description_text) setNewCompanyDescription(payload.description_text);
-        if (payload.products_text) setNewCompanyProducts(payload.products_text);
-        if (payload.mission_text) setNewCompanyMissionText(payload.mission_text);
-        if (payload.team_text) setNewCompanyDesc(payload.team_text);
-        if (payload.payouts_text) setNewCompanySalaryTerms(payload.payouts_text);
-        if (payload.schedule_text) setNewCompanyScheduleTerms(payload.schedule_text);
-        if (payload.system_text) setNewCompanyCustomWiki(payload.system_text);
-        const st = payload.stats || {};
-        if (st.founded_year) setNewCompanyStatsValFounded(String(st.founded_year));
-        if (st.employees) setNewCompanyStatsValClients(String(st.employees));
-        if (st.turnover) setNewCompanyStatsValDialogs(String(st.turnover));
-
-        addAuditEvent("success", "ИИ разбор завершен", `Корпоративный профиль автоматически предзаполнен из документа ${filename}!`);
+      const text = String(res?.text || "").slice(0, 5000);
+      if (text) {
+        setCompanyRawText(text);
+        addAuditEvent("success", "Текст извлечён", `Документ ${filename} распознан (${text.length} симв.). Проверьте текст и нажмите «Оформить красиво».`);
+      } else {
+        addAuditEvent("warning", "Пустой ответ", "ИИ не вернул текст из документа.");
       }
-    } catch (err) {
+      // ai-ingest-document already removes the file from storage on completion.
+      setDraftFilePath(null);
+    } catch (err: any) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка распознавания", "Использованы значения по умолчанию.");
+      addAuditEvent("warning", "Ошибка распознавания", err?.message || "Не удалось разобрать файл.");
     } finally {
       setIsParsingFile(false);
     }
@@ -653,6 +656,8 @@ export default function EmployerPanel() {
       setNewCompanySalaryTerms("");
       setNewCompanyScheduleTerms("");
       setNewCompanyCustomWiki("");
+      setCompanyRawText("");
+      setNewCompanyFiles("");
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
@@ -3073,16 +3078,6 @@ export default function EmployerPanel() {
                       <span className="text-xs font-bold text-green-300 block font-mono">ПАНЕЛЬ УПАКОВКИ БРЕНДА RR</span>
                       <h4 className="text-sm font-semibold text-white">Интерактивный ИИ-профиль организации</h4>
                     </div>
-                    
-                    {aiReady && (<button
-                      type="button"
-                      onClick={handleEnhanceAllFields}
-                      disabled={isEnhancingAll || isParsingFile}
-                      className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
-                      {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                    </button>)}
                   </div>
 
                   {/* Drag-Drop / click base file uploader with ProTalk integration */}
@@ -3125,16 +3120,56 @@ export default function EmployerPanel() {
                       {newCompanyFiles ? (
                         <span className="text-yellow-400">Документ загружен: {newCompanyFiles} ✓</span>
                       ) : (
-                        <span>Загрузить регламент / вакансию для автозаполнения ИИ</span>
+                        <span>Загрузите презентацию или описание компании — я распознаю текст и сам аккуратно заполню все поля ниже, копировать вручную не придётся</span>
                       )}
                     </div>
                     <span className="text-[10px] text-slate-400 block font-mono">
                       {isParsingFile 
-                        ? "⚡ ИИ от ProTalk анализирует регламент, заполняет все поля..." 
-                        : "ИИ автоматически разберет файл и заполнит ВСЕ поля ниже через структурированный JSON"
+                        ? "⚡ ИИ от ProTalk извлекает текст о компании из документа..." 
+                        : "Поддерживаются PDF, DOCX, TXT, MD. Текст появится в большом поле ниже — его можно отредактировать перед оформлением."
                       }
                     </span>
                   </div>
+
+                  {/* Raw extracted text from the document — editable, capped at 5000 chars.
+                      Passed to «Оформить красиво» as additional context. */}
+                  {(() => {
+                    const totalChars =
+                      (newCompanyName + newCompanyIndustry + newCompanyStaff + newCompanySite +
+                       newCompanyDescription + newCompanyProducts + newCompanyMissionText +
+                       newCompanyDesc + newCompanySalaryTerms + newCompanyScheduleTerms +
+                       newCompanyCustomWiki + companyRawText).trim().length;
+                    const canEnhanceAll = aiReady && totalChars >= 50;
+                    return (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            Текст о компании из документа (редактируется, до 5000 симв.)
+                          </span>
+                          <span className="text-[10px] text-slate-500 font-mono">{companyRawText.length} / 5000</span>
+                        </div>
+                        <textarea
+                          value={companyRawText}
+                          onChange={(e) => setCompanyRawText(e.target.value.slice(0, 5000))}
+                          placeholder="Здесь появится распознанный текст из загруженного файла. Можно также вставить или дописать описание компании вручную."
+                          className="w-full bg-black/40 text-xs pl-3 pr-3 py-2.5 rounded-xl border border-white/10 text-white focus:outline-none min-h-[180px]"
+                          maxLength={5000}
+                        />
+                        <div className="flex justify-center pt-1">
+                          <button
+                            type="button"
+                            onClick={handleEnhanceAllFields}
+                            disabled={!canEnhanceAll || isEnhancingAll || isParsingFile}
+                            title={canEnhanceAll ? "Оформить все поля красиво через ИИ" : "Заполните поля минимум на 50 символов суммарно"}
+                            className="px-5 py-2.5 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${isEnhancingAll ? "animate-spin" : ""}`} />
+                            {isEnhancingAll ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* FIELD GRID SECTIONS */}
                   <div className="space-y-6">
@@ -3153,7 +3188,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyName||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("name", newCompanyName)}
                             disabled={enhancingFields["name"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3173,7 +3208,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyIndustry||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("industry", newCompanyIndustry)}
                             disabled={enhancingFields["industry"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3194,7 +3229,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyStaff||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("staff", newCompanyStaff)}
                             disabled={enhancingFields["staff"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3216,7 +3251,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanySite||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("sites", newCompanySite)}
                             disabled={enhancingFields["sites"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3236,7 +3271,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyLogo||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("logoUrl", newCompanyLogo)}
                             disabled={enhancingFields["logoUrl"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3263,7 +3298,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyDescription||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("descriptionText", newCompanyDescription)}
                           disabled={enhancingFields["descriptionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3284,7 +3319,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyProducts||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("productsText", newCompanyProducts)}
                           disabled={enhancingFields["productsText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3305,7 +3340,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyMissionText||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("missionText", newCompanyMissionText)}
                           disabled={enhancingFields["missionText"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"
@@ -3333,7 +3368,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValClients||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValClients", newCompanyStatsValClients)}
                               disabled={enhancingFields["statsValClients"]}
                               className="absolute right-2"
@@ -3363,7 +3398,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValDialogs||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValDialogs", newCompanyStatsValDialogs)}
                               disabled={enhancingFields["statsValDialogs"]}
                               className="absolute right-2"
@@ -3395,7 +3430,7 @@ export default function EmployerPanel() {
                             />
                             <button
                               type="button"
-                              style={{ display: aiReady ? undefined : "none" }}
+                              style={{ display: aiReady && (newCompanyStatsValFounded||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("statsValFounded", newCompanyStatsValFounded)}
                               disabled={enhancingFields["statsValFounded"]}
                               className="absolute right-2"
@@ -3428,7 +3463,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanySalaryTerms||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("salaryTerms", newCompanySalaryTerms)}
                             disabled={enhancingFields["salaryTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3448,7 +3483,7 @@ export default function EmployerPanel() {
                           />
                           <button
                             type="button"
-                            style={{ display: aiReady ? undefined : "none" }}
+                            style={{ display: aiReady && (newCompanyScheduleTerms||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("scheduleTerms", newCompanyScheduleTerms)}
                             disabled={enhancingFields["scheduleTerms"]}
                             className="absolute right-2.5 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30 transition-colors"
@@ -3469,7 +3504,7 @@ export default function EmployerPanel() {
                         />
                         <button
                           type="button"
-                          style={{ display: aiReady ? undefined : "none" }}
+                          style={{ display: aiReady && (newCompanyCustomWiki||"").trim().length >= 7 ? undefined : "none" }}
                             onClick={() => handleEnhanceSingleField("customWiki", newCompanyCustomWiki)}
                           disabled={enhancingFields["customWiki"]}
                           className="absolute right-3 top-3 p-1 text-slate-400 hover:text-[#E7C768] disabled:opacity-30"

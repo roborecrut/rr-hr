@@ -7,7 +7,7 @@ import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAut
 type Entity = "company" | "vacancy" | "training" | "resume";
 
 const PROMPTS: Record<Entity, string> = {
-  company: "Сформируй структурированное описание компании в Markdown: миссия, продукты/услуги, команда, условия, мотивация, культура. До 10 000 символов.",
+  company: "Это документ с информацией о компании (презентация / регламент / профиль). Извлеки ВЕСЬ полезный текст о компании в чистом Markdown, сохраняя оригинальные формулировки. ОБЯЗАТЕЛЬНО верни весь текст с ограничением 5000 символов: если объём превышает 5000 — корректно суммаризируй до 5000 символов, сохраняя ключевые факты (миссия, продукты, команда, условия, мотивация, культура). Не добавляй ничего от себя.",
   vacancy: "Сформируй структурированное описание вакансии в Markdown: роль, обязанности, требования, условия, мотивация и выплаты, график, обучение. До 10 000 символов.",
   training: "Сформируй учебный материал в Markdown с заголовками, списками, примерами и итоговым чек-листом. До 10 000 символов.",
   resume: "Извлеки полный текст резюме кандидата и оформи его в чистом Markdown: ФИО, контакты, цель, опыт работы (по местам), навыки, образование, достижения, языки. Не добавляй ничего от себя. До 10 000 символов.",
@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     bucket?: string; file_path?: string;
     file_url?: string; filename?: string;
     prompt_hint?: string;
+    max_chars?: number;
   };
   if (!body || !body.entity || (!body.file_path && !body.file_url)) {
     return jsonResponse({ error: "bad_body" }, 400);
@@ -55,7 +56,7 @@ Deno.serve(async (req) => {
       ],
       chatId, socialId, timeoutMs: 180_000,
     });
-    text = (r.text || "").slice(0, 10000);
+    text = (r.text || "").slice(0, Math.max(500, Math.min(body.max_chars || 10000, 10000)));
   } catch (e) {
     err = String((e as Error).message);
   }
