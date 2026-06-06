@@ -200,6 +200,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           phrase={PHRASES[state.phraseIdx] || PHRASES[0]}
           elapsed={state.elapsed}
           error={state.error}
+          autoCloseOnSuccess={state.autoCloseOnSuccess}
           onRetry={handleRetry}
           onCancel={handleCancel}
           onNext={handleNext}
@@ -215,12 +216,13 @@ interface OverlayProps {
   phrase: string;
   elapsed: number;
   error: string;
+  autoCloseOnSuccess: boolean;
   onRetry: () => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
@@ -291,7 +293,7 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
           </div>
         )}
 
-        {status === "success" && (
+        {status === "success" && !autoCloseOnSuccess && (
           <div className="mt-4 flex justify-start">
             <button
               type="button"
