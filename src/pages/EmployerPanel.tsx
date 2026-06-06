@@ -70,6 +70,42 @@ function vacancyValuesToCamel(
   }
   return out;
 }
+
+/**
+ * Map the per-role template payload (legacy keys used by saveRoleTemplates +
+ * generic DEFAULT_*_TEMPLATES) onto the canonical VacancyFieldKey schema used
+ * by `<VacancyEditor>`. Used to (a) feed `roleTemplates` prop to the editor
+ * so the "Шаблон" button picks per-role values, and (b) bulk-overwrite all
+ * 15 fields when the user changes the role.
+ */
+function roleTplToFields(
+  tpl: Record<string, string> | undefined | null,
+): Partial<Record<VacancyFieldKey, string>> {
+  const t = tpl || {};
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = (t as any)?.[k];
+      if (v && String(v).trim()) return String(v);
+    }
+    return "";
+  };
+  return {
+    vacancy_text: pick("vacancy_text"),
+    tasks_activity_text: pick("tasks_activity_text"),
+    schedule_text: pick("schedule_text"),
+    motivation_text: pick("motivation_text"),
+    motivation_text_detail: pick("motivation_text_detail"),
+    payouts_text: pick("payouts_text"),
+    onboarding_text: pick("onboarding_text"),
+    team_text: pick("team_text", "team_text_vac"),
+    system_text: pick("system_text", "system_text_vac"),
+    training_professional_text: pick("training_professional_text", "training_prof_text"),
+    training_product_text: pick("training_product_text"),
+    training_systems_text: pick("training_systems_text", "training_system_text"),
+    training_wiki_text: pick("training_wiki_text"),
+    training_regulations_text: pick("training_regulations_text"),
+  };
+}
 import {
   Users,
   Smartphone,
@@ -206,7 +242,9 @@ export default function EmployerPanel() {
     mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
   const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
 
-  // Reload templates when the selected role changes and prefill empty fields.
+  // Reload templates when the selected role changes and OVERWRITE all 15
+  // wizard fields with the per-role template (falling back to the canonical
+  // example). If the user has already typed something, ask before overwriting.
   useEffect(() => {
     if (!setupRoleName.trim()) return;
     let cancelled = false;
@@ -214,18 +252,52 @@ export default function EmployerPanel() {
       const tpl = await getRoleTemplates(setupRoleName);
       if (cancelled) return;
       setRoleTemplates(tpl as Record<string, string>);
-      // Prefill ONLY empty wizard fields, never overwrite user input.
-      const get = (k: string) =>
-        ((tpl as any)?.[k] || (DEFAULT_VAC_TEMPLATES as any)[k] || "").trim();
-      setSetupVacancyText((v) => v || get("vacancy_text"));
-      setSetupTasksActivityText((v) => v || get("tasks_activity_text"));
-      setSetupScheduleText((v) => v || get("schedule_text"));
-      setSetupMotivationText((v) => v || get("motivation_text"));
-      setSetupMotivationDetail((v) => v || get("motivation_text_detail"));
-      setSetupPayoutsText((v) => v || get("payouts_text"));
-      setSetupOnboardingText((v) => v || get("onboarding_text"));
-      setSetupTeamText((v) => v || get("team_text_vac"));
-      setSetupSystemText((v) => v || get("system_text_vac"));
+
+      const mapped = roleTplToFields(tpl as any);
+      const valueFor = (key: VacancyFieldKey) =>
+        (mapped[key] && mapped[key]!.trim()) ||
+        VACANCY_FIELDS_BY_KEY[key].example;
+
+      const current: Record<VacancyFieldKey, string> = {
+        role_name: setupRoleName,
+        vacancy_text: setupVacancyText,
+        tasks_activity_text: setupTasksActivityText,
+        schedule_text: setupScheduleText,
+        motivation_text: setupMotivationText,
+        motivation_text_detail: setupMotivationDetail,
+        payouts_text: setupPayoutsText,
+        onboarding_text: setupOnboardingText,
+        team_text: setupTeamText,
+        system_text: setupSystemText,
+        training_professional_text: setupTrainingProfessionalText,
+        training_product_text: setupTrainingProductText,
+        training_systems_text: setupTrainingSystemsText,
+        training_wiki_text: setupTrainingWikiText,
+        training_regulations_text: setupTrainingRegulationsText,
+      };
+      const hasUserContent = (Object.keys(current) as VacancyFieldKey[]).some(
+        (k) => k !== "role_name" && (current[k] || "").trim().length > 0,
+      );
+      if (hasUserContent) {
+        const ok = window.confirm(
+          `Подставить шаблоны для должности «${setupRoleName}» во все 15 полей? Текущие значения будут заменены.`,
+        );
+        if (!ok) return;
+      }
+      setSetupVacancyText(valueFor("vacancy_text"));
+      setSetupTasksActivityText(valueFor("tasks_activity_text"));
+      setSetupScheduleText(valueFor("schedule_text"));
+      setSetupMotivationText(valueFor("motivation_text"));
+      setSetupMotivationDetail(valueFor("motivation_text_detail"));
+      setSetupPayoutsText(valueFor("payouts_text"));
+      setSetupOnboardingText(valueFor("onboarding_text"));
+      setSetupTeamText(valueFor("team_text"));
+      setSetupSystemText(valueFor("system_text"));
+      setSetupTrainingProfessionalText(valueFor("training_professional_text"));
+      setSetupTrainingProductText(valueFor("training_product_text"));
+      setSetupTrainingSystemsText(valueFor("training_systems_text"));
+      setSetupTrainingWikiText(valueFor("training_wiki_text"));
+      setSetupTrainingRegulationsText(valueFor("training_regulations_text"));
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -677,6 +749,66 @@ export default function EmployerPanel() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [inlineEditSection, setInlineEditSection] = useState<string | null>(null);
   const [aiEnhancingField, setAiEnhancingField] = useState<VacancyFieldKey | null>(null);
+  // Per-role templates for the currently edited project (mirrors the wizard's
+  // `roleTemplates`). Used to drive the "Шаблон должности" button inside the
+  // edit modal's VacancyEditor and to bulk-overwrite fields when the user
+  // changes the role from inside the modal.
+  const [editRoleTemplates, setEditRoleTemplates] = useState<Record<string, string>>({});
+  const [editSpecialtySearch, setEditSpecialtySearch] = useState("");
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+  // Load per-role templates for the currently edited project so the editor's
+  // "Шаблон должности" button uses values specific to the chosen role.
+  useEffect(() => {
+    const role = editingProject?.roleName?.trim();
+    if (!role) { setEditRoleTemplates({}); return; }
+    let cancelled = false;
+    (async () => {
+      const tpl = await getRoleTemplates(role);
+      if (!cancelled) setEditRoleTemplates((tpl as Record<string, string>) || {});
+    })();
+    return () => { cancelled = true; };
+  }, [editingProject?.roleName]);
+
+  // Bulk-overwrite all 15 fields of the edited project from the current role's
+  // template (used by an explicit button next to the role selector).
+  const applyRoleTemplateToEditing = async () => {
+    if (!editingProject?.roleName?.trim()) return;
+    const tpl = await getRoleTemplates(editingProject.roleName);
+    setEditRoleTemplates((tpl as Record<string, string>) || {});
+    const mapped = roleTplToFields(tpl as any);
+    const valueFor = (key: VacancyFieldKey) =>
+      (mapped[key] && mapped[key]!.trim()) || VACANCY_FIELDS_BY_KEY[key].example;
+    if (!window.confirm(`Заменить все 15 полей шаблоном для должности «${editingProject.roleName}»?`)) return;
+    const patch: Partial<Record<VacancyFieldKey, string>> = {};
+    (Object.keys(CAMEL_BY_KEY) as VacancyFieldKey[]).forEach((k) => {
+      if (k === "role_name") return;
+      patch[k] = valueFor(k);
+    });
+    setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) } as any);
+  };
+
+  // Permanently delete the currently edited project from the database.
+  const handleDeleteEditedProject = async () => {
+    if (!editingProject) return;
+    if (!window.confirm(
+      `Удалить вакансию «${editingProject.roleName}» полностью? Это действие нельзя отменить.`,
+    )) return;
+    setIsDeletingProject(true);
+    try {
+      const { error } = await supabase.from("projects").delete().eq("id", editingProject.id);
+      if (error) throw error;
+      addAuditEvent("warning", "Вакансия удалена", `«${editingProject.roleName}» удалена из базы.`);
+      setProjects((prev) => prev.filter((p) => p.id !== editingProject.id));
+      setEditingProject(null);
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      alert("Не удалось удалить вакансию: " + (err?.message || err));
+    } finally {
+      setIsDeletingProject(false);
+    }
+  };
   
   // Custom Interview and Training builder states
   const [activeEditTab, setActiveEditTab] = useState<"landing" | "training">("landing");
@@ -1421,8 +1553,14 @@ export default function EmployerPanel() {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
       const ep: any = editingProject;
+      // Resolve company_id from the (possibly changed) companyName.
+      const matchedCo = companiesList.find(
+        (c) => c.name.toLowerCase() === (ep.companyName || "").toLowerCase(),
+      );
+      const newCompanyId = (matchedCo as any)?.id ?? null;
       const patch: any = {
         role_name: ep.roleName,
+        company_id: newCompanyId,
         salary_terms: ep.salaryTerms ?? null,
         schedule_terms: ep.scheduleTerms ?? null,
         motivation_text: ep.motivationText ?? null,
@@ -2603,6 +2741,7 @@ export default function EmployerPanel() {
                       companyName={setupCompanyName}
                       hideKeys={["role_name"]}
                       aiLoadingKey={wizardAiKey}
+                      roleTemplates={roleTplToFields(roleTemplates)}
                       values={{
                         vacancy_text: setupVacancyText,
                         tasks_activity_text: setupTasksActivityText,
@@ -2701,19 +2840,41 @@ export default function EmployerPanel() {
                       }}
                     />
 
-                    <button
-                      type="submit"
-                      disabled={isGenerating}
-                      className="cursor-pointer w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
-                    >
-                      {isGenerating ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
-                        </>
-                      ) : (
-                        "Сохранить и синхронизировать"
-                      )}
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={isGenerating}
+                        className="cursor-pointer flex-1 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        {isGenerating ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем…
+                          </>
+                        ) : (
+                          "Сохранить и синхронизировать"
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!window.confirm("Отменить создание вакансии? Черновик будет удалён.")) return;
+                          // Force-delete the draft (not just empty ones).
+                          try {
+                            if (draftProjectId) {
+                              await supabase.from("projects").delete().eq("id", draftProjectId);
+                            }
+                          } catch (e) { console.warn("force-delete draft failed", e); }
+                          setShowAddNewVacancy(false);
+                          setDraftProjectId(null);
+                          setDraftProjectPublicId(null);
+                          addAuditEvent("info", "Создание отменено", "Черновик вакансии удалён.");
+                          fetchData();
+                        }}
+                        className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2 transition"
+                      >
+                        <Trash2 className="w-4 h-4" /> Отмена и удалить черновик
+                      </button>
+                    </div>
                   </form>
                 </div>
               )}
@@ -4139,9 +4300,88 @@ export default function EmployerPanel() {
 
 {/* Unified VacancyEditor — same look as the create wizard, with per-field live preview */}
             <form onSubmit={handleSaveEditedProject} className="space-y-5">
+              {/* Company + Role pickers (same UX as the create wizard). */}
+              <div className="rounded-2xl border border-[#E7C768]/30 bg-[#0E1F30]/60 p-4 space-y-3">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] font-bold block">
+                  Компания и должность
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">Компания:</label>
+                    {companiesList.length > 0 ? (
+                      <select
+                        className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.companyName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
+                      >
+                        <option value="">Выберите компанию...</option>
+                        {companiesList.map((c) => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        className="w-full bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.companyName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, companyName: e.target.value } as any)}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-200 block mb-1">Должность:</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="flex-1 bg-[#17344F]/60 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+                        value={editingProject.roleName || ""}
+                        onChange={(e) => setEditingProject({ ...editingProject, roleName: e.target.value } as any)}
+                      />
+                      <button
+                        type="button"
+                        onClick={applyRoleTemplateToEditing}
+                        className="px-3 py-2 rounded-xl bg-[#E7C768]/15 hover:bg-[#E7C768]/25 border border-[#E7C768]/40 text-[#E7C768] text-[10px] font-bold transition whitespace-nowrap"
+                        title="Заменить все 15 полей шаблоном для выбранной должности"
+                      >
+                        Применить шаблон ко всем 15 полям
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-black/20 p-2.5 rounded-xl border border-white/5 space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder="Фильтровать справочник профессий..."
+                    className="bg-black/40 text-[10.5px] p-1.5 w-full rounded border border-white/10 text-white"
+                    value={editSpecialtySearch}
+                    onChange={(e) => setEditSpecialtySearch(e.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-1 max-h-28 overflow-y-auto">
+                    {Array.from(new Set([...jobTitlesList, ...BASIC_SPECIALTIES]))
+                      .filter((s) => s.toLowerCase().includes(editSpecialtySearch.toLowerCase()))
+                      .slice(0, 40)
+                      .map((spec) => (
+                        <button
+                          key={spec}
+                          type="button"
+                          onClick={() => {
+                            setEditingProject({ ...editingProject, roleName: spec } as any);
+                            setEditSpecialtySearch("");
+                          }}
+                          className="bg-[#1D3E5E]/85 border border-white/5 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition"
+                        >
+                          💼 {spec}
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
               <VacancyEditor
                 mode="edit"
                 companyName={editingProject.companyName}
+                hideKeys={["role_name"]}
+                roleTemplates={roleTplToFields(editRoleTemplates)}
                 values={projectToVacancyValues(editingProject)}
                 onChange={(patch) => setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) })}
                 aiLoadingKey={aiEnhancingField}
@@ -4191,6 +4431,16 @@ export default function EmployerPanel() {
                   className="cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 px-5 py-3 rounded-xl text-slate-300 font-bold transition text-sm"
                 >
                   Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteEditedProject}
+                  disabled={isDeletingProject}
+                  className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
+                  title="Удалить вакансию из базы данных"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {isDeletingProject ? "Удаляем..." : "Удалить вакансию"}
                 </button>
               </div>
             </form>

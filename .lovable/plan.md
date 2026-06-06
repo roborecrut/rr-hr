@@ -1,109 +1,87 @@
-## Задача
+# План: фиксы редактора вакансии + Итерация 3 (Обучение)
 
-1. **Унифицировать карточки создания и редактирования вакансии** — один общий компонент-форма, где под каждым из 15 полей идёт живой превью того, как это будет выглядеть на лендинге вакансии.
-2. **Удалить с лендинга вакансии все блоки/подписи**, которые не соответствуют одному из 15 полей вакансии или не лежат в базе знаний.
-3. **Запустить Итерацию 2** — мастер создания вакансии (компания → должность → поля) + поддержка 15 полей в БД, формах, лендинге, AI-промптах.
+## Часть A. Фиксы карточек вакансии (быстрые, 1 итерация)
 
----
+### A1. Шаблоны привязаны к выбранной должности
+Сейчас `getRoleTemplates(setupRoleName)` загружается один раз и кнопка «Шаблон» в `VacancyEditor` всегда подставляет `field.example` (дефолт для «Менеджер по продажам»).
+- В `VacancyEditor` добавить проп `roleTemplates?: Partial<Record<VacancyFieldKey, string>>`.
+- Кнопка «Шаблон» теперь подставляет `roleTemplates[key] ?? field.example`.
+- Добавить кнопку **«Сброс»** (очистить поле) рядом с «Шаблон» и «AI».
+- В create-режиме при смене `setupRoleName` подгружать шаблоны и **перезаписывать все 15 полей** значениями `roleTemplates[key] ?? field.example` (с подтверждением, если в форме уже что-то введено вручную).
+- В edit-режиме (см. A3) — то же самое при смене должности.
 
-## Часть A — Унификация карточек вакансии (UI)
+### A2. Кнопки «Удалить вакансию» и «Отмена создания»
+- В карточке редактирования (`handleSaveEditedProject` форма): добавить красную кнопку «Удалить вакансию» → confirm → `supabase.from('projects').delete().eq('id', editing.id)` → закрыть карточку, обновить список, аудит-лог.
+- В карточке создания (wizard): кнопка «Отмена» → если был создан черновик (`project_create_draft`) — удалить его из БД, закрыть мастер, сбросить состояние.
 
-### A1. 15 канонических полей вакансии
+### A3. Смена компании/должности в карточке редактирования
+- В редактор (mode="edit") добавить тот же блок «Компания + Должность» что и в wizard'е (autocomplete по `companiesList` и `jobTitlesList`).
+- При смене должности — подгрузить шаблоны (`getRoleTemplates`) и предложить перезаписать поля.
+- При смене компании — обновить `company_id` и `companyName` в `editing`.
+- Сохранение этих полей идёт в общем `handleSaveEditedProject`.
 
-| # | Ключ в БД | Подпись |
-|---|---|---|
-| 1 | `role_name` | Должность |
-| 2 | `vacancy_text` | Что нужно (требования) |
-| 3 | `tasks_activity_text` | Задачи / активности |
-| 4 | `schedule_text` | График работы |
-| 5 | `motivation_text` | Мотивация (кратко) |
-| 6 | `motivation_text_detail` | Мотивация (детально, бонусы) |
-| 7 | `payouts_text` | Оплата и выплаты |
-| 8 | `onboarding_text` | Этапы онбординга |
-| 9 | `team_text_vac` | Команда (для вакансии) |
-| 10 | `system_text_vac` | Системы и регламенты (для вакансии) |
-| 11 | `training_professional_text` | Обучение: профессия |
-| 12 | `training_product_text` | Обучение: продукт |
-| 13 | `training_systems_text` | Обучение: системы |
-| 14 | `training_wiki_text` | База знаний (Wiki) |
-| 15 | `training_regulations_text` | Регламенты |
+## Часть B. Итерация 3 — Страница «Обучение для кандидатов»
 
-Поля 6, 8 и часть training_* — новые, добавляются в Итерации 2 (см. ниже). UI заранее проектируется на 15.
+### B1. Схема БД (миграция)
+Расширяем `training_blocks` + новые таблицы:
 
-### A2. Новый компонент `VacancyEditor`
-Файл: `src/components/VacancyEditor.tsx`
-
-- Принимает `{ project, company, onChange, mode: 'create'|'edit' }`.
-- Рендерит 15 секций (`<SectionCard>`), в каждой:
-  - `Textarea` + кнопка «🪄 AI» + кнопка «Сбросить к шаблону».
-  - **Под полем — мини-превью** того же блока ровно так, как он отрендерится на лендинге (через тот же sub-renderer, что и `VacancySections`).
-- Превью читается из текущего состояния формы, обновляется на лету.
-- На мобильном — одноколоночно; на ПК — поле и превью располагаются столбиком в одной карточке (НЕ split-screen).
-
-### A3. Удалить split-screen в `EmployerPanel.tsx`
-- Убрать старый «слева поля / справа sitePreview» в карточке редактирования вакансии.
-- Заменить на `<VacancyEditor project={...} mode="edit" />`.
-- Кнопки «Сохранить / Опубликовать / Удалить» — наверху карточки.
-
-### A4. Подчистить `VacancySections.tsx` и `JobVacancyLanding.tsx`
-- Каждый блок лендинга должен мапиться 1-в-1 на один из 15 полей.
-- Удалить:
-  - захардкоженные подписи/иконки, не основанные на полях вакансии;
-  - блоки «about company» внутри вакансии (они приходят с уровня компании через `CompanySections`, не дублируются);
-  - любые fallback-тексты «по умолчанию», которые рисуются даже когда поле пустое.
-- Если поле пустое — блок просто не рендерится (no placeholder).
-- Извлечь чистые рендереры одного блока (`renderVacancyText`, `renderTasksText`, …) — переиспользуются в `VacancyEditor` как live-превью.
-
----
-
-## Часть B — Итерация 2: мастер создания вакансии + 15 полей
-
-### B1. Миграция БД
-```sql
-ALTER TABLE public.projects
-  ADD COLUMN IF NOT EXISTS onboarding_text text,
-  ADD COLUMN IF NOT EXISTS motivation_text_detail text;
-
-ALTER TABLE public.training_blocks
-  ADD COLUMN IF NOT EXISTS onboarding_text text,
-  ADD COLUMN IF NOT EXISTS motivation_text_detail text;
 ```
-(остальные training_* и payouts_text уже есть; проверяю и докидываю недостающие в миграции).
+training_blocks (already exists, расширить):
+  + materials_md        TEXT      -- развёрнутый материал в markdown
+  + materials_links     JSONB     -- [{title, url, kind: 'video'|'doc'|'link'}]
+  + materials_files     JSONB     -- [{name, storage_path, mime, size}]
+  + pass_score          INT       -- проходной балл (например 70)
+  + total_score         INT       -- сумма баллов по тесту (автосчёт)
+  + ai_generated_at     TIMESTAMP
 
-### B2. RPC `job_titles_list_public()`
-Возвращает `{ id, title, usage_count, is_basic }` всех должностей по алфавиту — для подсказок и алфавитного списка в мастере.
+training_questions (новая):
+  id, block_id (FK), order_no,
+  kind: 'choice'|'text',
+  question TEXT, 
+  options JSONB,          -- для choice: [{text, is_correct}]
+  expected_answer TEXT,   -- для text: эталон для ProTalk
+  points INT DEFAULT 1,
+  explanation TEXT
+```
+Storage bucket: `training-materials` (private, RLS — только владелец проекта).
 
-### B3. Новый мастер создания вакансии
-Файл: `src/components/VacancyWizard.tsx`
+### B2. Edge-функции
+- `ai-generate-training-material` — на вход block_key + 15 полей вакансии → markdown-материал (1500–3000 слов, с заголовками, списками, примерами).
+- `ai-generate-training-quiz` — на вход материал → 20 вопросов: 10 негативных choice («Что НЕ является…») + 10 text. Чёткая JSON-схема.
+- `ai-check-text-answer` (ProTalk) — проверяет текстовый ответ кандидата против `expected_answer`, возвращает `{ score, feedback }`.
 
-- **Шаг 0** — Компания: select из `companies` владельца + кнопка «+ Новая компания».
-- **Шаг 1** — Должность: 
-  - Поиск с автокомплитом по `job_titles` (алфавит, fuzzy match).
-  - Если выбрана из списка → префилл всех 15 полей из `job_title_get_templates`.
-  - Если ввели свою → по `job_title_upsert` создаём новую + AI-генерация шаблонов (`ai-enhance` с `mode: bulk_template`, базовый шаблон «Менеджер по продажам»).
-- **Шаг 2** — `VacancyEditor` (тот же, что и для редактирования). Кнопка «Опубликовать вакансию».
+### B3. UI работодателя: «Конструктор обучения»
+Новая вкладка/секция в `EmployerPanel` → «Обучение вакансии {role}». Для каждого из 6 блоков (профессия, продукт, системы, wiki, регламенты, мотивация — выровнять с 5 training-полями + общий «Адаптация»):
+- Кнопка «Создать материал ИИ» → markdown-редактор (react-md-editor или textarea с preview).
+- Загрузка файлов (`storage`), добавление видео-ссылок.
+- Кнопка «Сгенерировать тест» → 20 вопросов в редакторе:
+  - Для choice: вопрос + 4 варианта (radio, отметка правильного), баллы.
+  - Для text: вопрос + эталон + баллы.
+- Поле «Проходной балл», авто-сумма total_score.
+- Все правки сохраняются в `training_blocks` / `training_questions`.
 
-### B4. AI-формат «эталоны заполнения»
-Новый файл: `src/lib/fieldFormats.ts` — для каждого из 15 полей образцовый формат (буллеты, эмодзи-теги, шаблон оклада и т.п.). Передаём в edge-функцию `ai-enhance` параметром `formatExample`, чтобы AI возвращал текст в нужном виде.
+### B4. UI кандидата
+В `CandidateFlow` (этап `training`) — для каждого блока:
+- Подстраница `/training/{block}` с красиво оформленным markdown-материалом (Tailwind prose), список файлов/видео.
+- Подстраница `/training/{block}/quiz` — 20 вопросов, по одному на экран; choice проверяется локально, text → `ai-check-text-answer`.
+- Итог: набранные баллы vs проходной; запись в `candidate_training_progress` (расширить `score`, `passed`, `answers JSONB`).
 
-### B5. Распространить 15 полей по проекту
-Обновить `FIELDS`-массивы и формы в:
-- `src/pages/EmployerPanel.tsx` (старые места, если останутся)
-- `src/components/TrainingWizard.tsx`
-- `src/pages/AdminPanel.tsx`
-- `src/components/VacancySections.tsx`
-- `src/lib/vacancyTemplates.ts` (`VacancyFieldKey` уже близок к финальному — добиваю до 15)
+### B5. Цены/лимиты
+Использовать существующий `spend_fixed(_project, 'training_setup')` — генерация всех 6 блоков за одно списание (300 RR из `purchase_fixed`).
 
----
+## Технические детали (не для пользователя)
+- Markdown: `@uiw/react-md-editor` (~50KB) или `react-markdown` + textarea для редактора.
+- Storage RLS: `storage.objects` policy `is_project_owner(project_id)` через path-prefix `{project_id}/...`.
+- AI вызовы — через существующий `LOVABLE_API_KEY` + ProTalk для проверки текстовых.
 
-## Технические детали
+## Порядок выполнения
+1. **Сейчас**: A1 + A2 + A3 (~1 итерация, чисто фронт + 1 удаление).
+2. **Следом (Итерация 3, шаг 1)**: миграция БД из B1 + storage bucket.
+3. **Итерация 3, шаг 2**: edge-функции B2.
+4. **Итерация 3, шаг 3**: UI работодателя B3.
+5. **Итерация 3, шаг 4**: UI кандидата B4.
 
-- Превью одного блока выносим как чистые функции `(value, ctx) => JSX` → используем и в лендинге, и в редакторе.
-- Без новых зависимостей.
-- Сохранение через уже существующий `supabase.from('projects').update(...)`.
-- В Итерации 1 уже починили запросы — никаких `/api/*` не добавляем.
-
-## Что НЕ входит
-
-- Итерация 3 (обучение 3-этапа + синхронизация кабинета кандидата) — отдельно.
-- Админка/CRM (П.3) — отдельным проектом.
+## Вопросы перед стартом
+1. По удалению вакансии — мягкое (флаг `archived`) или жёсткое `DELETE`?
+2. В Итерации 3 — оставляем ровно 5 блоков обучения (из 15 полей) или добавляем 6-й «Мотивация и онбординг»?
+3. Markdown-редактор: `@uiw/react-md-editor` (WYSIWYG-подобный) или простой textarea + live-preview справа?
