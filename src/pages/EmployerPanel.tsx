@@ -159,6 +159,7 @@ import {
   SystemView
 } from "../components/VacancySections";
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
+import OfferConsent from "../components/OfferConsent";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
