@@ -728,7 +728,9 @@ export default function CandidateFlow() {
     }
 
     if (candIndex !== -1) {
-      activeId = parts[candIndex];
+      const raw = parts[candIndex];
+      const pid = raw.replace(/^candidate/i, "").replace(/^cand/i, "");
+      activeId = pid ? `candidate${pid}` : raw;
       localStorage.setItem("cand_session_id", activeId);
     } else if (parts[0] && parts[0].startsWith("candidate")) {
       activeId = parts[0];
