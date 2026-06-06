@@ -2411,7 +2411,7 @@ export default function EmployerPanel() {
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
-                                <td className="p-4 font-bold text-white">
+                                <td className="p-4 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
                                 </td>
@@ -2419,13 +2419,17 @@ export default function EmployerPanel() {
                                 <td className="p-4">
                                   <select 
                                     className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768]"
-                                    value={cand.currentStage}
-                                    onChange={(e) => handleUpdateCandidateStage(cand.id, e.target.value as any)}
+                                    value={(cand as any).crmStage || "registration"}
+                                    onChange={(e) => handleUpdateCrmStage(cand.id, e.target.value as any)}
                                   >
-                                    <option value="terms" className="bg-slate-900">Ознакомление</option>
-                                    <option value="interview" className="bg-slate-900">ИИ Интервью</option>
-                                    <option value="training" className="bg-slate-900">Обучение</option>
-                                    <option value="certified" className="bg-slate-900">Обучен 🎓</option>
+                                    <option value="registration" className="bg-slate-900">1. Регистрация</option>
+                                    <option value="screening" className="bg-slate-900">2. Скрининг</option>
+                                    <option value="checklist" className="bg-slate-900">3. Чеклист</option>
+                                    <option value="situations" className="bg-slate-900">4. Ситуации</option>
+                                    <option value="professional" className="bg-slate-900">5. Профессия</option>
+                                    <option value="product" className="bg-slate-900">6. Продукт</option>
+                                    <option value="systems" className="bg-slate-900">7. Система</option>
+                                    <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
                                 <td className="p-4 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
@@ -2435,7 +2439,7 @@ export default function EmployerPanel() {
                                   <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
                                 </td>
                                 <td className="p-4 text-right">
-                                  <button onClick={() => setSelectedCandidate(cand)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
+                                  <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
                                 </td>
                               </tr>
                             );
