@@ -437,6 +437,7 @@ export type Database = {
           last_login_at: string | null
           legacy_public_id: string | null
           password_hash: string | null
+          phone: string | null
           project_id: string | null
           public_id: string | null
           ref_source: string | null
@@ -463,6 +464,7 @@ export type Database = {
           last_login_at?: string | null
           legacy_public_id?: string | null
           password_hash?: string | null
+          phone?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -489,6 +491,7 @@ export type Database = {
           last_login_at?: string | null
           legacy_public_id?: string | null
           password_hash?: string | null
+          phone?: string | null
           project_id?: string | null
           public_id?: string | null
           ref_source?: string | null
@@ -2020,15 +2023,26 @@ export type Database = {
             Args: { _email: string; _password: string; _project?: string }
             Returns: Json
           }
-      candidate_email_signup: {
-        Args: {
-          _company?: string
-          _email: string
-          _password: string
-          _project: string
-        }
-        Returns: Json
-      }
+      candidate_email_signup:
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _password: string
+              _project: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _password: string
+              _phone?: string
+              _project: string
+            }
+            Returns: Json
+          }
       candidate_full_details: { Args: { _candidate: string }; Returns: Json }
       candidate_list_applications: {
         Args: { _email: string; _password: string }
