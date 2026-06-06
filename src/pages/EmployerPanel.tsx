@@ -457,6 +457,8 @@ export default function EmployerPanel() {
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadError, setUploadError] = useState<string>("");
   // Raw extracted company text from the uploaded document (≤5000 chars).
   // Editable in a large textarea, also passed to «Оформить красиво» as a hint.
   const [companyRawText, setCompanyRawText] = useState("");
@@ -740,20 +742,41 @@ export default function EmployerPanel() {
 
   // Upload a file to storage, returns signed URL
   const uploadCompanyFile = async (file: File): Promise<string | null> => {
+    setUploadError("");
+    setIsUploadingFile(true);
     try {
       const { data: u } = await supabase.auth.getUser();
       const uid = u?.user?.id;
-      if (!uid || !draftCompanyId) return null;
+      if (!uid) {
+        const msg = "Войдите в систему — без авторизации файл нельзя загрузить в Supabase Storage.";
+        setUploadError(msg);
+        addAuditEvent("warning", "Нет авторизации", msg);
+        return null;
+      }
+      if (!draftCompanyId) {
+        const msg = "Черновик компании ещё не создан. Закройте и снова откройте «Добавить компанию».";
+        setUploadError(msg);
+        addAuditEvent("warning", "Нет черновика компании", msg);
+        return null;
+      }
       const path = `${uid}/${draftCompanyId}/${Date.now()}_${file.name.replace(/[^a-zа-я0-9._-]+/gi, "_")}`;
       const up = await supabase.storage.from("company-uploads").upload(path, file, { upsert: true });
       if (up.error) throw up.error;
       setDraftFilePath(path);
+      setNewCompanyFiles(file.name);
+      addAuditEvent("success", "Файл загружен в Supabase", `${file.name} → company-uploads/${path}`);
       const signed = await supabase.storage.from("company-uploads").createSignedUrl(path, 60 * 60);
       return signed.data?.signedUrl || null;
     } catch (err: any) {
       console.error("upload error", err);
-      addAuditEvent("warning", "Ошибка загрузки файла", err?.message || "upload error");
+      const msg = err?.message || "Не удалось загрузить файл в Supabase Storage.";
+      setUploadError(msg);
+      addAuditEvent("warning", "Ошибка загрузки файла", msg);
+      setNewCompanyFiles("");
+      setDraftFilePath(null);
       return null;
+    } finally {
+      setIsUploadingFile(false);
     }
   };
 
