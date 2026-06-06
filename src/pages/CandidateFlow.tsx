@@ -468,8 +468,10 @@ export default function CandidateFlow() {
   // Helper to build cohesive URLs
   const getDynamicPath = (tabId: string, subTabId?: string, forceProject?: any) => {
     const parts = path.split("/").filter(Boolean);
-    const candIndex = parts.findIndex(p => p.startsWith("candidate"));
-    const candidateId = candidate?.id || localStorage.getItem("cand_session_id") || "";
+    const candIndex = parts.findIndex(p => /^(candidate|cand)/i.test(p));
+    const storedCandidateId = localStorage.getItem("cand_session_id") || "";
+    const storedPublicId = storedCandidateId.replace(/^candidate/i, "").replace(/^cand/i, "");
+    const candidateId = candidate?.publicId ? `cand${candidate.publicId}` : (storedPublicId ? `cand${storedPublicId}` : "cand");
 
     const targetProject = forceProject || project;
     let slug = "";
@@ -479,8 +481,10 @@ export default function CandidateFlow() {
       slug = parts[0];
       vacId = parts[1];
     } else if (targetProject) {
-      slug = targetProject.companySlug || "";
-      vacId = targetProject.id;
+      const rawCompanySlug = targetProject.companySlug || "";
+      const rawVacId = (targetProject as any).publicId || (targetProject as any).public_id || (targetProject as any).slug || targetProject.id;
+      slug = rawCompanySlug ? (/^com/i.test(rawCompanySlug) ? rawCompanySlug : `com${rawCompanySlug}`) : "";
+      vacId = rawVacId ? (/^vac/i.test(rawVacId) ? rawVacId : `vac${rawVacId}`) : "";
     }
 
     let targetSub = subTabId;
@@ -531,7 +535,10 @@ export default function CandidateFlow() {
     
     if (candIndex !== -1 && (parts[candIndex].toLowerCase() === "candidate" || parts[candIndex].toLowerCase() === "cand")) {
       let properId = localStorage.getItem("cand_session_id") || "";
-      if (!properId.toLowerCase().startsWith("candidate") || !/\d+/.test(properId)) {
+      const properPid = properId.replace(/^candidate/i, "").replace(/^cand/i, "");
+      if (/^\d{4,}$/.test(properPid)) {
+        properId = `candidate${properPid}`;
+      } else {
         properId = "candidate" + Math.floor(100000 + Math.random() * 900000).toString();
       }
       localStorage.setItem("cand_session_id", properId);
@@ -545,7 +552,7 @@ export default function CandidateFlow() {
   // Sync URL subpath to activeTab, termsSubTab and trainingSubTab states
   useEffect(() => {
     const parts = path.split("/").filter(Boolean);
-    const candIndex = parts.findIndex(p => p.startsWith("candidate"));
+    const candIndex = parts.findIndex(p => /^(candidate|cand)/i.test(p));
     
     let parsedTab = "profile";
     let parsedSubTab = "";
@@ -712,12 +719,8 @@ export default function CandidateFlow() {
       return lower.startsWith("candidate") || lower.startsWith("cand");
     });
     
-    if (candIndex !== -1 && (parts[candIndex].toLowerCase() === "candidate" || parts[candIndex].toLowerCase() === "cand")) {
-      setSessionLoading(false);
-      return;
-    }
-
-    let activeId = localStorage.getItem("cand_session_id") || "";
+    const savedSession = getCandidateSession();
+    let activeId = localStorage.getItem("cand_session_id") || (savedSession?.public_id ? `candidate${savedSession.public_id}` : savedSession?.candidate_id || "");
     // Treat a bare numeric first segment as a candidate public_id
     // (e.g. /200002/terms/vacancy). The dispatcher has already verified
     // that such a path belongs to a real candidate before mounting us.
@@ -730,7 +733,9 @@ export default function CandidateFlow() {
     if (candIndex !== -1) {
       const raw = parts[candIndex];
       const pid = raw.replace(/^candidate/i, "").replace(/^cand/i, "");
-      activeId = pid ? `candidate${pid}` : raw;
+      activeId = pid
+        ? `candidate${pid}`
+        : (savedSession?.public_id ? `candidate${savedSession.public_id}` : activeId);
       localStorage.setItem("cand_session_id", activeId);
     } else if (parts[0] && parts[0].startsWith("candidate")) {
       activeId = parts[0];
@@ -770,6 +775,19 @@ export default function CandidateFlow() {
       // 2. Resolve candidate. Prefer Supabase by public_id, then legacy API.
       let activeCand: any = null;
       const pubId = activeId.replace(/^candidate/i, "").replace(/^cand/i, "");
+      if (savedSession?.token && (savedSession.public_id === pubId || savedSession.candidate_id === pubId || !pubId)) {
+        activeCand = {
+          id: savedSession.candidate_id,
+          publicId: savedSession.public_id || pubId,
+          name: savedSession.email || `Кандидат #${savedSession.public_id || pubId}`,
+          email: savedSession.email || "",
+          projectId: savedSession.project_id || "",
+          companyId: savedSession.company_id || undefined,
+          roleName: "",
+          currentStage: "terms",
+          registeredVia: "email",
+        };
+      }
       if (pubId) {
         const { data: cand } = await supabase
           .from("candidates")
@@ -903,7 +921,8 @@ export default function CandidateFlow() {
         // Fetch corresponding project details. Prefer slug from canonical URL
         // (/com…/vac…/cand…/…); otherwise always fall back to the candidate's
         // bound project_id so the vacancy block is populated automatically.
-        const activeProjId = (candIndex >= 2 ? parts[1] : null) || activeCand.projectId || "";
+        const routeProjId = candIndex >= 2 ? (parts[1] || "").replace(/^vac/i, "") : "";
+        const activeProjId = routeProjId || activeCand.projectId || "";
         if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
           if (resProj && resProj.ok) {
@@ -913,7 +932,7 @@ export default function CandidateFlow() {
             const isUuid = /^[0-9a-f-]{36}$/i.test(activeProjId);
             const q = isUuid
               ? supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("id", activeProjId).maybeSingle()
-              : supabase.from("projects").select("*, companies(name, slug, logo_url)").eq("slug", activeProjId).maybeSingle();
+              : supabase.from("projects").select("*, companies(name, slug, logo_url)").or(`slug.eq.${activeProjId},public_id.eq.${activeProjId},legacy_slug.eq.${activeProjId},legacy_public_id.eq.${activeProjId}`).maybeSingle();
             const { data: p } = await q;
             if (p) {
               setProject({
@@ -929,6 +948,8 @@ export default function CandidateFlow() {
                 checklistQuestions: [],
                 roleplayQuestions: [],
                 logoUrl: p.logo_url || p.companies?.logo_url || undefined,
+                slug: p.slug,
+                publicId: p.public_id,
               } as any);
               setProjectFull(p);
               // Fetch full company + employer contacts (item 11 + 12)

@@ -19,25 +19,17 @@ export default function SegmentDispatcher() {
   const { firstSeg = "" } = useParams();
   const { navigate, path } = useRouter();
   const [resolved, setResolved] = useState<"checking" | "render" | "candidate">("checking");
-
-  // New + legacy URL prefixes
-  if (/^(emp|employer)[A-Za-z0-9_-]+$/.test(firstSeg)) return <EmployerPanel />;
-  if (/^(cand|candidate)[A-Za-z0-9_-]+$/.test(firstSeg)) return <CandidateFlow />;
-  if (/^com\d+$/.test(firstSeg)) {
-    // /com{cid}/vac{vid}/cand{pid}/... should render the candidate cabinet,
-    // not the company landing (otherwise the landing treats `cand…` as an
-    // unknown sub-tab and redirects back to the company tab).
-    const segments = path.split("/").filter(Boolean);
-    if (segments.some((s) => /^(cand|candidate)[A-Za-z0-9_-]+$/.test(s))) {
-      return <CandidateFlow />;
-    }
-    return <CompanyLanding />;
-  }
+  const segments = path.split("/").filter(Boolean);
+  const isEmployerPath = /^(emp|employer)[A-Za-z0-9_-]+$/.test(firstSeg);
+  const isCandidatePath = /^(cand|candidate)[A-Za-z0-9_-]+$/.test(firstSeg) || /^\d{4,}$/.test(firstSeg);
+  const isCanonicalCompanyPath = /^com\d+$/.test(firstSeg);
+  const companyPathHasCandidate = segments.some((s) => /^(cand|candidate)[A-Za-z0-9_-]+$/.test(s));
 
   // Bare candidate public_id (e.g. /200002/...), or legacy company slug.
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      if (isEmployerPath || isCandidatePath || isCanonicalCompanyPath) return;
       setResolved("checking");
 
       // Bare numeric → maybe a candidate public_id.
@@ -69,7 +61,20 @@ export default function SegmentDispatcher() {
     })();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firstSeg]);
+  }, [firstSeg, isEmployerPath, isCandidatePath, isCanonicalCompanyPath]);
+
+  // New + legacy URL prefixes
+  if (isEmployerPath) return <EmployerPanel />;
+  if (isCandidatePath) return <CandidateFlow />;
+  if (isCanonicalCompanyPath) {
+    // /com{cid}/vac{vid}/cand{pid}/... should render the candidate cabinet,
+    // not the company landing (otherwise the landing treats `cand…` as an
+    // unknown sub-tab and redirects back to the company tab).
+    if (companyPathHasCandidate) {
+      return <CandidateFlow />;
+    }
+    return <CompanyLanding />;
+  }
 
   if (resolved === "checking") {
     return (
