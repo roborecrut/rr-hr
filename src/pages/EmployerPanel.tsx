@@ -242,6 +242,15 @@ export default function EmployerPanel() {
   // AI-enhance loading state for the in-wizard VacancyEditor.
   const [wizardAiKey, setWizardAiKey] = useState<VacancyFieldKey | null>(null);
 
+  // Vacancy wizard: 2-step file ingest (upload → recognize → fill raw text).
+  const [draftVacancyFilePath, setDraftVacancyFilePath] = useState<string | null>(null);
+  const [vacancyFileName, setVacancyFileName] = useState<string>("");
+  const [isUploadingVacancyFile, setIsUploadingVacancyFile] = useState(false);
+  const [vacancyUploadError, setVacancyUploadError] = useState<string>("");
+  // Raw extracted vacancy text from uploaded document (≤5000 chars). Editable.
+  // Passed to «Оформить красиво» as file_context.
+  const [vacancyRawText, setVacancyRawText] = useState<string>("");
+
   // Per-role templates merged from DB (job_titles.field_templates) over generic defaults.
   // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
   // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
