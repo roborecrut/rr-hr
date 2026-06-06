@@ -10,7 +10,8 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
-  CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award
+  CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
+  Building2
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -32,6 +33,18 @@ function Score({ label, value }: { label: string; value: any }) {
       <span className="text-sm font-mono font-bold text-[#E7C768]">
         {n === null || Number.isNaN(n) ? "—" : `${Math.round(n)}/100`}
       </span>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: any }) {
+  const empty = value === null || value === undefined || value === "";
+  return (
+    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
+      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{label}</div>
+      <div className={`text-[12px] mt-0.5 break-words ${empty ? "text-slate-500 italic" : "text-white font-semibold"}`}>
+        {empty ? "—" : String(value)}
+      </div>
     </div>
   );
 }
@@ -72,6 +85,11 @@ export default function CandidateDetailsModal({
   const stageProgress: any[] = data?.stage_progress || [];
   const trainingProgress: any[] = data?.training_progress || [];
   const interviews: any[] = data?.interviews || [];
+
+  // Split answers by question category if joined; otherwise show together.
+  const checklistAnswers = answers.filter((a: any) => (a.question_category || "").toLowerCase().includes("checklist") || (a.question_category || "").toLowerCase().includes("чек"));
+  const situationAnswers = answers.filter((a: any) => (a.question_category || "").toLowerCase().includes("situation") || (a.question_category || "").toLowerCase().includes("ситуац"));
+  const otherAnswers = answers.filter((a: any) => !checklistAnswers.includes(a) && !situationAnswers.includes(a));
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
@@ -120,7 +138,7 @@ export default function CandidateDetailsModal({
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-slate-300">{c.role_name || pr.role_name} · {co.name || "—"}</div>
+                <div className="text-xs text-slate-300">{c.role_name || pr.role_name || "—"} · {co.name || "—"}</div>
                 <div className="flex flex-wrap gap-3 text-[11px] text-slate-200">
                   {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email}</span>}
                   {p.email && p.email !== c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {p.email}</span>}
@@ -156,9 +174,59 @@ export default function CandidateDetailsModal({
               <Score label="Средний" value={s.overall_score} />
             </div>
 
+            {/* Company + vacancy block (names, not only links) */}
+            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="flex items-start gap-3">
+                <Building2 className="w-4 h-4 text-[#E7C768] mt-0.5" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Компания</div>
+                  <div className="text-sm font-bold text-white truncate">{co.name || "—"}</div>
+                  <div className="text-[11px] text-slate-400 truncate">{co.slug ? `/${co.slug}` : ""}</div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Briefcase className="w-4 h-4 text-[#E7C768] mt-0.5" />
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono uppercase text-slate-400">Вакансия</div>
+                  <div className="text-sm font-bold text-white truncate">{c.role_name || pr.role_name || "—"}</div>
+                  <div className="text-[11px] text-slate-400 truncate">{pr.public_id ? `ID: ${pr.public_id}` : ""}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Full candidate profile — all fields, even empty */}
+            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><UserIcon className="w-3.5 h-3.5" /> Профиль кандидата</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <Field label="ФИО" value={c.full_name} />
+                <Field label="ФИО из резюме" value={c.resume_name} />
+                <Field label="Public ID" value={c.public_id} />
+                <Field label="Email" value={c.email} />
+                <Field label="Телефон" value={c.phone} />
+                <Field label="Должность (роль)" value={c.role_name} />
+                <Field label="Этап CRM" value={STAGE_LABELS[c.crm_stage] || c.crm_stage} />
+                <Field label="Текущий этап" value={c.current_stage} />
+                <Field label="Зарегистрирован через" value={c.registered_via} />
+                <Field label="Способ входа" value={c.auth_kind} />
+                <Field label="Источник перехода" value={c.ref_source} />
+                <Field label="Лендинг" value={c.landing_slug} />
+                <Field label="Создан" value={c.created_at ? new Date(c.created_at).toLocaleString() : null} />
+                <Field label="Последний вход" value={c.last_login_at ? new Date(c.last_login_at).toLocaleString() : null} />
+                <Field label="Резюме (URL)" value={c.resume_url} />
+                <Field label="Аватар (URL)" value={c.avatar_url || p.avatar_url} />
+                <Field label="Telegram" value={c.social_telegram} />
+                <Field label="WhatsApp" value={c.social_whatsapp} />
+                <Field label="Instagram" value={c.social_instagram} />
+                <Field label="VK" value={c.social_vk} />
+                <Field label="MAX" value={c.social_max} />
+                <Field label="Setka" value={c.social_setka} />
+                <Field label="GitHub" value={c.social_github} />
+              </div>
+            </div>
+
             {/* Resume */}
             <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Резюме (скрининг)</h3>
+              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Распознанный текст резюме</h3>
               {s.assessment_summary && (
                 <div className="text-[11px] text-amber-200 bg-amber-900/20 border border-amber-700/30 rounded-lg p-2">
                   {s.assessment_summary}
@@ -184,21 +252,60 @@ export default function CandidateDetailsModal({
               </div>
             )}
 
-            {/* Answers (checklist + situations) */}
-            {answers.length > 0 && (
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-                <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> Ответы (чеклист и ситуации)</h3>
-                <div className="space-y-2 max-h-72 overflow-y-auto">
-                  {answers.map((a) => (
+            {/* Answers — Checklist */}
+            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> Ответы на чек-лист</h3>
+              {checklistAnswers.length === 0 ? (
+                <div className="text-[11px] text-slate-500 italic">Кандидат ещё не отвечал на чек-лист.</div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {checklistAnswers.map((a: any) => (
                     <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
-                      <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                        <span>{a.question_id?.slice(0, 8)}…</span>
-                        <span className="text-[#E7C768]">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
                           {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
                       {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Answers — Situations */}
+            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Ответы во время ситуаций</h3>
+              {situationAnswers.length === 0 ? (
+                <div className="text-[11px] text-slate-500 italic">Ответы по ситуациям отсутствуют.</div>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto">
+                  {situationAnswers.map((a: any) => (
+                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
+                          {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
+                      {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {otherAnswers.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+                <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide">Прочие ответы</h3>
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {otherAnswers.map((a: any) => (
+                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
+                      <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                      <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
                     </div>
                   ))}
                 </div>

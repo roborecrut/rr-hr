@@ -214,7 +214,10 @@ export default function EmployerPanel() {
   }
 
   // CRM sub-view styles
-  const [crmViewMode, setCrmViewMode] = useState<"kanban" | "table" | "mailing">("kanban");
+  const [crmViewMode, setCrmViewMode] = useState<"kanban" | "table">("kanban");
+  const [crmFilterRole, setCrmFilterRole] = useState<string>("all");
+  const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
+  const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
 
   // Fetching data state
   const [projects, setProjects] = useState<JobProject[]>([]);
@@ -2283,12 +2286,21 @@ export default function EmployerPanel() {
     handleUpdateProfile();
   };
 
-  // Filtering candidates
-  const filteredCandidates = candidates.filter(cand => {
-    return cand.name.toLowerCase().includes(crmSearch.toLowerCase()) || 
-           cand.roleName.toLowerCase().includes(crmSearch.toLowerCase()) ||
-           cand.email.toLowerCase().includes(crmSearch.toLowerCase());
+  // Filtering candidates (search + role + company + stage)
+  const filteredCandidates = candidates.filter((cand: any) => {
+    const q = crmSearch.toLowerCase().trim();
+    if (q) {
+      const hay = `${cand.name || ""} ${cand.roleName || ""} ${cand.email || ""} ${cand.phone || ""} ${cand.companyName || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (crmFilterRole !== "all" && (cand.roleName || "") !== crmFilterRole) return false;
+    if (crmFilterCompany !== "all" && (cand.companyName || "") !== crmFilterCompany) return false;
+    if (crmFilterStage !== "all" && ((cand.crmStage || "registration") !== crmFilterStage)) return false;
+    return true;
   });
+
+  const crmRoleOptions = Array.from(new Set(candidates.map((c: any) => c.roleName).filter(Boolean))) as string[];
+  const crmCompanyOptions = Array.from(new Set(candidates.map((c: any) => c.companyName).filter(Boolean))) as string[];
 
   // Calculate stats
   const totalVerified = candidates.filter(c => c.currentStage === "certified").length;
@@ -2353,10 +2365,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className="max-w-7xl mx-auto py-8 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full flex-1">
+      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-7xl"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className="lg:col-span-3 space-y-6">
+        <aside className={`${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2499,7 +2511,7 @@ export default function EmployerPanel() {
         </aside>
 
         {/* Right Side Main Workspaces */}
-        <main className="lg:col-span-9 space-y-6">
+        <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (
@@ -2586,26 +2598,20 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-stretch">
                   {/* View selectors */}
                   <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1">
-                    <button 
-                      onClick={() => setCrmViewMode("kanban")} 
+                    <button
+                      onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
                     >
                       Канбан
                     </button>
-                    <button 
-                      onClick={() => setCrmViewMode("table")} 
+                    <button
+                      onClick={() => setCrmViewMode("table")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "table" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
                     >
                       Таблица
-                    </button>
-                    <button 
-                      onClick={() => setCrmViewMode("mailing")} 
-                      className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "mailing" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
-                    >
-                      Рассылка
                     </button>
                   </div>
 
@@ -2614,18 +2620,66 @@ export default function EmployerPanel() {
                     <Search className="w-3.5 h-3.5 text-slate-400 mr-2" />
                     <input
                       type="text"
-                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-32"
-                      placeholder="Искать ФИО..."
+                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-44"
+                      placeholder="Поиск ФИО / email / телефон..."
                       value={crmSearch}
                       onChange={(e) => setCrmSearch(e.target.value)}
                     />
                   </div>
+
+                  <select
+                    value={crmFilterCompany}
+                    onChange={(e) => setCrmFilterCompany(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по компании"
+                  >
+                    <option value="all">Все компании</option>
+                    {crmCompanyOptions.map((co) => <option key={co} value={co}>{co}</option>)}
+                  </select>
+
+                  <select
+                    value={crmFilterRole}
+                    onChange={(e) => setCrmFilterRole(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по вакансии"
+                  >
+                    <option value="all">Все вакансии</option>
+                    {crmRoleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+
+                  <select
+                    value={crmFilterStage}
+                    onChange={(e) => setCrmFilterStage(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по этапу"
+                  >
+                    <option value="all">Все этапы</option>
+                    <option value="registration">1. Регистрация</option>
+                    <option value="screening">2. Скрининг</option>
+                    <option value="checklist">3. Чеклист</option>
+                    <option value="situations">4. Ситуации</option>
+                    <option value="professional">5. Профессия</option>
+                    <option value="product">6. Продукт</option>
+                    <option value="systems">7. Система</option>
+                    <option value="certified">8. Сертификат</option>
+                  </select>
+
+                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmSearch(""); }}
+                      className="text-[11px] font-bold text-[#E7C768] underline px-1"
+                    >
+                      Сбросить
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+                <div className="crm-scroll overflow-x-auto pb-3">
+                  <div className="flex gap-3 min-w-max">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2639,9 +2693,10 @@ export default function EmployerPanel() {
                     const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
 
                     return (
-                      <div 
-                        key={column.stage} 
-                        className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow"
+                      <div
+                        key={column.stage}
+                        className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
+                        style={{ width: 260, minWidth: 220, resize: "horizontal", overflow: "auto" }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -2653,7 +2708,7 @@ export default function EmployerPanel() {
                         }}
                       >
                         <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
-                          <span className="truncate">{column.title}</span>
+                          <span className="whitespace-nowrap">{column.title}</span>
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
@@ -2682,30 +2737,42 @@ export default function EmployerPanel() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
               )}
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden shadow-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl shadow-xl">
+                  <div className="crm-scroll overflow-x-auto">
+                    <table className="text-left text-xs" style={{ minWidth: "1100px" }}>
                       <thead>
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
-                          <th className="p-4">ФИО Кандидата</th>
-                          <th className="p-4">Интерес / Должность</th>
-                          <th className="p-4">Текущий Этап</th>
-                          <th className="p-4 text-center">Резюме</th>
-                          <th className="p-4 text-center">Чек-лист</th>
-                          <th className="p-4 text-center">Ситуации</th>
-                          <th className="p-4 text-center">Средний Балл</th>
-                          <th className="p-4 text-right">Действия</th>
+                          {[
+                            { label: "ФИО Кандидата", w: 240, align: "left" },
+                            { label: "Компания", w: 180, align: "left" },
+                            { label: "Вакансия", w: 200, align: "left" },
+                            { label: "Текущий Этап", w: 170, align: "left" },
+                            { label: "Резюме", w: 90, align: "center" },
+                            { label: "Чек-лист", w: 90, align: "center" },
+                            { label: "Ситуации", w: 90, align: "center" },
+                            { label: "Средний", w: 90, align: "center" },
+                            { label: "Действия", w: 140, align: "right" },
+                          ].map((h, i) => (
+                            <th
+                              key={i}
+                              className={`p-3 text-${h.align} whitespace-nowrap`}
+                              style={{ minWidth: h.w, width: h.w, resize: "horizontal", overflow: "auto" }}
+                            >
+                              {h.label}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
                         {filteredCandidates.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
+                            <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
                           </tr>
                         ) : (
                           filteredCandidates.map(cand => {
@@ -2716,13 +2783,14 @@ export default function EmployerPanel() {
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
-                                <td className="p-4 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
+                                <td className="p-3 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
                                   {(cand as any).phone && <div className="text-[10px] text-slate-500 font-normal">{(cand as any).phone}</div>}
                                 </td>
-                                <td className="p-4">{cand.roleName}</td>
-                                <td className="p-4">
+                                <td className="p-3 text-slate-200">{(cand as any).companyName || "—"}</td>
+                                <td className="p-3 text-slate-200">{cand.roleName || "—"}</td>
+                                <td className="p-3">
                                   <select 
                                     className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768]"
                                     value={(cand as any).crmStage || "registration"}
@@ -2738,13 +2806,13 @@ export default function EmployerPanel() {
                                     <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
-                                <td className="p-4 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
-                                <td className="p-4 text-center">
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
+                                <td className="p-3 text-center">
                                   <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
                                 </td>
-                                <td className="p-4 text-right">
+                                <td className="p-3 text-right">
                                   <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
                                 </td>
                               </tr>
@@ -2757,107 +2825,7 @@ export default function EmployerPanel() {
                 </div>
               )}
 
-              {/* INTEGRATED BULK MAILER */}
-              {crmViewMode === "mailing" && (
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-6">
-                  <div className="border-b border-white/10 pb-3 flex justify-between items-center">
-                    <h3 className="font-bold text-sm text-[#E7C768] uppercase tracking-wider flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-sky-400" /> Конструктор массовой рассылки Telegram
-                    </h3>
-                    <span className="text-slate-300 text-xs">Всего кандидатов в базе: {candidates.length}</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Left settings */}
-                    <div className="space-y-4 text-left">
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">Кому отправить (Сегментация соискателей):</label>
-                        <select 
-                          className="w-full bg-black/40 text-xs text-white border border-white/15 px-3 py-2.5 rounded-xl accent-[#E7C768]"
-                          value={mailingSegment}
-                          onChange={(e) => setMailingSegment(e.target.value)}
-                        >
-                          <option value="all">📣 Всем кандидатам во всей воронке</option>
-                          <option value="terms">Ознакамливающимся с условиями смены</option>
-                          <option value="interview">Проходящим ИИ Чат-разговор</option>
-                          <option value="training">Ученикам раздела корпоративной Вики</option>
-                          <option value="certified">Только Обученным соискателям 🎓</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">Шаблон сообщения:</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            { key: "welcome", label: "Добро пожаловать" },
-                            { key: "reminder", label: "Напоминание о чате" },
-                            { key: "wiki_unlocked", label: "Лекции открыты" },
-                            { key: "certificate", label: "Сдача сертификации" }
-                          ].map(t => (
-                            <button
-                              key={t.key}
-                              className={`p-2 rounded-xl text-center text-[10px] font-bold border transition ${mailingTemplate === t.key ? "bg-[#1E4468]/90 border-[#E7C768] text-[#E7C768]" : "bg-black/35 border-white/10 hover:border-white/20 text-slate-300"}`}
-                              onClick={() => {
-                                setMailingTemplate(t.key);
-                                if (t.key === "welcome") {
-                                  setMailingText("Здравствуйте! Вы прошли первичную регистрацию. Робот Рекрутер готов протестировать вас. Пожалуйста, запустите ИИ-собеседование.");
-                                } else if (t.key === "reminder") {
-                                  setMailingText("Внимание! Подходит к концу дедлайн по вашему тестовому интервью. Завершите собеседование для получения решения HR.");
-                                } else if (t.key === "wiki_unlocked") {
-                                  setMailingText("Ура! Ваши баллы интервью достаточны для допуска к изучению Wiki-материалов и наставничества. Ждем вас в Личном Кабинете.");
-                                } else if (t.key === "certificate") {
-                                  setMailingText("Поздравляем с квалификацией! Вы успешно подтвердили знания нашего продукта. HR свяжется с вами для финального оффера в ТГ.");
-                                }
-                              }}
-                            >
-                              {t.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-slate-200 block mb-1">Текст сообщения:</label>
-                        <textarea
-                          rows={4}
-                          className="w-full bg-black/40 text-xs p-3 rounded-xl border border-white/15 focus:outline-none focus:border-[#E7C768] font-normal"
-                          value={mailingText}
-                          onChange={(e) => setMailingText(e.target.value)}
-                        />
-                      </div>
-
-                      <button
-                        onClick={handleLaunchMailing}
-                        disabled={isSendingMail}
-                        className="cursor-pointer w-full bg-gradient-to-r from-red-650 to-orange-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 hover:shadow transition disabled:opacity-50"
-                      >
-                        {isSendingMail ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        Запустить рассылку в Telegram
-                      </button>
-                    </div>
-
-                    {/* Right Log Console */}
-                    <div className="bg-black/40 p-4 rounded-2xl border border-white/15 flex flex-col justify-between font-mono">
-                      <div>
-                        <span className="text-[10px] text-gray-400 block uppercase font-bold tracking-wider mb-2">Лог отправки в реальном времени:</span>
-                        <div className="space-y-1 max-h-56 overflow-y-auto text-left text-[11px] text-emerald-300 pr-1 select-none">
-                          {mailingLogs.length === 0 ? (
-                            <span className="text-gray-500 italic">Ожидание запуска...</span>
-                          ) : (
-                            mailingLogs.map((lg, i) => (
-                              <div key={i}>{lg}</div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-white/5 text-[10px] text-slate-400 leading-normal text-left font-sans">
-                        ⚠️ В целях безопасности, сообщения уходят на зарегистрированный соискателем Telegram ID либо эмулируются на ваш рабочий канал.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* (Раздел «Рассылки» удалён по требованию.) */}
             </div>
           )}
 
@@ -4405,26 +4373,6 @@ export default function EmployerPanel() {
         candidateId={selectedCandidateId}
         onClose={() => setSelectedCandidateId(null)}
       />
-
-      {/* FOOTER AREA */}
-      <footer className="bg-[#17344F] border-t-2 border-[#E7C768] py-8 text-white text-center font-normal">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <RRImage 
-              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" 
-              w={32}
-              alt="RR Logo" 
-              className="w-8 h-8 object-contain" 
-              referrerPolicy="no-referrer"
-            />
-            <span className="text-xs text-slate-300 font-bold">© 2026 Робот Рекрутер RR</span>
-          </div>
-
-          <div className="text-xs text-slate-400 font-semibold">
-            Безоговорочная роботизация подбора персонала
-          </div>
-        </div>
-      </footer>
 
       {/* MODAL WINDOW FOR PAYMENT */}
       {selectedPlanToBuy && (
