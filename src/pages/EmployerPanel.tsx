@@ -214,7 +214,10 @@ export default function EmployerPanel() {
   }
 
   // CRM sub-view styles
-  const [crmViewMode, setCrmViewMode] = useState<"kanban" | "table" | "mailing">("kanban");
+  const [crmViewMode, setCrmViewMode] = useState<"kanban" | "table">("kanban");
+  const [crmFilterRole, setCrmFilterRole] = useState<string>("all");
+  const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
+  const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
 
   // Fetching data state
   const [projects, setProjects] = useState<JobProject[]>([]);
