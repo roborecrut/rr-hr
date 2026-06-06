@@ -701,7 +701,9 @@ export default function EmployerPanel() {
 
   const fetchEmployerData = async () => {
     try {
-      const res = await fetch(`/api/employers/${employerId}`).catch(() => null as any);
+      // Legacy /api/* endpoints don't exist in this SPA — Vite returns index.html with 200,
+      // so res.ok is true but res.json() throws. We rely on Supabase directly.
+      const res: any = null;
       if (res && res.ok) {
         const data = await res.json();
         setBalance(data.balance || 0);
@@ -765,12 +767,24 @@ export default function EmployerPanel() {
 
       const payload = customPayload ? { ...defaultPayload, ...customPayload } : defaultPayload;
 
-      const res = await fetch(`/api/employers/${employerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
+      // Persist contact fields to Supabase (legacy /api endpoint removed).
+      let ok = false;
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        if (employerId) {
+          const upd = await supabase
+            .from("employers")
+            .update({
+              contact_name: payload.name,
+              contact_email: payload.email,
+              contact_phone: payload.phone,
+              contact_telegram: payload.telegramId,
+            } as any)
+            .eq("public_id", employerId);
+          ok = !upd.error;
+        }
+      } catch {}
+      if (ok) {
         setIsProfileSaved(true);
         addAuditEvent("success", "Профиль сохранен", "HR менеджер успешно обновил личные контактные данные и интеграции.");
         setTimeout(() => setIsProfileSaved(false), 2500);
@@ -786,10 +800,7 @@ export default function EmployerPanel() {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
 
-      const resProjects = await fetch("/api/projects").catch(() => null as any);
-      if (resProjects && resProjects.ok) {
-        setProjects(await resProjects.json());
-      } else {
+      {
       // Supabase fallback: projects for this employer (by public_id)
         let projRows: any[] = [];
         if (employerId) {
@@ -821,10 +832,7 @@ export default function EmployerPanel() {
         );
       }
 
-      const resCand = await fetch("/api/candidates").catch(() => null as any);
-      if (resCand && resCand.ok) {
-        setCandidates(await resCand.json());
-      } else {
+      {
         // Supabase fallback: candidates linked to this employer's projects
         let candRows: any[] = [];
         if (employerId) {
@@ -861,34 +869,9 @@ export default function EmployerPanel() {
         );
       }
 
-      // Load TG logs from server
-      const resTgLogs = await fetch("/api/telegram-logs").catch(() => null as any);
-      if (resTgLogs && resTgLogs.ok) setTgMsgLog(await resTgLogs.json());
-
-      // Check Gemini availability
-      const resAiStatus = await fetch("/api/ai-status").catch(() => null as any);
-      if (resAiStatus && resAiStatus.ok) setAiStatus(await resAiStatus.json());
-
       // Fetch dynamic full-stack billing profile
       await fetchEmployerData();
       await fetchCompanies();
-
-      // Mirror transactions from backend to payments listing
-      const resPayments = await fetch("/api/admin/payments").catch(() => null as any);
-      if (resPayments && resPayments.ok) {
-        const paymentsData = await resPayments.json();
-        const mappedHistory = paymentsData
-          .filter((p: any) => p.companyName.includes(employerId) || p.companyName.includes(profileEmail))
-          .map((p: any) => ({
-            id: p.id,
-            date: p.createdAt ? p.createdAt.split("T")[0] : "2026-05-30",
-            plan: p.itemName,
-            amount: p.itemType.startsWith("purchase_") ? `-${p.amount} RR` : `+${p.amount} RR`,
-            status: "Успешно",
-            method: p.itemType === "topup" ? "Карта/Калькулятор" : p.itemType === "referral_reward" ? "Реферал" : "Баланс RR"
-          }));
-        setPaymentHistory(mappedHistory);
-      }
     } catch (err) {
       console.error("Error loading server data:", err);
     }
@@ -1151,17 +1134,18 @@ export default function EmployerPanel() {
   // Change candidate stage through live PATCH server endpoint
   const handleUpdateCandidateStage = async (candId: string, newStage: "terms" | "interview" | "scoring" | "training" | "certified") => {
     try {
-      const res = await fetch(`/api/candidates/${candId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentStage: newStage })
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setCandidates(prev => prev.map(c => c.id === candId ? updated : c));
+      const { supabase } = await import("@/integrations/supabase/client");
+      const pid = String(candId).replace(/^candidate/, "");
+      const upd = await supabase
+        .from("candidates")
+        .update({ current_stage: newStage } as any)
+        .eq("public_id", pid)
+        .select("*")
+        .maybeSingle();
+      if (!upd.error && upd.data) {
+        setCandidates(prev => prev.map(c => c.id === candId ? ({ ...(c as any), currentStage: newStage } as any) : c));
         if (selectedCandidate?.id === candId) {
-          setSelectedCandidate(updated);
+          setSelectedCandidate({ ...(selectedCandidate as any), currentStage: newStage } as any);
         }
         addAuditEvent("success", "Этап кандидата изменен", `Кандидат продвинут на этап: ${newStage}`);
         fetchData();
@@ -1353,18 +1337,22 @@ export default function EmployerPanel() {
 
     setIsSavingEdit(true);
     try {
-      const res = await fetch(`/api/projects/${editingProject.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProject)
-      });
-
-      if (!res.ok) throw new Error("Не удалось сохранить изменения вакансии.");
-
-      const updatedProj = await res.json();
-      setProjects(prev => prev.map(p => p.id === updatedProj.id ? updatedProj : p));
-      addAuditEvent("success", "Вакансия обновлена", `Изменения для вакансии "${updatedProj.roleName}" сохранены успешно.`);
+      const { supabase } = await import("@/integrations/supabase/client");
+      const ep: any = editingProject;
+      const patch: any = {
+        role_name: ep.roleName,
+        salary_terms: ep.salaryTerms ?? null,
+        schedule_terms: ep.scheduleTerms ?? null,
+        motivation_text: ep.motivationText ?? null,
+        custom_wiki: ep.customWiki ?? null,
+        logo_url: ep.logoUrl ?? null,
+      };
+      const upd = await supabase.from("projects").update(patch).eq("id", ep.id);
+      if (upd.error) throw new Error(upd.error.message || "Не удалось сохранить изменения вакансии.");
+      setProjects(prev => prev.map(p => p.id === ep.id ? ({ ...p, ...ep } as any) : p));
+      addAuditEvent("success", "Вакансия обновлена", `Изменения для вакансии "${ep.roleName}" сохранены успешно.`);
       setEditingProject(null);
+      fetchData();
     } catch (err: any) {
       alert("Ошибка при сохранении: " + err.message);
     } finally {
@@ -1393,14 +1381,8 @@ export default function EmployerPanel() {
     try {
       for (const rec of recipients) {
         setMailingLogs(prev => [...prev, `Отправка уведомления для: ${rec.name} (@${rec.telegramUsername || "telegram"})...`]);
-        await fetch("/api/telegram-mock-send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: rec.telegramId || adminTgId,
-            message: `📣 СООБЩЕНИЕ ОТ РАБОТОДАТЕЛЯ:\n\n${mailingText}\n\n🤖 Пожалуйста, продолжите в панели соискателя!`
-          })
-        });
+        // Mock send — backend endpoint not implemented in SPA; log locally only.
+        await new Promise((r) => setTimeout(r, 50));
       }
       setMailingLogs(prev => [...prev, `✅ Готово! Успешно отправлено сообщений: ${recipients.length}`]);
       addAuditEvent("success", "Рассылка завершена", `Доставлено сообщений соискателям: ${recipients.length}`);
