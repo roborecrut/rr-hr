@@ -1867,36 +1867,90 @@ export default function EmployerPanel() {
     setTimeout(() => setCopiedProjectId(null), 2000);
   };
 
-  // Auto-recognize file for job vacancy conditions using ProTalk LLM
-  const handleAutoRecognizeFile = async (filename: string) => {
-    setIsParsingFile(true);
-    addAuditEvent("info", "Анализ файла вакансии", `Запущен разбор вакансии из файла: ${filename}`);
-    
+  // Step 1: upload the chosen file to Supabase Storage (vacancy-uploads bucket).
+  // We deliberately DO NOT call the LLM here — the user must press the explicit
+  // «Распознать документ» button on step 2 to extract text.
+  const uploadVacancyFile = async (file: File) => {
+    setVacancyUploadError("");
+    setIsUploadingVacancyFile(true);
     try {
-      const { aiEnhanceAll } = await import("@/lib/aiClient");
-      const parsed = await aiEnhanceAll({
-        mode: "all_vacancy",
-        company_name: setupCompanyName,
-        fields: {
-          roleName: setupRoleName,
-          schedule_text: setupScheduleText,
-          payouts_text: setupPayoutsText,
-          vacancyText: setupVacancyText,
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u?.user?.id;
+      if (!uid) {
+        const msg = "Войдите в систему — без авторизации файл нельзя загрузить.";
+        setVacancyUploadError(msg);
+        addAuditEvent("warning", "Нет авторизации", msg);
+        return;
+      }
+      if (!draftProjectId) {
+        const msg = "Черновик вакансии ещё не создан. Закройте мастер и откройте снова.";
+        setVacancyUploadError(msg);
+        addAuditEvent("warning", "Нет черновика вакансии", msg);
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        const msg = "Файл больше 10 МБ.";
+        setVacancyUploadError(msg);
+        return;
+      }
+      const safeName = file.name
+        .normalize("NFKD")
+        .replace(/[^\x20-\x7E]+/g, "")
+        .replace(/[^a-zA-Z0-9._-]+/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "") || `file_${Date.now()}`;
+      const path = `${uid}/${draftProjectId}/${Date.now()}_${safeName}`;
+      const up = await supabase.storage.from("vacancy-uploads").upload(path, file, { upsert: true });
+      if (up.error) throw up.error;
+      setDraftVacancyFilePath(path);
+      setVacancyFileName(file.name);
+      addAuditEvent("success", "Файл вакансии загружен", `${file.name} → vacancy-uploads/${path}`);
+    } catch (err: any) {
+      console.error("vacancy upload error", err);
+      const msg = err?.message || "Не удалось загрузить файл.";
+      setVacancyUploadError(msg);
+      addAuditEvent("warning", "Ошибка загрузки", msg);
+    } finally {
+      setIsUploadingVacancyFile(false);
+    }
+  };
+
+  // Step 2: explicit «Распознать документ» — send the uploaded file to ProTalk
+  // and put the resulting markdown into the editable raw-text textarea (≤5000
+  // chars). The file is then removed from storage by the edge function.
+  const recognizeVacancyFile = async () => {
+    if (!draftVacancyFilePath) return;
+    setIsParsingFile(true);
+    addAuditEvent("info", "ИИ разбор вакансии", `Считываем текст из «${vacancyFileName || "файла"}»…`);
+    try {
+      const res = await aiWaitRun<any>({
+        title: `ИИ читает файл ${vacancyFileName}`,
+        task: async () => {
+          const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
+            body: {
+              entity: "vacancy",
+              entity_id: draftProjectId || undefined,
+              bucket: "vacancy-uploads",
+              file_path: draftVacancyFilePath,
+              filename: vacancyFileName,
+              max_chars: 5000,
+            },
+          });
+          if (error) throw new Error(error.message);
+          return data;
         },
-        hint: `parse_file:${filename}`,
       });
-      
-      if (parsed.roleName) setSetupRoleName(parsed.roleName);
-      if (parsed.schedule_text) setSetupScheduleText(parsed.schedule_text);
-      if (parsed.payouts_text) setSetupPayoutsText(parsed.payouts_text);
-      if (parsed.vacancyText) setSetupVacancyText(parsed.vacancyText);
-      
-      addAuditEvent("success", "Файл вакансии распознан", `ИИ ProTalk успешно выгрузил все условия для "${parsed.roleName || "вакансии"}".`);
+      const text = String(res?.text || "").slice(0, 5000);
+      if (text) {
+        setVacancyRawText(text);
+        addAuditEvent("success", "Текст вакансии извлечён", `Распознано ${text.length} симв. Нажмите «Оформить красиво».`);
+      } else {
+        addAuditEvent("warning", "Пустой ответ", "ИИ не вернул текст из документа.");
+      }
+      setDraftVacancyFilePath(null);
     } catch (err: any) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка распознавания", "Использованы правила автозаполнения.");
-      // Fallback
-      setSetupRoleName("Инженер по тестированию (QA)");
+      addAuditEvent("warning", "Ошибка распознавания", err?.message || "Не удалось разобрать файл.");
     } finally {
       setIsParsingFile(false);
     }
