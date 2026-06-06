@@ -198,6 +198,7 @@ export default function EmployerPanel() {
   // CRM States
   const [crmSearch, setCrmSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
   // Mailing States
   const [mailingSegment, setMailingSegment] = useState<string>("all");
