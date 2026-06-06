@@ -27,6 +27,7 @@ import { useAIWait } from "../components/AIWaitProvider";
 import { useAIReady } from "../lib/aiReady";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
+import { DocumentUploader } from "../components/DocumentUploader";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
