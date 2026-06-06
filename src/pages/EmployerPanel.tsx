@@ -2770,15 +2770,28 @@ export default function EmployerPanel() {
                       <h4 className="text-sm font-semibold text-white">Мастер Вакансий</h4>
                     </div>
                     <div className="flex items-center gap-2">
-                      {aiReady && (<button
-                        type="button"
-                        onClick={handleBeautifyNewVacancyWithAI}
-                        disabled={isGenerating || isParsingFile}
-                        className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-50"
-                      >
-                        <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-                        {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
-                      </button>)}
+                      {(() => {
+                        const totalVacChars = (
+                          setupRoleName + setupVacancyText + setupTasksActivityText + setupScheduleText +
+                          setupMotivationText + setupMotivationDetail + setupPayoutsText + setupOnboardingText +
+                          setupTeamText + setupSystemText + setupTrainingProfessionalText + setupTrainingProductText +
+                          setupTrainingSystemsText + setupTrainingWikiText + setupTrainingRegulationsText + vacancyRawText
+                        ).trim().length;
+                        const canBeautify = aiReady && totalVacChars >= 50;
+                        if (!aiReady) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={handleBeautifyNewVacancyWithAI}
+                            disabled={!canBeautify || isGenerating || isParsingFile}
+                            title={canBeautify ? "Оформить все 15 полей через ИИ" : "Заполните поля минимум на 50 символов суммарно (или загрузите файл)"}
+                            className="px-4 py-2 text-xs font-bold rounded-xl text-white bg-gradient-to-r from-purple-600 via-violet-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <Sparkles className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
+                            {isGenerating ? "Обработка ИИ..." : "Оформить красиво с помощью ИИ"}
+                          </button>
+                        );
+                      })()}
                       <button
                         type="button"
                         onClick={cancelAddVacancyWizard}
