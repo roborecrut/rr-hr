@@ -1325,12 +1325,26 @@ export default function EmployerPanel() {
       alert("Начальный минимальный платеж 100 рублей.");
       return;
     }
+    if (!topupOfferOk) {
+      alert("Для оплаты необходимо согласие с публичной офертой.");
+      return;
+    }
     setIsToppingUp(true);
     try {
-      const { error } = await supabase.rpc("topup_rr", { _amount_rub: topupAmountRub });
-      if (error) throw new Error(error.message || "Не удалось пополнить баланс");
-      addAuditEvent("success", "Баланс пополнен", `Зачислено: +${topupAmountRub} RR`);
-      await fetchBillingState();
+      const { data, error } = await supabase.functions.invoke("robokassa-create", {
+        body: { amount_rub: topupAmountRub, offer_accepted: true },
+      });
+      if (error) throw new Error(error.message || "Не удалось создать счёт");
+      const resp: any = data;
+      if (!resp?.ok || !resp?.payment_url) {
+        throw new Error(
+          resp?.error === "robokassa_not_configured"
+            ? "Платёжная система ещё не подключена администратором. Попробуйте позже."
+            : (resp?.error || "Не удалось получить ссылку на оплату"),
+        );
+      }
+      addAuditEvent("info", "Переход на оплату", `Счёт №${resp.inv_id} на ${topupAmountRub} ₽ (Робокасса)`);
+      window.location.href = resp.payment_url as string;
     } catch (err: any) {
       alert(translateBillingError(err.message));
     } finally {
