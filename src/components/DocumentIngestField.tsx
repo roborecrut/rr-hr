@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, Sparkles, Link2, Loader2 } from "lucide-react";
+import { Upload, Sparkles, Link2, Loader2, Send, CheckCircle2 } from "lucide-react";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import type { LoadingEntity } from "@/lib/loadingPhrases";
@@ -46,10 +46,17 @@ export function DocumentIngestField({
 }) {
   const { run: aiWaitRun } = useAIWait();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [sending, setSending] = useState(false);
   const [distributing, setDistributing] = useState(false);
   const [url, setUrl] = useState("");
   const [urlOpen, setUrlOpen] = useState(false);
+  // After a successful upload we keep the storage path + filename so the user
+  // can explicitly trigger ProTalk on step 2.
+  const [uploaded, setUploaded] = useState<{ path: string; filename: string } | null>(null);
+  const [uploadError, setUploadError] = useState("");
+
+  const busy = uploading || sending;
 
   async function handleFile(f: File) {
     if (!f) return;
@@ -59,16 +66,34 @@ export function DocumentIngestField({
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { toast.error("Войдите в систему"); return; }
-    setBusy(true);
+    setUploadError("");
+    setUploading(true);
     const path = `${user.id}/${entity}-${entityId}-${Date.now()}-${f.name.replace(/[^\w.\-]+/g, "_")}`;
     try {
       const { error: upErr } = await supabase.storage.from(BUCKET[entity]).upload(path, f, { upsert: false });
       if (upErr) throw upErr;
+      setUploaded({ path, filename: f.name });
+      toast.success("Файл загружен в Supabase");
+    } catch (e: any) {
+      const msg = e?.message || "Не удалось загрузить файл";
+      setUploadError(msg);
+      toast.error(msg);
+      await supabase.storage.from(BUCKET[entity]).remove([path]).catch(() => {});
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function sendToProTalk() {
+    if (!uploaded) return;
+    setSending(true);
+    try {
       const data = await aiWaitRun<any>({
         title: "Распознавание документа",
         task: async () => {
           const { data, error } = await supabase.functions.invoke("ai-ingest-document", {
-            body: { entity, entity_id: entityId, bucket: BUCKET[entity], file_path: path, filename: f.name },
+            body: { entity, entity_id: entityId, bucket: BUCKET[entity], file_path: uploaded.path, filename: uploaded.filename },
           });
           if (error) throw new Error(error.message);
           return data;
@@ -77,20 +102,18 @@ export function DocumentIngestField({
       if (!data) return;
       const text = String(data?.text || "").slice(0, maxLength);
       onChange(text);
+      setUploaded(null); // file was removed server-side after ingest
       toast.success("Документ разобран");
     } catch (e: any) {
       toast.error(e?.message || "Не удалось разобрать файл");
-      // best-effort cleanup
-      await supabase.storage.from(BUCKET[entity]).remove([path]).catch(() => {});
     } finally {
-      setBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
+      setSending(false);
     }
   }
 
   async function handleUrl() {
     if (!url.trim()) return;
-    setBusy(true);
+    setSending(true);
     try {
       const data = await aiWaitRun<any>({
         title: "Разбор ссылки",
@@ -108,7 +131,7 @@ export function DocumentIngestField({
       toast.success("Ссылка разобрана");
     } catch (e: any) {
       toast.error(e?.message || "Не удалось разобрать ссылку");
-    } finally { setBusy(false); }
+    } finally { setSending(false); }
   }
 
   async function handleDistribute() {
@@ -134,14 +157,14 @@ export function DocumentIngestField({
   }
 
   return (
-    <div className="space-y-2 rounded-md border border-border bg-card p-3">
-      {label ? <div className="text-sm font-medium">{label}</div> : null}
+    <div className="brand-editor space-y-2 rounded-2xl p-3">
+      {label ? <div className="text-sm font-medium text-white">{label}</div> : null}
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          Загрузить файл
+        <Button type="button" size="sm" className="btn-brand-secondary" disabled={busy} onClick={() => fileRef.current?.click()}>
+          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {uploading ? "Загружаем в Supabase…" : "Загрузить файл"}
         </Button>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => setUrlOpen((v) => !v)}>
+        <Button type="button" size="sm" className="btn-brand-secondary" disabled={busy} onClick={() => setUrlOpen((v) => !v)}>
           <Link2 className="h-4 w-4" /> Вставить ссылку
         </Button>
         <input ref={fileRef} type="file" className="hidden"
@@ -151,10 +174,22 @@ export function DocumentIngestField({
       {urlOpen ? (
         <div className="flex gap-2">
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
-          <Button type="button" size="sm" disabled={busy || !url.trim()} onClick={handleUrl}>Разобрать</Button>
+          <Button type="button" size="sm" className="btn-brand-primary" disabled={busy || !url.trim()} onClick={handleUrl}>
+            Отправить в ProTalk
+          </Button>
         </div>
       ) : null}
-      {busy ? <LoadingPhrase entity={entity} /> : null}
+      {uploaded ? (
+        <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(231,199,104,0.3)"}}>
+          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#E7C768]"/>Файл загружен: {uploaded.filename}</span>
+          <Button type="button" size="sm" className="btn-brand-primary" disabled={busy} onClick={sendToProTalk}>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Отправить документ в ProTalk
+          </Button>
+        </div>
+      ) : null}
+      {uploadError ? <div className="text-xs text-[#FF4C4C]">{uploadError}</div> : null}
+      {sending ? <LoadingPhrase entity={entity} /> : null}
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value.slice(0, maxLength))}
@@ -162,12 +197,12 @@ export function DocumentIngestField({
         className="min-h-[180px]"
         maxLength={maxLength}
       />
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex items-center justify-between text-xs text-white/70">
         <span>{value.length} / {maxLength}</span>
         {showDistribute ? (
-          <Button type="button" size="sm" variant="secondary" disabled={distributing || !value.trim()} onClick={handleDistribute}>
+          <Button type="button" size="sm" className="btn-brand-gold" disabled={distributing || !value.trim()} onClick={handleDistribute}>
             {distributing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Внести через ИИ
+            Оформить красиво через ИИ
           </Button>
         ) : null}
       </div>
