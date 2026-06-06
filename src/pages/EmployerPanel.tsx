@@ -653,8 +653,15 @@ export default function EmployerPanel() {
       // Source of truth for the list is Supabase. We do not optimistically
       // push a "draft" card here — fetchCompanies() will surface it after
       // the user actually saves data, which avoids ghost cards on cancel.
-      const { aiRestart } = await import("@/lib/aiClient");
       setShowAddCompany(true);
+      try {
+        const { aiRestart } = await import("@/lib/aiClient");
+        aiWaitRun({
+          title: "Подготовка ИИ-ассистента компании",
+          task: () => aiRestart(employerId),
+          fireAndForget: true,
+        });
+      } catch {}
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания компании", err?.message || "RPC error");
