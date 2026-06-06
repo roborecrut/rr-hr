@@ -793,18 +793,44 @@ export default function EmployerPanel() {
     setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) } as any);
   };
 
-  // Permanently delete the currently edited project from the database.
-  const handleDeleteEditedProject = async () => {
+  // Archive the currently edited vacancy (soft, reversible).
+  const handleArchiveEditedProject = async () => {
     if (!editingProject) return;
     if (!window.confirm(
-      `Удалить вакансию «${editingProject.roleName}» полностью? Это действие нельзя отменить.`,
+      `Архивировать вакансию «${editingProject.roleName}»?\n\n` +
+      `Лендинг и личные кабинеты по ней станут недоступны кандидатам. ` +
+      `Все кандидаты, статистика CRM, переписка и платежи сохранятся. ` +
+      `Восстановить можно в любой момент.`,
     )) return;
     setIsDeletingProject(true);
     try {
-      const { error } = await supabase.from("projects").delete().eq("id", editingProject.id);
+      const { error } = await (supabase as any).rpc("project_archive", { _id: editingProject.id });
       if (error) throw error;
-      addAuditEvent("warning", "Вакансия удалена", `«${editingProject.roleName}» удалена из базы.`);
-      setProjects((prev) => prev.filter((p) => p.id !== editingProject.id));
+      addAuditEvent("warning", "Вакансия в архиве", `«${editingProject.roleName}» переведена в архив.`);
+      setEditingProject(null);
+      fetchData();
+    } catch (err: any) {
+      console.error(err);
+      alert("Не удалось архивировать вакансию: " + (err?.message || err));
+    } finally {
+      setIsDeletingProject(false);
+    }
+  };
+
+  // Soft-delete (hide from public, keep CRM data, keep public_id reserved).
+  const handleDeleteEditedProject = async () => {
+    if (!editingProject) return;
+    if (!window.confirm(
+      `Удалить вакансию «${editingProject.roleName}»?\n\n` +
+      `Лендинг закроется, кандидаты больше не смогут войти в личный кабинет по этой вакансии. ` +
+      `Данные кандидатов, CRM, переписка и платежи остаются в системе. ` +
+      `Номер вакансии (${(editingProject as any).publicId || editingProject.id}) не будет переиспользован.`,
+    )) return;
+    setIsDeletingProject(true);
+    try {
+      const { error } = await (supabase as any).rpc("project_soft_delete", { _id: editingProject.id });
+      if (error) throw error;
+      addAuditEvent("warning", "Вакансия удалена", `«${editingProject.roleName}» закрыта. Данные CRM сохранены.`);
       setEditingProject(null);
       fetchData();
     } catch (err: any) {
@@ -4421,13 +4447,22 @@ export default function EmployerPanel() {
                 </button>
                 <button
                   type="button"
+                  onClick={handleArchiveEditedProject}
+                  disabled={isDeletingProject}
+                  className="cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
+                  title="Скрыть вакансию от кандидатов, сохранив все данные"
+                >
+                  В архив
+                </button>
+                <button
+                  type="button"
                   onClick={handleDeleteEditedProject}
                   disabled={isDeletingProject}
                   className="cursor-pointer bg-red-500/15 hover:bg-red-500/25 border border-red-500/40 text-red-200 px-5 py-3 rounded-xl font-bold transition text-sm flex items-center gap-2 disabled:opacity-50"
-                  title="Удалить вакансию из базы данных"
+                  title="Закрыть вакансию (CRM-данные сохраняются, номер не переиспользуется)"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {isDeletingProject ? "Удаляем..." : "Удалить вакансию"}
+                  {isDeletingProject ? "Обновляем..." : "Закрыть вакансию"}
                 </button>
               </div>
             </form>

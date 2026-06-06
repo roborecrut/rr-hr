@@ -631,7 +631,9 @@ export type Database = {
       companies: {
         Row: {
           about_text: string | null
+          archived_at: string | null
           created_at: string
+          deleted_at: string | null
           description_text: string | null
           id: string
           industry: string | null
@@ -657,7 +659,9 @@ export type Database = {
         }
         Insert: {
           about_text?: string | null
+          archived_at?: string | null
           created_at?: string
+          deleted_at?: string | null
           description_text?: string | null
           id?: string
           industry?: string | null
@@ -683,7 +687,9 @@ export type Database = {
         }
         Update: {
           about_text?: string | null
+          archived_at?: string | null
           created_at?: string
+          deleted_at?: string | null
           description_text?: string | null
           id?: string
           industry?: string | null
@@ -1428,12 +1434,14 @@ export type Database = {
       }
       projects: {
         Row: {
+          archived_at: string | null
           cabinet_tabs_text: string | null
           company_id: string | null
           company_text: string | null
           created_at: string
           created_tasks: boolean
           custom_wiki: string | null
+          deleted_at: string | null
           employer_id: string
           id: string
           interview_pass_score: number
@@ -1455,6 +1463,7 @@ export type Database = {
           schedule_text: string | null
           slug: string | null
           stats: Json
+          status: Database["public"]["Enums"]["entity_status"]
           system_text: string | null
           tasks_activity_text: string | null
           team_text: string | null
@@ -1471,12 +1480,14 @@ export type Database = {
           vacancy_text: string | null
         }
         Insert: {
+          archived_at?: string | null
           cabinet_tabs_text?: string | null
           company_id?: string | null
           company_text?: string | null
           created_at?: string
           created_tasks?: boolean
           custom_wiki?: string | null
+          deleted_at?: string | null
           employer_id: string
           id?: string
           interview_pass_score?: number
@@ -1498,6 +1509,7 @@ export type Database = {
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
+          status?: Database["public"]["Enums"]["entity_status"]
           system_text?: string | null
           tasks_activity_text?: string | null
           team_text?: string | null
@@ -1514,12 +1526,14 @@ export type Database = {
           vacancy_text?: string | null
         }
         Update: {
+          archived_at?: string | null
           cabinet_tabs_text?: string | null
           company_id?: string | null
           company_text?: string | null
           created_at?: string
           created_tasks?: boolean
           custom_wiki?: string | null
+          deleted_at?: string | null
           employer_id?: string
           id?: string
           interview_pass_score?: number
@@ -1541,6 +1555,7 @@ export type Database = {
           schedule_text?: string | null
           slug?: string | null
           stats?: Json
+          status?: Database["public"]["Enums"]["entity_status"]
           system_text?: string | null
           tasks_activity_text?: string | null
           team_text?: string | null
@@ -2078,6 +2093,8 @@ export type Database = {
       }
     }
     Functions: {
+      _owns_company: { Args: { _id: string }; Returns: boolean }
+      _owns_project: { Args: { _id: string }; Returns: boolean }
       accept_offer: { Args: { _version?: string }; Returns: Json }
       admin_delete_job_title: { Args: { _id: string }; Returns: Json }
       admin_job_title_upsert_interview_template: {
@@ -2203,8 +2220,11 @@ export type Database = {
         }
         Returns: Json
       }
+      company_archive: { Args: { _id: string }; Returns: Json }
       company_create_draft: { Args: never; Returns: Json }
       company_finalize: { Args: { _id: string }; Returns: Json }
+      company_restore: { Args: { _id: string }; Returns: Json }
+      company_soft_delete: { Args: { _id: string }; Returns: Json }
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
       employer_set_candidate_crm_stage: {
         Args: {
@@ -2265,7 +2285,10 @@ export type Database = {
         }[]
       }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
+      project_archive: { Args: { _id: string }; Returns: Json }
       project_create_draft: { Args: { _company: string }; Returns: Json }
+      project_restore: { Args: { _id: string }; Returns: Json }
+      project_soft_delete: { Args: { _id: string }; Returns: Json }
       purchase_fixed: { Args: { _item: string; _qty?: number }; Returns: Json }
       purchase_pack: { Args: { _kind: string; _qty: number }; Returns: Json }
       purchase_pack_mixed: {
@@ -2307,6 +2330,7 @@ export type Database = {
         | "product"
         | "systems"
         | "certified"
+      entity_status: "active" | "archived" | "deleted"
       message_sender: "candidate" | "recruiter" | "ai"
       question_category:
         | "checklist_prof"
@@ -2464,6 +2488,7 @@ export const Constants = {
         "systems",
         "certified",
       ],
+      entity_status: ["active", "archived", "deleted"],
       message_sender: ["candidate", "recruiter", "ai"],
       question_category: [
         "checklist_prof",

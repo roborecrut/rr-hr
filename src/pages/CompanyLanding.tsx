@@ -90,6 +90,7 @@ export default function CompanyLanding() {
   const [company, setCompany] = useState<any>(null);
   const [vacancies, setVacancies] = useState<JobProject[]>([]);
   const [selectedVacancy, setSelectedVacancy] = useState<JobProject | null>(null);
+  const [selectedRaw, setSelectedRaw] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -149,24 +150,36 @@ export default function CompanyLanding() {
           .from("projects")
           .select("*")
           .eq("company_id", activeCompany.id)
-          .eq("is_published", true);
+          .eq("is_published", true)
+          .neq("status", "deleted");
         const mapped: JobProject[] = (projRows || []).map(mapDbProjectToUi(activeCompany));
-        setVacancies(mapped);
+        // Hide archived from the public list of "active" vacancies.
+        const publicList = mapped.filter((_, i) => (projRows![i] as any).status !== "archived");
+        setVacancies(publicList);
 
         // Only pick an "active" vacancy when the URL points to one — otherwise
         // the company-only view should not show vacancy-specific UI (tabs etc).
         if (vacancyId) {
-          const active =
-            mapped.find((p) => p.id === vacancyId || (p as any).slug === vacancyId) ||
-            mapped[0] ||
-            null;
-          setSelectedVacancy(active);
+          // Always load the exact vacancy from URL regardless of publish/status,
+          // so we can render a clear "inactive" notice instead of silently
+          // falling back to a different vacancy.
+          const { data: exactRows } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("company_id", activeCompany.id)
+            .or(`public_id.eq.${vacancyId},slug.eq.${vacancyId}`)
+            .limit(1);
+          const exact = (exactRows && exactRows[0]) || null;
+          setSelectedRaw(exact);
+          setSelectedVacancy(exact ? mapDbProjectToUi(activeCompany)(exact) : null);
         } else {
           setSelectedVacancy(null);
+          setSelectedRaw(null);
         }
       } else {
         setVacancies([]);
         setSelectedVacancy(null);
+        setSelectedRaw(null);
       }
     } catch (err) {
       console.error("Error loading company landing details:", err);
@@ -445,7 +458,7 @@ export default function CompanyLanding() {
 
           {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL
               AND we are NOT on the /company sub-tab (company view is handled above). */}
-          {vacancyId && subTab !== "company" && selectedVacancy ? (
+          {vacancyId && subTab !== "company" && selectedVacancy && (selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active") ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
@@ -539,6 +552,24 @@ export default function CompanyLanding() {
               </button>
 
             </div>
+          ) : vacancyId && subTab !== "company" && selectedRaw ? (
+            <div className="bg-[#1D3E5E]/40 border border-amber-500/30 p-8 rounded-3xl text-center space-y-3">
+              <AlertCircle className="w-10 h-10 mx-auto text-amber-400" />
+              <h3 className="font-bold text-white text-lg">
+                {(selectedRaw?.status === "deleted")
+                  ? "Эта вакансия закрыта"
+                  : "Эта вакансия больше не активна"}
+              </h3>
+              <p className="text-sm text-slate-300">
+                Компания временно приостановила набор по этой позиции. Откликнуться на неё нельзя.
+              </p>
+              <button
+                onClick={() => navigate(`/com${companySlug}`)}
+                className="inline-flex items-center gap-2 bg-[#E7C768] text-[#112335] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#F4EE8E] transition"
+              >
+                Смотреть другие вакансии компании <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           ) : vacancyId && subTab !== "company" ? (
             <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-400/80" />
@@ -586,7 +617,7 @@ export default function CompanyLanding() {
       </main>
 
       {/* Candidate email auth modal — only meaningful when a vacancy is selected */}
-      {selectedVacancy && (
+      {selectedVacancy && selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active" && (
         <CandidateAuthModal
           isOpen={showApplyModal}
           onClose={() => setShowApplyModal(false)}
