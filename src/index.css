@@ -125,6 +125,71 @@ body {
   border-radius: 0.75rem;
 }
 
+/* ============================================================
+   .brand-editor — drop this class on the root of ANY editor /
+   wizard / test / form to swap the legacy dark-gray skin for
+   the brand light skin. Scoped descendant overrides so we don't
+   have to rewrite hundreds of Tailwind utilities one by one.
+   ============================================================ */
+.brand-editor {
+  background: #FFFFFF;
+  color: #1A1A1A;
+  border-color: #DBDBDB;
+}
+.brand-editor input[type="text"],
+.brand-editor input[type="email"],
+.brand-editor input[type="url"],
+.brand-editor input[type="number"],
+.brand-editor input[type="tel"],
+.brand-editor input[type="search"],
+.brand-editor input[type="password"],
+.brand-editor input:not([type]),
+.brand-editor textarea,
+.brand-editor select {
+  background-color: #FFFFFF !important;
+  border: 1px solid #DBDBDB !important;
+  color: #1A1A1A !important;
+  border-radius: 0.75rem;
+}
+.brand-editor input::placeholder,
+.brand-editor textarea::placeholder { color: #9DA3AF !important; }
+.brand-editor input:focus,
+.brand-editor input:focus-visible,
+.brand-editor textarea:focus,
+.brand-editor textarea:focus-visible,
+.brand-editor select:focus,
+.brand-editor select:focus-visible {
+  border-color: #E7C768 !important;
+  box-shadow: 0 0 0 3px rgba(231, 199, 104, 0.25) !important;
+  outline: none !important;
+}
+.brand-editor input[aria-invalid="true"],
+.brand-editor textarea[aria-invalid="true"],
+.brand-editor .is-error {
+  border-color: #FF4C4C !important;
+  box-shadow: 0 0 0 3px rgba(255, 76, 76, 0.18) !important;
+}
+/* text recolor for legacy dark-on-dark utilities */
+.brand-editor .text-white,
+.brand-editor .text-slate-100,
+.brand-editor .text-slate-200,
+.brand-editor .text-slate-300 { color: #1A1A1A !important; }
+.brand-editor .text-slate-400,
+.brand-editor .text-slate-500,
+.brand-editor .text-slate-600 { color: #6B7280 !important; }
+/* neutralize legacy dark surface utilities inside the editor */
+.brand-editor .bg-black\/45,
+.brand-editor .bg-black\/40,
+.brand-editor .bg-black\/30,
+.brand-editor .bg-slate-900\/40,
+.brand-editor .bg-slate-900\/60,
+.brand-editor .bg-slate-900\/80,
+.brand-editor .bg-slate-900,
+.brand-editor .bg-slate-800 { background-color: #FFFFFF !important; }
+.brand-editor .border-white\/5,
+.brand-editor .border-white\/10,
+.brand-editor .border-white\/20 { border-color: #DBDBDB !important; }
+
 .card-blur {
   background-color: rgba(30, 68, 104, 0.4);
   border: 1px solid rgba(219, 219, 219, 0.1);
