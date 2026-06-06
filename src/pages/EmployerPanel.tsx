@@ -2295,36 +2295,35 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
                   {[
-                    { stage: "terms", title: "1. Ознакомление", bg: "bg-blue-650/40 border-blue-500/20" },
-                    { stage: "interview", title: "2. Собеседование (ИИ)", bg: "bg-amber-650/40 border-amber-500/20" },
-                    { stage: "training", title: "3. Обучение Wiki", bg: "bg-sky-650/40 border-sky-500/20" },
-                    { stage: "certified", title: "4. Сдал & Обучен 🎓", bg: "bg-emerald-650/40 border-emerald-500/20" }
+                    { stage: "registration", title: "1. Регистрация" },
+                    { stage: "screening",    title: "2. Скрининг" },
+                    { stage: "checklist",    title: "3. Чеклист" },
+                    { stage: "situations",   title: "4. Ситуации" },
+                    { stage: "professional", title: "5. Профессия" },
+                    { stage: "product",      title: "6. Продукт" },
+                    { stage: "systems",      title: "7. Система" },
+                    { stage: "certified",    title: "8. Сертификат 🎓" },
                   ].map(column => {
-                    const colCandidates = filteredCandidates.filter(c => {
-                      if (column.stage === "interview") {
-                        return c.currentStage === "interview" || c.currentStage === "scoring";
-                      }
-                      return c.currentStage === column.stage;
-                    });
+                    const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
 
                     return (
                       <div 
                         key={column.stage} 
-                        className={`bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-3 space-y-3 min-h-[350px] shadow`}
+                        className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow"
                         onDragOver={(e) => e.preventDefault()}
-                        onDrop={() => {
+                        onDrop={async () => {
                           // Drag & drop triggers action
                           const draggedId = localStorage.getItem("dragged_candidate_id");
                           if (draggedId) {
-                            handleUpdateCandidateStage(draggedId, column.stage as any);
+                            await handleUpdateCrmStage(draggedId, column.stage as any);
                             localStorage.removeItem("dragged_candidate_id");
                           }
                         }}
                       >
                         <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
-                          <span>{column.title}</span>
+                          <span className="truncate">{column.title}</span>
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
@@ -2337,54 +2336,14 @@ export default function EmployerPanel() {
                                 key={cand.id}
                                 draggable
                                 onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
-                                className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-3 rounded-xl transition cursor-grab shadow-sm active:cursor-grabbing space-y-2"
+                                onClick={() => setSelectedCandidateId((cand as any).publicId ? cand.id : cand.id)}
+                                className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm space-y-1.5"
                               >
-                                <div className="text-xs font-bold text-[#E7C768] hover:underline" onClick={() => setSelectedCandidate(cand)}>
+                                <div className="text-xs font-bold text-[#E7C768] hover:underline">
                                   {cand.name}
                                 </div>
                                 <div className="text-[10px] text-slate-300 line-clamp-1">{cand.roleName}</div>
-
-                                {/* Dynamic Score Indicator if interview has elements */}
-                                {cand.scores && (
-                                  <div className="flex justify-between items-center text-[10px] bg-black/40 p-1.5 rounded border border-white/5 font-mono">
-                                    <span className="text-slate-400">Балл ИИ:</span>
-                                    <span className="text-[#E7C768] font-bold">
-                                      {Math.round(((cand.scores.resumeScore || 70) + (cand.scores.checklistScore || 80) + (cand.scores.situationsScore || 75)) / 3)}/100
-                                    </span>
-                                  </div>
-                                )}
-
-                                {/* Interactive Stage Promotional arrows */}
-                                <div className="flex justify-between gap-1 pt-1 border-t border-white/5">
-                                  <button
-                                    disabled={cand.currentStage === "terms"}
-                                    onClick={() => {
-                                      const prevStageMap: Record<string, any> = { "interview": "terms", "scoring": "interview", "training": "interview", "certified": "training" };
-                                      handleUpdateCandidateStage(cand.id, prevStageMap[cand.currentStage] || "terms");
-                                    }}
-                                    className="cursor-pointer bg-white/5 hover:bg-white/15 px-1 py-0.5 rounded text-[9px] text-gray-300 font-bold disabled:opacity-30"
-                                    title="На уровень назад"
-                                  >
-                                    ◀
-                                  </button>
-                                  <button
-                                    onClick={() => setSelectedCandidate(cand)}
-                                    className="cursor-pointer text-[10px] text-sky-300 hover:text-white font-bold"
-                                  >
-                                    Инфо
-                                  </button>
-                                  <button
-                                    disabled={cand.currentStage === "certified"}
-                                    onClick={() => {
-                                      const nextStageMap: Record<string, any> = { "terms": "interview", "interview": "training", "scoring": "training", "training": "certified" };
-                                      handleUpdateCandidateStage(cand.id, nextStageMap[cand.currentStage] || "certified");
-                                    }}
-                                    className="cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-700 hover:shadow py-0.5 px-2 rounded text-[9px] text-white font-black"
-                                    title="Продвинуть кандидата вперед"
-                                  >
-                                    ▶
-                                  </button>
-                                </div>
+                                {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
                               </div>
                             ))
                           )}
