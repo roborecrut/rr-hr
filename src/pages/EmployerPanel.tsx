@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
@@ -282,6 +282,13 @@ export default function EmployerPanel() {
   // Used to (a) show visible "Пример" next to each field, (b) prefill empty fields when
   // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
   const [roleTemplates, setRoleTemplates] = useState<Record<string, string>>({});
+  // When the AI fills all 15 fields itself, it also sets a new `role_name`.
+  // The `useEffect` below normally reacts to `setupRoleName` changes by
+  // overwriting every field with the per-role template (or generic «Менеджер
+  // по продажам» defaults), which would clobber the AI answer. Setting this
+  // ref to true right before applying AI results suppresses that overwrite
+  // exactly once, while still refreshing `roleTemplates` for later prompts.
+  const skipRoleAutoFillRef = useRef(false);
   const exampleFor = (field: string): string =>
     mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any) ||
     VACANCY_FIELDS_BY_KEY[field as VacancyFieldKey]?.example ||
@@ -298,6 +305,13 @@ export default function EmployerPanel() {
       const tpl = await getRoleTemplates(setupRoleName);
       if (cancelled) return;
       setRoleTemplates(tpl as Record<string, string>);
+
+      // Suppress the destructive auto-fill once (e.g. right after the AI
+      // beautifier produced 15 ready fields and updated role_name).
+      if (skipRoleAutoFillRef.current) {
+        skipRoleAutoFillRef.current = false;
+        return;
+      }
 
       const mapped = roleTplToFields(tpl as any);
       const valueFor = (key: VacancyFieldKey) =>
