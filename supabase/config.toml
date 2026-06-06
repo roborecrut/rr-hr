@@ -26,3 +26,15 @@ verify_jwt = false
 
 [functions.ai-check-text-answer]
 verify_jwt = false
+
+[functions.ai-generate-stage-material]
+verify_jwt = false
+
+[functions.ai-generate-stage-test]
+verify_jwt = false
+
+[functions.ai-check-stage-answers]
+verify_jwt = false
+
+[functions.ai-list-stage-questions]
+verify_jwt = false
