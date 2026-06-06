@@ -747,8 +747,12 @@ export default function CandidateFlow() {
       let projsList: any[] = [];
       const resAllProjs = await fetch("/api/projects").catch(() => null as any);
       if (resAllProjs && resAllProjs.ok) {
-        projsList = await resAllProjs.json();
-      } else {
+        const contentType = resAllProjs.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          projsList = await resAllProjs.json().catch(() => []);
+        }
+      }
+      if (!projsList.length) {
         // Supabase fallback — pull published projects + parent company name/slug
         const { data } = await supabase
           .from("projects")
@@ -782,7 +786,7 @@ export default function CandidateFlow() {
         activeCand = {
           id: savedSession.candidate_id,
           publicId: savedSession.public_id || pubId,
-          name: savedSession.email || `Кандидат #${savedSession.public_id || pubId}`,
+          name: savedSession.full_name || savedSession.email || `Кандидат #${savedSession.public_id || pubId}`,
           email: savedSession.email || "",
           projectId: savedSession.project_id || "",
           companyId: savedSession.company_id || undefined,
@@ -799,7 +803,8 @@ export default function CandidateFlow() {
             activeCand = {
               id: c.id,
               publicId: c.public_id,
-              name: c.resume_name || `Кандидат #${c.public_id}`,
+              name: c.full_name || c.resume_name || `Кандидат #${c.public_id}`,
+              fullName: c.full_name || "",
               email: c.email || savedSession?.email || "",
               projectId: c.project_id,
               companyId: c.company_id || undefined,
@@ -832,7 +837,8 @@ export default function CandidateFlow() {
             activeCand = {
               id: cand.id,
               publicId: cand.public_id,
-              name: cand.resume_name || `Кандидат #${cand.public_id}`,
+              name: (cand as any).full_name || cand.resume_name || `Кандидат #${cand.public_id}`,
+              fullName: (cand as any).full_name || "",
               email: cand.email || "",
               projectId: cand.project_id,
               companyId: cand.company_id || undefined,
