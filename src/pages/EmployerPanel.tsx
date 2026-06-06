@@ -2842,7 +2842,7 @@ export default function EmployerPanel() {
 
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
-                <div className="bg-[#1D3E5E]/95 border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
+                <div className="brand-editor bg-gradient-to-br from-[#17344F] to-[#265582] border border-[#E7C768]/60 p-6 rounded-3xl space-y-6 shadow-2xl animate-fadeIn">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-white/10 pb-3">
                     <div>
                       <span className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider block">Панель вакансии RR</span>
@@ -2931,12 +2931,12 @@ export default function EmployerPanel() {
                     </div>
 
                     {/* Pre-fill quick selector helper */}
-                    <div className="bg-black/20 p-3 rounded-2xl border border-white/5 space-y-2">
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/15 space-y-2">
                       <span className="text-[10px] uppercase font-bold text-slate-300 block">Быстрый подбор справочника:</span>
                       <input 
                         type="text" 
                         placeholder="Фильтровать профессии..." 
-                        className="bg-black/40 text-[10.5px] p-1.5 w-full rounded border border-white/10"
+                        className="bg-white/10 text-[10.5px] p-1.5 w-full rounded border border-white/15 text-white"
                         value={specialtySearch}
                         onChange={(e) => setSpecialtySearch(e.target.value)}
                       />
@@ -2953,7 +2953,7 @@ export default function EmployerPanel() {
                         return (
                           <div className="space-y-2 mt-1">
                             <div className="flex flex-wrap gap-1 max-h-40 overflow-y-auto pr-1">
-                              {filteredSpec.slice(0, 60).map(spec => (
+                              {filteredSpec.map(spec => (
                                 <button
                                   key={spec}
                                   type="button"
@@ -2986,7 +2986,7 @@ export default function EmployerPanel() {
                       })()}
                     </div>
 
-                    <div className="bg-[#17344F]/40 border border-white/5 rounded-2xl p-3 text-[10px] text-slate-400 leading-snug">
+                    <div className="bg-white/5 border border-white/15 rounded-2xl p-3 text-[10px] text-white/70 leading-snug">
                       ℹ️ Логотип берётся из настроек компании. «График и тайм-слоты» включает в себя график работы, «Оплата и схема выплат» — условия оплаты. Базу знаний и регламенты вынесли в <strong className="text-[#E7C768]">Мастер Обучения</strong> на странице «Обучение».
                     </div>
 
