@@ -261,7 +261,9 @@ export default function EmployerPanel() {
   // the role changes, (c) pass as "эталон" context to the AI (single + all_vacancy).
   const [roleTemplates, setRoleTemplates] = useState<Record<string, string>>({});
   const exampleFor = (field: string): string =>
-    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any);
+    mergedTemplate(field, roleTemplates, { ...DEFAULT_VAC_TEMPLATES, ...DEFAULT_TRAINING_TEMPLATES } as any) ||
+    VACANCY_FIELDS_BY_KEY[field as VacancyFieldKey]?.example ||
+    "";
   const [showExampleFor, setShowExampleFor] = useState<Record<string, boolean>>({});
 
   // Reload templates when the selected role changes and OVERWRITE all 15
