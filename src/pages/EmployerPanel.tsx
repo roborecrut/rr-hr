@@ -1974,7 +1974,11 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
       // Find the selected company to send its data as context.
-      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase());
+      const safeCompanyName = companiesList.some(c => (c.name || "").toLowerCase() === (setupCompanyName || "").toLowerCase())
+        ? setupCompanyName
+        : (companiesList[0]?.name || "");
+      if (safeCompanyName !== setupCompanyName) setSetupCompanyName(safeCompanyName);
+      const matchedCo = companiesList.find(c => (c.name || "").toLowerCase() === (safeCompanyName || "").toLowerCase());
       const companyCtx: Record<string, any> = matchedCo ? {
         name: matchedCo.name,
         industry: matchedCo.industry,
@@ -1996,7 +2000,7 @@ export default function EmployerPanel() {
         title: "ИИ оформляет вакансию",
         task: () => aiEnhanceAll({
           mode: "all_vacancy",
-          company_name: setupCompanyName,
+          company_name: safeCompanyName,
           role_name: setupRoleName,
           templates: {
             vacancy_text: exampleFor("vacancy_text"),
@@ -2008,6 +2012,11 @@ export default function EmployerPanel() {
             onboarding_text: exampleFor("onboarding_text"),
             team_text: exampleFor("team_text"),
             system_text: exampleFor("system_text"),
+            training_professional_text: exampleFor("training_professional_text"),
+            training_product_text: exampleFor("training_product_text"),
+            training_systems_text: exampleFor("training_systems_text"),
+            training_wiki_text: exampleFor("training_wiki_text"),
+            training_regulations_text: exampleFor("training_regulations_text"),
           },
           fields: {
             role_name: setupRoleName,
@@ -2028,6 +2037,7 @@ export default function EmployerPanel() {
           },
           file_context: vacancyRawText || undefined,
           company_context: Object.keys(companyCtx).length > 0 ? companyCtx : undefined,
+          hint: vacancyRawText ? "Главный источник фактов — распознанный текст документа. Если должность пустая, извлеки role_name из документа." : undefined,
         }),
       });
       if (enhanced) {
