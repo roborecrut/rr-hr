@@ -1194,17 +1194,16 @@ export default function EmployerPanel() {
   }, [employerId]);
 
   useEffect(() => {
-    const pathIdMatch = path.match(/^\/(?:emp|employer)([a-zA-Z0-9_-]+)/);
-    if (pathIdMatch && pathIdMatch[1] !== employerId) {
-      setEmployerId(pathIdMatch[1]);
-      localStorage.setItem("employer_session_id", pathIdMatch[1]);
+    const pathEmployerId = parseEmployerPublicIdFromPath(path);
+    if (pathEmployerId && pathEmployerId !== employerId) {
+      setEmployerId(pathEmployerId);
     }
   }, [path, employerId]);
 
   // If no employer in URL/session, resolve via Supabase auth (user_id -> employer.public_id)
   // or fall back to the first existing employer (admin/demo case).
   useEffect(() => {
-    if (employerId) return;
+    if (isEmployerPublicIdCandidate(employerId)) return;
     let cancelled = false;
     (async () => {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -1217,10 +1216,14 @@ export default function EmployerPanel() {
           .maybeSingle();
         if (!cancelled && own?.public_id) {
           setEmployerId(own.public_id);
-          localStorage.setItem("employer_session_id", own.public_id);
-          try { localStorage.setItem("employer_session_user_id", user.id); } catch {}
+          cacheEmployerPublicId(own.public_id, user.id);
+          if (path === "/setup" || path === "/employer" || path.startsWith("/employer/")) {
+            navigate(`/emp${own.public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
+          }
           return;
         }
+        clearCachedEmployerPublicId();
+        return;
       }
       // Last-resort fallback (demo/admin browsing): first employer
       const { data: any1 } = await supabase
@@ -1231,11 +1234,10 @@ export default function EmployerPanel() {
         .maybeSingle();
       if (!cancelled && any1?.public_id) {
         setEmployerId(any1.public_id);
-        localStorage.setItem("employer_session_id", any1.public_id);
       }
     })();
     return () => { cancelled = true; };
-  }, [employerId]);
+  }, [employerId, path, navigate, activeTab]);
 
   // Load profile email for the authenticated user
   useEffect(() => {
