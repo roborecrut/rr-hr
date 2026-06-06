@@ -4,7 +4,7 @@
  * On success stores a candidate session and calls onSuccess(publicId).
  */
 import { useState } from "react";
-import { X, Mail, Lock, Loader, CheckCircle, Phone } from "lucide-react";
+import { X, Mail, Lock, Loader, CheckCircle, Phone, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveCandidateSession } from "@/lib/candidateSession";
 
@@ -28,6 +28,7 @@ export default function CandidateAuthModal({
 }: Props) {
   const [tab, setTab] = useState<Tab>("signup");
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [pw, setPw] = useState("");
   const [pw2, setPw2] = useState("");
   const [phone, setPhone] = useState("");
@@ -40,6 +41,7 @@ export default function CandidateAuthModal({
   const errorText = (code: string) => ({
     bad_email: "Введите корректный email",
     bad_password: "Пароль должен быть не короче 8 символов",
+    bad_full_name: "Введите ФИО",
     bad_phone: "Введите корректный номер телефона",
     email_taken: "Этот email уже зарегистрирован — войдите",
     bad_credentials: "Неверный email или пароль",
@@ -50,6 +52,7 @@ export default function CandidateAuthModal({
   const submit = async () => {
     setErr("");
     if (!EMAIL_RE.test(email.trim())) { setErr("Введите корректный email"); return; }
+    if (tab === "signup" && fullName.trim().length < 2) { setErr("Введите ФИО"); return; }
     if (pw.length < 8) { setErr("Пароль должен быть не короче 8 символов"); return; }
     if (tab === "signup" && pw !== pw2) { setErr("Пароли не совпадают"); return; }
     if (tab === "signup" && !PHONE_RE.test(phone.trim())) { setErr("Введите корректный номер телефона"); return; }
@@ -58,7 +61,7 @@ export default function CandidateAuthModal({
     try {
       const rpc = tab === "signup" ? "candidate_email_signup" : "candidate_email_login";
       const args: any = tab === "signup"
-        ? { _email: email.trim(), _password: pw, _project: projectId, _company: companyId || null, _phone: phone.trim() }
+        ? { _email: email.trim(), _password: pw, _project: projectId, _company: companyId || null, _phone: phone.trim(), _full_name: fullName.trim() }
         : { _email: email.trim(), _password: pw, _project: projectId };
       const { data, error } = await supabase.rpc(rpc, args);
       if (error) throw error;
@@ -72,6 +75,7 @@ export default function CandidateAuthModal({
         project_id: res.project_id ?? projectId,
         company_id: res.company_id ?? companyId ?? null,
         email: email.trim().toLowerCase(),
+        full_name: res.full_name || fullName.trim() || null,
         applications: Array.isArray(res.applications) ? res.applications : undefined,
       });
       setOk(true);
@@ -123,6 +127,19 @@ export default function CandidateAuthModal({
             </div>
 
             <div className="space-y-3">
+              {tab === "signup" && (
+                <label className="block">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">ФИО</span>
+                  <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">
+                    <User className="w-4 h-4 text-slate-400" />
+                    <input
+                      type="text" autoComplete="name" value={fullName}
+                      onChange={e => setFullName(e.target.value)} placeholder="Иванов Иван Иванович"
+                      className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
+                    />
+                  </div>
+                </label>
+              )}
               <label className="block">
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Email</span>
                 <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">

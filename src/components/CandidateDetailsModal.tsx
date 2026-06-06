@@ -73,7 +73,7 @@ export default function CandidateDetailsModal({
   const trainingProgress: any[] = data?.training_progress || [];
   const interviews: any[] = data?.interviews || [];
 
-  const name = c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
+  const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
   const initials = (name || "?").split(/\s+/).slice(0, 2).map((x: string) => x[0]).join("").toUpperCase();
   const candidateLink = c.public_id && co.slug && pr.public_id
@@ -124,7 +124,7 @@ export default function CandidateDetailsModal({
                 <div className="flex flex-wrap gap-3 text-[11px] text-slate-200">
                   {c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {c.email}</span>}
                   {p.email && p.email !== c.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {p.email}</span>}
-                  {(c.contact_phone || p.phone) && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.contact_phone || p.phone}</span>}
+                  {(c.phone || p.phone) && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {c.phone || p.phone}</span>}
                   {p.google_email && <span className="flex items-center gap-1 text-slate-400">Google: {p.google_email}</span>}
                 </div>
                 <div className="flex flex-wrap gap-2 pt-1">

@@ -315,7 +315,7 @@ function CandidatesSection() {
     const q = search.trim().toLowerCase();
     return rows.filter((r) =>
       (stage === "all" || r.crm_stage === stage) &&
-      (!q || (r.email || "").toLowerCase().includes(q) || (r.role_name || "").toLowerCase().includes(q) || (r.company_name || "").toLowerCase().includes(q))
+      (!q || (r.full_name || "").toLowerCase().includes(q) || (r.email || "").toLowerCase().includes(q) || (r.role_name || "").toLowerCase().includes(q) || (r.company_name || "").toLowerCase().includes(q))
     );
   }, [rows, search, stage]);
 
@@ -341,12 +341,13 @@ function CandidatesSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
-                <tr><th className="p-3">ID</th><th className="p-3">Email</th><th className="p-3">Роль</th><th className="p-3">Компания</th><th className="p-3">Этап</th><th className="p-3">Балл</th><th className="p-3">Создан</th></tr>
+                <tr><th className="p-3">ID</th><th className="p-3">ФИО</th><th className="p-3">Email</th><th className="p-3">Роль</th><th className="p-3">Компания</th><th className="p-3">Этап</th><th className="p-3">Балл</th><th className="p-3">Создан</th></tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filtered.map((r) => (
                   <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r.id)}>
                     <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
+                    <td className="p-3 font-bold text-white">{r.full_name || "—"}</td>
                     <td className="p-3">{r.email || "—"}</td>
                     <td className="p-3">{r.role_name || r.project_role || "—"}</td>
                     <td className="p-3">{r.company_name || "—"}</td>

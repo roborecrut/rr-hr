@@ -656,6 +656,7 @@ export default function CandidateFlow() {
     try {
       const sess = getCandidateSession();
       const patch: any = {
+        full_name: profName.trim(),
         phone: profPhone,
         resume_url: profResumeUrl,
         avatar_url: profAvatarUrl,
@@ -701,7 +702,7 @@ export default function CandidateFlow() {
         await (supabase as any).from("candidates").update(patch).eq("id", candidate.id);
       }
       const nextEmail = wantEmailChange ? profEmail.trim().toLowerCase() : candidate.email;
-      setCandidate({ ...candidate, ...(patch as any), email: nextEmail });
+      setCandidate({ ...candidate, ...(patch as any), name: profName.trim() || candidate.name, email: nextEmail });
       setProfCurrentPw(""); setProfNewPw(""); setProfNewPw2("");
       setEditingProfile(false);
       setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
@@ -747,8 +748,12 @@ export default function CandidateFlow() {
       let projsList: any[] = [];
       const resAllProjs = await fetch("/api/projects").catch(() => null as any);
       if (resAllProjs && resAllProjs.ok) {
-        projsList = await resAllProjs.json();
-      } else {
+        const contentType = resAllProjs.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          projsList = await resAllProjs.json().catch(() => []);
+        }
+      }
+      if (!projsList.length) {
         // Supabase fallback — pull published projects + parent company name/slug
         const { data } = await supabase
           .from("projects")
@@ -782,7 +787,7 @@ export default function CandidateFlow() {
         activeCand = {
           id: savedSession.candidate_id,
           publicId: savedSession.public_id || pubId,
-          name: savedSession.email || `Кандидат #${savedSession.public_id || pubId}`,
+          name: savedSession.full_name || savedSession.email || `Кандидат #${savedSession.public_id || pubId}`,
           email: savedSession.email || "",
           projectId: savedSession.project_id || "",
           companyId: savedSession.company_id || undefined,
@@ -799,7 +804,8 @@ export default function CandidateFlow() {
             activeCand = {
               id: c.id,
               publicId: c.public_id,
-              name: c.resume_name || `Кандидат #${c.public_id}`,
+              name: c.full_name || c.resume_name || `Кандидат #${c.public_id}`,
+              fullName: c.full_name || "",
               email: c.email || savedSession?.email || "",
               projectId: c.project_id,
               companyId: c.company_id || undefined,
@@ -832,7 +838,8 @@ export default function CandidateFlow() {
             activeCand = {
               id: cand.id,
               publicId: cand.public_id,
-              name: cand.resume_name || `Кандидат #${cand.public_id}`,
+              name: (cand as any).full_name || cand.resume_name || `Кандидат #${cand.public_id}`,
+              fullName: (cand as any).full_name || "",
               email: cand.email || "",
               projectId: cand.project_id,
               companyId: cand.company_id || undefined,
@@ -1788,6 +1795,17 @@ export default function CandidateFlow() {
             {editingProfile ? (
               <form onSubmit={handleSaveProfile} className="space-y-4 max-w-xl bg-black/25 p-6 rounded-2xl border border-white/5 text-left">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1 md:col-span-2">
+                    <label className="text-xs font-bold text-slate-300">ФИО:</label>
+                    <input
+                      type="text"
+                      autoComplete="name"
+                      className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      value={profName}
+                      onChange={(e) => setProfName(e.target.value)}
+                      placeholder="Иванов Иван Иванович"
+                    />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-300">Email (Почта):</label>
                     <input

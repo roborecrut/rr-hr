@@ -1066,8 +1066,10 @@ export default function EmployerPanel() {
             id: `candidate${c.public_id}`,
             uuid: c.id,
             publicId: c.public_id,
-            name: c.resume_name || `Кандидат #${c.public_id}`,
+            name: c.full_name || c.resume_name || `Кандидат #${c.public_id}`,
+            fullName: c.full_name || "",
             email: c.email || "",
+            phone: c.phone || "",
             projectId: c.project_id,
             companyId: c.company_id,
             companyName: c.projects?.companies?.name,
@@ -2370,6 +2372,7 @@ export default function EmployerPanel() {
                                 </div>
                                 <div className="text-[10px] text-slate-300 line-clamp-1">{cand.roleName}</div>
                                 {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
+                                {(cand as any).phone && <div className="text-[10px] text-slate-500 truncate">{(cand as any).phone}</div>}
                               </div>
                             ))
                           )}
@@ -2414,6 +2417,7 @@ export default function EmployerPanel() {
                                 <td className="p-4 font-bold text-white cursor-pointer" onClick={() => setSelectedCandidateId((cand as any).uuid || null)}>
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
+                                  {(cand as any).phone && <div className="text-[10px] text-slate-500 font-normal">{(cand as any).phone}</div>}
                                 </td>
                                 <td className="p-4">{cand.roleName}</td>
                                 <td className="p-4">
