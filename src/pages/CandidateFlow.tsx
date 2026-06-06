@@ -1753,6 +1753,48 @@ export default function CandidateFlow() {
 
                 <div className="pt-2 border-t border-white/10">
                   <div className="text-[10px] font-bold uppercase text-slate-400 mb-2">Соцсети (только ссылки, без подтверждения)</div>
+                  </div>
+                <div className="pt-2 border-t border-white/10 space-y-3">
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Смена пароля (необязательно)</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Текущий пароль</label>
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={profCurrentPw}
+                        onChange={(e) => setProfCurrentPw(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Новый пароль</label>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        value={profNewPw}
+                        onChange={(e) => setProfNewPw(e.target.value)}
+                        placeholder="мин. 8 символов"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Повторите новый</label>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        value={profNewPw2}
+                        onChange={(e) => setProfNewPw2(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-white/10">
+                  <div className="text-[10px] font-bold uppercase text-slate-400 mb-2">Соцсети (только ссылки, без подтверждения)</div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {[
                       ["social_telegram", "Telegram"],
