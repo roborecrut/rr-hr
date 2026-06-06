@@ -70,6 +70,42 @@ function vacancyValuesToCamel(
   }
   return out;
 }
+
+/**
+ * Map the per-role template payload (legacy keys used by saveRoleTemplates +
+ * generic DEFAULT_*_TEMPLATES) onto the canonical VacancyFieldKey schema used
+ * by `<VacancyEditor>`. Used to (a) feed `roleTemplates` prop to the editor
+ * so the "Шаблон" button picks per-role values, and (b) bulk-overwrite all
+ * 15 fields when the user changes the role.
+ */
+function roleTplToFields(
+  tpl: Record<string, string> | undefined | null,
+): Partial<Record<VacancyFieldKey, string>> {
+  const t = tpl || {};
+  const pick = (...keys: string[]) => {
+    for (const k of keys) {
+      const v = (t as any)?.[k];
+      if (v && String(v).trim()) return String(v);
+    }
+    return "";
+  };
+  return {
+    vacancy_text: pick("vacancy_text"),
+    tasks_activity_text: pick("tasks_activity_text"),
+    schedule_text: pick("schedule_text"),
+    motivation_text: pick("motivation_text"),
+    motivation_text_detail: pick("motivation_text_detail"),
+    payouts_text: pick("payouts_text"),
+    onboarding_text: pick("onboarding_text"),
+    team_text: pick("team_text", "team_text_vac"),
+    system_text: pick("system_text", "system_text_vac"),
+    training_professional_text: pick("training_professional_text", "training_prof_text"),
+    training_product_text: pick("training_product_text"),
+    training_systems_text: pick("training_systems_text", "training_system_text"),
+    training_wiki_text: pick("training_wiki_text"),
+    training_regulations_text: pick("training_regulations_text"),
+  };
+}
 import {
   Users,
   Smartphone,
