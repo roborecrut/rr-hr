@@ -797,6 +797,11 @@ export default function EmployerPanel() {
 
   // Project (Vacancy) edit state
   const [editingProject, setEditingProject] = useState<JobProject | null>(null);
+  // Raw OCR/AI-extracted text from a document uploaded inside the vacancy
+  // EDITOR modal — fed into `handleEnhanceAllVacancyLandingFields` as
+  // `file_context` so beautify-all reads facts from the uploaded file.
+  const [editVacancyRawText, setEditVacancyRawText] = useState<string>("");
+  const [isEnhancingAllVacEdit, setIsEnhancingAllVacEdit] = useState(false);
   const [editorSubTab, setEditorSubTab] = useState<string>("company");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [inlineEditSection, setInlineEditSection] = useState<string | null>(null);
