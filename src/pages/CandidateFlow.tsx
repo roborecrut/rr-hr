@@ -922,7 +922,28 @@ export default function CandidateFlow() {
         // bound project_id so the vacancy block is populated automatically.
         const routeProjId = candIndex >= 2 ? (parts[1] || "").replace(/^vac/i, "") : "";
         const activeProjId = routeProjId || activeCand.projectId || "";
-        if (activeProjId) {
+        if (cabinetProject) {
+          const p = cabinetProject;
+          const co = cabinetCompany || {};
+          setProject({
+            id: p.id,
+            companyName: co.name || "",
+            companySlug: co.slug || undefined,
+            employerId: p.employer_id,
+            roleName: p.role_name,
+            salaryTerms: p.salary_terms || undefined,
+            scheduleTerms: p.schedule_terms || undefined,
+            motivationText: p.motivation_text || undefined,
+            customWiki: p.custom_wiki || undefined,
+            checklistQuestions: [],
+            roleplayQuestions: [],
+            logoUrl: p.logo_url || co.logo_url || undefined,
+            slug: p.slug,
+            publicId: p.public_id,
+          } as any);
+          setProjectFull(p);
+          if (cabinetCompany) setCompanyFull(cabinetCompany);
+        } else if (activeProjId) {
           const resProj = await fetch(`/api/projects/${activeProjId}`).catch(() => null as any);
           if (resProj && resProj.ok) {
             setProject(await resProj.json());
