@@ -45,7 +45,7 @@ export interface DocumentUploaderProps {
   enhanceLabel?: string;
   accept?: string;
   /** Optional audit hook for parent's event log. */
-  onAudit?: (level: "info" | "success" | "warning", title: string, detail?: string) => void;
+  onAudit?: (level: "info" | "success" | "warning", title: string, detail: string) => void;
   disabled?: boolean;
 }
 
