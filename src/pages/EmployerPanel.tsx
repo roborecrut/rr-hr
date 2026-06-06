@@ -749,6 +749,13 @@ export default function EmployerPanel() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [inlineEditSection, setInlineEditSection] = useState<string | null>(null);
   const [aiEnhancingField, setAiEnhancingField] = useState<VacancyFieldKey | null>(null);
+  // Per-role templates for the currently edited project (mirrors the wizard's
+  // `roleTemplates`). Used to drive the "Шаблон должности" button inside the
+  // edit modal's VacancyEditor and to bulk-overwrite fields when the user
+  // changes the role from inside the modal.
+  const [editRoleTemplates, setEditRoleTemplates] = useState<Record<string, string>>({});
+  const [editSpecialtySearch, setEditSpecialtySearch] = useState("");
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
   
   // Custom Interview and Training builder states
   const [activeEditTab, setActiveEditTab] = useState<"landing" | "training">("landing");
