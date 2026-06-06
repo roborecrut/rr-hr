@@ -34,6 +34,12 @@ import {
   type VacancyFieldKey,
   type VacancyField,
 } from "../lib/fieldFormats";
+import {
+  cacheEmployerPublicId,
+  clearCachedEmployerPublicId,
+  isEmployerPublicIdCandidate,
+  parseEmployerPublicIdFromPath,
+} from "@/lib/links";
 
 // ---------------------------------------------------------------------------
 // Mapping helpers: JobProject (camelCase) ↔ VacancyFormValues (snake_case keys
@@ -361,7 +367,7 @@ export default function EmployerPanel() {
 
   // Billing & Tariff States
   const [employerId, setEmployerId] = useState<string>(
-    () => localStorage.getItem("employer_session_id") || "",
+    () => parseEmployerPublicIdFromPath(window.location.pathname) || "",
   );
 
   const [balance, setBalance] = useState<number>(1000);
