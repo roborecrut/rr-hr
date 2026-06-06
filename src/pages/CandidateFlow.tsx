@@ -444,6 +444,8 @@ export default function CandidateFlow() {
   const [projectFull, setProjectFull] = useState<any | null>(null);
   const [companyFull, setCompanyFull] = useState<any | null>(null);
   const [employerContacts, setEmployerContacts] = useState<{ email?: string|null; phone?: string|null; telegram?: string|null }>({});
+  // Loading state for the initial session/project resolution.
+  const [sessionLoading, setSessionLoading] = useState(true);
   // Multi-application switcher (item 10)
   const [applications, setApplications] = useState<CandidateApplication[]>([]);
   const [appsMenuOpen, setAppsMenuOpen] = useState(false);
