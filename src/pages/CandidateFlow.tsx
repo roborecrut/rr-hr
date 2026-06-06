@@ -1704,7 +1704,8 @@ export default function CandidateFlow() {
                       type="email"
                       className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
                       value={profEmail}
-                      readOnly
+                      onChange={(e) => setProfEmail(e.target.value)}
+                      placeholder="you@example.com"
                     />
                   </div>
                   <div className="space-y-1">
