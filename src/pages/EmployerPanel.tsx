@@ -759,7 +759,14 @@ export default function EmployerPanel() {
         addAuditEvent("warning", "Нет черновика компании", msg);
         return null;
       }
-      const path = `${uid}/${draftCompanyId}/${Date.now()}_${file.name.replace(/[^a-zа-я0-9._-]+/gi, "_")}`;
+      // Supabase Storage keys must be ASCII-safe — strip non-ASCII (e.g. Cyrillic) chars
+      const safeName = file.name
+        .normalize("NFKD")
+        .replace(/[^\x20-\x7E]+/g, "")
+        .replace(/[^a-zA-Z0-9._-]+/g, "_")
+        .replace(/_+/g, "_")
+        .replace(/^_+|_+$/g, "") || `file_${Date.now()}`;
+      const path = `${uid}/${draftCompanyId}/${Date.now()}_${safeName}`;
       const up = await supabase.storage.from("company-uploads").upload(path, file, { upsert: true });
       if (up.error) throw up.error;
       setDraftFilePath(path);
