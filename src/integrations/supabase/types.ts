@@ -2050,6 +2050,16 @@ export type Database = {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["crm_stage"]
       }
+      candidate_update_profile: {
+        Args: {
+          _current_password?: string
+          _new_email?: string
+          _new_password?: string
+          _patch?: Json
+          _token: string
+        }
+        Returns: Json
+      }
       company_create_draft: { Args: never; Returns: Json }
       company_finalize: { Args: { _id: string }; Returns: Json }
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }

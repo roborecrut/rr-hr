@@ -636,6 +636,10 @@ export default function CandidateFlow() {
   });
   const [saveProfileMsg, setSaveProfileMsg] = useState("");
   const [certSavedMsg, setCertSavedMsg] = useState("");
+  // Optional credentials change (email/password)
+  const [profCurrentPw, setProfCurrentPw] = useState("");
+  const [profNewPw, setProfNewPw] = useState("");
+  const [profNewPw2, setProfNewPw2] = useState("");
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -648,12 +652,48 @@ export default function CandidateFlow() {
         avatar_url: profAvatarUrl,
         ...profSocials,
       };
+      const wantEmailChange = !!profEmail && profEmail.trim().toLowerCase() !== (candidate.email || "").toLowerCase();
+      const wantPwChange = !!profNewPw;
+      if (wantPwChange && profNewPw.length < 8) {
+        setSaveProfileMsg("⚠️ Новый пароль должен быть не короче 8 символов");
+        return;
+      }
+      if (wantPwChange && profNewPw !== profNewPw2) {
+        setSaveProfileMsg("⚠️ Пароли не совпадают");
+        return;
+      }
+      if (wantPwChange && !profCurrentPw) {
+        setSaveProfileMsg("⚠️ Введите текущий пароль для смены");
+        return;
+      }
+
       if (sess?.token) {
-        await (supabase as any).rpc("candidate_update_profile", { _token: sess.token, _patch: patch });
+        const { data: rpcRes, error: rpcErr } = await (supabase as any).rpc("candidate_update_profile", {
+          _token: sess.token,
+          _patch: patch,
+          _new_email: wantEmailChange ? profEmail.trim() : null,
+          _new_password: wantPwChange ? profNewPw : null,
+          _current_password: wantPwChange ? profCurrentPw : null,
+        });
+        if (rpcErr) throw rpcErr;
+        if (rpcRes && rpcRes.ok === false) {
+          const msg = ({
+            bad_email: "Введите корректный e-mail",
+            email_taken: "Этот e-mail уже используется другим аккаунтом",
+            bad_password: "Пароль должен быть не короче 8 символов",
+            wrong_current_password: "Текущий пароль введён неверно",
+            bad_token: "Сессия истекла, войдите заново",
+            no_token: "Сессия не найдена, войдите заново",
+          } as Record<string,string>)[rpcRes.error] || "Не удалось сохранить";
+          setSaveProfileMsg("⚠️ " + msg);
+          return;
+        }
       } else {
         await (supabase as any).from("candidates").update(patch).eq("id", candidate.id);
       }
-      setCandidate({ ...candidate, ...(patch as any) });
+      const nextEmail = wantEmailChange ? profEmail.trim().toLowerCase() : candidate.email;
+      setCandidate({ ...candidate, ...(patch as any), email: nextEmail });
+      setProfCurrentPw(""); setProfNewPw(""); setProfNewPw2("");
       setEditingProfile(false);
       setSaveProfileMsg("✅ Данные профиля успешно сохранены!");
       setTimeout(() => setSaveProfileMsg(""), 3000);
@@ -1664,7 +1704,8 @@ export default function CandidateFlow() {
                       type="email"
                       className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-xl border border-white/10 focus:outline-none focus:border-[#E7C768]"
                       value={profEmail}
-                      readOnly
+                      onChange={(e) => setProfEmail(e.target.value)}
+                      placeholder="you@example.com"
                     />
                   </div>
                   <div className="space-y-1">
@@ -1705,6 +1746,45 @@ export default function CandidateFlow() {
                           if (data?.signedUrl) setProfAvatarUrl(data.signedUrl);
                         }}
                         className="text-xs text-slate-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 space-y-3">
+                  <div className="text-[10px] font-bold uppercase text-slate-400">Смена пароля (необязательно)</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Текущий пароль</label>
+                      <input
+                        type="password"
+                        autoComplete="current-password"
+                        value={profCurrentPw}
+                        onChange={(e) => setProfCurrentPw(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Новый пароль</label>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        value={profNewPw}
+                        onChange={(e) => setProfNewPw(e.target.value)}
+                        placeholder="мин. 8 символов"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400">Повторите новый</label>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        value={profNewPw2}
+                        onChange={(e) => setProfNewPw2(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
                       />
                     </div>
                   </div>
