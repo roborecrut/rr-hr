@@ -3995,14 +3995,36 @@ export default function EmployerPanel() {
                         </div>
                         <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
                           <span className="text-[10px] text-slate-400 font-mono">Куплено впрок: <span className="text-white font-bold">{row.credits} шт</span></span>
-                          <button
-                            type="button"
-                            onClick={() => handleBuyFixed(row.item)}
-                            disabled={fixedBusy !== null}
-                            className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                          >
-                            {fixedBusy === row.item ? "..." : "Купить впрок +1"}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => setFixedQty(q => ({ ...q, [row.item]: Math.max(1, (q[row.item] || 1) - 1) }))}
+                                className="px-2 py-1 text-slate-200 hover:bg-white/10 text-xs font-bold"
+                              >−</button>
+                              <input
+                                type="number"
+                                min={1}
+                                max={999}
+                                value={fixedQty[row.item]}
+                                onChange={(e) => setFixedQty(q => ({ ...q, [row.item]: Math.max(1, Math.min(999, Number(e.target.value) || 1)) }))}
+                                className="w-10 bg-transparent text-center text-[#E7C768] font-bold text-xs py-1 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setFixedQty(q => ({ ...q, [row.item]: Math.min(999, (q[row.item] || 1) + 1) }))}
+                                className="px-2 py-1 text-slate-200 hover:bg-white/10 text-xs font-bold"
+                              >+</button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyFixed(row.item, fixedQty[row.item])}
+                              disabled={fixedBusy !== null}
+                              className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
+                            >
+                              {fixedBusy === row.item ? "..." : `Купить впрок +${fixedQty[row.item]}`}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
