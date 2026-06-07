@@ -6,6 +6,7 @@ import { useAIWait } from "@/components/AIWaitProvider";
 import { getCandidateSession } from "@/lib/candidateSession";
 import { aiRestart } from "@/lib/aiClient";
 import { useAIReady, waitForAIReady } from "@/lib/aiReady";
+import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -61,6 +62,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [uploadedResume, setUploadedResume] = useState<{ bucket: string; path: string; filename: string } | null>(null);
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const [resumeEditMode, setResumeEditMode] = useState(false);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -344,7 +346,33 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               )}
               {uploadError && <div className="text-xs text-[#FF4C4C]">{uploadError}</div>}
               {parsing && <LoadingPhrase entity="interview" />}
-              <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12} maxLength={20000} placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически." className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm" />
+              {resumeText && !resumeEditMode ? (
+                <div className="relative w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setResumeEditMode(true)}
+                    className="absolute top-2 right-2 text-[10px] uppercase tracking-wider font-bold bg-white/10 hover:bg-white/20 text-[#E7C768] px-2 py-1 rounded-md"
+                  >
+                    Редактировать
+                  </button>
+                  <div className="prose prose-invert prose-sm max-w-none text-white prose-headings:text-[#E7C768] prose-strong:text-white prose-a:text-[#E7C768]">
+                    <EmbeddedMarkdown>{resumeText}</EmbeddedMarkdown>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12} maxLength={20000} placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически. Поддерживается Markdown." className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono" />
+                  {resumeText && (
+                    <button
+                      type="button"
+                      onClick={() => setResumeEditMode(false)}
+                      className="text-[10px] uppercase tracking-wider font-bold bg-white/10 hover:bg-white/20 text-[#E7C768] px-2 py-1 rounded-md self-start"
+                    >
+                      Предпросмотр
+                    </button>
+                  )}
+                </>
+              )}
               {busy && <LoadingPhrase entity="interview" />}
               <button disabled={busy} onClick={submitResume} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 disabled:opacity-60">
                 {busy ? <Loader className="w-4 h-4 animate-spin"/> : <FileText className="w-4 h-4"/>} Отправить на оценку
