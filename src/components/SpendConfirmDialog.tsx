@@ -56,11 +56,11 @@ export default function SpendConfirmDialog({
   const canPayRR = !hasCredit && balance >= price;
   const insufficient = !hasCredit && balance < price;
 
-  const handleSpend = async () => {
+  const handleSpend = async (prefer: "credit" | "balance" = "credit") => {
     if (!effectiveProjectId) { setErr("Выберите вакансию"); return; }
     setBusy(true); setErr("");
     try {
-      const { error } = await supabase.rpc("spend_fixed" as any, { _project: effectiveProjectId, _item: kind });
+      const { error } = await supabase.rpc("spend_fixed" as any, { _project: effectiveProjectId, _item: kind, _prefer: prefer });
       if (error) throw new Error(error.message || "Ошибка списания");
       onConfirmed(effectiveProjectId);
     } catch (e: any) {
