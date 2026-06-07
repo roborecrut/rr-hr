@@ -13,16 +13,17 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CandidateDetailsModal from "@/components/CandidateDetailsModal";
 import BlogAdmin from "@/components/admin/BlogAdmin";
+import DetailsModal from "@/components/admin/DetailsModal";
 import {
   Search, ShieldCheck, LogOut, Loader2, RefreshCw, Users, Building2, Briefcase,
   MessageSquare, GraduationCap, Mail, KeyRound, Wallet, Sparkles, ArrowLeft,
-  Plus, Minus, X, BookOpen,
+  Plus, Minus, X, BookOpen, FileText,
 } from "lucide-react";
 
 type SectionKey =
   | "clients" | "candidates" | "companies" | "vacancies"
   | "interviews" | "trainings" | "blog" | "mailings" | "roles"
-  | "accounts" | "ai";
+  | "accounts" | "ai" | "logs";
 
 const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "clients",    label: "Клиенты",   icon: Users },
@@ -35,6 +36,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "mailings",   label: "Рассылки",  icon: Mail },
   { key: "roles",      label: "Роли",      icon: KeyRound },
   { key: "accounts",   label: "Счета",     icon: Wallet },
+  { key: "logs",       label: "Логи ИИ",   icon: FileText },
   { key: "ai",         label: "ИИ",        icon: Sparkles },
 ];
 
