@@ -3,12 +3,13 @@
  * Карточки ведут на действующие лендинги конкретных вакансий
  * (/com{company_slug}/vac{project_slug}/vacancy). Доступ без регистрации.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
 import RRImage from "@/components/RRImage";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Search, Sparkles, Briefcase, MapPin, Wallet, Clock, Building2, Filter, X, Loader, ArrowRight,
+  Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
+  Sparkles, Zap, Users,
 } from "lucide-react";
 
 type Vac = {
@@ -51,9 +52,15 @@ export default function VacancyCatalogPage() {
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiResults, setAiResults] = useState<{ id: string; rank?: number }[] | null>(null);
-  const [aiQuery, setAiQuery] = useState("");
+  const PAGE_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Скролл наверх при заходе на страницу — иначе после перехода с лендинга
+  // позиция остаётся внизу.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -112,9 +119,7 @@ export default function VacancyCatalogPage() {
     if (companyFilter) list = list.filter((v) => v.company_name === companyFilter);
     if (industryFilter) list = list.filter((v) => v.industry === industryFilter);
     if (roleFilter) list = list.filter((v) => v.role_name === roleFilter);
-    // Когда активен ИИ-поиск, не применяем буквальный текстовый фильтр —
-    // релевантность уже определена нейросетью.
-    if (q.trim() && !aiResults) {
+    if (q.trim()) {
       const needle = q.trim().toLowerCase();
       list = list.filter((v) =>
         (v.role_name || "").toLowerCase().includes(needle) ||
@@ -124,14 +129,30 @@ export default function VacancyCatalogPage() {
         (v.schedule_terms || "").toLowerCase().includes(needle)
       );
     }
-    if (aiResults && aiResults.length) {
-      const order = new Map(aiResults.map((r, i) => [r.id, i]));
-      list = list
-        .filter((v) => order.has(v.id))
-        .sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
-    }
     return list;
-  }, [vacs, q, companyFilter, industryFilter, roleFilter, aiResults]);
+  }, [vacs, q, companyFilter, industryFilter, roleFilter]);
+
+  // Сброс пагинации при смене фильтров/поиска.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [q, companyFilter, industryFilter, roleFilter]);
+
+  // Догрузка следующих 20 при подкручивании к низу списка.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+        }
+      }
+    }, { rootMargin: "400px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [filtered.length]);
+
+  const visible = filtered.slice(0, visibleCount);
 
   const openVacancy = (v: Vac) => {
     if (v.company_slug && v.slug) {
@@ -140,30 +161,6 @@ export default function VacancyCatalogPage() {
       navigate(`/job?id=${encodeURIComponent(v.slug || v.id)}`);
     }
   };
-
-  const runAiSearch = async () => {
-    if (!q.trim() || aiBusy) return;
-    setAiBusy(true);
-    setAiQuery(q.trim());
-    try {
-      const { data, error } = await supabase.rpc("search_vacancies", {
-        q: q.trim(),
-        match_count: 100,
-      });
-      if (error) throw error;
-      const results = Array.isArray(data)
-        ? (data as any[]).map((r) => ({ id: r.id as string, rank: Number(r.rank) || 0 }))
-        : [];
-      setAiResults(results);
-    } catch (e) {
-      console.error("search_vacancies failed", e);
-      setAiResults([]);
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  const clearAi = () => { setAiResults(null); setAiQuery(""); };
 
   return (
     <div className="brand-editor min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white font-sans">
@@ -202,20 +199,11 @@ export default function VacancyCatalogPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
                 <input
                   value={q}
-                  onChange={(e) => { setQ(e.target.value); if (aiResults) clearAi(); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") runAiSearch(); }}
+                  onChange={(e) => setQ(e.target.value)}
                   placeholder="Профессия, ключевые слова, компания…"
                   className="w-full bg-white/10 border border-white/15 rounded-xl pl-10 pr-3 py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#E8B84E]/60"
                 />
               </div>
-              <button
-                onClick={runAiSearch}
-                disabled={!q.trim() || aiBusy}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#F5D67A] via-[#E8B84E] to-[#C9933A] text-[#17344F] font-semibold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition"
-              >
-                {aiBusy ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                Умный поиск
-              </button>
               <button
                 onClick={() => setShowFilters((v) => !v)}
                 className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 border border-white/15 text-white hover:bg-white/15 transition"
@@ -270,22 +258,38 @@ export default function VacancyCatalogPage() {
                 )}
               </div>
             )}
-
-            {aiResults && (
-              <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2 text-sm">
-                <Sparkles className="w-4 h-4 text-[#E8B84E]" />
-                <span className="text-white/70">Подборка по запросу:</span>
-                <span className="font-medium">«{aiQuery}»</span>
-                <span className="text-white/60">— найдено {aiResults.length}</span>
-                <button onClick={clearAi} className="ml-auto inline-flex items-center gap-1 text-white/70 hover:text-white transition">
-                  <X className="w-3 h-3" /> Сбросить умный поиск
-                </button>
-              </div>
-            )}
           </div>
 
           <div className="mt-4 text-sm text-white/60">
-            {loading ? "Загрузка вакансий…" : `Показано ${filtered.length} из ${vacs.length}`}
+            {loading ? "Загрузка вакансий…" : `Показано ${Math.min(visibleCount, filtered.length)} из ${filtered.length}`}
+          </div>
+        </section>
+
+        {/* SEO / продающий блок */}
+        <section className="mb-10 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-white/[0.06] border border-white/10 p-5 backdrop-blur-xl">
+            <div className="flex items-center gap-2 mb-2 text-[#F5D67A] font-semibold">
+              <Sparkles className="w-4 h-4" /> Без HR и без ожидания
+            </div>
+            <p className="text-sm text-white/75 leading-relaxed">
+              Откликайтесь на вакансию и проходите интервью с ИИ-рекрутёром прямо сейчас. Никаких очередей, переписок и «мы вам перезвоним».
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white/[0.06] border border-white/10 p-5 backdrop-blur-xl">
+            <div className="flex items-center gap-2 mb-2 text-[#F5D67A] font-semibold">
+              <Users className="w-4 h-4" /> Бесплатно для соискателей
+            </div>
+            <p className="text-sm text-white/75 leading-relaxed">
+              Откройте любую вакансию без регистрации, изучите условия, задачи и обучение, и подайте заявку в один клик.
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white/[0.06] border border-white/10 p-5 backdrop-blur-xl">
+            <div className="flex items-center gap-2 mb-2 text-[#F5D67A] font-semibold">
+              <Zap className="w-4 h-4" /> Работодателю — пример вашей будущей вакансии
+            </div>
+            <p className="text-sm text-white/75 leading-relaxed">
+              Смотрите, как может выглядеть страница вашей вакансии, интервью и обучение. Соберите свою за 5 минут вместе с РобоРекрутом — даже без готовых материалов.
+            </p>
           </div>
         </section>
 
@@ -299,13 +303,13 @@ export default function VacancyCatalogPage() {
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-white/70">
             По вашему запросу ничего не найдено.{" "}
-            <button onClick={() => { setQ(""); clearAi(); setCompanyFilter(""); setIndustryFilter(""); setRoleFilter(""); }} className="underline hover:text-white">
+            <button onClick={() => { setQ(""); setCompanyFilter(""); setIndustryFilter(""); setRoleFilter(""); }} className="underline hover:text-white">
               Сбросить поиск
             </button>
           </div>
         ) : (
           <div className="grid gap-3">
-            {filtered.map((v) => {
+            {visible.map((v) => {
               return (
                 <article
                   key={v.id}
@@ -359,6 +363,10 @@ export default function VacancyCatalogPage() {
                 </article>
               );
             })}
+            <div ref={sentinelRef} className="h-10" />
+            {visibleCount < filtered.length && (
+              <div className="text-center text-white/50 text-sm py-4">Загружаем ещё…</div>
+            )}
           </div>
         )}
       </main>
