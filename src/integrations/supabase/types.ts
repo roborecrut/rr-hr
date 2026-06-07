@@ -209,39 +209,48 @@ export type Database = {
         Row: {
           assessment_summary: string | null
           candidate_id: string
+          checklist_feedback: Json | null
           checklist_points: number | null
           checklist_score: number | null
           checklist_sys_score: number | null
           interview_score: number | null
           overall_score: number | null
+          resume_feedback: Json | null
           resume_score: number | null
           roleplay_points: number | null
+          situations_feedback: Json | null
           situations_score: number | null
           updated_at: string
         }
         Insert: {
           assessment_summary?: string | null
           candidate_id: string
+          checklist_feedback?: Json | null
           checklist_points?: number | null
           checklist_score?: number | null
           checklist_sys_score?: number | null
           interview_score?: number | null
           overall_score?: number | null
+          resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
+          situations_feedback?: Json | null
           situations_score?: number | null
           updated_at?: string
         }
         Update: {
           assessment_summary?: string | null
           candidate_id?: string
+          checklist_feedback?: Json | null
           checklist_points?: number | null
           checklist_score?: number | null
           checklist_sys_score?: number | null
           interview_score?: number | null
           overall_score?: number | null
+          resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
+          situations_feedback?: Json | null
           situations_score?: number | null
           updated_at?: string
         }
@@ -2164,6 +2173,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      can_start_interview: { Args: { _candidate: string }; Returns: Json }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
       candidate_email_login: {
         Args: { _email: string; _password: string; _project?: string }
