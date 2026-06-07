@@ -1566,8 +1566,10 @@ export default function EmployerPanel() {
       const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
       if (error) throw error;
       const d = data as any;
-      setDraftProjectId(d?.id || null);
-      setDraftProjectPublicId(d?.public_id || null);
+      const newDraftId: string | null = d?.id || null;
+      const newDraftPublicId: string | null = d?.public_id || null;
+      setDraftProjectId(newDraftId);
+      setDraftProjectPublicId(newDraftPublicId);
       // Reset wizard fields so the user starts clean.
       setSetupCompanyName(selectedCompanyName);
       setSetupRoleName("");
@@ -1594,12 +1596,30 @@ export default function EmployerPanel() {
       setVacancyFileName("");
       setVacancyUploadError("");
       setVacancyRawText("");
-      // Open vacancy editor IMMEDIATELY — restart happens in background
-      setShowAddNewVacancy(true);
-      try {
-        const { aiRestart } = await import("@/lib/aiClient");
-        aiRestart(employerId).catch(() => {});
-      } catch {}
+      // Before opening the editor, ask the user to confirm the landing charge.
+      // The wizard is only revealed after a successful spend (or already-paid).
+      if (!newDraftId) throw new Error("Не удалось создать черновик вакансии");
+      setSpendDialog({
+        kind: "landing",
+        projectId: newDraftId,
+        onConfirmed: async () => {
+          setSpendDialog(null);
+          setShowAddNewVacancy(true);
+          await fetchBillingState();
+          try {
+            const { aiRestart } = await import("@/lib/aiClient");
+            aiRestart(employerId).catch(() => {});
+          } catch {}
+        },
+        onCancel: async () => {
+          setSpendDialog(null);
+          // Drop the unused draft so the list does not accumulate phantom rows.
+          try { await supabase.from("projects").delete().eq("id", newDraftId); } catch {}
+          setDraftProjectId(null);
+          setDraftProjectPublicId(null);
+          fetchData();
+        },
+      });
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
