@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
@@ -181,7 +180,7 @@ export default function CandidateStageTraining({
           </div>
           {material ? (
             <article className="prose prose-invert prose-sm max-w-none">
-              <Markdown remarkPlugins={[remarkGfm]}>{material}</Markdown>
+              <EmbeddedMarkdown>{material}</EmbeddedMarkdown>
             </article>
           ) : (
             <p className="text-slate-400 text-xs">Материалы по этапу ещё не подготовлены работодателем.</p>
