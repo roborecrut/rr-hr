@@ -4460,11 +4460,36 @@ export default function EmployerPanel() {
 
 
           {activeTab === "interviews" && (
-            <InterviewWizard
-              projects={projects}
-              addAuditEvent={addAuditEvent}
-              refreshProjects={fetchData}
-            />
+            <>
+              {interviewView.mode === "list" ? (
+                <InterviewList
+                  projects={projects}
+                  onOpen={async (projectId) => {
+                    setInterviewView({ mode: "edit", projectId });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
+                  onCreate={async () => {
+                    setInterviewView({ mode: "create" });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
+                />
+              ) : (
+                <InterviewWizard
+                  projects={projects}
+                  addAuditEvent={addAuditEvent}
+                  refreshProjects={fetchData}
+                  initialProjectId={interviewView.mode === "edit" ? interviewView.projectId : undefined}
+                  createMode={interviewView.mode === "create"}
+                  onBack={() => setInterviewView({ mode: "list" })}
+                />
+              )}
+            </>
           )}
 
           {activeTab === "training" && (
