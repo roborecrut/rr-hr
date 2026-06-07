@@ -536,11 +536,38 @@ export default function DemoInterviewPage() {
                 <div className="p-3 text-xs text-slate-200 whitespace-pre-wrap">{state.template.resume_criteria}</div>
               </details>
             )}
+            {/* File upload — same UX as реальный кандидатский поток. */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={parsing || busy || uploading}
+                onClick={() => fileRef.current?.click()}
+                className="bg-white/10 hover:bg-white/15 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-2 disabled:opacity-60"
+              >
+                {uploading ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
+                {uploading ? "Загружаем…" : "Загрузить файл резюме (PDF/DOC/TXT)"}
+              </button>
+              <input
+                ref={fileRef} type="file" className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadResume(f); }}
+              />
+            </div>
+            {uploadedResume && !parsing && (
+              <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white bg-white/5 border border-[#E7C768]/30">
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-[#E7C768]"/>Файл загружен: {uploadedResume.filename}</span>
+                <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5"/> Распознать в текст
+                </button>
+              </div>
+            )}
+            {uploadError && <div className="text-xs text-[#FF4C4C]">{uploadError}</div>}
+            {parsing && <LoadingPhrase entity="interview" />}
             <textarea
               value={state.resumeText}
               onChange={e => setState(s => s ? { ...s, resumeText: e.target.value } : s)}
               rows={12} maxLength={20000}
-              placeholder="Вставьте текст вашего резюме (минимум 50 символов)..."
+              placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
               className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
             />
             {busy && <LoadingPhrase entity="interview" />}
