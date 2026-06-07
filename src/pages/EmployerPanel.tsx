@@ -417,6 +417,9 @@ export default function EmployerPanel() {
   const [packQty, setPackQty] = useState<{ interview: number; training: number }>({ interview: 10, training: 0 });
   const [packBusy, setPackBusy] = useState<boolean>(false);
   const [fixedBusy, setFixedBusy] = useState<null | "landing" | "interview_setup" | "training_setup">(null);
+  const [fixedQty, setFixedQty] = useState<Record<"landing" | "interview_setup" | "training_setup", number>>({
+    landing: 1, interview_setup: 1, training_setup: 1,
+  });
   const [referrer, setReferrer] = useState<null | { name: string; email: string; phone: string | null; telegram: string | null; public_id: string }>(null);
   const [referees, setReferees] = useState<Array<{ name: string; email: string; created_at: string; bonus_rr: number }>>([]);
 
@@ -1424,13 +1427,13 @@ export default function EmployerPanel() {
   };
 
   // Покупка фикс-услуги впрок (landing / interview_setup / training_setup)
-  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup") => {
+  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup", qty: number = 1) => {
     setPurchaseError("");
     setFixedBusy(item);
     try {
-      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: 1 });
+      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: Math.max(1, Math.floor(qty)) });
       if (error) throw new Error(error.message || "Ошибка покупки услуги");
-      addAuditEvent("success", "Услуга куплена", item);
+      addAuditEvent("success", "Услуга куплена", `${item} ×${qty}`);
       await fetchBillingState();
     } catch (err: any) {
       setPurchaseError(translateBillingError(err.message));
@@ -2428,7 +2431,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <User className="w-4 h-4 text-[#D99E41]" /> 1. Профиль HR
                 </span>
-                <span className="text-[10px] bg-amber-900/40 text-[#E7C768] px-1.5 py-0.5 rounded font-mono">Шаг 1</span>
+                <span className="text-[10px] bg-rose-900/50 text-rose-200 px-1.5 py-0.5 rounded font-mono">Шаг 1</span>
               </button>
 
               <button
@@ -2438,7 +2441,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-[#D99E41]" /> 2. Мои Компании
                 </span>
-                <span className="text-[10px] bg-amber-900/40 text-[#E7C768] px-1.5 py-0.5 rounded font-mono">Шаг 2</span>
+                <span className="text-[10px] bg-orange-900/50 text-orange-200 px-1.5 py-0.5 rounded font-mono">Шаг 2</span>
               </button>
 
               <button
@@ -2448,7 +2451,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-[#D99E41]" /> 3. Вакансии & ИИ
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
+                <span className="text-[10px] bg-amber-900/50 text-amber-200 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
               </button>
 
               <button
@@ -2458,7 +2461,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 4. Обучение (ИИ)
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
+                <span className="text-[10px] bg-emerald-900/50 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
               </button>
 
               <button
@@ -2468,7 +2471,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 5. Интервью (ИИ)
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
+                <span className="text-[10px] bg-sky-900/50 text-sky-200 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
               </button>
 
               <div className="h-px bg-white/10 my-2"></div>
@@ -2542,12 +2545,24 @@ export default function EmployerPanel() {
                 <span className="font-mono text-[#E7C768] font-black">{balance} RR</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Лимит интервью:</span>
+                <span className="text-slate-300">ИИ-Интервью:</span>
                 <span className="font-mono text-white font-bold">{interviewCredits} шт</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Лимит обучений:</span>
+                <span className="text-slate-300">ИИ-Обучений:</span>
                 <span className="font-mono text-white font-bold">{trainingCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Вакансий:</span>
+                <span className="font-mono text-white font-bold">{landingCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Систем Обучений:</span>
+                <span className="font-mono text-white font-bold">{trainingSetupCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Систем Интервью:</span>
+                <span className="font-mono text-white font-bold">{interviewSetupCredits} шт</span>
               </div>
             </div>
           </div>
@@ -3923,9 +3938,9 @@ export default function EmployerPanel() {
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5">
                       <Award className="w-4 h-4 text-[#E7C768]" /> Купленные пакетные лимиты
                     </h3>
-                    <p className="text-[11px] text-slate-350 mt-1">
-                      Эти лимиты расходуются по 1 шт. в момент, когда кандидат впервые нажимает «Приступить»
-                      к ИИ-интервью или ИИ-обучению. Повторно за того же кандидата не списывается.
+                    <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
+                      Списание происходит в момент, когда кандидат впервые начинает диалог с ИИ — отдельно за интервью и отдельно за обучение.
+                      Если баланс на нуле, кандидат не сможет проходить интервью или обучение. Повторное прохождение тем же кандидатом — бесплатно: списываем только за первое.
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-3.5 text-xs text-center">
@@ -3952,9 +3967,9 @@ export default function EmployerPanel() {
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                       🛍️ Разовые услуги (фикс. цена)
                     </h3>
-                    <p className="text-xs text-slate-300 mt-1">
-                      Списываются автоматически после успешной ИИ-генерации.
-                      Можно купить впрок — тогда списание пойдёт из лимита, а не с баланса.
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      Списываем один раз — за первичное создание лендинга / системы интервью / системы обучения. Дальше редактировать и менять можно бесплатно в любой момент, даже на другую профессию и условия.
+                      На одну вакансию — одна система обучения и одна система найма; их можно бесконечно править через ИИ. Кандидаты, ранее зарегистрированные на этой вакансии, увидят уже новую версию — ссылка на лендинг и кабинет у них не меняется.
                     </p>
                   </div>
 
@@ -3980,14 +3995,36 @@ export default function EmployerPanel() {
                         </div>
                         <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/5">
                           <span className="text-[10px] text-slate-400 font-mono">Куплено впрок: <span className="text-white font-bold">{row.credits} шт</span></span>
-                          <button
-                            type="button"
-                            onClick={() => handleBuyFixed(row.item)}
-                            disabled={fixedBusy !== null}
-                            className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
-                          >
-                            {fixedBusy === row.item ? "..." : "Купить впрок +1"}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center bg-black/30 border border-white/10 rounded-lg overflow-hidden">
+                              <button
+                                type="button"
+                                onClick={() => setFixedQty(q => ({ ...q, [row.item]: Math.max(1, (q[row.item] || 1) - 1) }))}
+                                className="px-2 py-1 text-slate-200 hover:bg-white/10 text-xs font-bold"
+                              >−</button>
+                              <input
+                                type="number"
+                                min={1}
+                                max={999}
+                                value={fixedQty[row.item]}
+                                onChange={(e) => setFixedQty(q => ({ ...q, [row.item]: Math.max(1, Math.min(999, Number(e.target.value) || 1)) }))}
+                                className="w-10 bg-transparent text-center text-[#E7C768] font-bold text-xs py-1 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setFixedQty(q => ({ ...q, [row.item]: Math.min(999, (q[row.item] || 1) + 1) }))}
+                                className="px-2 py-1 text-slate-200 hover:bg-white/10 text-xs font-bold"
+                              >+</button>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleBuyFixed(row.item, fixedQty[row.item])}
+                              disabled={fixedBusy !== null}
+                              className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
+                            >
+                              {fixedBusy === row.item ? "..." : `Купить впрок +${fixedQty[row.item]}`}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
