@@ -179,6 +179,7 @@ export default function AdminPanel() {
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
           {section === "accounts"   && <AccountsSection setToast={setToast} />}
+          {section === "logs"       && <LogsSection />}
           {section === "ai"         && <AISection />}
         </section>
       </main>
