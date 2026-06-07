@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code, Youtube, FileText, Save, CheckCircle2, ChevronDown, ChevronUp, Video } from "lucide-react";
+import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
@@ -39,13 +38,14 @@ type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; tota
 
 const MAX_QUESTIONS = 30;
 
-const CONTEXT_OPTIONS: { key: string; label: string }[] = [
-  { key: "intro",        label: "Введение" },
-  { key: "professional", label: "Профессиональный" },
-  { key: "product",      label: "Продуктовый" },
-  { key: "systems",      label: "Системный" },
-  { key: "regulations",  label: "Регламенты" },
+const CONTEXT_OPTIONS: { key: string; label: string; column: string; fallbackColumn?: string }[] = [
+  { key: "intro",        label: "Введение",         column: "training_intro_text" },
+  { key: "professional", label: "Профессиональный", column: "training_professional_text", fallbackColumn: "training_prof_text" },
+  { key: "product",      label: "Продуктовый",      column: "training_product_text" },
+  { key: "systems",      label: "Системный",        column: "training_systems_text",      fallbackColumn: "training_system_text" },
+  { key: "regulations",  label: "Регламенты",       column: "training_regulations_text" },
 ];
+const CONTEXT_MAX = 1500;
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
@@ -68,6 +68,16 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [wishesMaterial, setWishesMaterial] = useState("");
   const [wishesTest, setWishesTest] = useState("");
   const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
+
+  // Context source values (loaded from `projects` row) + editable buffers.
+  const [contextValues, setContextValues] = useState<Record<string, string>>({});
+  const [contextDirty, setContextDirty] = useState<Record<string, boolean>>({});
+  const [contextSaving, setContextSaving] = useState(false);
+  const [contextExpanded, setContextExpanded] = useState<Record<string, boolean>>({});
+
+  // Save animation flash for material / test
+  const [savedFlashMaterial, setSavedFlashMaterial] = useState(false);
+  const [savedFlashTest, setSavedFlashTest] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,6 +105,47 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   useEffect(() => {
     setSources({ professional: "", product: "", system: "" });
   }, [project?.id]);
+
+  // Load context source values straight from `projects` row when project changes.
+  useEffect(() => {
+    if (!project?.id) return;
+    let cancelled = false;
+    (async () => {
+      const cols = CONTEXT_OPTIONS.flatMap(o => o.fallbackColumn ? [o.column, o.fallbackColumn] : [o.column]);
+      const { data } = await supabase.from("projects").select(cols.join(",")).eq("id", project.id).maybeSingle();
+      if (cancelled) return;
+      const row: any = data || {};
+      const next: Record<string, string> = {};
+      CONTEXT_OPTIONS.forEach(o => {
+        next[o.key] = row[o.column] ?? row[o.fallbackColumn || ""] ?? "";
+      });
+      setContextValues(next);
+      setContextDirty({});
+    })();
+    return () => { cancelled = true; };
+  }, [project?.id]);
+
+  const saveContextValues = async () => {
+    if (!project) return;
+    const dirtyKeys = Object.keys(contextDirty).filter(k => contextDirty[k]);
+    if (!dirtyKeys.length) return;
+    setContextSaving(true);
+    try {
+      const patch: Record<string, string | null> = {};
+      dirtyKeys.forEach(k => {
+        const opt = CONTEXT_OPTIONS.find(o => o.key === k);
+        if (!opt) return;
+        patch[opt.column] = (contextValues[k] || "").slice(0, CONTEXT_MAX) || null;
+        if (opt.fallbackColumn) patch[opt.fallbackColumn] = patch[opt.column];
+      });
+      const { error } = await supabase.from("projects").update(patch).eq("id", project.id);
+      if (error) throw error;
+      setContextDirty({});
+      addAuditEvent("success", "Контекст сохранён в БД", `Полей обновлено: ${dirtyKeys.length}`);
+    } catch (e: any) {
+      addAuditEvent("warning", "Ошибка сохранения контекста", e?.message || "");
+    } finally { setContextSaving(false); }
+  };
 
   // Markdown toolbar helper — wraps current selection or inserts at caret
   const applyMd = (prefix: string, suffix = "", placeholder = "") => {
@@ -125,6 +176,28 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     const segment = materials.slice(lineStart, realEnd);
     const replaced = segment.split("\n").map(l => l.startsWith(prefix) ? l : `${prefix}${l}`).join("\n");
     const next = (materials.slice(0, lineStart) + replaced + materials.slice(realEnd)).slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => ta.focus());
+  };
+
+  // Insert an embeddable link on its own paragraph (auto-rendered as iframe in preview)
+  const insertEmbed = (kind: "youtube" | "vk" | "rutube" | "gdoc") => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const placeholders: Record<typeof kind, string> = {
+      youtube: "https://www.youtube.com/watch?v=ID",
+      vk: "https://vk.com/video-1234567_456239021",
+      rutube: "https://rutube.ru/video/abc123def456/",
+      gdoc: "https://docs.google.com/document/d/DOC_ID/edit",
+    } as any;
+    const url = window.prompt(`Вставьте ссылку (${kind.toUpperCase()})`, placeholders[kind]);
+    if (!url) return;
+    const start = ta.selectionStart ?? materials.length;
+    const before = materials.slice(0, start);
+    const after = materials.slice(start);
+    const sep1 = before.endsWith("\n\n") || before.length === 0 ? "" : (before.endsWith("\n") ? "\n" : "\n\n");
+    const sep2 = after.startsWith("\n\n") || after.length === 0 ? "" : (after.startsWith("\n") ? "\n" : "\n\n");
+    const next = (before + sep1 + url + sep2 + after).slice(0, 10000);
     setMaterials(next);
     requestAnimationFrame(() => ta.focus());
   };
@@ -230,7 +303,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         if (error) throw error;
         setBlock(data as any);
       }
-      if (!silent) addAuditEvent("success", "Материалы сохранены", `Этап: ${stage}`);
+      if (!silent) {
+        addAuditEvent("success", "Материалы сохранены", `Этап: ${stage}`);
+        setSavedFlashMaterial(true);
+        setTimeout(() => setSavedFlashMaterial(false), 2200);
+      }
     } catch (e: any) {
       addAuditEvent("warning", "Ошибка сохранения", e?.message || "");
     } finally { setSaving(false); }
@@ -253,7 +330,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         if (error) throw error;
         setTest(t => ({ ...t, id: (data as any).id, total_score: total }));
       }
-      addAuditEvent("success", "Тест сохранён", `${test.questions.length} вопросов`);
+      addAuditEvent("success", "Тест сохранён", `${test.questions.length} вопросов, проходной ${test.pass_score}`);
+      setSavedFlashTest(true);
+      setTimeout(() => setSavedFlashTest(false), 2200);
     } catch (e: any) {
       addAuditEvent("warning", "Ошибка сохранения теста", e?.message || "");
     } finally { setSaving(false); }
