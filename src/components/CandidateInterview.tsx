@@ -43,6 +43,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const { run: aiWaitRun } = useAIWait();
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
+  // Vacancy paused (no employer funds)
+  const [paused, setPaused] = useState<null | { email?: string|null; phone?: string|null; telegram?: string|null }>(null);
+  // Rich AI feedback restored from DB
+  const [checklistFeedback, setChecklistFeedback] = useState<any>(null);
 
   // resume
   const [resumeText, setResumeText] = useState("");
@@ -70,6 +74,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   useEffect(() => {
     (async () => {
+      // Gate 1: can this candidate actually start an interview right now?
+      try {
+        const { data: gate } = await (supabase as any).rpc("can_start_interview", { _candidate: candidateId });
+        if (gate && gate.ok === false && gate.reason === "no_funds") {
+          setPaused(gate.employer_contacts || {});
+          return;
+        }
+      } catch {}
+
       const { data: pr } = await (supabase as any).from("projects").select("interview_pass_score").eq("id", projectId).maybeSingle();
       setPassScore((pr as any)?.interview_pass_score ?? 75);
       const r = await call("ai-list-interview-checklist", { project_id: projectId });
@@ -81,11 +94,26 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         : qs);
       setSituations(r.situations || []);
       // try fetch existing scores
-      const { data: sc } = await (supabase as any).from("candidate_scores").select("resume_score,checklist_score,situations_score,assessment_summary").eq("candidate_id", candidateId).maybeSingle();
+      const { data: sc } = await (supabase as any).from("candidate_scores")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback")
+        .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
-        if (sc.resume_score != null) setResumeResult({ score: sc.resume_score, summary: sc.assessment_summary || "", strengths: [], gaps: [] });
+        if (sc.resume_score != null) {
+          const rf = sc.resume_feedback || {};
+          setResumeResult({
+            score: sc.resume_score,
+            summary: sc.assessment_summary || rf.summary || "",
+            strengths: Array.isArray(rf.strengths) ? rf.strengths : [],
+            gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
+          });
+        }
         if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
+        if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
         if (sc.situations_score != null) setSituationsScore(sc.situations_score);
+        if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+        // Auto-jump to first incomplete stage
+        if (sc.situations_score == null && sc.checklist_score != null) setStage("situations");
+        else if (sc.checklist_score == null && sc.resume_score != null) setStage("checklist");
       }
     })();
   }, [projectId, candidateId]);
@@ -164,6 +192,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       });
       if (!r) return;
       setChecklistScore(r.score);
+      if (r.feedback) setChecklistFeedback(r.feedback);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
   };
