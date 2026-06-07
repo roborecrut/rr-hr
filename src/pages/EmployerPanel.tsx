@@ -10,6 +10,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
+import TrainingList from "../components/TrainingList";
 import InterviewWizard from "../components/InterviewWizard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
