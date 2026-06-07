@@ -1,101 +1,84 @@
-# Обновлённый план: бесплатное демо-интервью на `/demo`
 
-## Главное изменение
+## Что строим
 
-Контент для всех 3 этапов уже лежит в БД — `job_titles.interview_template` (jsonb) c ключами `situations`, `checklist`, `resume_criteria` (включая правильные ответы, объяснения, промпты). **Генерировать ничего не нужно** — функция `ai-demo-prepare` отменяется. Демо просто читает шаблон из БД и проводит кандидата по этапам.
+1. **БД** — новые таблицы под посты, комментарии, реакции (на пост и комментарий).
+2. **Маршруты** `/blog` (лента) и `/blog/post{public_id}` (страница статьи).
+3. **Хедер лендинга** — пункт «Блог» рядом с «Вакансии» (десктоп + мобайл).
+4. **Админ-раздел** `Блог` в `/admin` — список постов + редактор (фото + markdown).
+5. **Редактор** — клон UX из `TrainingWizard`: тулбар (H1/H2, жирный/курсив/код, списки, ссылка, YouTube/VK/Rutube/Google Docs), переключатель «Редактор / Превью», превью использует `RichTrainingMarkdown` / `RichTrainingMaterialCard` — те же стили, что в личном кабинете кандидата.
+6. **Загрузка обложки** — в бакет `posts` (он уже создан).
+7. **2 демо-статьи** загрузить через insert.
 
-## 1. Маршрутизация
+## Структура БД (миграция)
 
-`src/App.tsx`:
-- удалить роут `/vacancy` и страницу `src/pages/MainCatalogPage.tsx`;
-- добавить роут `/demo` → новая страница `src/pages/DemoInterviewPage.tsx`;
-- ссылки на `/vacancy` (хедер, мобильное меню, футер, CTA) заменить на `/demo`.
-
-## 2. Источник контента
-
-Прямой `SELECT title, interview_template FROM job_titles WHERE is_basic = true` (через supabase-js, anon-доступ уже есть для каталога). Кэшируем выбранный шаблон в `localStorage` под ключом `demo:tpl:<job_title_id>` чтобы не дёргать БД повторно.
-
-Структура `interview_template`:
+```text
+posts
+  id uuid pk
+  public_id text unique  -- формат "7" + порядковый: 700001, 700002, …
+  title text
+  slug text             -- = public_id (для url /blog/post{public_id})
+  cover_url text        -- ссылка из bucket posts
+  content_md text       -- markdown без лимита
+  excerpt text          -- авто (первые 100 символов чистого текста)
+  author_id uuid (auth.users)
+  is_published bool default true
+  created_at, updated_at timestamptz
 ```
-{
-  situations: { items: [{ id, title, brief, prompt? }, ...] },
-  checklist:  { questions: [{ id, kind, question, options?, correct, explanation }, ...] },
-  resume_criteria: "markdown"
-}
+- `seq_post_pid` старт с 700001, триггер заполняет `public_id` и `slug`.
+- Триггер `posts_set_excerpt`: чистит markdown (убирает `#`, `**`, ссылки, картинки, код-блоки) → берёт 100 символов.
+
+```text
+post_comments
+  id uuid pk
+  post_id uuid → posts
+  parent_id uuid → post_comments (nullable, для ответов 1 уровня)
+  user_id uuid (auth.users)
+  body text (<= 2000)
+  created_at, updated_at
+
+post_reactions      -- на пост или на коммент (взаимоисключающе)
+  id uuid pk
+  post_id uuid (nullable)
+  comment_id uuid (nullable)
+  user_id uuid
+  kind text  -- 'like' | 'fire' | 'heart' | 'clap' | 'wow'
+  unique(user_id, post_id, comment_id, kind)
+  check (post_id is not null xor comment_id is not null)
 ```
 
-Чеклист с `kind:"choice"` оцениваем **локально в браузере** (сравнение с `correct` + показ `explanation`) — без ИИ-вызова, мгновенно и бесплатно.
+**GRANT/RLS**
+- `posts`: `GRANT SELECT TO anon, authenticated`; админу — всё через service_role и политику `has_role(auth.uid(),'admin')`. Публичное чтение `is_published = true`.
+- `post_comments`: select для anon+authenticated (всем видны), insert/update/delete только своему (`auth.uid() = user_id`), админ всё.
+- `post_reactions`: select всем, insert/delete только своим.
 
-## 3. Edge-функции (только 2, обе stateless, без биллинга и БД)
+## Файлы
 
-- `ai-demo-grade-situations` — `{ title, situations, answers }` → `[{ id, feedback, score }]` (через ProTalk, как в боевом флоу, но без `spend_pack`/`ai_runs`-привязки к проекту).
-- `ai-demo-screen-resume` — `{ title, vacancy_text, criteria_md, resume_text }` → `{ score, summary, strengths[], gaps[] }`.
+- `supabase/migrations/<ts>_blog.sql` — таблицы, sequence, триггеры, RLS, GRANT.
+- `src/pages/BlogListPage.tsx` — `/blog`. Карточки: обложка (16:9), заголовок, excerpt (100 симв.). Клик → `/blog/post{public_id}`. Брендовый фон + RR-маскот на пустом состоянии.
+- `src/pages/BlogPostPage.tsx` — `/blog/post:pid`. Хедер с обложкой, заголовок, контент через `RichTrainingMaterialCard`, блок реакций под постом, блок комментариев.
+- `src/components/MarkdownEditor.tsx` — выделим переиспользуемый редактор (тулбар + textarea + переключатель Превью). На основе кода из `TrainingWizard.tsx` строк 169–222 и 557–599. Будет использоваться в редакторе постов; в `TrainingWizard` пока не трогаем, чтобы не рисковать регрессией.
+- `src/components/admin/BlogAdmin.tsx` — список постов в админке + кнопка «Новая статья», модал/инлайн-форма: upload обложки в bucket `posts`, поле title, `MarkdownEditor`, чекбокс «Опубликовано», сохранить/удалить.
+- `src/components/PostComments.tsx` — список + форма ответа (для auth), кнопки «Ответить», лайки/реакции (5 эмодзи), счётчики, скрытие формы для гостей с CTA «Войдите, чтобы комментировать».
+- `src/components/PostReactions.tsx` — переиспользуемые реакции (для поста и для комментария).
+- `src/lib/mdExcerpt.ts` — js-хелпер: чистит markdown в плоский текст для превью карточки.
+- `src/App.tsx` — добавить `<Route path="/blog" ... />` и `<Route path="/blog/post:pid" ... />`.
+- `src/pages/LandingPage.tsx` — добавить кнопку «Блог» в десктоп- и мобайл-навигацию (рядом с «Вакансии»).
+- `src/pages/AdminPanel.tsx` — добавить секцию `blog` в `SECTIONS`, рендерить `BlogAdmin`.
 
-Обе — публичные (`verify_jwt = false` в `config.toml`), in-memory rate-limit по IP (30 req/min). Логирование в `ai_logs` оставляем для отладки.
+## Загрузка обложки
 
-Чеклист — без edge-функции вообще.
+В `BlogAdmin` — `supabase.storage.from('posts').upload(...)` с именем `${crypto.randomUUID()}.${ext}`, затем `getPublicUrl` → пишем в `posts.cover_url`. (Бакет уже создан пользователем; если он private — попрошу включить public; статьи публичные.)
 
-## 4. Страница `/demo`
+## Демо-статьи (через `supabase--insert`)
 
-`localStorage` ключ `demo:state`:
-```
-{ titleId, stage: 'pick'|'situations'|'checklist'|'resume'|'done',
-  template, sitAnswers, checkAnswers, resumeText,
-  sitResult, checkResult, resumeResult, finalScore }
-```
+После применения миграции вставлю два поста:
+1. «Как ИИ-интервью заменяет первичный скрининг HR» (≈3–4 экрана markdown с H1/H2, списками, цитатами).
+2. «5 шагов, чтобы запустить онбординг в RR за вечер».
+Обложки — публичные URL из бакета `posts` (заглушки можно сгенерировать `imagegen` или временно использовать существующие RR-маскоты, если пользователь захочет — уточню при реализации).
 
-Экраны:
-1. **Выбор должности** — сетка карточек шаблонов (поиск-фильтр). Без «своей должности».
-2. **Этап 1 — Ситуация** — рендер из `template.situations.items`, ответы текстом, кнопка «Отправить» → `ai-demo-grade-situations`, показ feedback.
-3. **Этап 2 — Чеклист** — рендер из `template.checklist.questions`, локальная проверка `correct`, показ `explanation` после ответа на каждый.
-4. **Этап 3 — Резюме** — textarea (опц. drag&drop файл позже), отправка → `ai-demo-screen-resume`.
-5. **Финал** — общий балл (среднее), сильные/слабые стороны, две CTA:
-   - «🚀 Создать свою систему найма» → `/main` (якорь регистрации работодателя);
-   - «↻ Пройти ещё раз» → очистка `demo:state`, на шаг 1.
+## Открытые вопросы (отвечу по умолчанию, если не возразите)
 
-Шаг-индикатор «1 Ситуация → 2 Чеклист → 3 Резюме». Бренд-палитра, `.brand-editor`, золотые заголовки, синий градиент. Маскот `Mascot` со сменой картинки по этапам (см. ниже).
-
-## 5. Главный лендинг — рефакторинг с маскотами
-
-Используем готовые картинки RR (грузим напрямую с Supabase Storage, `loading="lazy"`, `decoding="async"`, фиксированные размеры):
-
-- **Hero** — `RR2.png` (приветливый с планшетом) рядом с заголовком «Попробуй ИИ-интервью бесплатно. Прямо сейчас.». Главный CTA «🎮 Начать демо-интервью» → `/demo`, вторичный «Я работодатель» → раздел регистрации.
-- **Блок «Как работает демо»** — 3 карточки:
-  - Ситуация — `RR4.png` (серьёзный, скрестил руки);
-  - Чеклист — `RR8.png` (со знаком вопроса);
-  - Скрининг резюме — `RR7.png` (смотрит на часы).
-  Под блоком крупная CTA «Попробовать прямо сейчас» → `/demo`.
-- **Блок «Хочешь так же у себя?»** — `RR3.png` (с рупором, "оповещение"), описание системы найма для работодателей + CTA на регистрацию.
-- **Социальное доказательство / отзывы** — `RR5.png` или `RR6.png` (радостные) в углу секции.
-- **Хедер**: лого `RR-Logo.png` (если ещё не он). Пункт «Каталог Профессий» → «Демо-интервью» → `/demo`.
-- **Состояния ошибок** на демо-странице — `RR9.png` (грустный сломанный) в empty/error-states.
-- Удалить старые блоки про каталог. Тарифы, FAQ, футер — оставить.
-
-## 6. Технические детали
-
-**Новые файлы:**
-- `src/pages/DemoInterviewPage.tsx`
-- `src/lib/demoSession.ts` (load/save/clear `localStorage`)
-- `src/lib/mascotImages.ts` — экспортируемые URL-константы для RR2–RR9 (один источник правды; URL Supabase Storage).
-- `supabase/functions/ai-demo-grade-situations/index.ts`
-- `supabase/functions/ai-demo-screen-resume/index.ts`
-
-**Изменения:**
-- `src/App.tsx` — роуты.
-- `src/pages/LandingPage.tsx` — рефакторинг hero/секций + маскоты.
-- Удалить `src/pages/MainCatalogPage.tsx`.
-- Глобальная замена ссылок `/vacancy` → `/demo`.
-- `supabase/config.toml` — 2 новые функции с `verify_jwt = false`.
-
-**Оптимизация картинок маскота:**
-- Все `<img>` с маскотами — `loading="lazy"`, `decoding="async"`, явные `width`/`height` для отсутствия CLS.
-- Hero-картинка — `fetchpriority="high"`, `loading="eager"`.
-- Размеры в CSS — `max-width` + `object-fit: contain`, чтобы не растягивать.
-- Используем напрямую URL Supabase Storage (они уже сжаты PNG).
-
-**Не делаем (как раньше):**
-- Привязку демо к учётке/компании/вакансии.
-- Запись результатов в БД.
-- Свои должности кандидата (только шаблоны `is_basic = true`).
-- Загрузку резюме файлом (только textarea для MVP).
-- Функцию `ai-demo-prepare` — больше не нужна, шаблоны уже готовы в БД.
+- Реакции: 5 типов (👍 ❤️ 🔥 👏 😮). Лайк = «👍».
+- Ответы на комментарии — 1 уровень вложенности (как в большинстве блогов). Ответы на ответы остаются в той же ветке.
+- Редактирование/удаление комментария — автор и админ.
+- `/blog` доступен всем (без авторизации); комментировать/реагировать — только авторизованным.
