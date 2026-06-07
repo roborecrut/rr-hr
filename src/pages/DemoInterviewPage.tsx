@@ -305,7 +305,13 @@ export default function DemoInterviewPage() {
         {state && state.stage === "restart" && (
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-8 text-center space-y-5">
             <div className="flex justify-center">
-              <Mascot state="recruitment" size="lg" speechBubble={`Готовлю интервью для "${state.title}"…`} />
+              <img
+                src={prepError ? MASCOT.broken : MASCOT.greeting}
+                alt={prepError ? "Ошибка" : "Робот Рекрутер"}
+                width={180} height={180}
+                loading="eager" decoding="async"
+                className="w-40 h-40 md:w-48 md:h-48 object-contain drop-shadow-2xl"
+              />
             </div>
             {prepError ? (
               <div className="space-y-3">
@@ -313,11 +319,14 @@ export default function DemoInterviewPage() {
                 <button onClick={() => { preparingRef.current = false; setPrepError(""); setState(s => s ? { ...s } : s); }} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">
                   Попробовать снова
                 </button>
+                <button onClick={restartAll} className="ml-2 text-xs text-slate-300 underline hover:text-white">
+                  Выбрать другую должность
+                </button>
               </div>
             ) : (
               <>
-                <LoadingPhrase entity="interview" />
-                <p className="text-xs text-slate-300">Это займёт ~20-40 секунд — ИИ генерирует ситуации, чек-лист и критерии резюме.</p>
+                <p className="text-base font-semibold text-[#E7C768]">Готовлю интервью для «{state.title}»…</p>
+                <p className="text-xs text-slate-300">Загружаем готовые ситуации, чек-лист и критерии резюме.</p>
               </>
             )}
           </div>
