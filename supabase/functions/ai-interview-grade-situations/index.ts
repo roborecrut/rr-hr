@@ -34,12 +34,12 @@ ${JSON.stringify(items)}
     }));
     const avg = results.length ? Math.round(results.reduce((s: number, x: any) => s + x.score, 0) / results.length) : 0;
 
-    const { data: scoreRow } = await admin.from("candidate_scores").select("id").eq("candidate_id", body.candidate_id).maybeSingle();
-    if (scoreRow?.id) {
-      await admin.from("candidate_scores").update({ situations_score: avg }).eq("id", scoreRow.id);
-    } else {
-      await admin.from("candidate_scores").insert({ candidate_id: body.candidate_id, situations_score: avg });
-    }
+    const feedback = { items: results, advice: String(obj.advice || "").slice(0, 800), total: avg };
+    await admin.from("candidate_scores").upsert({
+      candidate_id: body.candidate_id,
+      situations_score: avg,
+      situations_feedback: feedback,
+    }, { onConflict: "candidate_id" });
     await logToDb({ user_message: msg.slice(0,5000), bot_reply: r.text.slice(0,5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:grade-situations", server_name: "ai-interview-grade-situations" });
     return jsonResponse({ ok: true, score: avg, items: results, advice: String(obj.advice || "").slice(0, 800) });
   } catch (e) {
