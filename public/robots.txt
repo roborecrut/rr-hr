@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /employer
+Disallow: /candidate
+Disallow: /setup
+Disallow: /payment/
+
+Sitemap: https://hr-rr.online/sitemap.xml

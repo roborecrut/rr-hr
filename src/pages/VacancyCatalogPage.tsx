@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
 import RRImage from "@/components/RRImage";
 import { supabase } from "@/integrations/supabase/client";
+import { useSeo, SITE_URL } from "@/lib/seo";
 import {
   Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
   Sparkles, Zap, Users,
@@ -43,6 +44,13 @@ function firstLine(text: string | null | undefined): string | undefined {
 
 export default function VacancyCatalogPage() {
   const { navigate } = useRouter();
+  useSeo({
+    title: "Каталог вакансий — Робот Рекрутер",
+    description: "Актуальные открытые вакансии компаний платформы Робот Рекрутер. Откликнуться можно без регистрации — ИИ проведёт первичное собеседование.",
+    canonical: `${SITE_URL}/vacancy`,
+    ogUrl: `${SITE_URL}/vacancy`,
+    ogType: "website",
+  });
   const [loading, setLoading] = useState(true);
   const [vacs, setVacs] = useState<Vac[]>([]);
 
@@ -167,8 +175,8 @@ export default function VacancyCatalogPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")} role="link" tabIndex={0} aria-label="На главную — Робот Рекрутер" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}>
+            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col text-left leading-tight">
               <span className="text-lg font-bold">РобоРекрут</span>
               <span className="text-xs text-white/60">Каталог вакансий</span>

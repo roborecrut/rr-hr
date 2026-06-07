@@ -6,6 +6,7 @@ import PostReactions from "@/components/PostReactions";
 import PostComments from "@/components/PostComments";
 import AuthModal from "@/components/AuthModal";
 import { ArrowLeft, BookOpen } from "lucide-react";
+import { useSeo, SITE_URL } from "@/lib/seo";
 
 export default function BlogPostPage() {
   const navigate = useNavigate();
@@ -15,6 +16,24 @@ export default function BlogPostPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+
+  const excerpt = (post?.excerpt || (post?.content_md || "").replace(/[#*`>_\-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 155)) || "";
+  useSeo(post ? {
+    title: `${post.title} — Блог Робот Рекрутер`,
+    description: excerpt || `${post.title} — статья в блоге Робот Рекрутер.`,
+    canonical: `${SITE_URL}/blog/${rawPid || pid}`,
+    ogUrl: `${SITE_URL}/blog/${rawPid || pid}`,
+    ogType: "article",
+    jsonLd: {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: post.title,
+      image: post.cover_url || undefined,
+      datePublished: post.created_at,
+      mainEntityOfPage: `${SITE_URL}/blog/${rawPid || pid}`,
+      publisher: { "@type": "Organization", name: "Робот Рекрутер" },
+    },
+  } : {});
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -26,7 +45,6 @@ export default function BlogPostPage() {
       setPost(data || null);
       setUserId(user?.id ?? null);
       setLoading(false);
-      if (data) document.title = `${data.title} — Блог RR`;
     })();
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUserId(s?.user?.id ?? null));
     return () => sub.subscription.unsubscribe();

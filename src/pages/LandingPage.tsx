@@ -84,8 +84,8 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")} role="link" tabIndex={0} aria-label="На главную — Робот Рекрутер" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}>
+            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col text-left">
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">Робот Рекрутер</span>
               <span className="text-[10px] font-mono tracking-wider uppercase text-slate-300">Автоматизация найма</span>
@@ -121,7 +121,7 @@ export default function LandingPage() {
             </button>
           )}
 
-          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2">
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2" aria-label={mobileMenuOpen ? "Закрыть меню" : "Открыть меню"} aria-expanded={mobileMenuOpen}>
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
@@ -486,7 +486,7 @@ export default function LandingPage() {
           {/* Бренд */}
           <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+              <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
               <div className="font-bold text-sm text-[#E7C768]">
                 © 2026 Робот Рекрутер RR
                 <span className="text-xs text-slate-300 block font-normal">Безоговорочная роботизация подбора персонала</span>

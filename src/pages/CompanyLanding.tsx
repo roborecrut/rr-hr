@@ -15,6 +15,7 @@ import CandidateAuthModal from "../components/CandidateAuthModal";
 import CompanySections from "../components/CompanySections";
 import SitePreview from "../components/SitePreview";
 import VacancyAIAssistant from "@/components/VacancyAIAssistant";
+import { useSeo, SITE_URL } from "@/lib/seo";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
@@ -115,6 +116,24 @@ export default function CompanyLanding() {
   const [selectedRaw, setSelectedRaw] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const _pageTitle = selectedVacancy?.roleName
+    ? `${selectedVacancy.roleName} — ${company?.name || "Вакансия"} | Робот Рекрутер`
+    : company?.name
+      ? `${company.name} — карьера и вакансии | Робот Рекрутер`
+      : "Компания — Робот Рекрутер";
+  const _pageDesc = selectedVacancy?.vacancyText
+    ? String(selectedVacancy.vacancyText).replace(/\s+/g, " ").trim().slice(0, 155)
+    : company?.description_text
+      ? String(company.description_text).replace(/\s+/g, " ").trim().slice(0, 155)
+      : `${company?.name || "Компания"}: открытые вакансии, условия и информация о работодателе на платформе Робот Рекрутер.`;
+  useSeo({
+    title: _pageTitle,
+    description: _pageDesc,
+    canonical: `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`,
+    ogUrl: `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`,
+    ogType: selectedVacancy ? "article" : "website",
+  });
 
   // Company-level fallbacks let the landing render meaningful sections
   // even when no vacancy is published yet (or fields are blank on a vacancy).
@@ -396,7 +415,12 @@ export default function CompanyLanding() {
 
   return (
     <div className="bg-gradient-to-b from-[#112335] to-[#1C3A56] min-h-screen text-white font-sans antialiased flex flex-col justify-between">
-      
+      <h1 className="sr-only">
+        {selectedVacancy?.roleName
+          ? `${selectedVacancy.roleName} — ${displayCompany.name}`
+          : displayCompany.name}
+      </h1>
+
       {/* Dynamic Header */}
       <header className="sticky top-0 z-40 bg-[#112335]/95 backdrop-blur-md border-b border-[#204569]/40 py-2">
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
