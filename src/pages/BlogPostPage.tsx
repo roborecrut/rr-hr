@@ -5,8 +5,8 @@ import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 import PostReactions from "@/components/PostReactions";
 import PostComments from "@/components/PostComments";
 import AuthModal from "@/components/AuthModal";
-import { ArrowLeft, BookOpen } from "lucide-react";
 import { useSeo, SITE_URL } from "@/lib/seo";
+import SiteHeader from "@/components/SiteHeader";
 
 export default function BlogPostPage() {
   const navigate = useNavigate();
@@ -52,17 +52,7 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white">
-      <header className="sticky top-0 z-30 bg-[#17344F]/95 backdrop-blur border-b border-white/10 px-4 md:px-8 py-3">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <button onClick={() => navigate("/blog")} className="inline-flex items-center gap-1.5 text-sm text-slate-200 hover:text-white">
-            <ArrowLeft className="w-4 h-4" /> К ленте
-          </button>
-          <div className="flex items-center gap-2 text-[#E7C768] font-bold">
-            <BookOpen className="w-5 h-5" /> Блог RR
-          </div>
-          <div className="w-16" />
-        </div>
-      </header>
+      <SiteHeader active="blog" />
 
       <main className="max-w-4xl mx-auto px-4 md:px-8 py-8 md:py-12 space-y-6">
         {loading ? (

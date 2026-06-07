@@ -2,9 +2,10 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { mdExcerpt } from "@/lib/mdExcerpt";
-import { ArrowLeft, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { MASCOT } from "@/lib/mascotImages";
 import { useSeo, SITE_URL } from "@/lib/seo";
+import SiteHeader from "@/components/SiteHeader";
 
 type Post = {
   id: string;
@@ -45,17 +46,7 @@ export default function BlogListPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white">
-      <header className="sticky top-0 z-30 bg-[#17344F]/95 backdrop-blur border-b border-white/10 px-4 md:px-8 py-3">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <button onClick={() => navigate("/")} className="inline-flex items-center gap-1.5 text-sm text-slate-200 hover:text-white">
-            <ArrowLeft className="w-4 h-4" /> Главная
-          </button>
-          <div className="flex items-center gap-2 text-[#E7C768] font-bold">
-            <BookOpen className="w-5 h-5" /> Блог RR
-          </div>
-          <div className="w-16" />
-        </div>
-      </header>
+      <SiteHeader active="blog" />
 
       <main className="max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-12">
         <h1 className="text-3xl md:text-4xl font-extrabold mb-2"
