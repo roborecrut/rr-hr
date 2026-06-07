@@ -4618,6 +4618,33 @@ export default function EmployerPanel() {
         onClose={() => setSelectedCandidateId(null)}
       />
 
+      {/* Spend-confirm dialog: charges for landing / interview / training
+          systems BEFORE opening the corresponding wizard. */}
+      {spendDialog && (
+        <SpendConfirmDialog
+          open
+          kind={spendDialog.kind}
+          projectId={spendDialog.projectId}
+          pickProjects={spendDialog.pickProjects}
+          excludeProjectIds={spendDialog.excludeProjectIds}
+          balance={balance}
+          credits={
+            spendDialog.kind === "landing"
+              ? landingCredits
+              : spendDialog.kind === "interview_setup"
+              ? interviewSetupCredits
+              : trainingSetupCredits
+          }
+          onConfirmed={(pid) => spendDialog.onConfirmed(pid)}
+          onClose={() => (spendDialog.onCancel ? spendDialog.onCancel() : setSpendDialog(null))}
+          onGoToBilling={() => {
+            setSpendDialog(null);
+            const empId = employerId || "";
+            if (empId) navigate(`/emp${empId}/tariff`);
+          }}
+        />
+      )}
+
       {/* MODAL WINDOW FOR PAYMENT */}
       {selectedPlanToBuy && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
