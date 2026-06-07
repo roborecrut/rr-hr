@@ -2393,15 +2393,31 @@ export default function CandidateFlow() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
                       <div className="bg-black/35 p-4 rounded-xl border border-white/5">
                         <div className="text-[10px] uppercase text-slate-400 font-bold">Email</div>
-                        <div className="text-white font-bold mt-1 break-all">{employerContacts.email || "—"}</div>
+                        <div className="text-white font-bold mt-1 break-all">
+                          {employerContacts.email
+                            ? <a className="text-[#E7C768] hover:underline" href={`mailto:${employerContacts.email}`}>{employerContacts.email}</a>
+                            : "—"}
+                        </div>
                       </div>
                       <div className="bg-black/35 p-4 rounded-xl border border-white/5">
                         <div className="text-[10px] uppercase text-slate-400 font-bold">Телефон</div>
-                        <div className="text-white font-bold mt-1">{employerContacts.phone || "—"}</div>
+                        <div className="text-white font-bold mt-1">
+                          {employerContacts.phone
+                            ? <a className="text-[#E7C768] hover:underline" href={`tel:${(employerContacts.phone || "").replace(/[^\d+]/g, "")}`}>{employerContacts.phone}</a>
+                            : "—"}
+                        </div>
                       </div>
                       <div className="bg-black/35 p-4 rounded-xl border border-white/5">
                         <div className="text-[10px] uppercase text-slate-400 font-bold">Telegram</div>
-                        <div className="text-white font-bold mt-1">{employerContacts.telegram || "—"}</div>
+                        <div className="text-white font-bold mt-1">
+                          {employerContacts.telegram
+                            ? (() => {
+                                const raw = (employerContacts.telegram || "").trim().replace(/^@/, "");
+                                const href = raw.startsWith("http") ? raw : `https://t.me/${raw}`;
+                                return <a className="text-[#E7C768] hover:underline" href={href} target="_blank" rel="noopener noreferrer">@{raw}</a>;
+                              })()
+                            : "—"}
+                        </div>
                       </div>
                     </div>
                   </div>
