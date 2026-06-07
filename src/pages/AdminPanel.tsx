@@ -331,8 +331,8 @@ export default function AdminPanel() {
           {section === "candidates" && <CandidatesSection />}
           {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
           {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
-          {section === "interviews" && <SimpleTable table="interviews"  title="Интервью" />}
-          {section === "trainings"  && <SimpleTable table="candidate_training_progress" title="Прогресс обучения" />}
+          {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
+          {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
           {section === "blog"       && <BlogAdmin />}
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
@@ -463,6 +463,11 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
         title={`Клиент · ${selected?.name || selected?.email || ""}`}
         data={selected}
         table="employers"
+        labels={RU_LABELS.employers}
+        omitKeys={OMIT_KEYS.employers}
+        extra={selected && (
+          <ClientLimitsEditor row={selected} setToast={setToast} onChanged={load} />
+        )}
         onClose={() => setSelected(null)}
         onSaved={() => { setSelected(null); load(); }}
       />
@@ -588,6 +593,8 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
         title={title}
         data={selected}
         table={table}
+        labels={RU_LABELS[table]}
+        omitKeys={OMIT_KEYS[table]}
         onClose={() => setSelected(null)}
         onSaved={(row) => {
           setSelected(null);
@@ -765,12 +772,15 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
         title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`}
         data={selectedRow}
         table="employers"
+        labels={RU_LABELS.employers}
+        omitKeys={OMIT_KEYS.employers}
         onClose={() => setSelectedRow(null)}
       />
       <DetailsModal
         title="Транзакция"
         data={selectedTx}
         table="transactions"
+        labels={RU_LABELS.transactions}
         onClose={() => setSelectedTx(null)}
       />
     </div>
