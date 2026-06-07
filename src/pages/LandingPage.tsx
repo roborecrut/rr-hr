@@ -146,9 +146,9 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="px-4 md:px-8 py-16 md:py-24 max-w-7xl mx-auto w-full">
+      <Reveal as="section" direction="fade" className="px-4 md:px-8 py-16 md:py-24 max-w-7xl mx-auto w-full">
         <div className="grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-7 space-y-6">
+          <Reveal direction="left" className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 bg-[#E7C768]/15 border border-[#E7C768]/30 rounded-full px-4 py-2">
               <Sparkles className="w-4 h-4 text-[#E7C768]" />
               <span className="text-xs font-semibold text-[#E7C768] uppercase tracking-wider">Сервис ИИ-Найма</span>
@@ -203,7 +203,9 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="lg:col-span-5 flex justify-center">
+          </Reveal>
+
+          <Reveal direction="right" delay={150} className="lg:col-span-5 flex justify-center">
             <div className="bg-[#1D3E5E]/80 rounded-3xl p-8 border border-white/15 w-full max-w-md shadow-2xl flex flex-col items-center">
               <Mascot state="greeting" size="lg" speechBubble="Привет! Я — Робот Рекрутер. Помогу нанять и обучить персонал за минуты!" />
               <div className="w-full h-px bg-white/10 my-6" />
@@ -219,8 +221,9 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </Reveal>
         </div>
-      </section>
+      </Reveal>
 
       {/* DEMO PROMO — главный CTA для всех посетителей */}
       <section className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1D3E5E]/80 to-[#17344F]/50">
