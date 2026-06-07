@@ -235,6 +235,18 @@ export default function EmployerPanel() {
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
+  // Spend-confirm modal (charge for landing / interview_setup / training_setup
+  // *before* opening the corresponding wizard).
+  type SpendDialogState = {
+    kind: SpendKind;
+    projectId?: string;
+    pickProjects?: JobProject[];
+    excludeProjectIds?: Set<string>;
+    onConfirmed: (projectId: string) => void;
+    onCancel?: () => void;
+  };
+  const [spendDialog, setSpendDialog] = useState<SpendDialogState | null>(null);
+
   // CRM States
   const [crmSearch, setCrmSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
