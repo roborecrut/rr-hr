@@ -16,19 +16,37 @@ import CompanySections from "../components/CompanySections";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
-  return (p: any): JobProject => ({
+  return (p: any): JobProject => {
+    // Auto-derive short summary lines from detailed text fields when the
+    // employer filled in only the long-form description. This keeps the
+    // landing's header pills and vacancy cards populated even if the
+    // employer never typed a separate "salary_terms"/"schedule_terms".
+    const firstNonEmptyLine = (s?: string | null) => {
+      if (!s) return undefined;
+      const line = String(s)
+        .split("\n")
+        .map((l) => l.replace(/^[•\s\-*]+/, "").trim())
+        .find((l) => l.length > 0);
+      return line || undefined;
+    };
+    const salaryFallback =
+      p.salary_terms || firstNonEmptyLine(p.payouts_text) || undefined;
+    const scheduleFallback =
+      p.schedule_terms || firstNonEmptyLine(p.schedule_text) || undefined;
+    return ({
     id: p.id,
     companyName: company?.name || "",
     companySlug: company?.slug || undefined,
     employerId: p.employer_id,
     roleName: p.role_name,
-    salaryTerms: p.salary_terms || undefined,
-    scheduleTerms: p.schedule_terms || undefined,
+    salaryTerms: salaryFallback,
+    scheduleTerms: scheduleFallback,
     motivationText: p.motivation_text || undefined,
     customWiki: p.custom_wiki || undefined,
     checklistQuestions: [],
     roleplayQuestions: [],
     vacancyText: p.vacancy_text || undefined,
+    tasksActivityText: p.tasks_activity_text || undefined,
     motivationTextDetail: p.motivation_text_detail || undefined,
     companyText: p.company_text || undefined,
     onboardingText: p.onboarding_text || undefined,
@@ -41,6 +59,7 @@ function mapDbProjectToUi(company: any) {
     // expose slug so URL builders can use it
     ...({ slug: p.slug } as any),
   });
+  };
 }
 import {
   Briefcase,
