@@ -729,8 +729,35 @@ export default function CompanyLanding() {
         />
       )}
 
-      {/* ИИ-консультант доступен на странице каждой вакансии — здесь, на лендинге
-          компании, он отключён по требованию владельца аккаунта. */}
+      {/* Floating AI Assistant — company-wide knowledge base */}
+      {company && (
+        <VacancyAIAssistant
+          projectId={selectedVacancy?.id}
+          roleName={selectedVacancy?.roleName || null}
+          companyName={company?.name || null}
+          logoUrl={company?.logo_url || null}
+          context={(() => {
+            const c: any = company || {};
+            const parts: string[] = [`Компания: ${c.name || ""}`];
+            if (c.industry) parts.push(`Отрасль: ${c.industry}`);
+            if (c.website) parts.push(`Сайт: ${c.website}`);
+            if (c.staff) parts.push(`Штат: ${c.staff}`);
+            if (c.description_text) parts.push(`О компании:\n${c.description_text}`);
+            if (c.mission_text) parts.push(`Миссия:\n${c.mission_text}`);
+            if (c.products_text) parts.push(`Продукты:\n${c.products_text}`);
+            if (c.about_text) parts.push(`Подробнее:\n${c.about_text}`);
+            if (c.team_text) parts.push(`Команда:\n${c.team_text}`);
+            if (c.payouts_text) parts.push(`Выплаты:\n${c.payouts_text}`);
+            if (c.schedule_text) parts.push(`График:\n${c.schedule_text}`);
+            if (c.system_text) parts.push(`Система работы:\n${c.system_text}`);
+            if (vacancies.length) {
+              parts.push(`Открытые вакансии (${vacancies.length}):\n` +
+                vacancies.map((v: any) => `• ${v.roleName}${v.salaryTerms ? ` — ${v.salaryTerms}` : ""}${v.scheduleTerms ? `, ${v.scheduleTerms}` : ""}`).join("\n"));
+            }
+            return `Отвечай ТОЛЬКО на основе этих данных о компании и её вакансиях. Если в данных нет ответа — честно скажи, что уточнишь у работодателя.\n\n${parts.join("\n\n")}`;
+          })()}
+        />
+      )}
 
     </div>
   );
