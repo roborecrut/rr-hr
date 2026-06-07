@@ -338,13 +338,59 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       {stage === "checklist" && (
         <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-5 space-y-3">
           <h3 className="font-bold text-[#E7C768]">Этап 2: Чек-лист ({questions.length} вопросов)</h3>
-          {checklistScore != null ? (
+          {stageLocked("checklist") ? (
+            <div className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              ⛔ Сначала пройдите этап «Резюме» — без оценки резюме чек-лист недоступен.
+              <button onClick={() => setStage("resume")} className="ml-2 underline text-[#E7C768]">Перейти к резюме</button>
+            </div>
+          ) : checklistScore != null ? (
             <div className="space-y-3">
               <div className="text-3xl font-extrabold text-emerald-300">{checklistScore}/100</div>
+              {checklistFeedback?.summary ? (
+                <p className="text-sm text-white/90 italic">{checklistFeedback.summary}</p>
+              ) : null}
+              {(checklistFeedback?.strengths?.length || checklistFeedback?.gaps?.length) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {checklistFeedback.strengths?.length ? (
+                    <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3">
+                      <div className="text-[10px] uppercase font-bold text-emerald-300">Сильные стороны</div>
+                      <ul className="list-disc pl-5 text-xs text-emerald-100 mt-1 space-y-0.5">
+                        {checklistFeedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {checklistFeedback.gaps?.length ? (
+                    <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
+                      <div className="text-[10px] uppercase font-bold text-amber-300">Что улучшить</div>
+                      <ul className="list-disc pl-5 text-xs text-amber-100 mt-1 space-y-0.5">
+                        {checklistFeedback.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {checklistFeedback?.items?.length ? (
+                <details className="bg-black/30 border border-white/10 rounded-xl">
+                  <summary className="cursor-pointer p-3 text-xs font-bold text-[#E7C768]">Подробный разбор по каждому вопросу</summary>
+                  <div className="p-3 space-y-2">
+                    {checklistFeedback.items.map((it: any) => (
+                      <div key={it.id} className="bg-black/20 border border-white/5 rounded-lg p-2">
+                        <div className="text-xs font-bold text-white">{it.question}</div>
+                        <div className="text-[11px] text-slate-300 mt-1">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
+                        {it.correct ? <div className="text-[11px] text-emerald-300 mt-0.5">Эталон: {it.correct}</div> : null}
+                        <div className={`text-[11px] mt-1 ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
+                          {it.score}/{it.max} · {it.explanation}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
               <div className="flex gap-2">
                 <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
                 <button onClick={() => {
                   setChecklistScore(null);
+                  setChecklistFeedback(null);
                   setAnswers({});
                   if (shuffleChecklist) {
                     setQuestions(qs => shuffleArr(qs).map(q => q.kind === "choice" && q.options ? { ...q, options: shuffleArr(q.options) } : q));
@@ -385,7 +431,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       {stage === "situations" && (
         <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-5 space-y-3">
           <h3 className="font-bold text-[#E7C768]">Этап 3: Ролевые ситуации</h3>
-          {situationsScore != null ? (
+          {stageLocked("situations") ? (
+            <div className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              ⛔ Сначала пройдите этап «Чек-лист» — без него ролевые ситуации недоступны.
+              <button onClick={() => setStage("checklist")} className="ml-2 underline text-[#E7C768]">Перейти к чек-листу</button>
+            </div>
+          ) : situationsScore != null ? (
             <div className="space-y-3">
               <div className="text-3xl font-extrabold text-emerald-300">{situationsScore}/100</div>
               {situationsFeedback.map(f => (
