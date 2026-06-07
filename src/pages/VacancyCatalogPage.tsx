@@ -9,7 +9,7 @@ import RRImage from "@/components/RRImage";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
-  Sparkles, Zap, Users, CheckCircle2,
+  Sparkles, Zap, Users,
 } from "lucide-react";
 
 type Vac = {
