@@ -112,6 +112,14 @@ export default function CandidateStageTraining({
   const submit = async () => {
     setChecking(true);
     try {
+      // Списание лимита у работодателя за обучение этого кандидата:
+      // только при первой отправке теста на проверку.
+      // RPC spend_pack идемпотентен по idem_key — повторные тесты бесплатны.
+      try {
+        await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
+      } catch (e) {
+        console.warn("spend_pack(training) failed", e);
+      }
       const payload = examQuestions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
       const r = await aiWaitRun<any>({
         title: "Проверка ответов",
@@ -207,11 +215,18 @@ export default function CandidateStageTraining({
               <p className="text-slate-400 text-xs">Материалы по этапу ещё не подготовлены работодателем.</p>
             </div>
           )}
-          {questions.length > 0 && (
+          {questions.length > 0 ? (
             <button type="button" onClick={startExam}
-              className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2">
-              <Sparkles className="w-4 h-4" /> Перейти к тесту ({questions.length} вопр., проходной {passScore}/{totalScore})
+              className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white text-sm py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition">
+              <Sparkles className="w-4 h-4" />
+              {progress[active].attempts > 0
+                ? `Перепройти тест (${questions.length} вопр., проходной ${passScore}/${totalScore})`
+                : `Перейти к тесту (${questions.length} вопр., проходной ${passScore}/${totalScore})`}
             </button>
+          ) : (
+            <div className="w-full bg-white/5 border border-white/10 text-slate-300 text-xs py-3 px-4 rounded-xl text-center">
+              Тест по этому этапу ещё не сформирован работодателем.
+            </div>
           )}
         </div>
       ) : mode === "exam" ? (
