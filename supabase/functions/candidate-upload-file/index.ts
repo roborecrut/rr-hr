@@ -25,12 +25,14 @@ Deno.serve(async (req) => {
   try { form = await req.formData(); } catch { return json({ error: "bad_form" }, 400); }
 
   const token = String(form.get("token") || "").trim();
-  const kind = String(form.get("kind") || "").trim(); // 'resume' | 'avatar'
+  const kind = String(form.get("kind") || "").trim(); // 'resume' | 'avatar' | 'doc' | 'list-docs' | 'delete-doc'
   const file = form.get("file");
   if (!token) return json({ error: "no_token" }, 401);
-  if (!(file instanceof File)) return json({ error: "no_file" }, 400);
-  if (!["resume", "avatar"].includes(kind)) return json({ error: "bad_kind" }, 400);
-  if (file.size > 15 * 1024 * 1024) return json({ error: "file_too_large" }, 413);
+  if (!["resume", "avatar", "doc", "list-docs", "delete-doc"].includes(kind)) return json({ error: "bad_kind" }, 400);
+  if (["resume", "avatar", "doc"].includes(kind)) {
+    if (!(file instanceof File)) return json({ error: "no_file" }, 400);
+    if (file.size > 25 * 1024 * 1024) return json({ error: "file_too_large" }, 413);
+  }
 
   // Validate token
   const { data: sess, error: sErr } = await admin
@@ -44,13 +46,36 @@ Deno.serve(async (req) => {
   }
   const candidateId = sess.candidate_id as string;
 
-  const bucket = kind === "resume" ? "candidate-resumes" : "candidate-avatars";
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+  // List candidate documents
+  if (kind === "list-docs") {
+    const { data, error } = await admin.storage.from("candidate-docs").list(candidateId, {
+      limit: 100, sortBy: { column: "created_at", order: "desc" },
+    });
+    if (error) return json({ error: error.message }, 500);
+    const items = await Promise.all((data || []).filter((f) => f.name).map(async (f) => {
+      const fullPath = `${candidateId}/${f.name}`;
+      const { data: sd } = await admin.storage.from("candidate-docs").createSignedUrl(fullPath, 60 * 60 * 24 * 7);
+      return { name: f.name, path: fullPath, size: (f.metadata as any)?.size || 0, signedUrl: sd?.signedUrl || null };
+    }));
+    return json({ ok: true, items });
+  }
+
+  // Delete candidate document
+  if (kind === "delete-doc") {
+    const path = String(form.get("path") || "").trim();
+    if (!path.startsWith(`${candidateId}/`)) return json({ error: "forbidden" }, 403);
+    const { error } = await admin.storage.from("candidate-docs").remove([path]);
+    if (error) return json({ error: error.message }, 500);
+    return json({ ok: true });
+  }
+
+  const bucket = kind === "resume" ? "candidate-resumes" : kind === "doc" ? "candidate-docs" : "candidate-avatars";
+  const safeName = (file as File).name.replace(/[^\w.\-]+/g, "_");
   const path = `${candidateId}/${Date.now()}_${safeName}`;
 
-  const { error: upErr } = await admin.storage.from(bucket).upload(path, file, {
+  const { error: upErr } = await admin.storage.from(bucket).upload(path, file as File, {
     upsert: true,
-    contentType: file.type || undefined,
+    contentType: (file as File).type || undefined,
   });
   if (upErr) return json({ error: `upload_failed: ${upErr.message}` }, 500);
 
