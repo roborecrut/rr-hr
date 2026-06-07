@@ -301,7 +301,13 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </div>
       )}
-      <DetailsModal title={`Клиент · ${selected?.name || selected?.email || ""}`} data={selected} onClose={() => setSelected(null)} />
+      <DetailsModal
+        title={`Клиент · ${selected?.name || selected?.email || ""}`}
+        data={selected}
+        table="employers"
+        onClose={() => setSelected(null)}
+        onSaved={() => { setSelected(null); load(); }}
+      />
     </div>
   );
 }
@@ -420,7 +426,16 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
           </div>
         </div>
       )}
-      <DetailsModal title={title} data={selected} onClose={() => setSelected(null)} />
+      <DetailsModal
+        title={title}
+        data={selected}
+        table={table}
+        onClose={() => setSelected(null)}
+        onSaved={(row) => {
+          setSelected(null);
+          setRows((rs) => rs.map((x) => (x.id === row?.id ? { ...x, ...row } : x)));
+        }}
+      />
     </div>
   );
 }
@@ -588,8 +603,18 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </>
       )}
-      <DetailsModal title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`} data={selectedRow} onClose={() => setSelectedRow(null)} />
-      <DetailsModal title="Транзакция" data={selectedTx} onClose={() => setSelectedTx(null)} />
+      <DetailsModal
+        title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`}
+        data={selectedRow}
+        table="employers"
+        onClose={() => setSelectedRow(null)}
+      />
+      <DetailsModal
+        title="Транзакция"
+        data={selectedTx}
+        table="transactions"
+        onClose={() => setSelectedTx(null)}
+      />
     </div>
   );
 }
@@ -735,7 +760,7 @@ function LogsSection() {
           </div>
         </div>
       )}
-      <DetailsModal title="Лог сообщения" data={selected} onClose={() => setSelected(null)} />
+      <DetailsModal title="Лог сообщения" data={selected} table="logs" onClose={() => setSelected(null)} />
     </div>
   );
 }
