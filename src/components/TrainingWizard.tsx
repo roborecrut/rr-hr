@@ -557,7 +557,19 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                     className="p-1.5 rounded hover:bg-white/10 text-slate-200"><ListOrdered className="w-3.5 h-3.5" /></button>
                   <button type="button" title="Ссылка" onClick={() => applyMd("[", "](https://)", "текст")}
                     className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Link2 className="w-3.5 h-3.5" /></button>
+                  <span className="w-px bg-white/10 mx-1" />
+                  <button type="button" title="Видео YouTube" onClick={() => insertEmbed("youtube")}
+                    className="p-1.5 rounded hover:bg-white/10 text-rose-300"><Youtube className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Видео VK" onClick={() => insertEmbed("vk")}
+                    className="p-1.5 rounded hover:bg-white/10 text-sky-300"><Video className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Видео Rutube" onClick={() => insertEmbed("rutube")}
+                    className="p-1.5 rounded hover:bg-white/10 text-orange-300"><Video className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Google Docs / Sheets / Slides" onClick={() => insertEmbed("gdoc")}
+                    className="p-1.5 rounded hover:bg-white/10 text-emerald-300"><FileText className="w-3.5 h-3.5" /></button>
                 </div>
+                <p className="text-[10px] text-slate-400 -mt-1">
+                  Совет: вставьте отдельной строкой ссылку YouTube / VK Video / Rutube или Google Docs — в превью и у кандидата она автоматически станет встроенным проигрывателем/документом.
+                </p>
                 <textarea
                 ref={materialsRef}
                 rows={14}
@@ -569,12 +581,24 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 />
               </>
             )}
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
               <span>{materials.length}/10000 символов</span>
-              <button type="button" onClick={() => saveMaterials(false)} disabled={saving}
-                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 disabled:opacity-50">
-                Сохранить материал
-              </button>
+              <div className="flex items-center gap-2">
+                {saving && (
+                  <span className="flex items-center gap-1.5 text-[#E7C768] animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Сохраняем в базу данных…
+                  </span>
+                )}
+                {savedFlashMaterial && !saving && (
+                  <span className="flex items-center gap-1 text-emerald-300 animate-fade-in">
+                    <CheckCircle2 className="w-3 h-3" /> Сохранено в БД
+                  </span>
+                )}
+                <button type="button" onClick={() => saveMaterials(false)} disabled={saving}
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#1D3E5E] text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5">
+                  <Save className="w-3 h-3" /> Сохранить материал
+                </button>
+              </div>
             </div>
           </div>
 
@@ -589,6 +613,22 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 {busyTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 Сгенерировать тест ИИ
               </button>
+            </div>
+            {/* Editable pass score */}
+            <div className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5">
+              <label className="text-[11px] text-slate-300 font-bold">Минимальный проходной балл:</label>
+              <input
+                type="number" min={1} max={Math.max(test.total_score || 100, 1)} step={1}
+                value={test.pass_score}
+                onChange={(e) => {
+                  const max = Math.max(test.total_score || 100, 1);
+                  const v = Math.max(1, Math.min(max, Number(e.target.value) || 0));
+                  setTest(t => ({ ...t, pass_score: v }));
+                }}
+                className="w-20 bg-[#17344F]/80 text-xs px-2 py-1 rounded border border-white/10 text-white focus:outline-[#E7C768]"
+              />
+              <span className="text-[11px] text-slate-400">из {test.total_score || (test.questions.length * 5) || 100} возможных</span>
+              <span className="text-[10px] text-slate-500 ml-auto">Меняйте под свои требования и нажмите «Сохранить тест».</span>
             </div>
             <div>
               <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
