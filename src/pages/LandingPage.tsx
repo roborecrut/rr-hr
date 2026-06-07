@@ -23,6 +23,9 @@ import {
   Gift,
   LogOut,
   LayoutDashboard,
+  Play,
+  ListChecks,
+  FileText,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -83,7 +86,7 @@ export default function LandingPage() {
 
           <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
             <button onClick={() => navigate("/")} className="px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Каталог</button>
+            <button onClick={() => navigate("/demo")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Демо-интервью</button>
           </nav>
 
           {isAuthed ? (
@@ -109,7 +112,7 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Каталог</button>
+            <button onClick={() => { navigate("/demo"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Демо-интервью</button>
             {isAuthed ? (
               <>
                 <button onClick={() => { navigate(profilePath); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-[#E7C768] text-[#17344F] font-bold">Кабинет</button>
@@ -172,10 +175,10 @@ export default function LandingPage() {
                 </button>
               )}
               <button
-                onClick={() => navigate("/vacancy")}
+                onClick={() => navigate("/demo")}
                 className="cursor-pointer flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-6 py-4 rounded-xl transition"
               >
-                Открыть каталог должностей <ArrowRight className="w-4 h-4 text-[#E7C768]" />
+                <Play className="w-4 h-4 text-[#E7C768]" /> Пройти демо-интервью бесплатно
               </button>
             </div>
           </div>
