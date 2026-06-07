@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
+import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
@@ -197,17 +197,15 @@ export default function CandidateStageTraining({
           Сначала сдайте предыдущий этап.
         </div>
       ) : mode === "reading" ? (
-        <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
-          <div className="flex items-center gap-2 text-[#E7C768]">
-            <BookOpen className="w-4 h-4" />
-            <h3 className="text-sm font-bold">{STAGES.find(s => s.key === active)?.title}</h3>
-          </div>
+        <div className="space-y-4">
           {material ? (
-            <article className="prose prose-invert prose-sm max-w-none">
-              <EmbeddedMarkdown>{material}</EmbeddedMarkdown>
-            </article>
+            <RichTrainingMaterialCard title={STAGES.find(s => s.key === active)?.title}>
+              {material}
+            </RichTrainingMaterialCard>
           ) : (
-            <p className="text-slate-400 text-xs">Материалы по этапу ещё не подготовлены работодателем.</p>
+            <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6">
+              <p className="text-slate-400 text-xs">Материалы по этапу ещё не подготовлены работодателем.</p>
+            </div>
           )}
           {questions.length > 0 && (
             <button type="button" onClick={startExam}
