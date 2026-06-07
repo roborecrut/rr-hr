@@ -9,6 +9,7 @@ import Mascot from "../components/Mascot";
 import AuthModal from "../components/AuthModal";
 import HiringCalculator from "../components/HiringCalculator";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import ReviewsSection from "../components/ReviewsSection";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import { MASCOT } from "@/lib/mascotImages";
@@ -441,6 +442,9 @@ export default function LandingPage() {
           <HiringCalculator />
         </div>
       </section>
+
+      {/* Reviews */}
+      <ReviewsSection />
 
       {/* CTA */}
       <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
