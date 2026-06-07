@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, X, Sparkles } from "lucide-react";
 import Mascot from "./Mascot";
 import Markdown from "react-markdown";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
   sender: "user" | "assistant";
@@ -73,24 +74,16 @@ export default function EmployerAIAssistant() {
     setIsTyping(true);
 
     try {
-      // Map candidates API format or simple employer text assist
-      const response = await fetch("/api/employer-assist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userQuestion: textToSend,
-          messages: messages.concat(userMsg).map((m) => ({
-            sender: m.sender,
-            text: m.text,
-          })),
-        }),
+      // Send full history (last 12) to FAQ-aware ProTalk assistant
+      const history = messages.concat(userMsg).slice(-12).map((m) => ({
+        role: (m.sender === "assistant" ? "assistant" : "user") as "assistant" | "user",
+        content: m.text,
+      }));
+      const { data, error } = await supabase.functions.invoke("ai-faq-assist", {
+        body: { messages: history },
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to communicate with employer assistant");
-      }
-
-      const data = await response.json();
+      if (error) throw new Error(error.message || "assistant_failed");
+      if (data?.error) throw new Error(String(data.error));
       const assistantMsg: ChatMessage = {
         sender: "assistant",
         text: data.reply || "Извините, возникли временные трудности с ответом. Попробуйте ещё раз!",
@@ -101,7 +94,7 @@ export default function EmployerAIAssistant() {
       console.error(err);
       const errorMsg: ChatMessage = {
         sender: "assistant",
-        text: "Произошла сетевая ошибка при запросе к ИИ-Ассистенту. Пожалуйста, проверьте интернет и повторите попытку.",
+        text: "Произошла ошибка при запросе к ИИ-Ассистенту. Попробуйте ещё раз через минуту или напишите в поддержку support@hr-rr.online.",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages((prev) => [...prev, errorMsg]);
