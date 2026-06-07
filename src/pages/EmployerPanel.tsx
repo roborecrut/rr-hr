@@ -1427,13 +1427,13 @@ export default function EmployerPanel() {
   };
 
   // Покупка фикс-услуги впрок (landing / interview_setup / training_setup)
-  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup") => {
+  const handleBuyFixed = async (item: "landing" | "interview_setup" | "training_setup", qty: number = 1) => {
     setPurchaseError("");
     setFixedBusy(item);
     try {
-      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: 1 });
+      const { error } = await supabase.rpc("purchase_fixed", { _item: item, _qty: Math.max(1, Math.floor(qty)) });
       if (error) throw new Error(error.message || "Ошибка покупки услуги");
-      addAuditEvent("success", "Услуга куплена", item);
+      addAuditEvent("success", "Услуга куплена", `${item} ×${qty}`);
       await fetchBillingState();
     } catch (err: any) {
       setPurchaseError(translateBillingError(err.message));
