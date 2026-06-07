@@ -20,8 +20,8 @@ function hostOf(url: string): string {
 
 type Props = {
   url?: string | null;
-  /** "card" — bigger preview tile (used on company landing). "compact" — small inline chip. */
-  variant?: "card" | "compact";
+  /** "card" — 16:9 preview tile. "banner" — wide 4:1 social-style preview. "compact" — small inline chip. */
+  variant?: "card" | "banner" | "compact";
   className?: string;
 };
 
@@ -37,6 +37,7 @@ export default function SitePreview({ url, variant = "card", className = "" }: P
   if (!href) return null;
   const host = hostOf(href);
   const favicon = `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+  const shotWide = `https://image.thum.io/get/width/1280/crop/320/noanimate/${href}`;
   const shot = `https://image.thum.io/get/width/720/crop/420/noanimate/${href}`;
 
   if (variant === "compact") {
@@ -53,6 +54,41 @@ export default function SitePreview({ url, variant = "card", className = "" }: P
           {host}
         </span>
         <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-[#E7C768] shrink-0" />
+      </a>
+    );
+  }
+
+  if (variant === "banner") {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className={`group relative block rounded-2xl border border-white/15 bg-gradient-to-br from-[#17344F] to-[#265582] hover:border-[#E7C768]/60 transition overflow-hidden shadow-[0_20px_60px_-30px_rgba(0,0,0,0.6)] ${className}`}
+      >
+        {imgOk ? (
+          <div className="aspect-[4/1] w-full overflow-hidden">
+            <img
+              src={shotWide}
+              alt={`Превью ${host}`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setImgOk(false)}
+              className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-500"
+            />
+          </div>
+        ) : (
+          <div className="aspect-[4/1] w-full bg-gradient-to-br from-[#17344F] to-[#265582]" />
+        )}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0E2235]/95 via-[#0E2235]/70 to-transparent px-4 py-3 flex items-center gap-2.5">
+          <img src={favicon} alt="" className="w-6 h-6 rounded-md shrink-0 bg-white/10 p-0.5" referrerPolicy="no-referrer" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[10px] uppercase tracking-widest text-[#E7C768] font-bold leading-none">Официальный сайт</div>
+            <div className="text-sm text-white font-bold truncate mt-0.5">{host}</div>
+          </div>
+          <ExternalLink className="w-4 h-4 text-slate-200 group-hover:text-[#E7C768] shrink-0" />
+        </div>
       </a>
     );
   }
