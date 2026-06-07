@@ -162,16 +162,26 @@ export default function SpendConfirmDialog({
               </button>
             </>
           ) : hasCredit ? (
-            <button
-              onClick={handleSpend}
-              disabled={busy || (!effectiveProjectId)}
-              className="w-full btn-brand-gold py-3 rounded-xl text-sm font-black"
-            >
-              {busy ? "Списываем…" : `Списать 1 лимит (осталось ${credits - 1})`}
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={() => handleSpend("credit")}
+                disabled={busy || !effectiveProjectId}
+                className="w-full btn-brand-gold py-3 rounded-xl text-sm font-black"
+              >
+                {busy ? "Списываем…" : `Списать 1 лимит (осталось ${credits - 1})`}
+              </button>
+              <button
+                onClick={() => handleSpend("balance")}
+                disabled={busy || !effectiveProjectId || balance < price}
+                className="w-full btn-brand-secondary py-3 rounded-xl text-sm font-black disabled:opacity-50"
+                title={balance < price ? "Недостаточно RR на балансе" : ""}
+              >
+                {busy ? "Списываем…" : `Списать ${price} RR с баланса (оставить лимит)`}
+              </button>
+            </div>
           ) : (
             <button
-              onClick={handleSpend}
+              onClick={() => handleSpend("balance")}
               disabled={busy || !canPayRR || !effectiveProjectId}
               className="w-full btn-brand-gold py-3 rounded-xl text-sm font-black"
             >
