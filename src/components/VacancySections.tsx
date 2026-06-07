@@ -718,38 +718,47 @@ export const TeamView: React.FC<SectionProps> = ({ project, onChangeText, isEdit
 // 8. ⚙️ SYSTEM VIEW (DAILY WORKFLOW & CRM PLATFORMS DETAIL)
 // -------------------------------------------------------------
 export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEditable }) => {
-  const text = project.systemText || "• Ведение клиентской базы в amoCRM: своевременная смена этапов сделок, фиксация договоренностей и внесение комментариев.\n• Google Таблицы: ежедневное заполнение оперативной отчетности, учет звонков и ведение реестра договоров.\n• IP-Телефония: звонки клиентам осуществляются в один клик прямо из карточки сделки в amoCRM.\n• Четкие диалоговые регламенты: использование интерактивной Wiki для быстрой отработки сложных вопросов клиентов.\n• Координация в рабочих чатах: ежедневный разбор сложных кейсов с личным наставником.";
-  const criteria = text.split("\n").map(l => l.replace(/^[•\s-*]+/, "").trim()).filter(Boolean);
+  const text = project.systemText || "";
+  const allLines = text.split("\n").map(l => l.replace(/^[•\s\-*]+/, "").trim()).filter(Boolean);
 
-  const rawCabinetText = project.cabinetTabsText || "• [💻 Панель amoCRM] Вся база клиентов находится в структурированной воронке продаж. При звонке карточка открывается автоматически. Вам нужно зафиксировать этап сделки (например, 'Квалифицирован', 'Отправлено КП' или 'Отказ') и написать краткий комментарий по звонку. Система автоматически напомнит о следующем контакте. | 💡 Регламент: Любое изменение статуса контрагента должно сопровождаться комментарием не менее 4-х слов.\n• [📊 Google Таблицы] Форма ежедневного планового зачета звонков и выполненных задач. Сюда заносится количество совершенных эффективных контактов за смену, отправленные коммерческие предложения и планируемые сделки на завтра. | 💡 Ежедневная отчетность должна заполняться до 20:30 МСК текущего рабочего дня.\n• [📞 IP-Телефония] Набор номеров клиентов происходит прямо со встроенного софтфона в один клик. Нет необходимости вводить номера вручную. Все разговоры автоматически записываются и архивируются. | 💡 Требуется гарнитура с шумоподавлением и стабильное интернет-соединение.";
-  const cabinetLines = rawCabinetText.split("\n").map(l => l.replace(/^[•\s-*]+/, "").trim()).filter(Boolean);
-
-  const parsedCabinetTabs = cabinetLines.map((l, idx) => {
-    const match = l.match(/^\[(.*?)\]\s*(.*)$/);
-    let title = "";
-    let rest = l;
-    if (match) {
-      title = match[1];
-      rest = match[2];
+  // Lines like "[Tag] description | optional tip" become tabs.
+  // Lines without [Tag] become a checklist below.
+  const taggedLines: { id: string; title: string; desc: string; tip: string }[] = [];
+  const plainLines: string[] = [];
+  allLines.forEach((l, idx) => {
+    const m = l.match(/^\[(.*?)\]\s*(.*)$/);
+    if (m) {
+      const parts = m[2].split("|");
+      taggedLines.push({
+        id: `tab_${idx}`,
+        title: m[1].trim(),
+        desc: (parts[0] || "").trim(),
+        tip: (parts[1] || "").trim(),
+      });
     } else {
-      const defaultTitles = ["💻 amoCRM", "📊 Google Таблицы", "📞 IP-Телефония"];
-      title = defaultTitles[idx] || `Платформа ${idx + 1}`;
+      plainLines.push(l);
     }
+  });
 
+  // Optional separate cabinet tabs text (legacy). Only used if explicitly set.
+  const rawCabinetText = project.cabinetTabsText || "";
+  const cabinetLines = rawCabinetText.split("\n").map(l => l.replace(/^[•\s\-*]+/, "").trim()).filter(Boolean);
+  const parsedExtraTabs = cabinetLines.map((l, idx) => {
+    const m = l.match(/^\[(.*?)\]\s*(.*)$/);
+    const title = m ? m[1].trim() : `Платформа ${idx + 1}`;
+    const rest = m ? m[2] : l;
     const parts = rest.split("|");
-    const desc = parts[0] ? parts[0].trim() : "";
-    const tip = parts[1] ? parts[1].trim() : "💡 Автоматическая синхронизация регламентов.";
-
     return {
-      id: `tab_${idx}`,
+      id: `ext_${idx}`,
       title,
-      desc,
-      tip
+      desc: (parts[0] || "").trim(),
+      tip: (parts[1] || "").trim(),
     };
   });
 
+  const allTabs = [...parsedExtraTabs, ...taggedLines];
   const [activeSystemIndex, setActiveSystemIndex] = useState(0);
-  const activeTab = parsedCabinetTabs[activeSystemIndex] || parsedCabinetTabs[0] || { title: "Панель", desc: "Набор регламентов", tip: "💡 Правила регламентов." };
+  const activeTab = allTabs[activeSystemIndex] || allTabs[0];
 
   return (
     <div className="space-y-6 text-left">
@@ -785,8 +794,9 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
         </div>
       ) : (
         <div className="space-y-5">
-          
-          {/* Interactive Work Tools Dashboard Panel */}
+
+          {/* Interactive Work Tools Dashboard Panel — only if we have tagged tabs */}
+          {allTabs.length > 0 && activeTab && (
           <div className="bg-gradient-to-br from-[#12283C] to-[#142331] border-2 border-amber-500/20 rounded-2xl p-4 sm:p-5 text-left space-y-4">
             <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/5">
               <Cpu className="w-5 h-5 text-amber-300 animate-pulse" />
@@ -797,9 +807,8 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
             </div>
 
             {/* Platform selection tabs */}
-            {parsedCabinetTabs.length > 0 && (
-              <div className="grid grid-cols-3 gap-2">
-                {parsedCabinetTabs.map((tab, idx) => {
+            <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(allTabs.length, 3)}, minmax(0, 1fr))` }}>
+              {allTabs.map((tab, idx) => {
                   const isActive = activeSystemIndex === idx;
                   return (
                     <button
@@ -816,8 +825,7 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
                     </button>
                   );
                 })}
-              </div>
-            )}
+            </div>
 
             {/* Platform workflow description block */}
             <div className="bg-[#112335] border border-[#E7C768]/15 p-4 rounded-xl space-y-2.5 min-h-[140px] flex flex-col justify-between">
@@ -829,25 +837,35 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
                   {activeTab.desc}
                 </p>
               </div>
-              <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg text-amber-300 font-mono font-medium leading-tight mt-2.5">
-                {activeTab.tip}
-              </div>
+              {activeTab.tip && (
+                <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg text-amber-300 font-mono font-medium leading-tight mt-2.5">
+                  {activeTab.tip}
+                </div>
+              )}
             </div>
           </div>
+          )}
 
           {/* Core Daily Workflow Criteria Checklist */}
+          {plainLines.length > 0 && (
           <div className="bg-black/10 border border-white/5 p-4 rounded-xl space-y-3.5 text-left">
             <span className="text-[10px] font-mono text-slate-300 block uppercase tracking-widest">⚙️ Ежедневная система регламентов и отчетности:</span>
             <div className="space-y-2.5">
-              {criteria.map((crt, i) => (
+              {plainLines.map((crt, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-xs text-slate-200">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>{crt}</span>
                 </div>
               ))}
-              {criteria.length === 0 && <span className="text-slate-400 italic">Сведения пока отсутствуют.</span>}
             </div>
           </div>
+          )}
+
+          {allTabs.length === 0 && plainLines.length === 0 && (
+            <div className="bg-black/10 border border-white/5 p-4 rounded-xl text-xs text-slate-400 italic">
+              Сведения о системе работы пока не заполнены.
+            </div>
+          )}
 
         </div>
       )}
