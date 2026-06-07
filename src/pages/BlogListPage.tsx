@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { mdExcerpt } from "@/lib/mdExcerpt";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { MASCOT } from "@/lib/mascotImages";
+import { useSeo, SITE_URL } from "@/lib/seo";
 
 type Post = {
   id: string;
@@ -21,9 +22,16 @@ export default function BlogListPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useSeo({
+    title: "Блог Робот Рекрутер — статьи о найме, ИИ-интервью и обучении",
+    description: "Практические материалы для рекрутеров и руководителей: как нанимать быстрее, проводить ИИ-интервью и адаптировать новых сотрудников.",
+    canonical: `${SITE_URL}/blog`,
+    ogUrl: `${SITE_URL}/blog`,
+    ogType: "website",
+  });
+
   useEffect(() => {
     window.scrollTo(0, 0);
-    document.title = "Блог RR — статьи о найме, ИИ-интервью и обучении";
     (async () => {
       const { data } = await supabase
         .from("posts")
