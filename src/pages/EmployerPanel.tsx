@@ -1614,12 +1614,15 @@ export default function EmployerPanel() {
     setEnhancingVacFields(prev => ({ ...prev, [fieldName]: true }));
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      const value = await aiEnhanceSingle({
-        field: fieldName,
-        value: currentVal,
-        company_name: setupCompanyName,
-        role_name: setupRoleName,
-        template: exampleFor(fieldName) || undefined,
+      const value = await aiWaitRun({
+        title: `ИИ улучшает поле «${fieldName}»`,
+        task: () => aiEnhanceSingle({
+          field: fieldName,
+          value: currentVal,
+          company_name: setupCompanyName,
+          role_name: setupRoleName,
+          template: exampleFor(fieldName) || undefined,
+        }),
       });
       if (value) setter(value);
       addAuditEvent("success", "Поле улучшено ИИ", `Готово: ${fieldName}`);
@@ -2130,11 +2133,14 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ-полировка поля", `Улучшаем сведения в поле "${fieldName}" через ProTalk LLM...`);
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      const value = await aiEnhanceSingle({
-        field: fieldName,
-        value: currentVal,
-        company_name: editingProject.companyName,
-        role_name: editingProject.roleName,
+      const value = await aiWaitRun({
+        title: `ИИ улучшает поле «${fieldName}»`,
+        task: () => aiEnhanceSingle({
+          field: fieldName,
+          value: currentVal,
+          company_name: editingProject.companyName,
+          role_name: editingProject.roleName,
+        }),
       });
       if (value) {
         setEditingProject({
@@ -2292,12 +2298,15 @@ export default function EmployerPanel() {
     addAuditEvent("info", "ИИ-полировка обучения", `Улучшаем материалы в разделе "${fieldName}"...`);
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
-      const value = await aiEnhanceSingle({
-        field: fieldName,
-        value: currentVal,
-        company_name: editingProject.companyName,
-        role_name: editingProject.roleName,
-        hint: "training_onboarding_evaluation",
+      const value = await aiWaitRun({
+        title: `ИИ улучшает раздел «${fieldName}»`,
+        task: () => aiEnhanceSingle({
+          field: fieldName,
+          value: currentVal,
+          company_name: editingProject.companyName,
+          role_name: editingProject.roleName,
+          hint: "training_onboarding_evaluation",
+        }),
       });
       if (value) {
         setEditingProject({
