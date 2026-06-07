@@ -10,6 +10,15 @@ type Stage = "resume" | "checklist" | "situations" | "done";
 type Question = { id: string; kind: "choice" | "text"; question: string; options?: string[] | null };
 type Situation = { id: string; title: string; brief: string };
 
+function shuffleArr<T>(a: T[]): T[] {
+  const arr = [...a];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 type Props = {
   projectId: string;
   candidateId: string;
@@ -47,6 +56,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [shuffleChecklist, setShuffleChecklist] = useState(true);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checklistScore, setChecklistScore] = useState<number | null>(null);
 
@@ -63,7 +73,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       const { data: pr } = await (supabase as any).from("projects").select("interview_pass_score").eq("id", projectId).maybeSingle();
       setPassScore((pr as any)?.interview_pass_score ?? 75);
       const r = await call("ai-list-interview-checklist", { project_id: projectId });
-      setQuestions(r.questions || []);
+      const qs: Question[] = r.questions || [];
+      const doShuffle = r.shuffle !== false;
+      setShuffleChecklist(doShuffle);
+      setQuestions(doShuffle
+        ? shuffleArr(qs).map(q => q.kind === "choice" && q.options ? { ...q, options: shuffleArr(q.options) } : q)
+        : qs);
       setSituations(r.situations || []);
       // try fetch existing scores
       const { data: sc } = await (supabase as any).from("candidate_scores").select("resume_score,checklist_score,situations_score,assessment_summary").eq("candidate_id", candidateId).maybeSingle();
