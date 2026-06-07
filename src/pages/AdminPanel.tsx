@@ -340,6 +340,7 @@ export default function AdminPanel() {
           {section === "accounts"   && <AccountsSection setToast={setToast} />}
           {section === "logs"       && <LogsSection />}
           {section === "ai"         && <AISection />}
+          {section === "reviews"    && <ReviewsSection setToast={setToast} />}
         </section>
       </main>
     </div>
