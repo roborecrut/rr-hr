@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export default function DetailsModal({
   title, data, onClose, extra, table, idField = "id", onSaved,
+  omitKeys, labels,
 }: {
   title: string;
   data: any | null;
@@ -20,9 +21,17 @@ export default function DetailsModal({
   table?: string;
   idField?: string;
   onSaved?: (row: any) => void;
+  /** Field names that must never be sent in the update patch (computed/virtual columns). */
+  omitKeys?: string[];
+  /** Russian (or any) label overrides for field names. */
+  labels?: Record<string, string>;
 }) {
   const editable = Boolean(table);
-  const READONLY_KEYS = useMemo(() => new Set(["id", idField, "created_at", "updated_at", "public_id"]), [idField]);
+  const OMIT = useMemo(() => new Set(omitKeys || []), [omitKeys]);
+  const READONLY_KEYS = useMemo(
+    () => new Set(["id", idField, "created_at", "updated_at", "public_id", ...(omitKeys || [])]),
+    [idField, omitKeys]
+  );
 
   const [form, setForm] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -56,6 +65,7 @@ export default function DetailsModal({
     const newErrors: Record<string, string> = {};
     for (const [k, v] of Object.entries(form)) {
       if (READONLY_KEYS.has(k)) continue;
+      if (OMIT.has(k)) continue;
       const original = (data as any)[k];
       // Object/array → parse JSON
       if (original !== null && typeof original === "object") {
@@ -97,6 +107,7 @@ export default function DetailsModal({
   };
 
   const entries = Object.entries(form);
+  const labelOf = (k: string) => (labels && labels[k]) || k;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
@@ -137,7 +148,7 @@ export default function DetailsModal({
               return (
                 <div key={k} className={`rounded-xl bg-[#17344F]/55 border ${err ? "border-rose-500/60" : "border-white/10"} p-2.5`}>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-[10px] uppercase tracking-wider font-mono text-[#E7C768]/80">{k}</div>
+                    <div className="text-[10px] uppercase tracking-wider font-mono text-[#E7C768]/80" title={k}>{labelOf(k)}</div>
                     {readonly && <span className="text-[9px] text-slate-400">readonly</span>}
                   </div>
                   {readonly ? (
