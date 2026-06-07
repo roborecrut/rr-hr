@@ -297,6 +297,11 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
+        <img
+          src={MASCOT.megaphone} alt="Робот Рекрутер с рупором"
+          width={160} height={160} loading="lazy" decoding="async"
+          className="w-32 h-32 md:w-40 md:h-40 object-contain mx-auto drop-shadow-2xl"
+        />
         <h2 className="text-3xl md:text-4xl font-bold">Готовы автоматизировать найм?</h2>
         {isAuthed ? (
           <>
