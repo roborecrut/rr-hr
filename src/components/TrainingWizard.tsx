@@ -35,6 +35,7 @@ type QuestionRow = {
   correct?: string | null; expected_answer?: string | null; explanation?: string;
 };
 type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; total_score: number };
+type TestRowExt = TestRow & { shuffle: boolean };
 
 const MAX_QUESTIONS = 30;
 
