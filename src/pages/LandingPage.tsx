@@ -223,9 +223,9 @@ export default function LandingPage() {
       </Reveal>
 
       {/* DEMO PROMO — главный CTA для всех посетителей */}
-      <section className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1D3E5E]/80 to-[#17344F]/50">
+      <Reveal as="section" direction="up" className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1D3E5E]/80 to-[#17344F]/50">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
-          <div className="space-y-5">
+          <Reveal direction="left" className="space-y-5">
             <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full px-3 py-1.5">
               <Play className="w-4 h-4 text-emerald-300" />
               <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Без регистрации · бесплатно</span>
@@ -256,8 +256,8 @@ export default function LandingPage() {
                 Я работодатель — посмотреть сравнение <ArrowRight className="w-4 h-4 text-[#E7C768]" />
               </button>
             </div>
-          </div>
-          <div className="bg-[#17344F]/70 border border-white/10 rounded-3xl p-6 shadow-2xl space-y-3">
+          </Reveal>
+          <Reveal direction="right" delay={120} className="bg-[#17344F]/70 border border-white/10 rounded-3xl p-6 shadow-2xl space-y-3">
             <div className="text-xs uppercase font-mono font-bold text-[#E7C768]/80">Как это выглядит</div>
             <div className="bg-black/30 border border-white/10 rounded-xl p-4 text-sm text-slate-200 italic">
               «Клиент говорит: «У вас слишком дорого, у конкурентов дешевле на 15%». Что вы ответите?»
@@ -270,18 +270,19 @@ export default function LandingPage() {
             <button onClick={() => navigate("/demo")} className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm py-3 rounded-xl shadow inline-flex items-center justify-center gap-2">
               <Play className="w-4 h-4" /> Попробовать с моей должностью
             </button>
-          </div>
+          </Reveal>
         </div>
-      </section>
+      </Reveal>
 
       {/* VACANCIES SHOWCASE — для соискателей и работодателей */}
-      <section
+      <Reveal
+        as="section"
+        direction="up"
         id="vacancies"
-        aria-labelledby="vacancies-title"
         className="px-4 md:px-8 py-20 border-t border-white/10 bg-gradient-to-b from-[#17344F] to-[#1D3E5E]/60"
       >
         <div className="max-w-7xl mx-auto">
-          <header className="text-center max-w-3xl mx-auto mb-12 space-y-4">
+          <Reveal as="header" direction="down" className="text-center max-w-3xl mx-auto mb-12 space-y-4">
             <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full px-3 py-1.5">
               <Sparkles className="w-4 h-4 text-emerald-300" />
               <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Новое · Каталог вакансий открыт всем</span>
@@ -295,11 +296,11 @@ export default function LandingPage() {
               без анкет «расскажите о себе» и без многонедельных ожиданий. А работодатели видят, как должна выглядеть современная система найма,
               на живых примерах — и собирают такую же за 5 минут вместе с нейросетью.
             </p>
-          </header>
+          </Reveal>
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Соискателю */}
-            <article className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-[#1D3E5E]/60 to-[#17344F]/40 border border-emerald-400/20 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+            <Reveal as="article" direction="left" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-[#1D3E5E]/60 to-[#17344F]/40 border border-emerald-400/20 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
               <div className="flex items-start gap-5">
                 <img
                   src={MASCOT.shine}
