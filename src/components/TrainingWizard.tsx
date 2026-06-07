@@ -57,7 +57,9 @@ const STAGE_DEFAULT_CONTEXT: Record<Stage, string[]> = {
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const [projectId, setProjectId] = useState<string>(initialProjectId || "");
-  const lockedProject = !!initialProjectId && !createMode;
+  // Always lock the picker when a project was pre-selected (incl. when the
+  // spend-confirm dialog chose it in create mode).
+  const lockedProject = !!initialProjectId;
   const [stage, setStage] = useState<Stage>("professional");
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
