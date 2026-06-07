@@ -13,16 +13,17 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CandidateDetailsModal from "@/components/CandidateDetailsModal";
 import BlogAdmin from "@/components/admin/BlogAdmin";
+import DetailsModal from "@/components/admin/DetailsModal";
 import {
   Search, ShieldCheck, LogOut, Loader2, RefreshCw, Users, Building2, Briefcase,
   MessageSquare, GraduationCap, Mail, KeyRound, Wallet, Sparkles, ArrowLeft,
-  Plus, Minus, X, BookOpen,
+  Plus, Minus, X, BookOpen, FileText,
 } from "lucide-react";
 
 type SectionKey =
   | "clients" | "candidates" | "companies" | "vacancies"
   | "interviews" | "trainings" | "blog" | "mailings" | "roles"
-  | "accounts" | "ai";
+  | "accounts" | "ai" | "logs";
 
 const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "clients",    label: "Клиенты",   icon: Users },
@@ -35,6 +36,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "mailings",   label: "Рассылки",  icon: Mail },
   { key: "roles",      label: "Роли",      icon: KeyRound },
   { key: "accounts",   label: "Счета",     icon: Wallet },
+  { key: "logs",       label: "Логи ИИ",   icon: FileText },
   { key: "ai",         label: "ИИ",        icon: Sparkles },
 ];
 
@@ -177,6 +179,7 @@ export default function AdminPanel() {
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
           {section === "accounts"   && <AccountsSection setToast={setToast} />}
+          {section === "logs"       && <LogsSection />}
           {section === "ai"         && <AISection />}
         </section>
       </main>
@@ -191,6 +194,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -250,7 +254,8 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 </div>
                 <div className="space-y-2 mt-2">
                   {items.length === 0 ? <div className="text-center py-6 text-slate-500 text-[11px]">Пусто</div> : items.map((r) => (
-                    <div key={r.id} className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl">
+                    <div key={r.id} onClick={() => setSelected(r)}
+                      className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl cursor-pointer transition">
                       <div className="text-xs font-bold text-[#E7C768] truncate">{r.name || r.email || `Emp #${r.public_id}`}</div>
                       <div className="text-[10px] text-slate-300 truncate">{r.email}</div>
                       <div className="flex justify-between text-[10px] font-mono mt-1">
@@ -279,7 +284,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 {filtered.map((r) => {
                   const cls = classifyClient(r);
                   return (
-                    <tr key={r.id} className="hover:bg-white/5">
+                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
                       <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
                       <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
                       <td className="p-3 text-[10px]">{r.contact_phone || "—"} {r.contact_telegram && `· ${r.contact_telegram}`}</td>
@@ -296,6 +301,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </div>
       )}
+      <DetailsModal title={`Клиент · ${selected?.name || selected?.email || ""}`} data={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
@@ -373,6 +379,7 @@ function CandidatesSection() {
 function SimpleTable({ table, title }: { table: string; title: string }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -400,7 +407,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.map((r, i) => (
-                  <tr key={r.id || i} className="hover:bg-white/5">
+                  <tr key={r.id || i} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
                     {cols.map((c) => {
                       const v = (r as any)[c];
                       const str = v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v).slice(0, 60) : String(v).slice(0, 80);
@@ -413,6 +420,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
           </div>
         </div>
       )}
+      <DetailsModal title={title} data={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
@@ -499,6 +507,8 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
+  const [selectedTx, setSelectedTx] = useState<any | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -537,10 +547,10 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 <tbody className="divide-y divide-white/5">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-white/5">
-                      <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
-                      <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
-                      <td className="p-3 font-mono text-[#E7C768] font-bold">{r.balance}</td>
-                      <td className="p-3 flex items-center gap-1">
+                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => setSelectedRow(r)}>{r.public_id}</td>
+                      <td className="p-3 cursor-pointer" onClick={() => setSelectedRow(r)}><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => setSelectedRow(r)}>{r.balance}</td>
+                      <td className="p-3 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {[100, 500, 1000].map((d) => (
                           <React.Fragment key={d}>
                             <button onClick={() => adjust(r.id, d)} className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-[10px] font-bold flex items-center gap-0.5"><Plus className="w-3 h-3" />{d}</button>
@@ -564,7 +574,7 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {txs.map((t) => (
-                    <tr key={t.id}>
+                    <tr key={t.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelectedTx(t)}>
                       <td className="p-2.5 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
                       <td className="p-2.5">{t.type}</td>
                       <td className="p-2.5 font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
@@ -578,6 +588,8 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </>
       )}
+      <DetailsModal title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`} data={selectedRow} onClose={() => setSelectedRow(null)} />
+      <DetailsModal title="Транзакция" data={selectedTx} onClose={() => setSelectedTx(null)} />
     </div>
   );
 }
@@ -606,6 +618,124 @@ function AISection() {
           </a>
         ))}
       </div>
+    </div>
+  );
+}
+
+/* ============== Logs (ProTalk usage) ============== */
+
+// 10 000 000 tokens === 300 ₽  →  0.00003 ₽ per token
+const RUB_PER_TOKEN = 300 / 10_000_000;
+
+function LogsSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setRows((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.user_message, r.bot_reply, r.channel_name, r.bot_id, r.llm, r.user_social_id]
+        .some((v) => v && String(v).toLowerCase().includes(q))
+    );
+  }, [rows, search]);
+
+  const totalTokens = useMemo(
+    () => filtered.reduce((s, r) => s + (Number(r.tokens_total) || 0), 0),
+    [filtered]
+  );
+  const totalRub = totalTokens * RUB_PER_TOKEN;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+        <div>
+          <h2 className="text-base font-bold text-[#E7C768]">Логи сообщений ProTalk — {rows.length}</h2>
+          <p className="text-[11px] text-slate-300 mt-0.5">
+            Тариф: 10 000 000 токенов = 300 ₽ (≈ {RUB_PER_TOKEN.toFixed(6)} ₽ за токен)
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по сообщению / каналу / боту..."
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 w-72" />
+          <button onClick={load} className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Обновить
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-slate-300">Записей в выборке</div>
+          <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{filtered.length}</div>
+        </div>
+        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-slate-300">Сумма токенов (tokens_total)</div>
+          <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{totalTokens.toLocaleString("ru-RU")}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#E7C768]/20 to-[#D99E41]/20 border border-[#E7C768]/40 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-[#E7C768]">Расход ProTalk, ₽</div>
+          <div className="text-2xl font-bold text-[#F4EE8E] font-mono mt-1">
+            {totalRub.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto max-h-[60vh]">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
+                <tr>
+                  <th className="p-2.5">Дата</th>
+                  <th className="p-2.5">Канал</th>
+                  <th className="p-2.5">LLM</th>
+                  <th className="p-2.5">Сообщение</th>
+                  <th className="p-2.5 text-right">Токенов</th>
+                  <th className="p-2.5 text-right">₽</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r) => {
+                  const rub = (Number(r.tokens_total) || 0) * RUB_PER_TOKEN;
+                  return (
+                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
+                      <td className="p-2.5 text-slate-400 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</td>
+                      <td className="p-2.5 text-slate-200">{r.channel_name || "—"}</td>
+                      <td className="p-2.5 text-slate-400">{r.llm || "—"}</td>
+                      <td className="p-2.5 text-slate-200 truncate max-w-[420px]">{r.user_message || "—"}</td>
+                      <td className="p-2.5 text-right font-mono text-[#E7C768]">{(r.tokens_total || 0).toLocaleString("ru-RU")}</td>
+                      <td className="p-2.5 text-right font-mono text-[#F4EE8E]">
+                        {rub.toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={6} className="p-6 text-center text-slate-400">Нет записей</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <DetailsModal title="Лог сообщения" data={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
