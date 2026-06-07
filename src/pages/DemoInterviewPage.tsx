@@ -413,7 +413,7 @@ export default function DemoInterviewPage() {
                   </div>
                 ))}
                 <div className="flex flex-wrap gap-2 pt-2">
-                  <button onClick={() => setState(s => s ? { ...s, stage: "checklist" } : s)} className="btn-brand-gold inline-flex items-center gap-2">
+                  <button onClick={() => setState(s => s?.template ? { ...s, template: randomizeTemplateChecklist(s.template), checkAnswers: {}, checkResult: null, stage: "checklist" } : s)} className="btn-brand-gold inline-flex items-center gap-2">
                     Перейти к чек-листу <ArrowRight className="w-4 h-4"/>
                   </button>
                   <button onClick={() => setState(s => s ? { ...s, sitAnswers: {}, sitResult: null } : s)} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1">
@@ -497,7 +497,7 @@ export default function DemoInterviewPage() {
                   <button onClick={() => setState(s => s ? { ...s, stage: "resume" } : s)} className="btn-brand-gold inline-flex items-center gap-2">
                     Перейти к резюме <ArrowRight className="w-4 h-4"/>
                   </button>
-                  <button onClick={() => setState(s => s ? { ...s, checkAnswers: {}, checkResult: null } : s)} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1">
+                  <button onClick={() => setState(s => s?.template ? { ...s, template: randomizeTemplateChecklist(s.template), checkAnswers: {}, checkResult: null } : s)} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1">
                     <RefreshCw className="w-3 h-3"/> Пересдать
                   </button>
                 </div>
