@@ -13,6 +13,7 @@ import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
 import InterviewList from "../components/InterviewList";
 import InterviewWizard from "../components/InterviewWizard";
+import SpendConfirmDialog, { type SpendKind } from "../components/SpendConfirmDialog";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import {
