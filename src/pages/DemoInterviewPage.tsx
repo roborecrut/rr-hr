@@ -251,7 +251,7 @@ export default function DemoInterviewPage() {
         {state && state.stage === "restart" && (
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-8 text-center space-y-5">
             <div className="flex justify-center">
-              <Mascot state="thinking" size="lg" speechBubble={`Готовлю интервью для "${state.title}"…`} />
+              <Mascot state="recruitment" size="lg" speechBubble={`Готовлю интервью для "${state.title}"…`} />
             </div>
             {prepError ? (
               <div className="space-y-3">
