@@ -391,3 +391,13 @@ export default function LandingPage() {
     </div>
   );
 }
+
+function DemoStepCard({ icon, step, label }: { icon: React.ReactNode; step: string; label: string }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+      <div className="w-9 h-9 mx-auto rounded-lg bg-[#E7C768]/20 text-[#E7C768] flex items-center justify-center">{icon}</div>
+      <div className="text-[10px] uppercase font-bold text-slate-400 mt-2">Шаг {step}</div>
+      <div className="text-xs font-bold text-white">{label}</div>
+    </div>
+  );
+}
