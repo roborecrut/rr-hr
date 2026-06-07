@@ -303,8 +303,8 @@ export default function DemoInterviewPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")}>
-            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="RR Logo" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")} role="link" tabIndex={0} aria-label="На главную — Робот Рекрутер" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}>
+            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
             <div className="flex flex-col text-left">
               <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">Робот Рекрутер</span>
               <span className="text-[10px] font-mono tracking-wider uppercase text-slate-300">Демо-интервью</span>
@@ -317,7 +317,7 @@ export default function DemoInterviewPage() {
           <button onClick={() => setAuthOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg">
             <Chrome className="w-4 h-4" /> Войти / Регистрация
           </button>
-          <button onClick={() => setMobileMenuOpen(o => !o)} className="md:hidden p-2 text-white">
+          <button onClick={() => setMobileMenuOpen(o => !o)} className="md:hidden p-2 text-white" aria-label={mobileMenuOpen ? "Закрыть меню" : "Открыть меню"} aria-expanded={mobileMenuOpen}>
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
