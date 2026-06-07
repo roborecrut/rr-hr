@@ -13,7 +13,6 @@ import CandidateInterview from "../components/CandidateInterview";
 import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
 import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
-import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { getCandidateSession, saveCandidateSession, type CandidateApplication } from "@/lib/candidateSession";
@@ -21,7 +20,6 @@ import {
   FileText,
   Upload,
   Send,
-  Loader,
   Award,
   BookOpen,
   ArrowRight,
@@ -34,7 +32,6 @@ import {
   ExternalLink,
   Menu,
   User,
-  MessageSquare,
   Building,
   Clock,
   Coins,
