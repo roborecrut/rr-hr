@@ -15,19 +15,20 @@ export async function fetchJobTitles(force = false): Promise<JobTitle[]> {
     const { data, error } = await supabase
       .from("job_titles")
       .select("id, title, usage_count, is_basic")
-      .order("usage_count", { ascending: false })
       .order("title", { ascending: true });
     if (error) throw error;
     cache = (data as JobTitle[]) || [];
     return cache;
   } catch (err) {
     // Fallback so the UI is never empty.
-    cache = BASIC_SPECIALTIES.map((t, i) => ({
-      id: `fallback-${i}`,
-      title: t,
-      usage_count: 0,
-      is_basic: true,
-    }));
+    cache = [...BASIC_SPECIALTIES]
+      .sort((a, b) => a.localeCompare(b, "ru"))
+      .map((t, i) => ({
+        id: `fallback-${i}`,
+        title: t,
+        usage_count: 0,
+        is_basic: true,
+      }));
     return cache;
   }
 }
