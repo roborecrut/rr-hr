@@ -558,6 +558,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
     })();
   }, [table]);
   const cols = rows[0] ? Object.keys(rows[0]).slice(0, 8) : [];
+  const lbls = RU_LABELS[table] || {};
   return (
     <div className="space-y-3">
       <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
@@ -572,7 +573,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px]">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
-                <tr>{cols.map((c) => <th key={c} className="p-2.5">{c}</th>)}</tr>
+                <tr>{cols.map((c) => <th key={c} className="p-2.5" title={c}>{lbls[c] || c}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.map((r, i) => (
