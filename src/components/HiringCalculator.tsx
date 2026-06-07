@@ -145,7 +145,7 @@ export default function HiringCalculator() {
       </div>
 
       {/* Summary */}
-      <div className="bg-gradient-to-r from-[#E7C768]/15 to-emerald-500/10 border-2 border-[#E7C768]/40 rounded-2xl p-5 text-center space-y-2">
+      <div className="bg-gradient-to-r from-[#E7C768]/15 to-emerald-500/10 border-2 border-[#E7C768]/40 rounded-2xl p-5 text-center space-y-3">
         <div className="text-xs text-slate-300 font-mono">
           {hrPerUnit.toLocaleString()} RR / {perUnitRR.toLocaleString()} RR = <span className="text-[#E7C768] font-bold">×{ratioMoney}</span> по деньгам
           {" · "}
@@ -154,15 +154,33 @@ export default function HiringCalculator() {
         <div className="text-2xl md:text-3xl font-extrabold text-[#E7C768]">
           В {ratioMoney} раза дешевле и в {ratioTime} раз производительнее
         </div>
-        <p className="text-sm text-slate-200">
-          С нашими ценами ИИ в <strong className="text-emerald-300">{ratioMoney} раз дешевле</strong> человека и требует
-          <strong className="text-emerald-300"> в {ratioTime} раз меньше времени</strong>.
-        </p>
-        <p className="text-xs text-slate-300 leading-relaxed pt-1">
-          HR может вырасти в производительности до <strong className="text-white">×{ratioTime}</strong>, а за ту же зарплату приводить
-          в <strong className="text-white">×{ratioMoney}</strong> больше людей. Кадровые агентства снижают стоимость найма
-          в {ratioMoney} раз и могут продавать готовых сотрудников с маржой ×10 — за {(perUnitRR * 10).toLocaleString()} RR за голову.
-        </p>
+        <div className="pt-3 border-t border-[#E7C768]/30">
+          <p className="text-xs text-slate-300 uppercase tracking-wider font-mono mb-3">
+            Чтобы нанять и обучить {n} {n === 1 ? "сотрудника" : "сотрудников"}, купите:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="bg-black/30 rounded-2xl p-4 border border-[#E7C768]/30">
+              <div className="text-[10px] text-slate-300 uppercase tracking-wider font-mono mb-1">Баланс RR</div>
+              <div className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[#FCE38A] via-[#E7C768] to-[#D99E41] bg-clip-text text-transparent">
+                {totalRR.toLocaleString("ru-RU")} RR
+              </div>
+            </div>
+            <div className="bg-black/30 rounded-2xl p-4 border border-[#E7C768]/30">
+              <div className="text-[10px] text-slate-300 uppercase tracking-wider font-mono mb-1">ИИ-Интервью</div>
+              <div className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[#FCE38A] via-[#E7C768] to-[#D99E41] bg-clip-text text-transparent">
+                {intCount} шт
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono mt-0.5">×{intPrice} RR</div>
+            </div>
+            <div className="bg-black/30 rounded-2xl p-4 border border-[#E7C768]/30">
+              <div className="text-[10px] text-slate-300 uppercase tracking-wider font-mono mb-1">ИИ-Обучений</div>
+              <div className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-[#FCE38A] via-[#E7C768] to-[#D99E41] bg-clip-text text-transparent">
+                {trnCount} шт
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono mt-0.5">×{trnPrice} RR</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Pricing tiers */}
