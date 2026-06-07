@@ -236,37 +236,74 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
   return (
     <div className="space-y-6">
+      {onBack && (
+        <button type="button" onClick={onBack}
+          className="text-xs text-slate-300 hover:text-white flex items-center gap-1.5">
+          <ArrowLeft className="w-3.5 h-3.5" /> К списку систем
+        </button>
+      )}
       <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
             <GraduationCap className="w-6 h-6" />
           </div>
           <div className="text-left flex-1">
-            <h2 className="text-xl font-bold text-white">Мастер Обучения</h2>
+            <h2 className="text-xl font-bold text-white">
+              {createMode ? "Создание системы обучения" : "Редактор системы обучения"}
+            </h2>
             <p className="text-xs text-slate-300">
               3 последовательных этапа. Кандидат проходит этапы по порядку, тест каждого можно перепроходить <strong>неограниченно</strong> до достижения проходного балла.
             </p>
           </div>
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-200 block mb-1">Вакансия:</label>
+          <label className="text-xs font-bold text-slate-200 block mb-1">
+            Вакансия{createMode ? " (обязательно)" : ""}:
+          </label>
           <select
             value={projectId}
+            disabled={lockedProject}
             onChange={(e) => setProjectId(e.target.value)}
-            className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768] disabled:opacity-70"
           >
             <option value="">— Выберите вакансию —</option>
             {projects.map(p => (
               <option key={p.id} value={p.id}>
                 {p.roleName || "(без названия)"} — 🏢 {p.companyName || "—"}
+                {createMode && existingSystems.has(p.id) ? " · уже есть система" : ""}
               </option>
             ))}
           </select>
+          {createMode && projectId && existingSystems.has(projectId) && (
+            <p className="text-[11px] text-amber-300 mt-1.5">
+              ⚠️ Для этой вакансии уже создана система обучения. Сохранение перезапишет существующие материалы и тесты.
+            </p>
+          )}
         </div>
       </div>
 
       {project && (
         <>
+          {/* Context sources */}
+          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-2">
+            <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
+            <p className="text-[11px] text-slate-400">Отметьте, какие сведения вакансии передавать ИИ при генерации материала и теста.</p>
+            <div className="flex flex-wrap gap-2">
+              {CONTEXT_OPTIONS.map(opt => {
+                const checked = contextKeys.includes(opt.key);
+                return (
+                  <label key={opt.key} className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer flex items-center gap-1.5 ${
+                    checked ? "bg-[#E7C768]/15 border-[#E7C768]/50 text-[#E7C768]" : "bg-white/5 border-white/10 text-slate-300"
+                  }`}>
+                    <input type="checkbox" checked={checked} className="accent-[#E7C768]"
+                      onChange={() => setContextKeys(s => s.includes(opt.key) ? s.filter(k => k !== opt.key) : [...s, opt.key])} />
+                    {opt.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Stage tabs */}
           <div className="grid grid-cols-3 gap-2">
             {STAGES.map(s => (
@@ -303,6 +340,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               maxLength={10000}
             />
 
+            <div>
+              <label className="text-[11px] text-slate-300 font-bold">Пожелания к материалу (необязательно)</label>
+              <textarea rows={2} maxLength={1000} value={wishesMaterial}
+                onChange={(e) => setWishesMaterial(e.target.value)}
+                placeholder="Например: «Сделай больше практических кейсов», «Добавь раздел про работу с возражениями»…"
+                className="mt-1 w-full bg-[#17344F]/60 text-xs p-2 rounded-lg border border-white/10 text-white" />
+              <div className="text-[10px] text-slate-500 text-right">{wishesMaterial.length}/1000</div>
+            </div>
+
             <button type="button" onClick={generateMaterial} disabled={busyMaterial}
               className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
               {busyMaterial ? <><RefreshCw className="w-4 h-4 animate-spin" /> Генерируем…</> : <><Sparkles className="w-4 h-4" /> Оформить материал ИИ</>}
@@ -336,13 +382,21 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-bold text-white flex items-center gap-2">
-                <FileQuestion className="w-4 h-4 text-[#E7C768]" /> Тест по этапу ({test.questions.length} вопр., проходной {test.pass_score}/{test.total_score || 100})
+                <FileQuestion className="w-4 h-4 text-[#E7C768]" /> Тест по этапу ({test.questions.length}/{MAX_QUESTIONS} вопр., проходной {test.pass_score}/{test.total_score || 100})
               </div>
               <button type="button" onClick={generateTest} disabled={busyTest || !materials}
                 className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1 disabled:opacity-40">
                 {busyTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 Сгенерировать тест ИИ
               </button>
+            </div>
+            <div>
+              <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
+              <textarea rows={2} maxLength={1000} value={wishesTest}
+                onChange={(e) => setWishesTest(e.target.value)}
+                placeholder="Например: «Больше вопросов про CRM», «Включи 3 каверзных вопроса с НЕ»…"
+                className="mt-1 w-full bg-[#17344F]/60 text-xs p-2 rounded-lg border border-white/10 text-white" />
+              <div className="text-[10px] text-slate-500 text-right">{wishesTest.length}/1000</div>
             </div>
             {busyTest && <LoadingPhrase entity="training" />}
             {test.questions.length === 0 && !busyTest && (
@@ -354,6 +408,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 <div key={q.id || i} className="bg-[#0F2A42]/70 border border-white/10 rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between text-[10px] text-[#E7C768] font-bold uppercase">
                     <span>#{i + 1} • {q.kind === "choice" ? "Выбор" : "Текст"} • {q.points || 5} б.</span>
+                    <button type="button"
+                      onClick={() => setTest(t => ({ ...t, questions: t.questions.filter((_, idx) => idx !== i) }))}
+                      className="text-rose-300 hover:text-rose-200" title="Удалить вопрос">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                   <textarea
                     rows={2} value={q.question}
@@ -391,6 +450,36 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button type="button"
+                disabled={test.questions.length >= MAX_QUESTIONS}
+                onClick={() => setTest(t => ({
+                  ...t,
+                  questions: [...t.questions, {
+                    id: `q${Date.now()}`, kind: "choice", question: "",
+                    options: [{ text: "", is_correct: true }, { text: "" }, { text: "" }, { text: "" }],
+                    correct: "", points: 5,
+                  }],
+                }))}
+                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white flex items-center gap-1 disabled:opacity-40">
+                <Plus className="w-3.5 h-3.5" /> Вопрос с вариантами
+              </button>
+              <button type="button"
+                disabled={test.questions.length >= MAX_QUESTIONS}
+                onClick={() => setTest(t => ({
+                  ...t,
+                  questions: [...t.questions, {
+                    id: `q${Date.now()}`, kind: "text", question: "", expected_answer: "", points: 5,
+                  }],
+                }))}
+                className="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white flex items-center gap-1 disabled:opacity-40">
+                <Plus className="w-3.5 h-3.5" /> Текстовый вопрос
+              </button>
+              {test.questions.length >= MAX_QUESTIONS && (
+                <span className="text-[10px] text-amber-300 self-center">Достигнут лимит {MAX_QUESTIONS} вопросов.</span>
+              )}
             </div>
 
             {test.questions.length > 0 && (
