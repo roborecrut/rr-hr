@@ -47,6 +47,164 @@ function classifyClient(c: any): { key: string; label: string; color: string } {
   return { key: "new", label: "Новый", color: "slate" };
 }
 
+/* ===== Русские названия колонок и какие поля нельзя редактировать ===== */
+const RU_LABELS: Record<string, Record<string, string>> = {
+  employers: {
+    id: "ID", public_id: "Публичный ID", user_id: "User ID", email: "Email",
+    name: "Имя", company_name: "Компания", contact_name: "Контактное лицо",
+    contact_email: "Контактный email", contact_phone: "Телефон", contact_telegram: "Telegram",
+    plan: "Тариф", status: "Статус", ref_by: "Кто пригласил",
+    bonus_granted: "Бонус начислен", offer_accepted: "Оферта принята",
+    offer_accepted_at: "Дата оферты", offer_version: "Версия оферты",
+    landing_credits: "Лимит вакансий", interview_setup_credits: "Лимит систем найма",
+    training_setup_credits: "Лимит систем обучения", interview_credits: "Лимит интервью",
+    training_credits: "Лимит обучений",
+    balance: "Баланс RR (вычисляется)",
+    projects_count: "Вакансий, шт", candidates_count: "Кандидатов, шт",
+    has_topup: "Делал пополнения", created_at: "Создан", updated_at: "Обновлён",
+  },
+  companies: {
+    name: "Название", slug: "URL-слаг", logo_url: "Логотип (URL)", industry: "Отрасль",
+    website: "Сайт", staff: "Штат", description_text: "Описание", products_text: "Продукты",
+    mission_text: "Миссия", about_text: "О компании", team_text: "Команда",
+    payouts_text: "Выплаты", schedule_text: "График", system_text: "Система работы",
+    stats: "Статистика (JSON)", status: "Статус", is_published: "Опубликована",
+    owner_employer_id: "Владелец (employer)", created_at: "Создана", updated_at: "Обновлена",
+    archived_at: "Архив с", deleted_at: "Удалена",
+  },
+  projects: {
+    role_name: "Должность", salary_terms: "Зарплата", schedule_terms: "График",
+    motivation_text: "Мотивация", custom_wiki: "Вики", logo_url: "Логотип (URL)",
+    company_id: "Компания", employer_id: "Работодатель", is_published: "Опубликована",
+    status: "Статус", slug: "URL-слаг", vacancy_text: "Описание вакансии",
+    max_interviews: "Лимит интервью на вакансию", max_trainings: "Лимит обучений на вакансию",
+    created_at: "Создана", updated_at: "Обновлена",
+  },
+  candidate_scores: {
+    candidate_id: "Кандидат", interview_score: "Балл за интервью",
+    resume_score: "Балл за резюме", checklist_points: "Чек-лист (баллы)",
+    roleplay_points: "Кейсы (баллы)", overall_score: "Итоговый балл",
+    checklist_score: "Чек-лист %", checklist_sys_score: "Системный чек-лист %",
+    situations_score: "Кейсы %", assessment_summary: "Резюме оценки",
+    resume_feedback: "Фидбек по резюме", checklist_feedback: "Фидбек чек-листа",
+    situations_feedback: "Фидбек кейсов", updated_at: "Обновлено",
+  },
+  candidate_stage_progress: {
+    candidate_id: "Кандидат", stage: "Этап", attempts: "Попыток",
+    best_score: "Лучший балл", last_score: "Последний балл",
+    last_answers: "Последние ответы", last_feedback: "Последний фидбек",
+    passed_at: "Пройдено", created_at: "Создано", updated_at: "Обновлено",
+  },
+  transactions: {
+    wallet_id: "Кошелёк", type: "Тип", amount_rr: "Сумма RR",
+    ref_table: "Источник (таблица)", ref_id: "Источник (id)",
+    note: "Комментарий", idem_key: "Ключ идемпотентности", created_at: "Дата",
+  },
+  logs: {
+    channel_id: "ID канала", channel_name: "Канал", bot_id: "Бот", llm: "Модель",
+    user_message: "Сообщение пользователя", bot_reply: "Ответ нейросети",
+    user_social_id: "Соц.ID пользователя", api_key: "API-ключ",
+    tokens_total: "Токенов всего", tokens_in_source: "Токены вход",
+    tokens_out_source: "Токены выход", tokens_user: "Токены пользователя",
+    function_error: "Ошибка функции", function_call_params: "Параметры вызова",
+    server_name: "Сервер", created_at: "Дата",
+  },
+};
+
+/** Computed/virtual fields that come from RPCs and aren't real columns. */
+const OMIT_KEYS: Record<string, string[]> = {
+  employers: [
+    "balance","has_topup","projects_count","candidates_count","email","name",
+    // limits are edited via admin RPC (logs to transactions), не через прямой UPDATE:
+    "landing_credits","interview_setup_credits","training_setup_credits",
+    "interview_credits","training_credits",
+  ],
+};
+
+const LIMIT_FIELDS: { key: string; label: string }[] = [
+  { key: "landing_credits",         label: "Вакансии (лендинги)" },
+  { key: "interview_setup_credits", label: "Системы найма" },
+  { key: "training_setup_credits",  label: "Системы обучения" },
+  { key: "interview_credits",       label: "Интервью" },
+  { key: "training_credits",        label: "Обучения" },
+];
+
+function ClientLimitsEditor({
+  row, onChanged, setToast,
+}: { row: any; onChanged: () => void; setToast: (t: any) => void }) {
+  const [vals, setVals] = useState<Record<string, number>>(() =>
+    Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, Number(row?.[f.key] || 0)])),
+  );
+  const [bal, setBal] = useState<number>(Number(row?.balance || 0));
+  const [delta, setDelta] = useState<number>(0);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setVals(Object.fromEntries(LIMIT_FIELDS.map((f) => [f.key, Number(row?.[f.key] || 0)])));
+    setBal(Number(row?.balance || 0));
+    setDelta(0);
+  }, [row?.id]);
+
+  if (!row) return null;
+
+  const saveLimit = async (field: string) => {
+    setBusy(true);
+    const note = window.prompt(`Комментарий к изменению лимита «${LIMIT_FIELDS.find((f) => f.key === field)?.label}»:`, "Корректировка администратором");
+    if (note === null) { setBusy(false); return; }
+    const { error } = await supabase.rpc("admin_employer_set_limit" as any, {
+      _employer: row.id, _field: field, _value: vals[field], _note: note,
+    });
+    setBusy(false);
+    if (error) setToast({ kind: "err", text: error.message });
+    else { setToast({ kind: "ok", text: "Лимит обновлён" }); onChanged(); }
+  };
+
+  const applyBalance = async () => {
+    if (!delta) return;
+    setBusy(true);
+    const note = window.prompt(`Комментарий к ${delta > 0 ? "начислению" : "списанию"} ${Math.abs(delta)} RR:`, "Корректировка администратором");
+    if (note === null) { setBusy(false); return; }
+    const { error } = await supabase.rpc("admin_wallet_adjust" as any, {
+      _employer: row.id, _delta: delta, _note: note,
+    });
+    setBusy(false);
+    if (error) setToast({ kind: "err", text: error.message });
+    else { setToast({ kind: "ok", text: "Баланс обновлён" }); onChanged(); }
+  };
+
+  return (
+    <div className="rounded-2xl border border-[#E7C768]/30 bg-[#17344F]/55 p-3 space-y-3">
+      <div className="text-xs font-bold text-[#E7C768]">Лимиты и баланс (с логированием в «Историю операций»)</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {LIMIT_FIELDS.map((f) => (
+          <div key={f.key} className="flex items-center gap-2 bg-[#0F2336]/60 rounded-lg p-2">
+            <div className="text-[11px] text-slate-200 flex-1">{f.label}</div>
+            <input type="number" min={0} value={vals[f.key]}
+              onChange={(e) => setVals((s) => ({ ...s, [f.key]: Math.max(0, Number(e.target.value) || 0) }))}
+              className="w-20 bg-[#17344F]/70 border border-white/10 rounded-md px-2 py-1 text-xs text-white" />
+            <button disabled={busy} onClick={() => saveLimit(f.key)}
+              className="px-2 py-1 rounded-md bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] text-[10px] font-bold disabled:opacity-60">
+              Сохранить
+            </button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 bg-[#0F2336]/60 rounded-lg p-2 border-t border-white/10 pt-3">
+        <div className="text-[11px] text-slate-200 flex-1">
+          Баланс RR: <span className="font-mono font-bold text-[#E7C768]">{bal}</span>
+        </div>
+        <input type="number" value={delta} onChange={(e) => setDelta(Number(e.target.value) || 0)}
+          placeholder="±RR"
+          className="w-24 bg-[#17344F]/70 border border-white/10 rounded-md px-2 py-1 text-xs text-white" />
+        <button disabled={busy || !delta} onClick={applyBalance}
+          className="px-2 py-1 rounded-md bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] text-[10px] font-bold disabled:opacity-60">
+          Применить
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [authChecked, setAuthChecked] = useState(false);
@@ -173,8 +331,8 @@ export default function AdminPanel() {
           {section === "candidates" && <CandidatesSection />}
           {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
           {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
-          {section === "interviews" && <SimpleTable table="interviews"  title="Интервью" />}
-          {section === "trainings"  && <SimpleTable table="candidate_training_progress" title="Прогресс обучения" />}
+          {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
+          {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
           {section === "blog"       && <BlogAdmin />}
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
@@ -305,6 +463,11 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
         title={`Клиент · ${selected?.name || selected?.email || ""}`}
         data={selected}
         table="employers"
+        labels={RU_LABELS.employers}
+        omitKeys={OMIT_KEYS.employers}
+        extra={selected && (
+          <ClientLimitsEditor row={selected} setToast={setToast} onChanged={load} />
+        )}
         onClose={() => setSelected(null)}
         onSaved={() => { setSelected(null); load(); }}
       />
@@ -395,6 +558,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
     })();
   }, [table]);
   const cols = rows[0] ? Object.keys(rows[0]).slice(0, 8) : [];
+  const lbls = RU_LABELS[table] || {};
   return (
     <div className="space-y-3">
       <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
@@ -409,7 +573,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px]">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
-                <tr>{cols.map((c) => <th key={c} className="p-2.5">{c}</th>)}</tr>
+                <tr>{cols.map((c) => <th key={c} className="p-2.5" title={c}>{lbls[c] || c}</th>)}</tr>
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.map((r, i) => (
@@ -430,6 +594,8 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
         title={title}
         data={selected}
         table={table}
+        labels={RU_LABELS[table]}
+        omitKeys={OMIT_KEYS[table]}
         onClose={() => setSelected(null)}
         onSaved={(row) => {
           setSelected(null);
@@ -607,12 +773,15 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
         title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`}
         data={selectedRow}
         table="employers"
+        labels={RU_LABELS.employers}
+        omitKeys={OMIT_KEYS.employers}
         onClose={() => setSelectedRow(null)}
       />
       <DetailsModal
         title="Транзакция"
         data={selectedTx}
         table="transactions"
+        labels={RU_LABELS.transactions}
         onClose={() => setSelectedTx(null)}
       />
     </div>

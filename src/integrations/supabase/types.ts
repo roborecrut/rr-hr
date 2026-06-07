@@ -2274,6 +2274,15 @@ export type Database = {
       _owns_project: { Args: { _id: string }; Returns: boolean }
       accept_offer: { Args: { _version?: string }; Returns: Json }
       admin_delete_job_title: { Args: { _id: string }; Returns: Json }
+      admin_employer_set_limit: {
+        Args: {
+          _employer: string
+          _field: string
+          _note?: string
+          _value: number
+        }
+        Returns: Json
+      }
       admin_job_title_upsert_interview_template: {
         Args: { _overwrite?: boolean; _patch: Json; _title: string }
         Returns: Json
