@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
 import EmployerAIAssistant from "@/components/EmployerAIAssistant";
 import { useSeo, SITE_URL } from "@/lib/seo";
+import SiteHeader from "@/components/SiteHeader";
 
 type FaqItem = {
   id: string;
@@ -90,27 +91,7 @@ export default function FaqPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-3 cursor-pointer">
-            <img
-              src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png"
-              alt="RR"
-              className="w-10 h-10 object-contain"
-            />
-            <span className="text-xl font-bold bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">
-              Робот Рекрутер
-            </span>
-          </button>
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm font-semibold text-slate-300 hover:text-white"
-          >
-            ← На главную
-          </button>
-        </div>
-      </header>
+      <SiteHeader active="faq" />
 
       <section className="max-w-5xl mx-auto px-4 md:px-8 py-10 md:py-16">
         {/* Hero */}

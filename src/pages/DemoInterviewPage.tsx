@@ -10,6 +10,7 @@ import RRImage from "@/components/RRImage";
 import Mascot from "@/components/Mascot";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import AuthModal from "@/components/AuthModal";
+import SiteHeader from "@/components/SiteHeader";
 import { fetchJobTitles, type JobTitle } from "@/lib/jobTitles";
 import { aiRestart } from "@/lib/aiClient";
 import { MASCOT } from "@/lib/mascotImages";
@@ -300,34 +301,7 @@ export default function DemoInterviewPage() {
 
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
-        <div className="flex items-center justify-between gap-4 w-full max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")} role="link" tabIndex={0} aria-label="На главную — Робот Рекрутер" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}>
-            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
-            <div className="flex flex-col text-left">
-              <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">Робот Рекрутер</span>
-              <span className="text-[10px] font-mono tracking-wider uppercase text-slate-300">Демо-интервью</span>
-            </div>
-          </div>
-          <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
-            <button onClick={() => navigate("/")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Главная</button>
-            <button className="px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">Демо-интервью</button>
-          </nav>
-          <button onClick={() => setAuthOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg">
-            <Chrome className="w-4 h-4" /> Войти / Регистрация
-          </button>
-          <button onClick={() => setMobileMenuOpen(o => !o)} className="md:hidden p-2 text-white" aria-label={mobileMenuOpen ? "Закрыть меню" : "Открыть меню"} aria-expanded={mobileMenuOpen}>
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-        {mobileMenuOpen && (
-          <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
-            <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
-            <button onClick={() => { setAuthOpen(true); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] font-bold">Войти / Регистрация</button>
-          </div>
-        )}
-      </header>
+      <SiteHeader active="demo" />
 
       <main className="brand-editor max-w-5xl w-full mx-auto px-4 md:px-8 py-8 md:py-12 flex-1 space-y-6">
         {/* Step indicator */}
