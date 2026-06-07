@@ -495,7 +495,14 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                   <div className="text-sm text-slate-200">{f.feedback}</div>
                 </div>
               ))}
-              <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+              <div className="flex flex-wrap gap-2">
+                {finalScore != null && (
+                  <button onClick={() => setStage("done")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-1">
+                    <Award className="w-4 h-4"/> Показать итоговую оценку →
+                  </button>
+                )}
+                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+              </div>
             </div>
           ) : situations.length === 0 ? (
             <p className="text-sm text-amber-300">Ситуации ещё не настроены работодателем.</p>
