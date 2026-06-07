@@ -108,7 +108,7 @@ export default function DemoInterviewPage() {
         // Cached template?
         const cached = loadCachedTemplate(state.titleId);
         if (cached) {
-          setState(s => s ? { ...s, template: cached, stage: "situations" } : s);
+          setState(s => s ? { ...s, template: randomizeTemplateChecklist(cached), checkAnswers: {}, checkResult: null, stage: "situations" } : s);
           return;
         }
 
@@ -146,11 +146,6 @@ export default function DemoInterviewPage() {
           correct: q.correct != null ? String(q.correct) : null,
           expected_answer: q.explanation ? String(q.explanation) : null,
         })).filter((q: any) => q.question);
-        // Shuffle checklist once so each demo session has a random order.
-        for (let i = checklist.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [checklist[i], checklist[j]] = [checklist[j], checklist[i]];
-        }
 
         const resume_criteria = typeof it.resume_criteria === "string"
           ? it.resume_criteria
@@ -169,7 +164,7 @@ export default function DemoInterviewPage() {
           resume_criteria,
         };
         saveCachedTemplate(tpl);
-        setState(s => s ? { ...s, template: tpl, stage: "situations" } : s);
+        setState(s => s ? { ...s, template: randomizeTemplateChecklist(tpl), checkAnswers: {}, checkResult: null, stage: "situations" } : s);
       } catch (e: any) {
         setPrepError(e?.message || "Не удалось загрузить демо. Попробуйте ещё раз.");
       } finally {
