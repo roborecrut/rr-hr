@@ -602,39 +602,7 @@ export default function CandidateFlow() {
     }
   }, [path]);
 
-  // Floating AI Assistant states
-  const [assistOpen, setAssistOpen] = useState(false);
-  const [assistTextInput, setAssistTextInput] = useState("");
-  const [assistHistory, setAssistHistory] = useState<{ sender: "ai" | "user", text: string }[]>([
-    { sender: "ai", text: "Привет! Я твой ИИ Робот-Помощник. Спрашивай меня обо всем — о регламентах, вакансии, графике, выплатах или обучении! 😊" }
-  ]);
-  const [assistLoading, setAssistLoading] = useState(false);
-
-  const handleSendAssist = async () => {
-    if (!assistTextInput.trim()) return;
-    const userText = assistTextInput;
-    setAssistHistory(prev => [...prev, { sender: "user", text: userText }]);
-    setAssistTextInput("");
-    setAssistLoading(true);
-
-    try {
-      const { aiChat } = await import("@/lib/aiClient");
-      const contextLine = `Раздел: ${activeTab}; Подраздел: ${activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")}`;
-      const reply = await aiChat({
-        kind: "candidate",
-        candidate_id: candidate?.id,
-        project_id: candidate?.projectId,
-        context: contextLine,
-        messages: [{ role: "user", content: userText }],
-      });
-      setAssistHistory(prev => [...prev, { sender: "ai", text: reply || "Я задумался… попробуйте задать вопрос иначе." }]);
-    } catch (err) {
-      console.error(err);
-      setAssistHistory(prev => [...prev, { sender: "ai", text: "Не удалось отправить сообщение. Пожалуйста, проверьте интернет-соединение." }]);
-    } finally {
-      setAssistLoading(false);
-    }
-  };
+  // (Floating AI Assistant removed from the candidate cabinet by request.)
 
   // Profile management edit states
   const [editingProfile, setEditingProfile] = useState(false);
