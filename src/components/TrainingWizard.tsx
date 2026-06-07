@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code, Youtube, FileText, Save, CheckCircle2, ChevronDown, ChevronUp, Video } from "lucide-react";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
+import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
@@ -545,7 +546,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
             {previewMd ? (
               <div className="min-h-[200px]">
-                <RichTrainingMaterialCard title={`Превью учебного материала — ${stageTitle || ""}`}>
+                <RichTrainingMaterialCard title={`Превью учебного материала — ${STAGES.find(s => s.key === stage)?.title || ""}`}>
                   {materials || "_Пусто_"}
                 </RichTrainingMaterialCard>
               </div>
