@@ -1,5 +1,5 @@
 /**
- * Сравнительный калькулятор: Робот RR vs Человек HR.
+ * Сравнительный калькулятор: Робот Рекрутер vs Человек Рекрутер.
  * Используется на лендинге и на странице "Тарифы" в кабинете.
  */
 import { useState } from "react";
@@ -29,7 +29,7 @@ function tierLabel(qty: number): string {
 export default function HiringCalculator() {
   const [n, setN] = useState(5);
 
-  // Робот RR (масштабируется от ТЗ при N=5)
+  // Робот Рекрутер (масштабируется от ТЗ при N=5)
   const regCount = n * 10;          // зарегистрировалось
   const intCount = n * 6;           // прошло интервью
   const intPrice = tierPrice(intCount);
@@ -43,7 +43,7 @@ export default function HiringCalculator() {
   const totalMin = regCount + intCount + Math.round(okCount) + trnCount + passCount;
   const perUnitRR = round(totalRR / n);
 
-  // Человек HR (часы)
+  // Человек Рекрутер (часы)
   const hrInvited = n * 12;
   const hrInvitedH = round(hrInvited * 0.05, 1);  // 3 минуты на приглашение
   const hrShowH = intCount;             // 1 час на интервью
@@ -60,7 +60,7 @@ export default function HiringCalculator() {
     <div className="bg-[#1D3E5E]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left space-y-6">
       <div className="text-center space-y-2">
         <h3 className="text-xl md:text-2xl font-bold text-white">
-          Калькулятор «Робот vs HR»
+          Калькулятор «Робот vs Рекрутер»
         </h3>
         <p className="text-slate-300 text-sm">
           Выберите, сколько готовых обученных сотрудников вам нужно
@@ -95,7 +95,7 @@ export default function HiringCalculator() {
         {/* RR */}
         <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-5 space-y-2.5 text-sm">
           <div className="font-bold text-emerald-300 text-base flex items-center gap-2 pb-2 border-b border-emerald-500/20">
-            🤖 Робот RR
+            🤖 Робот Рекрутер
           </div>
           <Row label="Зарегистрировалось" value={`${regCount}`} sub={`${regCount} мин`} />
           <Row label="Прошло интервью" value={`${intCount}`} sub={`${intCount}×${intPrice} = ${intRR.toLocaleString()} RR · ${intCount} мин`} />
@@ -121,7 +121,7 @@ export default function HiringCalculator() {
         {/* HR */}
         <div className="bg-rose-950/30 border border-rose-500/30 rounded-2xl p-5 space-y-2.5 text-sm">
           <div className="font-bold text-rose-300 text-base flex items-center gap-2 pb-2 border-b border-rose-500/20">
-            👤 Человек HR
+            👤 Человек Рекрутер
           </div>
           <Row label="Пригласили на интервью" value={`${hrInvited}`} sub={`${hrInvitedH} ч`} />
           <Row label="Пришло на интервью" value={`${intCount}`} sub={`${hrShowH} ч`} />
@@ -138,7 +138,7 @@ export default function HiringCalculator() {
               <span className="font-mono font-bold">{hrPerUnit.toLocaleString()} RR</span>
             </div>
             <div className="text-[10px] text-rose-200/70 pt-1">
-              * HR со средней зарплатой 80&nbsp;000 RR за 160 часов в месяц
+              * Рекрутер со средней зарплатой 80&nbsp;000 RR за 160 часов в месяц
             </div>
           </div>
         </div>
