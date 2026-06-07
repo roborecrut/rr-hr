@@ -8,7 +8,7 @@ interface RevealProps {
   delay?: number;
   duration?: number;
   className?: string;
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   /** how much must be visible before triggering (0..1) */
   threshold?: number;
   /** when true (default), re-animates on each enter/exit, including reverse scroll */
