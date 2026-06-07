@@ -14,6 +14,7 @@ interface RevealProps {
   /** when true (default), re-animates on each enter/exit, including reverse scroll */
   reAnimate?: boolean;
   style?: React.CSSProperties;
+  [key: string]: any;
 }
 
 /**
