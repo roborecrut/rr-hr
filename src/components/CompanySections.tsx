@@ -13,7 +13,7 @@ import {
   BarChart3,
   Briefcase,
   ArrowRight,
-  Globe,
+  // Globe icon no longer needed — website now rendered as banner in hero.
 } from "lucide-react";
 import type { JobProject } from "../types";
 import SitePreview from "./SitePreview";
@@ -180,9 +180,6 @@ export default function CompanySections({
   if (company.industry) heroMeta.push(String(company.industry));
   if (company.staff)    heroMeta.push(`${company.staff}`);
 
-  // Inject "website" into the sticky nav if we have one
-  if (company.website) navItems.push({ id: "sec-website", label: "Сайт" });
-
   return (
     <div className="space-y-5 md:space-y-7">
       {/* HERO */}
@@ -201,6 +198,11 @@ export default function CompanySections({
           aria-hidden
           className="pointer-events-none absolute -top-32 -right-32 w-96 h-96 rounded-full bg-[#E7C768]/15 blur-3xl"
         />
+        {company.website && (
+          <div className="relative mb-5">
+            <SitePreview url={company.website} variant="banner" />
+          </div>
+        )}
         <div className="relative flex flex-col md:flex-row items-start md:items-center gap-5">
           {company.logo_url ? (
             <img
@@ -268,18 +270,6 @@ export default function CompanySections({
 
       {/* Sticky in-page nav */}
       {navItems.length > 1 && <StickyNav items={navItems} />}
-
-      {/* Site preview */}
-      {company.website && (
-        <SectionCard
-          id="sec-website"
-          icon={<Globe className="w-5 h-5" />}
-          title="Официальный сайт"
-          eyebrow="Внешний ресурс"
-        >
-          <SitePreview url={company.website} variant="card" />
-        </SectionCard>
-      )}
 
       {/* Two-column section layout on desktop; one column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
