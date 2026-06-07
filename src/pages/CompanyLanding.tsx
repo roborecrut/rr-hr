@@ -14,6 +14,7 @@ import { buildCandidateUrl } from "@/lib/links";
 import CandidateAuthModal from "../components/CandidateAuthModal";
 import CompanySections from "../components/CompanySections";
 import SitePreview from "../components/SitePreview";
+import VacancyAIAssistant from "@/components/VacancyAIAssistant";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
