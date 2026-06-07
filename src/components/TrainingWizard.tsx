@@ -723,10 +723,19 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             </div>
 
             {test.questions.length > 0 && (
-              <button type="button" onClick={saveTest} disabled={saving}
-                className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-                {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null} Сохранить тест
-              </button>
+              <div className="space-y-1.5">
+                <button type="button" onClick={saveTest} disabled={saving}
+                  className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                  {saving
+                    ? <><RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем в базу данных…</>
+                    : <><Save className="w-4 h-4" /> Сохранить тест</>}
+                </button>
+                {savedFlashTest && !saving && (
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-300 animate-fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Тест сохранён в базе данных
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
