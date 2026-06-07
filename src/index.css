@@ -296,3 +296,29 @@ body {
 .crm-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(90deg, #D99E41, #F4EE8E); }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* ============================================================
+   Reveal-on-scroll utility (используется <Reveal/>)
+   Анимирует появление в обе стороны скролла.
+============================================================ */
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 0, 0);
+  transition-property: opacity, transform, filter;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal-up    { transform: translate3d(0, 40px, 0); }
+.reveal-down  { transform: translate3d(0, -40px, 0); }
+.reveal-left  { transform: translate3d(-60px, 0, 0); }
+.reveal-right { transform: translate3d(60px, 0, 0); }
+.reveal-scale { transform: scale(0.92); }
+.reveal-fade  { transform: none; filter: blur(6px); }
+.reveal.is-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+  filter: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
+}
+
