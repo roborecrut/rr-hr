@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { getCandidateSession } from "@/lib/candidateSession";
+import { aiRestart } from "@/lib/aiClient";
+import { useAIReady, waitForAIReady } from "@/lib/aiReady";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -41,6 +43,8 @@ async function call(fn: string, body: any) {
 
 export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
   const { run: aiWaitRun } = useAIWait();
+  const aiReady = useAIReady();
+  const restartFiredRef = useRef(false);
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
   // Vacancy paused (no employer funds)
@@ -74,6 +78,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   useEffect(() => {
     (async () => {
+      // Reset RR dialog context for this candidate before any AI calls.
+      // Overlay (AIRestartGate) is driven by beginAIRestart() inside aiRestart().
+      if (!restartFiredRef.current) {
+        restartFiredRef.current = true;
+        aiRestart().catch(() => {});
+      }
       // Gate 1: can this candidate actually start an interview right now?
       try {
         const { data: gate } = await (supabase as any).rpc("can_start_interview", { _candidate: candidateId });
@@ -162,6 +172,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const sendResumeToRR = async () => {
     if (!uploadedResume) return;
+    // Make sure /restart finished before we hit the neural network,
+    // otherwise we get two parallel responses and the parser breaks.
+    await waitForAIReady();
     setParsing(true);
     try {
       const r = await aiWaitRun<any>({
