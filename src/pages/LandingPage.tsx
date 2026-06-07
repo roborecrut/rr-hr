@@ -507,26 +507,6 @@ export default function LandingPage() {
             <p className="text-[10px] text-slate-400 pt-1">Принимаем к оплате: МИР · Visa · Mastercard · через Робокассу</p>
           </div>
 
-          {/* Продукт компании РентРОП */}
-          <div className="space-y-3">
-            <h3 className="text-[10px] uppercase tracking-widest text-[#E7C768] font-mono font-black">Продукт компании</h3>
-            <a
-              href="https://rent-rop.com/?utm_source=hr-rr&utm_medium=footer&utm_campaign=hr-rr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs px-5 py-3 rounded-xl shadow hover:brightness-110 transition"
-            >
-              Продукт компании РентРОП
-            </a>
-            <a
-              href="https://rent-rop.com/?utm_source=hr-rr&utm_medium=footer&utm_campaign=hr-rr"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block text-[11px] text-slate-300 hover:text-[#E7C768] underline underline-offset-2 break-all"
-            >
-              rent-rop.com
-            </a>
-          </div>
         </div>
 
         <div className="mt-8 flex justify-center">
