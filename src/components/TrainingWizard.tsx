@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code } from "lucide-react";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code, Youtube, FileText, Save, CheckCircle2, ChevronDown, ChevronUp, Video } from "lucide-react";
+import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
@@ -39,13 +38,14 @@ type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; tota
 
 const MAX_QUESTIONS = 30;
 
-const CONTEXT_OPTIONS: { key: string; label: string }[] = [
-  { key: "intro",        label: "Введение" },
-  { key: "professional", label: "Профессиональный" },
-  { key: "product",      label: "Продуктовый" },
-  { key: "systems",      label: "Системный" },
-  { key: "regulations",  label: "Регламенты" },
+const CONTEXT_OPTIONS: { key: string; label: string; column: string; fallbackColumn?: string }[] = [
+  { key: "intro",        label: "Введение",         column: "training_intro_text" },
+  { key: "professional", label: "Профессиональный", column: "training_professional_text", fallbackColumn: "training_prof_text" },
+  { key: "product",      label: "Продуктовый",      column: "training_product_text" },
+  { key: "systems",      label: "Системный",        column: "training_systems_text",      fallbackColumn: "training_system_text" },
+  { key: "regulations",  label: "Регламенты",       column: "training_regulations_text" },
 ];
+const CONTEXT_MAX = 1500;
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
@@ -68,6 +68,16 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [wishesMaterial, setWishesMaterial] = useState("");
   const [wishesTest, setWishesTest] = useState("");
   const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
+
+  // Context source values (loaded from `projects` row) + editable buffers.
+  const [contextValues, setContextValues] = useState<Record<string, string>>({});
+  const [contextDirty, setContextDirty] = useState<Record<string, boolean>>({});
+  const [contextSaving, setContextSaving] = useState(false);
+  const [contextExpanded, setContextExpanded] = useState<Record<string, boolean>>({});
+
+  // Save animation flash for material / test
+  const [savedFlashMaterial, setSavedFlashMaterial] = useState(false);
+  const [savedFlashTest, setSavedFlashTest] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -95,6 +105,47 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   useEffect(() => {
     setSources({ professional: "", product: "", system: "" });
   }, [project?.id]);
+
+  // Load context source values straight from `projects` row when project changes.
+  useEffect(() => {
+    if (!project?.id) return;
+    let cancelled = false;
+    (async () => {
+      const cols = CONTEXT_OPTIONS.flatMap(o => o.fallbackColumn ? [o.column, o.fallbackColumn] : [o.column]);
+      const { data } = await supabase.from("projects").select(cols.join(",")).eq("id", project.id).maybeSingle();
+      if (cancelled) return;
+      const row: any = data || {};
+      const next: Record<string, string> = {};
+      CONTEXT_OPTIONS.forEach(o => {
+        next[o.key] = row[o.column] ?? row[o.fallbackColumn || ""] ?? "";
+      });
+      setContextValues(next);
+      setContextDirty({});
+    })();
+    return () => { cancelled = true; };
+  }, [project?.id]);
+
+  const saveContextValues = async () => {
+    if (!project) return;
+    const dirtyKeys = Object.keys(contextDirty).filter(k => contextDirty[k]);
+    if (!dirtyKeys.length) return;
+    setContextSaving(true);
+    try {
+      const patch: Record<string, string | null> = {};
+      dirtyKeys.forEach(k => {
+        const opt = CONTEXT_OPTIONS.find(o => o.key === k);
+        if (!opt) return;
+        patch[opt.column] = (contextValues[k] || "").slice(0, CONTEXT_MAX) || null;
+        if (opt.fallbackColumn) patch[opt.fallbackColumn] = patch[opt.column];
+      });
+      const { error } = await (supabase.from("projects") as any).update(patch).eq("id", project.id);
+      if (error) throw error;
+      setContextDirty({});
+      addAuditEvent("success", "Контекст сохранён в БД", `Полей обновлено: ${dirtyKeys.length}`);
+    } catch (e: any) {
+      addAuditEvent("warning", "Ошибка сохранения контекста", e?.message || "");
+    } finally { setContextSaving(false); }
+  };
 
   // Markdown toolbar helper — wraps current selection or inserts at caret
   const applyMd = (prefix: string, suffix = "", placeholder = "") => {
@@ -125,6 +176,28 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     const segment = materials.slice(lineStart, realEnd);
     const replaced = segment.split("\n").map(l => l.startsWith(prefix) ? l : `${prefix}${l}`).join("\n");
     const next = (materials.slice(0, lineStart) + replaced + materials.slice(realEnd)).slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => ta.focus());
+  };
+
+  // Insert an embeddable link on its own paragraph (auto-rendered as iframe in preview)
+  const insertEmbed = (kind: "youtube" | "vk" | "rutube" | "gdoc") => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const placeholders: Record<typeof kind, string> = {
+      youtube: "https://www.youtube.com/watch?v=ID",
+      vk: "https://vk.com/video-1234567_456239021",
+      rutube: "https://rutube.ru/video/abc123def456/",
+      gdoc: "https://docs.google.com/document/d/DOC_ID/edit",
+    } as any;
+    const url = window.prompt(`Вставьте ссылку (${kind.toUpperCase()})`, placeholders[kind]);
+    if (!url) return;
+    const start = ta.selectionStart ?? materials.length;
+    const before = materials.slice(0, start);
+    const after = materials.slice(start);
+    const sep1 = before.endsWith("\n\n") || before.length === 0 ? "" : (before.endsWith("\n") ? "\n" : "\n\n");
+    const sep2 = after.startsWith("\n\n") || after.length === 0 ? "" : (after.startsWith("\n") ? "\n" : "\n\n");
+    const next = (before + sep1 + url + sep2 + after).slice(0, 10000);
     setMaterials(next);
     requestAnimationFrame(() => ta.focus());
   };
@@ -230,7 +303,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         if (error) throw error;
         setBlock(data as any);
       }
-      if (!silent) addAuditEvent("success", "Материалы сохранены", `Этап: ${stage}`);
+      if (!silent) {
+        addAuditEvent("success", "Материалы сохранены", `Этап: ${stage}`);
+        setSavedFlashMaterial(true);
+        setTimeout(() => setSavedFlashMaterial(false), 2200);
+      }
     } catch (e: any) {
       addAuditEvent("warning", "Ошибка сохранения", e?.message || "");
     } finally { setSaving(false); }
@@ -253,7 +330,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         if (error) throw error;
         setTest(t => ({ ...t, id: (data as any).id, total_score: total }));
       }
-      addAuditEvent("success", "Тест сохранён", `${test.questions.length} вопросов`);
+      addAuditEvent("success", "Тест сохранён", `${test.questions.length} вопросов, проходной ${test.pass_score}`);
+      setSavedFlashTest(true);
+      setTimeout(() => setSavedFlashTest(false), 2200);
     } catch (e: any) {
       addAuditEvent("warning", "Ошибка сохранения теста", e?.message || "");
     } finally { setSaving(false); }
@@ -326,13 +405,25 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
       {project && (
         <>
-          {/* Context sources */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-2">
-            <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
-            <p className="text-[11px] text-slate-400">Отметьте, какие сведения вакансии передавать ИИ при генерации материала и теста.</p>
+          {/* Context sources — checkboxes + editable preview of each block */}
+          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
+                <p className="text-[11px] text-slate-400">Отметьте блоки, которые передавать ИИ. Содержимое можно править прямо здесь и сохранить в БД вакансии.</p>
+              </div>
+              <button type="button" onClick={saveContextValues}
+                disabled={contextSaving || !Object.values(contextDirty).some(Boolean)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1.5 disabled:opacity-40">
+                {contextSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Сохранить контекст в БД
+              </button>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {CONTEXT_OPTIONS.map(opt => {
                 const checked = contextKeys.includes(opt.key);
+                const filled = !!(contextValues[opt.key] || "").trim();
                 return (
                   <label key={opt.key} className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer flex items-center gap-1.5 ${
                     checked ? "bg-[#E7C768]/15 border-[#E7C768]/50 text-[#E7C768]" : "bg-white/5 border-white/10 text-slate-300"
@@ -340,7 +431,51 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                     <input type="checkbox" checked={checked} className="accent-[#E7C768]"
                       onChange={() => setContextKeys(s => s.includes(opt.key) ? s.filter(k => k !== opt.key) : [...s, opt.key])} />
                     {opt.label}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${filled ? "bg-emerald-500/20 text-emerald-200" : "bg-white/10 text-slate-400"}`}>
+                      {filled ? `${(contextValues[opt.key] || "").length}` : "пусто"}
+                    </span>
                   </label>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              {CONTEXT_OPTIONS.map(opt => {
+                const checked = contextKeys.includes(opt.key);
+                const isOpen = contextExpanded[opt.key] ?? checked;
+                const dirty = !!contextDirty[opt.key];
+                const val = contextValues[opt.key] || "";
+                return (
+                  <div key={opt.key} className={`rounded-xl border ${dirty ? "border-[#E7C768]/60 bg-[#E7C768]/5" : "border-white/10 bg-[#17344F]/40"}`}>
+                    <button type="button"
+                      onClick={() => setContextExpanded(e => ({ ...e, [opt.key]: !isOpen }))}
+                      className="w-full flex items-center justify-between px-3 py-2 text-left">
+                      <span className="text-[11px] font-bold text-white flex items-center gap-2">
+                        {opt.label}
+                        {dirty && <span className="text-[9px] text-[#E7C768]">● не сохранено</span>}
+                      </span>
+                      <span className="flex items-center gap-2 text-[10px] text-slate-400">
+                        <span>{val.length}/{CONTEXT_MAX}</span>
+                        {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3">
+                        <textarea
+                          rows={4}
+                          maxLength={CONTEXT_MAX}
+                          value={val}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setContextValues(s => ({ ...s, [opt.key]: v }));
+                            setContextDirty(d => ({ ...d, [opt.key]: true }));
+                          }}
+                          placeholder={`Текст блока «${opt.label}» (передаётся ИИ). Если пусто — блок не передаётся.`}
+                          className="w-full bg-[#0F2A42]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -399,7 +534,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
             {previewMd ? (
               <div className="bg-[#0F2A42]/80 border border-white/10 rounded-xl p-4 prose prose-invert prose-sm max-w-none min-h-[200px]">
-                <Markdown remarkPlugins={[remarkGfm]}>{materials || "_Пусто_"}</Markdown>
+                <EmbeddedMarkdown>{materials || "_Пусто_"}</EmbeddedMarkdown>
               </div>
             ) : (
               <>
@@ -422,7 +557,19 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                     className="p-1.5 rounded hover:bg-white/10 text-slate-200"><ListOrdered className="w-3.5 h-3.5" /></button>
                   <button type="button" title="Ссылка" onClick={() => applyMd("[", "](https://)", "текст")}
                     className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Link2 className="w-3.5 h-3.5" /></button>
+                  <span className="w-px bg-white/10 mx-1" />
+                  <button type="button" title="Видео YouTube" onClick={() => insertEmbed("youtube")}
+                    className="p-1.5 rounded hover:bg-white/10 text-rose-300"><Youtube className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Видео VK" onClick={() => insertEmbed("vk")}
+                    className="p-1.5 rounded hover:bg-white/10 text-sky-300"><Video className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Видео Rutube" onClick={() => insertEmbed("rutube")}
+                    className="p-1.5 rounded hover:bg-white/10 text-orange-300"><Video className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Google Docs / Sheets / Slides" onClick={() => insertEmbed("gdoc")}
+                    className="p-1.5 rounded hover:bg-white/10 text-emerald-300"><FileText className="w-3.5 h-3.5" /></button>
                 </div>
+                <p className="text-[10px] text-slate-400 -mt-1">
+                  Совет: вставьте отдельной строкой ссылку YouTube / VK Video / Rutube или Google Docs — в превью и у кандидата она автоматически станет встроенным проигрывателем/документом.
+                </p>
                 <textarea
                 ref={materialsRef}
                 rows={14}
@@ -434,12 +581,24 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 />
               </>
             )}
-            <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
               <span>{materials.length}/10000 символов</span>
-              <button type="button" onClick={() => saveMaterials(false)} disabled={saving}
-                className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 disabled:opacity-50">
-                Сохранить материал
-              </button>
+              <div className="flex items-center gap-2">
+                {saving && (
+                  <span className="flex items-center gap-1.5 text-[#E7C768] animate-pulse">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Сохраняем в базу данных…
+                  </span>
+                )}
+                {savedFlashMaterial && !saving && (
+                  <span className="flex items-center gap-1 text-emerald-300 animate-fade-in">
+                    <CheckCircle2 className="w-3 h-3" /> Сохранено в БД
+                  </span>
+                )}
+                <button type="button" onClick={() => saveMaterials(false)} disabled={saving}
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#1D3E5E] text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5">
+                  <Save className="w-3 h-3" /> Сохранить материал
+                </button>
+              </div>
             </div>
           </div>
 
@@ -454,6 +613,22 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 {busyTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 Сгенерировать тест ИИ
               </button>
+            </div>
+            {/* Editable pass score */}
+            <div className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5">
+              <label className="text-[11px] text-slate-300 font-bold">Минимальный проходной балл:</label>
+              <input
+                type="number" min={1} max={Math.max(test.total_score || 100, 1)} step={1}
+                value={test.pass_score}
+                onChange={(e) => {
+                  const max = Math.max(test.total_score || 100, 1);
+                  const v = Math.max(1, Math.min(max, Number(e.target.value) || 0));
+                  setTest(t => ({ ...t, pass_score: v }));
+                }}
+                className="w-20 bg-[#17344F]/80 text-xs px-2 py-1 rounded border border-white/10 text-white focus:outline-[#E7C768]"
+              />
+              <span className="text-[11px] text-slate-400">из {test.total_score || (test.questions.length * 5) || 100} возможных</span>
+              <span className="text-[10px] text-slate-500 ml-auto">Меняйте под свои требования и нажмите «Сохранить тест».</span>
             </div>
             <div>
               <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
@@ -548,10 +723,19 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             </div>
 
             {test.questions.length > 0 && (
-              <button type="button" onClick={saveTest} disabled={saving}
-                className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
-                {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : null} Сохранить тест
-              </button>
+              <div className="space-y-1.5">
+                <button type="button" onClick={saveTest} disabled={saving}
+                  className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 px-4 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-60">
+                  {saving
+                    ? <><RefreshCw className="w-4 h-4 animate-spin" /> Сохраняем в базу данных…</>
+                    : <><Save className="w-4 h-4" /> Сохранить тест</>}
+                </button>
+                {savedFlashTest && !saving && (
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-emerald-300 animate-fade-in">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Тест сохранён в базе данных
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

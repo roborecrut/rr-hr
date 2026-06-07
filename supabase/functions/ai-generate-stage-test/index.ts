@@ -77,16 +77,21 @@ ${combined.slice(0, 12000)}
     const total = questions.reduce((s, q) => s + q.points, 0);
 
     const { data: existing } = await admin.from("training_stage_tests")
-      .select("id").eq("project_id", body.project_id).eq("stage", body.stage).maybeSingle();
+      .select("id, pass_score").eq("project_id", body.project_id).eq("stage", body.stage).maybeSingle();
     if (existing?.id) {
+      // Preserve a user-tuned pass_score on regeneration. Only fall back to 70
+      // when no pass score is stored at all.
+      const keepPass = typeof existing.pass_score === "number" && existing.pass_score > 0
+        ? Math.min(existing.pass_score, total)
+        : Math.min(70, total);
       await admin.from("training_stage_tests").update({
-        questions, total_score: total, pass_score: 70,
+        questions, total_score: total, pass_score: keepPass,
         ai_generated_at: new Date().toISOString(),
       }).eq("id", existing.id);
     } else {
       await admin.from("training_stage_tests").insert({
         project_id: body.project_id, stage: body.stage, questions,
-        total_score: total, pass_score: 70, ai_generated_at: new Date().toISOString(),
+        total_score: total, pass_score: Math.min(70, total), ai_generated_at: new Date().toISOString(),
       });
     }
 
