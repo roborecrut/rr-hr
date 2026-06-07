@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
   const socialId = buildSocialId({ user_id: user?.id });
 
   const msg = `Подготовь учебный материал в Markdown для этапа «${STAGE_TITLES[body.stage]}». Фокус: ${STAGE_FOCUS[body.stage]}.
-Объём 1500–3000 слов. Структура: вводный абзац, разделы H2 (минимум 3), внутри H3/списки/чек-листы, в конце «Контрольные точки». Не более 10 000 символов. Только Markdown, без преамбулы.
+Объём 1500–3000 слов. Структура: вводный абзац, разделы H2 (минимум 3), внутри H3/списки/чек-листы, в конце «Контрольные точки». Не более 20 000 символов. Только Markdown, без преамбулы.
 ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 КОНТЕКСТ:
 ${ctx.filter(Boolean).join("\n")}`;
@@ -88,7 +88,7 @@ ${ctx.filter(Boolean).join("\n")}`;
       messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения." }, { role: "user", content: msg }],
       chatId, socialId, timeoutMs: 180_000,
     });
-    const text = (r.text || "").slice(0, 10000);
+    const text = (r.text || "").slice(0, 20000);
 
     const { data: existing } = await admin.from("training_blocks")
       .select("id").eq("project_id", body.project_id).eq("stage", body.stage).eq("block_key", body.stage).maybeSingle();
