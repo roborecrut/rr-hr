@@ -11,6 +11,7 @@ import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
+import InterviewList from "../components/InterviewList";
 import InterviewWizard from "../components/InterviewWizard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
@@ -225,6 +226,8 @@ export default function EmployerPanel() {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   // Training tab: list ↔ editor toggle
   const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
+  // Interview tab: list ↔ editor toggle (mirrors training)
+  const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
@@ -4457,11 +4460,36 @@ export default function EmployerPanel() {
 
 
           {activeTab === "interviews" && (
-            <InterviewWizard
-              projects={projects}
-              addAuditEvent={addAuditEvent}
-              refreshProjects={fetchData}
-            />
+            <>
+              {interviewView.mode === "list" ? (
+                <InterviewList
+                  projects={projects}
+                  onOpen={async (projectId) => {
+                    setInterviewView({ mode: "edit", projectId });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
+                  onCreate={async () => {
+                    setInterviewView({ mode: "create" });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
+                />
+              ) : (
+                <InterviewWizard
+                  projects={projects}
+                  addAuditEvent={addAuditEvent}
+                  refreshProjects={fetchData}
+                  initialProjectId={interviewView.mode === "edit" ? interviewView.projectId : undefined}
+                  createMode={interviewView.mode === "create"}
+                  onBack={() => setInterviewView({ mode: "list" })}
+                />
+              )}
+            </>
           )}
 
           {activeTab === "training" && (

@@ -5,7 +5,7 @@ import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAut
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string; source?: string };
+  const body = await req.json().catch(() => null) as null | { project_id: string; source?: string; wishes?: string };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
 
   const admin = getAdminClient();
@@ -23,7 +23,9 @@ Deno.serve(async (req) => {
   const chatId = buildChatId({ userId: user?.id });
   const socialId = buildSocialId({ user_id: user?.id });
 
+  const wishes = (body.wishes || "").trim().slice(0, 1000);
   const msg = `Ты — HR-эксперт. Сформируй краткий список (markdown) ВАЖНЫХ КРИТЕРИЕВ для скрининга резюме под вакансию.
+${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 Вакансия: ${(proj as any).role_name || ""}
 Компания: ${companyName}
 Описание вакансии:
