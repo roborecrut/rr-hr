@@ -226,9 +226,9 @@ export default function EmployerPanel() {
   const [projects, setProjects] = useState<JobProject[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   // Training tab: list ↔ editor toggle
-  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
+  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
   // Interview tab: list ↔ editor toggle (mirrors training)
-  const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
+  const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
