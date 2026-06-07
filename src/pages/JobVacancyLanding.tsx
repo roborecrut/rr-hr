@@ -11,6 +11,7 @@ import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import VacancyAIAssistant from "@/components/VacancyAIAssistant";
+import Reveal from "@/components/Reveal";
 import {
   Briefcase,
   DollarSign,
@@ -352,9 +353,9 @@ export default function JobVacancyLanding() {
       <main className="max-w-7xl mx-auto py-8 px-4 md:px-8 w-full flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         {/* Left Side: Vacancy Details card */}
-        <section className="lg:col-span-7 space-y-6 text-left">
+        <Reveal as="section" direction="left" className="lg:col-span-7 space-y-6 text-left">
           
-          <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
+          <Reveal direction="up" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
             
             {/* Vacancy Title and Company */}
             <div className="space-y-2">
@@ -462,14 +463,14 @@ export default function JobVacancyLanding() {
               </button>
             </div>
 
-          </div>
+          </Reveal>
 
-        </section>
+        </Reveal>
 
         {/* Right Side: Vacancy AI-Consultant chat widget */}
-        <aside className="lg:col-span-5 space-y-4">
+        <Reveal as="aside" direction="right" delay={150} className="lg:col-span-5 space-y-4">
           
-          <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl flex flex-col h-[520px]">
+          <Reveal direction="up" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl flex flex-col h-[520px]">
             
             {/* Header info */}
             <div className="flex items-center gap-3 border-b border-white/10 pb-3 mb-3 text-left">
@@ -563,16 +564,16 @@ export default function JobVacancyLanding() {
               </button>
             </div>
 
-          </div>
+          </Reveal>
 
-          <div className="bg-[#1D3E5E]/60 border border-white/10 p-4 rounded-3xl text-left space-y-1">
+          <Reveal direction="up" delay={120} className="bg-[#1D3E5E]/60 border border-white/10 p-4 rounded-3xl text-left space-y-1">
             <h4 className="text-[11px] font-bold text-[#E7C768] uppercase tracking-wide">Нужна помощь ИИ?</h4>
             <p className="text-[10.5px] text-slate-300 leading-normal">
               Напишите вопрос о любых нюансах компании во встроенный ИИ-чат. Робот проверит внутренние Wiki-регламенты и сразу предоставит регламентированный ответ.
             </p>
-          </div>
+          </Reveal>
 
-        </aside>
+        </Reveal>
 
       </main>
 

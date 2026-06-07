@@ -4,6 +4,7 @@ import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, Alert
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import Reveal from "@/components/Reveal";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
@@ -175,7 +176,7 @@ export default function CandidateStageTraining({
   return (
     <div className="space-y-5">
       {/* Progress header */}
-      <div className="bg-[#1E4468]/30 border border-white/10 rounded-3xl p-5">
+      <Reveal direction="down" className="bg-[#1E4468]/30 border border-white/10 rounded-3xl p-5">
         <div className="flex items-center gap-3 mb-3">
           <GraduationCap className="w-6 h-6 text-[#E7C768]" />
           <div className="flex-1">
@@ -211,20 +212,20 @@ export default function CandidateStageTraining({
             );
           })}
         </div>
-      </div>
+      </Reveal>
 
       {loading ? (
-        <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-10 text-center">
+        <Reveal direction="fade" className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-10 text-center">
           <RefreshCw className="w-6 h-6 animate-spin text-[#E7C768] mx-auto mb-2" />
           <LoadingPhrase entity="training" />
-        </div>
+        </Reveal>
       ) : !canEnter(active) ? (
-        <div className="bg-amber-950/30 border border-amber-500/30 rounded-3xl p-8 text-center text-amber-100">
+        <Reveal direction="scale" className="bg-amber-950/30 border border-amber-500/30 rounded-3xl p-8 text-center text-amber-100">
           <Lock className="w-8 h-8 mx-auto mb-2" />
           Сначала сдайте предыдущий этап.
-        </div>
+        </Reveal>
       ) : mode === "reading" ? (
-        <div className="space-y-4">
+        <Reveal direction="up" className="space-y-4">
           {questions.length > 0 && (
             <button type="button" onClick={startExam}
               className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white text-sm py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition">
@@ -256,12 +257,12 @@ export default function CandidateStageTraining({
               Тест по этому этапу ещё не сформирован работодателем.
             </div>
           )}
-        </div>
+        </Reveal>
       ) : mode === "exam" ? (
-        <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
+        <Reveal direction="up" className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
           <h3 className="text-sm font-bold text-white">Тест: {STAGES.find(s => s.key === active)?.title}</h3>
           {examQuestions.map((q, i) => (
-            <div key={q.id} className="bg-black/25 border border-white/5 rounded-xl p-4 space-y-2">
+            <Reveal key={q.id} direction="left" delay={i * 60} className="bg-black/25 border border-white/5 rounded-xl p-4 space-y-2">
               <div className="text-[11px] text-[#E7C768] font-bold">Вопрос {i + 1} • {q.points} б.</div>
               <div className="text-sm text-white">{q.question}</div>
               {q.kind === "choice" ? (
@@ -282,7 +283,7 @@ export default function CandidateStageTraining({
                   placeholder="Ваш развёрнутый ответ…"
                   className="w-full bg-[#17344F] text-xs text-white p-2.5 rounded-lg border border-white/10 focus:outline-[#E7C768]" />
               )}
-            </div>
+            </Reveal>
           ))}
           <div className="flex gap-2">
             <button type="button" onClick={() => setMode("reading")} className="flex-1 bg-white/10 text-white text-sm py-2.5 rounded-xl">← К материалу</button>
@@ -292,9 +293,9 @@ export default function CandidateStageTraining({
             </button>
           </div>
           {checking && <LoadingPhrase entity="training" />}
-        </div>
+        </Reveal>
       ) : (
-        <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
+        <Reveal direction="scale" className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
           <div className={`p-4 rounded-2xl flex items-center gap-3 ${lastResult?.passed ? "bg-emerald-900/30 border border-emerald-500/40" : "bg-amber-900/30 border border-amber-500/40"}`}>
             {lastResult?.passed ? <CheckCircle2 className="w-8 h-8 text-emerald-400" /> : <AlertTriangle className="w-8 h-8 text-amber-400" />}
             <div className="flex-1">
@@ -338,7 +339,7 @@ export default function CandidateStageTraining({
               );
             })()}
           </div>
-        </div>
+        </Reveal>
       )}
     </div>
   );
