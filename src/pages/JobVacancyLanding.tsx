@@ -11,6 +11,7 @@ import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import VacancyAIAssistant from "@/components/VacancyAIAssistant";
+import Reveal from "@/components/Reveal";
 import {
   Briefcase,
   DollarSign,
