@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { buildCandidateUrl } from "@/lib/links";
 import CandidateAuthModal from "../components/CandidateAuthModal";
 import CompanySections from "../components/CompanySections";
+import SitePreview from "../components/SitePreview";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
 function mapDbProjectToUi(company: any) {
@@ -481,6 +482,9 @@ export default function CompanyLanding() {
               AND we are NOT on the /company sub-tab (company view is handled above). */}
           {vacancyId && subTab !== "company" && selectedVacancy && (selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active") ? (
             <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
+              {displayCompany?.website && (
+                <SitePreview url={displayCompany.website} variant="banner" />
+              )}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-[#E7C768] uppercase tracking-widest block">Подробно о вакансии</span>
