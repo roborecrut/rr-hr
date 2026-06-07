@@ -39,13 +39,19 @@ type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; tota
 const MAX_QUESTIONS = 30;
 
 const CONTEXT_OPTIONS: { key: string; label: string; column: string; fallbackColumn?: string }[] = [
-  { key: "intro",        label: "Введение",         column: "training_intro_text" },
+  { key: "intro",        label: "Введение",         column: "training_wiki_text",          fallbackColumn: "training_intro_text" },
   { key: "professional", label: "Профессиональный", column: "training_professional_text", fallbackColumn: "training_prof_text" },
   { key: "product",      label: "Продуктовый",      column: "training_product_text" },
   { key: "systems",      label: "Системный",        column: "training_systems_text",      fallbackColumn: "training_system_text" },
   { key: "regulations",  label: "Регламенты",       column: "training_regulations_text" },
 ];
 const CONTEXT_MAX = 1500;
+
+const STAGE_DEFAULT_CONTEXT: Record<Stage, string[]> = {
+  professional: ["intro", "professional"],
+  product:      ["product"],
+  system:       ["systems", "regulations"],
+};
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
@@ -64,7 +70,17 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [busyTest, setBusyTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewMd, setPreviewMd] = useState(false);
-  const [contextKeys, setContextKeys] = useState<string[]>(CONTEXT_OPTIONS.map(o => o.key));
+  const [contextKeysByStage, setContextKeysByStage] = useState<Record<Stage, string[]>>({
+    professional: STAGE_DEFAULT_CONTEXT.professional,
+    product:      STAGE_DEFAULT_CONTEXT.product,
+    system:       STAGE_DEFAULT_CONTEXT.system,
+  });
+  const contextKeys = contextKeysByStage[stage];
+  const toggleContextKey = (k: string) =>
+    setContextKeysByStage(s => ({
+      ...s,
+      [stage]: s[stage].includes(k) ? s[stage].filter(x => x !== k) : [...s[stage], k],
+    }));
   const [wishesMaterial, setWishesMaterial] = useState("");
   const [wishesTest, setWishesTest] = useState("");
   const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
