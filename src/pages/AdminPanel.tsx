@@ -379,6 +379,7 @@ function CandidatesSection() {
 function SimpleTable({ table, title }: { table: string; title: string }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -406,7 +407,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {rows.map((r, i) => (
-                  <tr key={r.id || i} className="hover:bg-white/5">
+                  <tr key={r.id || i} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
                     {cols.map((c) => {
                       const v = (r as any)[c];
                       const str = v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v).slice(0, 60) : String(v).slice(0, 80);
@@ -419,6 +420,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
           </div>
         </div>
       )}
+      <DetailsModal title={title} data={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
