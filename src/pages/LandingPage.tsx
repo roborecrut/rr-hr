@@ -283,10 +283,6 @@ export default function LandingPage() {
       <section className="px-4 md:px-8 py-16 bg-[#1D3E5E]/40 border-t border-b border-white/10" id="tariffs">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-3">
-            <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold text-xs uppercase tracking-wider px-3.5 py-1.5 rounded-full border border-[#E7C768]/20">
-              Сравнение с HR
-            </span>
-            <h2 className="text-3xl md:text-5xl font-bold tracking-tight">ИИ дешевле и быстрее живого HR</h2>
             <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto">
               Выберите количество готовых сотрудников — мы покажем стоимость и время для двух сценариев.
             </p>
