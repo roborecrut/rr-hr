@@ -14,6 +14,15 @@ const STAGES: { key: Stage; title: string; icon: string }[] = [
 
 type Q = { id: string; kind: "choice" | "text"; question: string; points: number; options?: { text: string }[] | null };
 
+function shuffleArr<T>(a: T[]): T[] {
+  const arr = [...a];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 export default function CandidateStageTraining({
   candidateId, projectId,
 }: { candidateId: string; projectId: string }) {
@@ -26,6 +35,8 @@ export default function CandidateStageTraining({
   const [active, setActive] = useState<Stage>("professional");
   const [material, setMaterial] = useState<string>("");
   const [questions, setQuestions] = useState<Q[]>([]);
+  const [examQuestions, setExamQuestions] = useState<Q[]>([]);
+  const [shuffle, setShuffle] = useState(true);
   const [passScore, setPassScore] = useState(70);
   const [totalScore, setTotalScore] = useState(100);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -79,11 +90,12 @@ export default function CandidateStageTraining({
         if (cancelled) return;
         const combined = (blocks || []).map((b: any) => `## ${b.title || ""}\n${b.materials_md || ""}`).join("\n\n");
         setMaterial(combined);
-        const r = await callEdge<{ questions: Q[]; pass_score: number; total_score: number }>("ai-list-stage-questions", {
+        const r = await callEdge<{ questions: Q[]; pass_score: number; total_score: number; shuffle?: boolean }>("ai-list-stage-questions", {
           project_id: projectId, stage: active,
         });
         if (cancelled) return;
         setQuestions(r.questions || []);
+        setShuffle(r.shuffle !== false);
         setPassScore(r.pass_score || 70);
         setTotalScore(r.total_score || 100);
       } finally { if (!cancelled) setLoading(false); }
@@ -100,7 +112,7 @@ export default function CandidateStageTraining({
   const submit = async () => {
     setChecking(true);
     try {
-      const payload = questions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
+      const payload = examQuestions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
       const r = await aiWaitRun<any>({
         title: "Проверка ответов",
         task: () => callEdge<any>("ai-check-stage-answers", {
@@ -120,6 +132,18 @@ export default function CandidateStageTraining({
     const passed = STAGES.filter(s => progress[s.key].passed).length;
     return Math.round((passed / STAGES.length) * 100);
   }, [progress]);
+
+  const startExam = () => {
+    let qs = questions;
+    if (shuffle) {
+      qs = shuffleArr(qs).map(q => q.kind === "choice" && q.options
+        ? { ...q, options: shuffleArr(q.options) }
+        : q);
+    }
+    setExamQuestions(qs);
+    setAnswers({});
+    setMode("exam");
+  };
 
   return (
     <div className="space-y-5">
@@ -186,7 +210,7 @@ export default function CandidateStageTraining({
             <p className="text-slate-400 text-xs">Материалы по этапу ещё не подготовлены работодателем.</p>
           )}
           {questions.length > 0 && (
-            <button type="button" onClick={() => setMode("exam")}
+            <button type="button" onClick={startExam}
               className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-3 px-6 rounded-xl font-bold flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4" /> Перейти к тесту ({questions.length} вопр., проходной {passScore}/{totalScore})
             </button>
@@ -195,7 +219,7 @@ export default function CandidateStageTraining({
       ) : mode === "exam" ? (
         <div className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
           <h3 className="text-sm font-bold text-white">Тест: {STAGES.find(s => s.key === active)?.title}</h3>
-          {questions.map((q, i) => (
+          {examQuestions.map((q, i) => (
             <div key={q.id} className="bg-black/25 border border-white/5 rounded-xl p-4 space-y-2">
               <div className="text-[11px] text-[#E7C768] font-bold">Вопрос {i + 1} • {q.points} б.</div>
               <div className="text-sm text-white">{q.question}</div>
@@ -255,7 +279,7 @@ export default function CandidateStageTraining({
           </div>
           <div className="flex gap-2">
             {!lastResult?.passed && (
-              <button type="button" onClick={() => { setMode("exam"); setLastResult(null); }}
+              <button type="button" onClick={() => { setLastResult(null); startExam(); }}
                 className="flex-1 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-sm py-2.5 rounded-xl font-bold">
                 Перепройти тест
               </button>

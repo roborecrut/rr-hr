@@ -34,7 +34,7 @@ type QuestionRow = {
   options?: { text: string; is_correct?: boolean }[] | null;
   correct?: string | null; expected_answer?: string | null; explanation?: string;
 };
-type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; total_score: number };
+type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; total_score: number; shuffle: boolean };
 
 const MAX_QUESTIONS = 30;
 
@@ -60,7 +60,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [stage, setStage] = useState<Stage>("professional");
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
-  const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100 });
+  const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100, shuffle: true });
   // Per-stage uploaded source text (one file context per stage)
   const [sources, setSources] = useState<Record<Stage, string>>({ professional: "", product: "", system: "" });
   const source = sources[stage] || "";
@@ -236,6 +236,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         questions: ((tests as any)?.questions as QuestionRow[]) || [],
         pass_score: (tests as any)?.pass_score || 70,
         total_score: (tests as any)?.total_score || 100,
+        shuffle: (tests as any)?.shuffle_questions !== false,
       });
     })();
     return () => { cancelled = true; };
@@ -297,6 +298,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         questions: ((t as any)?.questions as QuestionRow[]) || [],
         pass_score: (t as any)?.pass_score || 70,
         total_score: (t as any)?.total_score || 100,
+        shuffle: (t as any)?.shuffle_questions !== false,
       });
       addAuditEvent("success", "Тест сгенерирован ИИ", `${stage}: ${r.count} вопросов`);
     } catch (e: any) {
@@ -335,13 +337,13 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     try {
       const total = test.questions.reduce((s, q) => s + (q.points || 5), 0);
       if (test.id) {
-        await supabase.from("training_stage_tests").update({
-          questions: test.questions, pass_score: test.pass_score, total_score: total,
+        await (supabase as any).from("training_stage_tests").update({
+          questions: test.questions, pass_score: test.pass_score, total_score: total, shuffle_questions: test.shuffle,
         }).eq("id", test.id);
       } else {
-        const { data, error } = await supabase.from("training_stage_tests").insert({
+        const { data, error } = await (supabase as any).from("training_stage_tests").insert({
           project_id: project.id, stage,
-          questions: test.questions, pass_score: test.pass_score, total_score: total,
+          questions: test.questions, pass_score: test.pass_score, total_score: total, shuffle_questions: test.shuffle,
         }).select("*").single();
         if (error) throw error;
         setTest(t => ({ ...t, id: (data as any).id, total_score: total }));
@@ -639,6 +641,17 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               <span className="text-[11px] text-slate-400">из {test.total_score || (test.questions.length * 5) || 100} возможных</span>
               <span className="text-[10px] text-slate-500 ml-auto">Меняйте под свои требования и нажмите «Сохранить тест».</span>
             </div>
+            {/* Shuffle toggle */}
+            <label className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={test.shuffle}
+                onChange={(e) => setTest(t => ({ ...t, shuffle: e.target.checked }))}
+                className="accent-[#E7C768] w-4 h-4"
+              />
+              <span className="text-[11px] text-slate-200 font-bold">Случайный порядок вопросов и вариантов ответа</span>
+              <span className="text-[10px] text-slate-500 ml-auto">При повторной сдаче кандидат увидит вопросы и варианты в другом порядке.</span>
+            </label>
             <div>
               <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
               <textarea rows={2} maxLength={1000} value={wishesTest}

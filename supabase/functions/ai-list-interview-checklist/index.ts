@@ -22,5 +22,6 @@ Deno.serve(async (req) => {
   }));
   const situations = ((sit as any)?.payload?.situations || []).map((s: any) => ({ id: s.id, title: s.title, brief: s.brief }));
 
-  return jsonResponse({ ok: true, questions, situations });
+  const shuffle = (chk as any)?.payload?.shuffle !== false; // default true
+  return jsonResponse({ ok: true, questions, situations, shuffle });
 });

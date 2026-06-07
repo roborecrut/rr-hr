@@ -52,6 +52,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [kind, setKind] = useState<Kind>("resume");
   const [resumeMd, setResumeMd] = useState("");
   const [checklist, setChecklist] = useState<ChecklistQ[]>([]);
+  const [checklistShuffle, setChecklistShuffle] = useState(true);
   const [situations, setSituations] = useState<Situation[]>([]);
   const [passScore, setPassScore] = useState(75);
   const [busy, setBusy] = useState(false);
@@ -93,6 +94,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       (blocks || []).forEach((b: any) => map[b.kind] = b.payload || {});
       setResumeMd(String(map.resume?.criteria_md || ""));
       setChecklist(Array.isArray(map.checklist?.questions) ? map.checklist.questions : []);
+      setChecklistShuffle(map.checklist?.shuffle !== false);
       setSituations(Array.isArray(map.situations?.situations) ? map.situations.situations : []);
     })();
   }, [projectId]);
@@ -326,6 +328,13 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             {kind === "checklist" && (
               <div className="space-y-3">
                 <div className="text-[10px] text-slate-400 font-bold">Вопросов: {checklist.length}/30</div>
+                <label className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2 cursor-pointer">
+                  <input type="checkbox" checked={checklistShuffle}
+                    onChange={e => setChecklistShuffle(e.target.checked)}
+                    className="accent-[#E7C768] w-4 h-4" />
+                  <span className="text-[11px] text-slate-200 font-bold">Случайный порядок вопросов и вариантов ответа</span>
+                  <span className="text-[10px] text-slate-500 ml-auto">При повторной сдаче — новый порядок.</span>
+                </label>
                 {checklist.length === 0 && <p className="text-xs text-slate-400">Нет вопросов. Нажмите «Сгенерировать ИИ» или добавьте вручную.</p>}
                 {checklist.map((q, i) => (
                   <div key={q.id || i} className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
@@ -358,7 +367,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                         <CheckCircle2 className="w-3 h-3" /> Сохранено в БД
                       </span>
                     )}
-                    <button onClick={() => saveBlock("checklist", { questions: checklist })} disabled={saving === "checklist"}
+                    <button onClick={() => saveBlock("checklist", { questions: checklist, shuffle: checklistShuffle })} disabled={saving === "checklist"}
                       className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center gap-1.5 disabled:opacity-60">
                       {saving === "checklist"
                         ? <><RefreshCw className="w-3.5 h-3.5 animate-spin"/> Сохраняем в БД…</>
