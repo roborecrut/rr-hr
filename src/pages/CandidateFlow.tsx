@@ -2130,7 +2130,22 @@ export default function CandidateFlow() {
                         >
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0">
-                              <span className="text-[10px] text-slate-300 font-bold block uppercase tracking-wide truncate">{proj.companyName || "ООО РобоРекрут"}</span>
+                              {(() => {
+                                const cpid = (proj as any).companyPublicId;
+                                const label = proj.companyName || "ООО РобоРекрут";
+                                return cpid ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/com${cpid}`); }}
+                                    className="text-[10px] text-[#E7C768] font-bold block uppercase tracking-wide truncate hover:underline text-left"
+                                    title="Открыть страницу компании"
+                                  >
+                                    {label}
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-300 font-bold block uppercase tracking-wide truncate">{label}</span>
+                                );
+                              })()}
                               <strong className={`${isSelected ? "text-[#E7C768]" : "text-white"} font-extrabold text-xs block mt-0.5`}>{proj.roleName}</strong>
                             </div>
                             {isSelected && (
@@ -2329,7 +2344,42 @@ export default function CandidateFlow() {
                 {termsSubTab === "company" && (
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Манифест организации</span>
-                    <h2 className="text-xl font-bold text-white">Информация о компании: {project?.companyName || "ООО Работодатель"}</h2>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-3 flex-wrap">
+                      {(() => {
+                        const cpid = companyFull?.public_id || (project as any)?.companyPublicId;
+                        const logo = companyFull?.logo_url || (project as any)?.logoUrl;
+                        const label = project?.companyName || "ООО Работодатель";
+                        const go = () => cpid && navigate(`/com${cpid}`);
+                        return (
+                          <>
+                            {logo && (
+                              <button
+                                type="button"
+                                onClick={go}
+                                disabled={!cpid}
+                                title={cpid ? "Открыть страницу компании" : ""}
+                                className={`w-10 h-10 rounded-xl bg-white/10 border border-white/15 p-1 flex items-center justify-center ${cpid ? "hover:border-[#E7C768] cursor-pointer" : "cursor-default"}`}
+                              >
+                                <img src={logo} alt={label} className="w-full h-full object-contain rounded-lg" referrerPolicy="no-referrer" />
+                              </button>
+                            )}
+                            <span className="text-slate-200">Информация о компании:</span>
+                            {cpid ? (
+                              <button
+                                type="button"
+                                onClick={go}
+                                title="Открыть страницу компании"
+                                className="text-[#E7C768] hover:underline"
+                              >
+                                {label}
+                              </button>
+                            ) : (
+                              <span>{label}</span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </h2>
                     <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {companyFull?.description_text || companyFull?.about_text || `Компания ${project?.companyName || ""}.`}
                     </p>
