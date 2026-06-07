@@ -172,24 +172,7 @@ export default function VacancyCatalogPage() {
 
   return (
     <div className="brand-editor min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white font-sans">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
-        <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/")} role="link" tabIndex={0} aria-label="На главную — Робот Рекрутер" onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") navigate("/"); }}>
-            <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={40} alt="Логотип Робот Рекрутер" className="w-10 h-10 object-contain" referrerPolicy="no-referrer" />
-            <div className="flex flex-col text-left leading-tight">
-              <span className="text-lg font-bold">РобоРекрут</span>
-              <span className="text-xs text-white/60">Каталог вакансий</span>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate("/")}
-            className="text-sm text-white/80 hover:text-white transition"
-          >
-            На главную
-          </button>
-        </div>
-      </header>
+      <SiteHeader active="vacancy" />
 
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Hero / search */}
