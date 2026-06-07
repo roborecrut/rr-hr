@@ -2428,7 +2428,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <User className="w-4 h-4 text-[#D99E41]" /> 1. Профиль HR
                 </span>
-                <span className="text-[10px] bg-amber-900/40 text-[#E7C768] px-1.5 py-0.5 rounded font-mono">Шаг 1</span>
+                <span className="text-[10px] bg-rose-900/50 text-rose-200 px-1.5 py-0.5 rounded font-mono">Шаг 1</span>
               </button>
 
               <button
@@ -2438,7 +2438,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-[#D99E41]" /> 2. Мои Компании
                 </span>
-                <span className="text-[10px] bg-amber-900/40 text-[#E7C768] px-1.5 py-0.5 rounded font-mono">Шаг 2</span>
+                <span className="text-[10px] bg-orange-900/50 text-orange-200 px-1.5 py-0.5 rounded font-mono">Шаг 2</span>
               </button>
 
               <button
@@ -2448,7 +2448,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-[#D99E41]" /> 3. Вакансии & ИИ
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
+                <span className="text-[10px] bg-amber-900/50 text-amber-200 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
               </button>
 
               <button
@@ -2458,7 +2458,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 4. Обучение (ИИ)
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
+                <span className="text-[10px] bg-emerald-900/50 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
               </button>
 
               <button
@@ -2468,7 +2468,7 @@ export default function EmployerPanel() {
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 5. Интервью (ИИ)
                 </span>
-                <span className="bg-slate-800 text-[10px] text-slate-300 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
+                <span className="text-[10px] bg-sky-900/50 text-sky-200 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
               </button>
 
               <div className="h-px bg-white/10 my-2"></div>
