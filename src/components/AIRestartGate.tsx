@@ -8,7 +8,7 @@ const IMG = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/L
 const PHRASES = [
   "Готовим ИИ к работе…",
   "Сбрасываю контекст…",
-  "Подключаюсь к ProTalk…",
+  "Подключаюсь к RR…",
   "Прогреваю модель…",
   "Минутку, почти готов…",
 ];

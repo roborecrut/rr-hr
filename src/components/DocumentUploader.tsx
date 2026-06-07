@@ -144,14 +144,14 @@ export function DocumentUploader({
   async function recognize() {
     if (!filePath) return;
     if (!aiReady) {
-      // ProTalk /restart still in flight — surface the overlay and wait for it
+      // RR /restart still in flight — surface the overlay and wait for it
       // before sending a second request to the same dialog.
       requestAIRestartOverlay();
       toast.message("ИИ ещё готовится — подождите пару секунд…");
       await waitForAIReady();
     }
     setParsing(true);
-    onAudit?.("info", "ИИ разбор документа", `ProTalk считывает «${fileName}»…`);
+    onAudit?.("info", "ИИ разбор документа", `RR считывает «${fileName}»…`);
     try {
       const res = await aiWaitRun<any>({
         title: `ИИ читает файл ${fileName}`,

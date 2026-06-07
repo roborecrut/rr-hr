@@ -43,6 +43,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const { run: aiWaitRun } = useAIWait();
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
+  // Vacancy paused (no employer funds)
+  const [paused, setPaused] = useState<null | { email?: string|null; phone?: string|null; telegram?: string|null }>(null);
+  // Rich AI feedback restored from DB
+  const [checklistFeedback, setChecklistFeedback] = useState<any>(null);
 
   // resume
   const [resumeText, setResumeText] = useState("");
@@ -70,6 +74,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   useEffect(() => {
     (async () => {
+      // Gate 1: can this candidate actually start an interview right now?
+      try {
+        const { data: gate } = await (supabase as any).rpc("can_start_interview", { _candidate: candidateId });
+        if (gate && gate.ok === false && gate.reason === "no_funds") {
+          setPaused(gate.employer_contacts || {});
+          return;
+        }
+      } catch {}
+
       const { data: pr } = await (supabase as any).from("projects").select("interview_pass_score").eq("id", projectId).maybeSingle();
       setPassScore((pr as any)?.interview_pass_score ?? 75);
       const r = await call("ai-list-interview-checklist", { project_id: projectId });
@@ -81,11 +94,26 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         : qs);
       setSituations(r.situations || []);
       // try fetch existing scores
-      const { data: sc } = await (supabase as any).from("candidate_scores").select("resume_score,checklist_score,situations_score,assessment_summary").eq("candidate_id", candidateId).maybeSingle();
+      const { data: sc } = await (supabase as any).from("candidate_scores")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback")
+        .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
-        if (sc.resume_score != null) setResumeResult({ score: sc.resume_score, summary: sc.assessment_summary || "", strengths: [], gaps: [] });
+        if (sc.resume_score != null) {
+          const rf = sc.resume_feedback || {};
+          setResumeResult({
+            score: sc.resume_score,
+            summary: sc.assessment_summary || rf.summary || "",
+            strengths: Array.isArray(rf.strengths) ? rf.strengths : [],
+            gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
+          });
+        }
         if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
+        if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
         if (sc.situations_score != null) setSituationsScore(sc.situations_score);
+        if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+        // Auto-jump to first incomplete stage
+        if (sc.situations_score == null && sc.checklist_score != null) setStage("situations");
+        else if (sc.checklist_score == null && sc.resume_score != null) setStage("checklist");
       }
     })();
   }, [projectId, candidateId]);
@@ -132,7 +160,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     }
   };
 
-  const sendResumeToProTalk = async () => {
+  const sendResumeToRR = async () => {
     if (!uploadedResume) return;
     setParsing(true);
     try {
@@ -164,6 +192,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       });
       if (!r) return;
       setChecklistScore(r.score);
+      if (r.feedback) setChecklistFeedback(r.feedback);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
   };
@@ -200,10 +229,49 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const stageBadge = (s: Stage, label: string, score: number | null) => (
-    <button onClick={() => setStage(s)} className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${stage === s ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}>
+    <button onClick={() => setStage(s)} disabled={stageLocked(s)} className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${stage === s ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}>
       {label}{score != null && <span className="text-[10px] bg-emerald-500/30 text-emerald-100 px-1.5 py-0.5 rounded">{score}</span>}
     </button>
   );
+
+  const stageLocked = (s: Stage) => {
+    if (s === "checklist") return resumeResult?.score == null;
+    if (s === "situations") return checklistScore == null;
+    return false;
+  };
+
+  if (paused) {
+    const tg = (paused.telegram || "").trim().replace(/^@/, "");
+    return (
+      <div className="bg-gradient-to-br from-[#17344F] to-[#265582] border border-[#E7C768]/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+        <div className="inline-flex w-14 h-14 rounded-full bg-amber-500/20 items-center justify-center text-3xl">⏸</div>
+        <h2 className="text-xl font-extrabold text-[#E7C768]">Вакансия временно на паузе</h2>
+        <p className="text-sm text-white/90 max-w-md mx-auto">
+          У работодателя сейчас закончились средства для проведения ИИ-собеседования. Свяжитесь с ним напрямую — возможно, отбор продолжается через личное общение.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs max-w-xl mx-auto">
+          {paused.email ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white break-all" href={`mailto:${paused.email}`}>
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Email</div>
+              <div className="mt-1 font-bold">{paused.email}</div>
+            </a>
+          ) : null}
+          {paused.phone ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white" href={`tel:${paused.phone.replace(/[^\d+]/g, "")}`}>
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Телефон</div>
+              <div className="mt-1 font-bold">{paused.phone}</div>
+            </a>
+          ) : null}
+          {tg ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white" href={tg.startsWith("http") ? tg : `https://t.me/${tg}`} target="_blank" rel="noopener noreferrer">
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Telegram</div>
+              <div className="mt-1 font-bold">@{tg}</div>
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -250,8 +318,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               {uploadedResume && !parsing && (
                 <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(231,199,104,0.3)"}}>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-[#E7C768]"/>Резюме загружено: {uploadedResume.filename}</span>
-                  <button type="button" disabled={parsing} onClick={sendResumeToProTalk} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <Send className="w-3.5 h-3.5"/> Отправить резюме в ProTalk
+                  <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                    <Send className="w-3.5 h-3.5"/> Отправить резюме в RR
                   </button>
                 </div>
               )}
@@ -270,13 +338,59 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       {stage === "checklist" && (
         <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-5 space-y-3">
           <h3 className="font-bold text-[#E7C768]">Этап 2: Чек-лист ({questions.length} вопросов)</h3>
-          {checklistScore != null ? (
+          {stageLocked("checklist") ? (
+            <div className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              ⛔ Сначала пройдите этап «Резюме» — без оценки резюме чек-лист недоступен.
+              <button onClick={() => setStage("resume")} className="ml-2 underline text-[#E7C768]">Перейти к резюме</button>
+            </div>
+          ) : checklistScore != null ? (
             <div className="space-y-3">
               <div className="text-3xl font-extrabold text-emerald-300">{checklistScore}/100</div>
+              {checklistFeedback?.summary ? (
+                <p className="text-sm text-white/90 italic">{checklistFeedback.summary}</p>
+              ) : null}
+              {(checklistFeedback?.strengths?.length || checklistFeedback?.gaps?.length) ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {checklistFeedback.strengths?.length ? (
+                    <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3">
+                      <div className="text-[10px] uppercase font-bold text-emerald-300">Сильные стороны</div>
+                      <ul className="list-disc pl-5 text-xs text-emerald-100 mt-1 space-y-0.5">
+                        {checklistFeedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {checklistFeedback.gaps?.length ? (
+                    <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
+                      <div className="text-[10px] uppercase font-bold text-amber-300">Что улучшить</div>
+                      <ul className="list-disc pl-5 text-xs text-amber-100 mt-1 space-y-0.5">
+                        {checklistFeedback.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {checklistFeedback?.items?.length ? (
+                <details className="bg-black/30 border border-white/10 rounded-xl">
+                  <summary className="cursor-pointer p-3 text-xs font-bold text-[#E7C768]">Подробный разбор по каждому вопросу</summary>
+                  <div className="p-3 space-y-2">
+                    {checklistFeedback.items.map((it: any) => (
+                      <div key={it.id} className="bg-black/20 border border-white/5 rounded-lg p-2">
+                        <div className="text-xs font-bold text-white">{it.question}</div>
+                        <div className="text-[11px] text-slate-300 mt-1">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
+                        {it.correct ? <div className="text-[11px] text-emerald-300 mt-0.5">Эталон: {it.correct}</div> : null}
+                        <div className={`text-[11px] mt-1 ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
+                          {it.score}/{it.max} · {it.explanation}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
               <div className="flex gap-2">
                 <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
                 <button onClick={() => {
                   setChecklistScore(null);
+                  setChecklistFeedback(null);
                   setAnswers({});
                   if (shuffleChecklist) {
                     setQuestions(qs => shuffleArr(qs).map(q => q.kind === "choice" && q.options ? { ...q, options: shuffleArr(q.options) } : q));
@@ -317,7 +431,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       {stage === "situations" && (
         <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-5 space-y-3">
           <h3 className="font-bold text-[#E7C768]">Этап 3: Ролевые ситуации</h3>
-          {situationsScore != null ? (
+          {stageLocked("situations") ? (
+            <div className="text-sm text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+              ⛔ Сначала пройдите этап «Чек-лист» — без него ролевые ситуации недоступны.
+              <button onClick={() => setStage("checklist")} className="ml-2 underline text-[#E7C768]">Перейти к чек-листу</button>
+            </div>
+          ) : situationsScore != null ? (
             <div className="space-y-3">
               <div className="text-3xl font-extrabold text-emerald-300">{situationsScore}/100</div>
               {situationsFeedback.map(f => (

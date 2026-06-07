@@ -53,6 +53,9 @@ export interface CandidateScores {
   checklistScore?: number; // 0-100
   checklistSysScore?: number; // 0-100
   situationsScore?: number; // 0-100
+  resumeFeedback?: any;
+  checklistFeedback?: any;
+  situationsFeedback?: any;
 }
 
 export interface Candidate {

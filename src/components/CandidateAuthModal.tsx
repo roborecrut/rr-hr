@@ -15,7 +15,7 @@ type Props = {
   companyId?: string | null;
   roleName?: string;
   companyName?: string;
-  onSuccess: (publicId: string) => void;
+  onSuccess: (publicId: string, info?: { candidatePub?: string; projectPub?: string; companyPub?: string }) => void;
 };
 
 type Tab = "signup" | "login";
@@ -82,7 +82,11 @@ export default function CandidateAuthModal({
       setTimeout(() => {
         setOk(false);
         setBusy(false);
-        onSuccess(res.public_id || res.candidate_id);
+        onSuccess(res.public_id || res.candidate_id, {
+          candidatePub: res.public_id,
+          projectPub: res.project_public_id,
+          companyPub: res.company_public_id,
+        });
       }, 700);
     } catch (e: any) {
       setErr(e?.message || "Ошибка сервера");

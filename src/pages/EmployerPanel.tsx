@@ -585,7 +585,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с RR.");
     } finally {
       setEnhancingFields(prev => ({ ...prev, [fieldName]: false }));
     }
@@ -652,7 +652,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ProTalk.");
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с RR.");
     } finally {
       setIsEnhancingAll(false);
     }
@@ -660,7 +660,7 @@ export default function EmployerPanel() {
 
   const parseCompanyFileWithAI = async (filename: string) => {
     setIsParsingFile(true);
-    addAuditEvent("info", "ИИ разбор документа", `ИИ-Копирайтер ProTalk считывает текст из файла: ${filename}...`);
+    addAuditEvent("info", "ИИ разбор документа", `ИИ-Копирайтер RR считывает текст из файла: ${filename}...`);
     try {
       const filePath = draftFilePath;
       const res = await aiWaitRun<any>({
@@ -697,7 +697,7 @@ export default function EmployerPanel() {
     }
   };
 
-  // Open wizard: create draft company + reset ProTalk dialog with /restart
+  // Open wizard: create draft company + reset RR dialog with /restart
   const openAddCompanyWizard = async () => {
     if (showAddCompany) { await cancelAddCompanyWizard(); return; }
     try {
@@ -1538,7 +1538,7 @@ export default function EmployerPanel() {
     }
   };
 
-  // Open the vacancy wizard: create a draft project + restart the ProTalk
+  // Open the vacancy wizard: create a draft project + restart the RR
   // dialog so the user starts with a clean session, mirroring the company
   // wizard flow.
   const openAddVacancyWizard = async () => {
@@ -1991,7 +1991,7 @@ export default function EmployerPanel() {
     }
   };
 
-  // Step 2: explicit «Распознать документ» — send the uploaded file to ProTalk
+  // Step 2: explicit «Распознать документ» — send the uploaded file to RR
   // and put the resulting markdown into the editable raw-text textarea (≤5000
   // chars). The file is then removed from storage by the edge function.
   const recognizeVacancyFile = async () => {
@@ -2035,7 +2035,7 @@ export default function EmployerPanel() {
   // Cohesive AI format for new vacancy fields
   const handleBeautifyNewVacancyWithAI = async () => {
     setIsGenerating(true);
-    addAuditEvent("info", "ИИ-форматирование", "Оформляем все поля новой вакансии с помощью ИИ ProTalk...");
+    addAuditEvent("info", "ИИ-форматирование", "Оформляем все поля новой вакансии с помощью ИИ RR...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
       // Find the selected company to send its data as context.
@@ -2136,10 +2136,10 @@ export default function EmployerPanel() {
     }
   };
 
-  // Enhance a single landing page sub-field using ProTalk API
+  // Enhance a single landing page sub-field using RR API
   const handleEnhanceSingleVacancyField = async (fieldName: string, currentVal: string) => {
     if (!editingProject) return;
-    addAuditEvent("info", "ИИ-полировка поля", `Улучшаем сведения в поле "${fieldName}" через ProTalk LLM...`);
+    addAuditEvent("info", "ИИ-полировка поля", `Улучшаем сведения в поле "${fieldName}" через RR LLM...`);
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
       const value = await aiWaitRun({
@@ -2168,7 +2168,7 @@ export default function EmployerPanel() {
   const handleEnhanceAllVacancyLandingFields = async () => {
     if (!editingProject) return;
     setIsEnhancingAllVac(true);
-    addAuditEvent("info", "Полное ИИ-Оформление", "Запускаем полную реконструкцию контента лендинга через ИИ ProTalk...");
+    addAuditEvent("info", "Полное ИИ-Оформление", "Запускаем полную реконструкцию контента лендинга через ИИ RR...");
     try {
       const { aiEnhanceAll } = await import("@/lib/aiClient");
       const ep: any = editingProject;
@@ -2256,7 +2256,7 @@ export default function EmployerPanel() {
       }
     } catch (err) {
       console.error(err);
-      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ИИ ProTalk.");
+      addAuditEvent("warning", "Ошибка ИИ-полировки", "Не удалось связаться с ИИ RR.");
     } finally {
       setIsEnhancingAllVac(false);
     }
@@ -3343,7 +3343,7 @@ export default function EmployerPanel() {
                     </div>
                   </div>
 
-                  {/* Drag-Drop / click base file uploader with ProTalk integration */}
+                  {/* Drag-Drop / click base file uploader with RR integration */}
                   <div 
                     onClick={() => {
                       const fileInput = document.getElementById("comp-file-upload") as HTMLInputElement;

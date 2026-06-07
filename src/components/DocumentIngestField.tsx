@@ -18,7 +18,7 @@ const BUCKET: Record<Entity, string> = {
   interview: "interview-uploads",
 };
 
-// Universal file/URL → ProTalk → markdown → entity field component.
+// Universal file/URL → RR → markdown → entity field component.
 // Lets user upload a file or paste a URL, runs `ai-ingest-document` which returns
 // formatted markdown. The text is editable (max 10k chars) and bound to the parent
 // entity field via onChange. Optionally exposes "Внести через ИИ" to redistribute
@@ -52,7 +52,7 @@ export function DocumentIngestField({
   const [url, setUrl] = useState("");
   const [urlOpen, setUrlOpen] = useState(false);
   // After a successful upload we keep the storage path + filename so the user
-  // can explicitly trigger ProTalk on step 2.
+  // can explicitly trigger RR on step 2.
   const [uploaded, setUploaded] = useState<{ path: string; filename: string } | null>(null);
   const [uploadError, setUploadError] = useState("");
 
@@ -85,7 +85,7 @@ export function DocumentIngestField({
     }
   }
 
-  async function sendToProTalk() {
+  async function sendToRR() {
     if (!uploaded) return;
     setSending(true);
     try {
@@ -182,7 +182,7 @@ export function DocumentIngestField({
       {uploaded ? (
         <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(231,199,104,0.3)"}}>
           <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#E7C768]"/>Файл загружен: {uploaded.filename}</span>
-          <Button type="button" size="sm" className="btn-brand-primary" disabled={busy} onClick={sendToProTalk}>
+          <Button type="button" size="sm" className="btn-brand-primary" disabled={busy} onClick={sendToRR}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Распознать текст
           </Button>

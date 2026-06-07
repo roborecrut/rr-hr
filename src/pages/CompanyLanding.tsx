@@ -273,18 +273,31 @@ export default function CompanyLanding() {
   };
 
   // Candidate auth success → navigate to candidate profile bound to this vacancy.
-  const handleCandidateAuthSuccess = (publicId: string) => {
+  const handleCandidateAuthSuccess = (
+    publicId: string,
+    info?: { candidatePub?: string; projectPub?: string; companyPub?: string },
+  ) => {
     const activeProject = selectedVacancy || vacancies[0];
     setShowApplyModal(false);
     if (!activeProject) return;
-    navigate(
-      buildCandidateUrl(
-        { slug: (activeProject as any).companySlug || companySlug },
-        { slug: (activeProject as any).slug || activeProject.id },
-        { public_id: publicId },
-        "profile",
-      ),
-    );
+    // Prefer canonical public IDs returned by the auth RPC. They build a
+    // stable URL of the form `/com{X}/vac{Y}/cand{Z}/profile` that survives
+    // page reloads — UUID-only fallbacks are NOT recognised by the dispatcher.
+    const companyPub = info?.companyPub
+      || (activeProject as any).companySlug
+      || companySlug
+      || (activeProject as any).company_public_id
+      || null;
+    const projectPub = info?.projectPub
+      || (activeProject as any).slug
+      || (activeProject as any).public_id
+      || null;
+    const candPub = info?.candidatePub || publicId;
+    if (!companyPub || !projectPub || !candPub) {
+      navigate(`/cand${candPub}/profile`);
+      return;
+    }
+    navigate(`/com${companyPub}/vac${projectPub}/cand${candPub}/profile`);
   };
 
   const handleApplyOnboarding = async (e: React.FormEvent) => {

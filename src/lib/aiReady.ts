@@ -1,6 +1,6 @@
 // Global "AI ready" flag. We send /restart in background whenever the user
 // opens an AI-powered editor (vacancy, company, edit-company). Until that
-// /restart round-trip completes, ProTalk may answer the next user prompt
+// /restart round-trip completes, RR may answer the next user prompt
 // with the stale system response — so we hide AI-generation buttons in the
 // UI until the restart finishes.
 //

@@ -11,6 +11,19 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
+  // Billing: charge employer once per (candidate, interview) — idempotent via spend_pack.
+  // Only billed candidates can submit a resume for AI grading. Re-attempts are free
+  // (spend_pack uses idem_key `pack:interview:{candidate_id}`).
+  try {
+    const billed = await admin.rpc("spend_pack", { _candidate: body.candidate_id, _kind: "interview" });
+    const ok = (billed as any)?.data?.ok;
+    if (!ok && !(billed as any)?.data?.already) {
+      return jsonResponse({ error: "no_credits", reason: (billed as any)?.error?.message || "insufficient_funds" }, 402);
+    }
+  } catch (e) {
+    return jsonResponse({ error: "billing_failed", detail: String((e as Error).message) }, 402);
+  }
+
   const [{ data: proj }, { data: blk }] = await Promise.all([
     admin.from("projects").select("role_name,vacancy_text").eq("id", body.project_id).maybeSingle(),
     admin.from("interview_blocks").select("payload").eq("project_id", body.project_id).eq("kind","resume").maybeSingle(),
@@ -43,13 +56,13 @@ ${body.resume_text.slice(0, 10000)}
       gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
     };
 
-    // Upsert candidate_scores
-    const { data: scoreRow } = await admin.from("candidate_scores").select("id").eq("candidate_id", body.candidate_id).maybeSingle();
-    if (scoreRow?.id) {
-      await admin.from("candidate_scores").update({ resume_score: score, assessment_summary: result.summary }).eq("id", scoreRow.id);
-    } else {
-      await admin.from("candidate_scores").insert({ candidate_id: body.candidate_id, resume_score: score, assessment_summary: result.summary });
-    }
+    // Upsert candidate_scores (PK = candidate_id, no separate `id` column)
+    await admin.from("candidate_scores").upsert({
+      candidate_id: body.candidate_id,
+      resume_score: score,
+      assessment_summary: result.summary,
+      resume_feedback: result,
+    }, { onConflict: "candidate_id" });
     await admin.from("candidates").update({ resume_text: body.resume_text.slice(0, 20000) }).eq("id", body.candidate_id);
 
     await logToDb({ user_message: msg.slice(0, 5000), bot_reply: r.text.slice(0, 5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:screen-resume", server_name: "ai-interview-screen-resume" });
