@@ -1748,7 +1748,8 @@ export default function CandidateFlow() {
               onClick={() => {
                 localStorage.removeItem("cand_session_id");
                 localStorage.removeItem("cand_role");
-                navigate("/main");
+                const companyPath = companyFull?.slug ? `/company/${companyFull.slug}` : "/main";
+                navigate(companyPath);
               }}
               className="cursor-pointer bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 border border-red-500/20 hover:border-red-500/35 px-3.5 py-2 rounded-xl font-bold transition text-xs flex items-center gap-1.5"
               title="Выйти из кабинета"
@@ -1806,7 +1807,8 @@ export default function CandidateFlow() {
                 localStorage.removeItem("cand_session_id");
                 localStorage.removeItem("cand_role");
                 setMobileMenuOpen(false);
-                navigate("/main");
+                const companyPath = companyFull?.slug ? `/company/${companyFull.slug}` : "/main";
+                navigate(companyPath);
               }}
               className="cursor-pointer text-left w-full px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-300 font-bold transition flex items-center gap-2"
             >
