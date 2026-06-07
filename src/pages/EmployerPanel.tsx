@@ -4265,8 +4265,28 @@ export default function EmployerPanel() {
                         {paymentHistory.map((pt, i) => (
                           <tr key={i} className="hover:bg-white/5">
                             <td className="p-3 font-mono text-slate-400">{pt.date}</td>
-                            <td className="p-3 font-mono text-[10px] uppercase text-slate-300">{pt.type}</td>
-                            <td className="p-3">{pt.note}</td>
+                            <td className="p-3 font-mono text-[10px] uppercase text-slate-300">{(() => {
+                              const t = String(pt.type || "").toLowerCase();
+                              const map: Record<string,string> = {
+                                topup: "Пополнение",
+                                purchase: "Покупка",
+                                bonus: "Бонус",
+                                refund: "Возврат",
+                                ai_cost: "Расход ИИ",
+                              };
+                              return map[t] || pt.type;
+                            })()}</td>
+                            <td className="p-3">{(() => {
+                              let n = String(pt.note || "");
+                              n = n
+                                .replace(/^Signup bonus:\s*10 units$/i, "Приветственный бонус: 10 RR")
+                                .replace(/^Signup bonus$/i, "Приветственный бонус")
+                                .replace(/^Referral bonus:\s*\+?(\d+)\s*RR for inviting new employer$/i, "Реферальный бонус: +$1 RR за приглашение работодателя")
+                                .replace(/^Referral bonus:\s*invited\s+(.+)$/i, "Реферальный бонус: приглашён $1")
+                                .replace(/^Referral bonus:\s*joined via\s+(.+)$/i, "Реферальный бонус: регистрация по ссылке $1")
+                                .replace(/^Referral bonus/i, "Реферальный бонус");
+                              return n;
+                            })()}</td>
                             <td className={`p-3 text-right font-mono font-bold ${pt.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                               {pt.amount >= 0 ? "+" : ""}{pt.amount.toLocaleString("ru-RU")} RR
                             </td>
