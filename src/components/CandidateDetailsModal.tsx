@@ -326,8 +326,23 @@ export default function CandidateDetailsModal({
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1">Попыток: {sp.attempts || 0} · Лучший: {sp.best_score ?? "—"} · Последний: {sp.last_score ?? "—"}</div>
-                      {sp.last_feedback && typeof sp.last_feedback === "object" && (
-                        <pre className="text-[10px] text-slate-300 whitespace-pre-wrap mt-1 max-h-32 overflow-y-auto font-sans">{JSON.stringify(sp.last_feedback, null, 2)}</pre>
+                      {Array.isArray(sp.last_feedback) && sp.last_feedback.length > 0 && (
+                        <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
+                          {sp.last_feedback.map((pq: any, idx: number) => {
+                            const ans = Array.isArray(sp.last_answers) ? sp.last_answers.find((a: any) => a.question_id === pq.id) : null;
+                            const ok = pq.score === pq.max;
+                            return (
+                              <div key={pq.id || idx} className="bg-black/40 border border-white/5 rounded p-1.5">
+                                <div className="flex justify-between text-[10px]">
+                                  <span className="text-slate-400">Вопрос {idx + 1}</span>
+                                  <span className={ok ? "text-emerald-300" : pq.score > 0 ? "text-amber-300" : "text-rose-300"}>{pq.score}/{pq.max}</span>
+                                </div>
+                                {ans?.value && <div className="text-[10px] text-slate-200 mt-0.5"><b>Ответ:</b> {ans.value}</div>}
+                                {pq.comment && <div className="text-[10px] text-slate-400 italic mt-0.5">{pq.comment}</div>}
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   ))}

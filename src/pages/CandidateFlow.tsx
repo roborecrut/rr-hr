@@ -2613,7 +2613,19 @@ export default function CandidateFlow() {
         {/* Tab 6: Certified diploma success tab */}
         {activeTab === "certified" && (
           <div className="space-y-8 max-w-2xl mx-auto">
-            
+            {(() => {
+              const certUnlocked = currentStage === "certified";
+              return <>
+            {!certUnlocked && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-center space-y-1">
+                <div className="text-amber-200 font-bold text-sm">🔒 Сертификат пока недоступен</div>
+                <div className="text-[11px] text-amber-100/80">
+                  Завершите ИИ-собеседование и сдайте все 3 этапа обучения — после этого сертификат разблокируется и его можно будет скачать.
+                </div>
+              </div>
+            )}
+            <div className={`relative ${certUnlocked ? "" : "pointer-events-none select-none"}`}>
+              <div className={certUnlocked ? "" : "filter blur-sm opacity-60"}>
             {/* Visual Issued Certificate styled like a physical luxury diploma */}
             <div className="bg-[#161616] rounded-3xl border-8 border-double border-[#E7C768] shadow-2xl p-8 relative overflow-hidden text-center select-none bg-gradient-to-tr from-stone-900 via-[#1A1A1A] to-stone-900">
               
@@ -2680,6 +2692,16 @@ export default function CandidateFlow() {
               </div>
 
             </div>
+              </div>
+              {!certUnlocked && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-black/60 backdrop-blur-sm border border-[#E7C768]/40 rounded-2xl px-5 py-3 text-center">
+                    <div className="text-[#E7C768] font-extrabold text-sm">🏆 Сертификат заблокирован</div>
+                    <div className="text-[11px] text-slate-200 mt-0.5">Пройдите интервью и обучение до конца</div>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* State message banner */}
             {certSavedMsg && (
@@ -2691,13 +2713,15 @@ export default function CandidateFlow() {
             {/* Actions list */}
             <div className="space-y-3">
               <button
+                disabled={!certUnlocked}
                 onClick={() => {
+                  if (!certUnlocked) return;
                   setCertSavedMsg("🏆 Сертификат соответствия сохранен в ваше ИИ-портфолио и продублирован нанимателям в CRM!");
                   setTimeout(() => setCertSavedMsg(""), 5000);
                 }}
-                className="cursor-pointer w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold py-3.5 rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2"
+                className={`w-full font-bold py-3.5 rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2 ${certUnlocked ? "cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white" : "cursor-not-allowed bg-white/10 text-slate-400 border border-white/10"}`}
               >
-                Сохранить сертификат в PDF
+                {certUnlocked ? "Сохранить сертификат в PDF" : "Сертификат недоступен"}
               </button>
 
               <button
@@ -2710,7 +2734,8 @@ export default function CandidateFlow() {
                 Войти под другим профилем
               </button>
             </div>
-
+              </>;
+            })()}
           </div>
         )}
 
