@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +55,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
   const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100 });
-  const [source, setSource] = useState<string>("");
+  // Per-stage uploaded source text (one file context per stage)
+  const [sources, setSources] = useState<Record<Stage, string>>({ professional: "", product: "", system: "" });
+  const source = sources[stage] || "";
+  const setSource = (v: string) => setSources(s => ({ ...s, [stage]: v }));
+  const materialsRef = useRef<HTMLTextAreaElement | null>(null);
   const [busyMaterial, setBusyMaterial] = useState(false);
   const [busyTest, setBusyTest] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,6 +90,44 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   }, [createMode, projects]);
 
   const project = useMemo(() => projects.find(p => p.id === projectId) || null, [projects, projectId]);
+
+  // Reset per-stage source uploads when the project changes
+  useEffect(() => {
+    setSources({ professional: "", product: "", system: "" });
+  }, [project?.id]);
+
+  // Markdown toolbar helper — wraps current selection or inserts at caret
+  const applyMd = (prefix: string, suffix = "", placeholder = "") => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    const before = materials.slice(0, start);
+    const sel = materials.slice(start, end) || placeholder;
+    const after = materials.slice(end);
+    const insert = `${prefix}${sel}${suffix}`;
+    const next = `${before}${insert}${after}`.slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = before.length + prefix.length;
+      ta.setSelectionRange(pos, pos + sel.length);
+    });
+  };
+  const applyLinePrefix = (prefix: string) => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    const lineStart = materials.lastIndexOf("\n", start - 1) + 1;
+    const lineEnd = materials.indexOf("\n", end);
+    const realEnd = lineEnd === -1 ? materials.length : lineEnd;
+    const segment = materials.slice(lineStart, realEnd);
+    const replaced = segment.split("\n").map(l => l.startsWith(prefix) ? l : `${prefix}${l}`).join("\n");
+    const next = (materials.slice(0, lineStart) + replaced + materials.slice(realEnd)).slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => ta.focus());
+  };
 
   // Load stage block + test
   useEffect(() => {
@@ -360,14 +402,37 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 <Markdown remarkPlugins={[remarkGfm]}>{materials || "_Пусто_"}</Markdown>
               </div>
             ) : (
-              <textarea
+              <>
+                <div className="flex flex-wrap gap-1 bg-[#0F2A42]/60 border border-white/10 rounded-lg p-1.5">
+                  <button type="button" title="Заголовок H1" onClick={() => applyLinePrefix("# ")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Heading1 className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Заголовок H2" onClick={() => applyLinePrefix("## ")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Heading2 className="w-3.5 h-3.5" /></button>
+                  <span className="w-px bg-white/10 mx-1" />
+                  <button type="button" title="Жирный" onClick={() => applyMd("**", "**", "текст")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Bold className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Курсив" onClick={() => applyMd("_", "_", "текст")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Italic className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Код" onClick={() => applyMd("`", "`", "код")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Code className="w-3.5 h-3.5" /></button>
+                  <span className="w-px bg-white/10 mx-1" />
+                  <button type="button" title="Маркированный список" onClick={() => applyLinePrefix("- ")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><List className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Нумерованный список" onClick={() => applyLinePrefix("1. ")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><ListOrdered className="w-3.5 h-3.5" /></button>
+                  <button type="button" title="Ссылка" onClick={() => applyMd("[", "](https://)", "текст")}
+                    className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Link2 className="w-3.5 h-3.5" /></button>
+                </div>
+                <textarea
+                ref={materialsRef}
                 rows={14}
                 maxLength={10000}
                 value={materials}
                 onChange={(e) => setMaterials(e.target.value)}
                 placeholder="Markdown учебного материала (до 10 000 символов)…"
                 className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono focus:outline-[#E7C768]"
-              />
+                />
+              </>
             )}
             <div className="flex items-center justify-between text-[10px] text-slate-400">
               <span>{materials.length}/10000 символов</span>
