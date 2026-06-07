@@ -229,10 +229,49 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const stageBadge = (s: Stage, label: string, score: number | null) => (
-    <button onClick={() => setStage(s)} className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 ${stage === s ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}>
+    <button onClick={() => setStage(s)} disabled={stageLocked(s)} className={`px-4 py-2 rounded-xl border text-xs font-bold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${stage === s ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]" : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"}`}>
       {label}{score != null && <span className="text-[10px] bg-emerald-500/30 text-emerald-100 px-1.5 py-0.5 rounded">{score}</span>}
     </button>
   );
+
+  const stageLocked = (s: Stage) => {
+    if (s === "checklist") return resumeResult?.score == null;
+    if (s === "situations") return checklistScore == null;
+    return false;
+  };
+
+  if (paused) {
+    const tg = (paused.telegram || "").trim().replace(/^@/, "");
+    return (
+      <div className="bg-gradient-to-br from-[#17344F] to-[#265582] border border-[#E7C768]/40 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+        <div className="inline-flex w-14 h-14 rounded-full bg-amber-500/20 items-center justify-center text-3xl">⏸</div>
+        <h2 className="text-xl font-extrabold text-[#E7C768]">Вакансия временно на паузе</h2>
+        <p className="text-sm text-white/90 max-w-md mx-auto">
+          У работодателя сейчас закончились средства для проведения ИИ-собеседования. Свяжитесь с ним напрямую — возможно, отбор продолжается через личное общение.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs max-w-xl mx-auto">
+          {paused.email ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white break-all" href={`mailto:${paused.email}`}>
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Email</div>
+              <div className="mt-1 font-bold">{paused.email}</div>
+            </a>
+          ) : null}
+          {paused.phone ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white" href={`tel:${paused.phone.replace(/[^\d+]/g, "")}`}>
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Телефон</div>
+              <div className="mt-1 font-bold">{paused.phone}</div>
+            </a>
+          ) : null}
+          {tg ? (
+            <a className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-3 text-white" href={tg.startsWith("http") ? tg : `https://t.me/${tg}`} target="_blank" rel="noopener noreferrer">
+              <div className="text-[10px] uppercase text-[#E7C768] font-bold">Telegram</div>
+              <div className="mt-1 font-bold">@{tg}</div>
+            </a>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
