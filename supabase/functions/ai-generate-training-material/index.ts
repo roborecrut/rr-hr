@@ -41,14 +41,14 @@ Deno.serve(async (req) => {
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });
   const socialId = buildSocialId({ user_id: user?.id });
-  const msg = `Сгенерируй учебный материал в Markdown по блоку «${BLOCK_TITLES[body.block_key]}» для вакансии. Объём 1500–3000 слов. Структура: Цели обучения → Ключевые знания → Примеры/кейсы → Чек-лист. Используй заголовки H2/H3 и списки. Не более 10 000 символов.\n\nКонтекст:\n${ctx}`;
+  const msg = `Сгенерируй учебный материал в Markdown по блоку «${BLOCK_TITLES[body.block_key]}» для вакансии. Объём 1500–3000 слов. Структура: Цели обучения → Ключевые знания → Примеры/кейсы → Чек-лист. Используй заголовки H2/H3 и списки. Не более 20 000 символов.\n\nКонтекст:\n${ctx}`;
 
   try {
     const r = await callProTalk({
       messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения." }, { role: "user", content: msg }],
       chatId, socialId, timeoutMs: 180_000,
     });
-    const text = (r.text || "").slice(0, 10000);
+    const text = (r.text || "").slice(0, 20000);
 
     // upsert training_block for (project_id, block_key)
     const { data: existing } = await admin.from("training_blocks")
