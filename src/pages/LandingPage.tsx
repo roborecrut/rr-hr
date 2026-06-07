@@ -409,7 +409,7 @@ export default function LandingPage() {
       </Reveal>
 
       {/* 3 product cards */}
-      <section className="px-4 md:px-8 py-16 max-w-7xl mx-auto w-full border-t border-white/10">
+      <Reveal as="section" direction="up" className="px-4 md:px-8 py-16 max-w-7xl mx-auto w-full border-t border-white/10">
         <div className="text-center mb-12 space-y-2">
           <h2 className="text-3xl md:text-4xl font-bold">Полный AI-цикл найма</h2>
           <p className="text-slate-300 text-sm md:text-base">Три блока — настраиваются в пару кликов под вашу вакансию</p>
@@ -419,8 +419,8 @@ export default function LandingPage() {
             { icon: Globe, title: "ИИ-Лендинг вакансии", price: "500 RR", desc: "Готовый сайт-визитка с умным чат-консультантом по вашей базе знаний. Поможет соискателю узнать всё о компании и принять решение." },
             { icon: MessageSquare, title: "ИИ-Система Интервью", price: "200 RR", desc: "Сценарии диалога с кандидатом, детальный скоринг и ситуативные тесты под вашу сферу." },
             { icon: GraduationCap, title: "ИИ-Система Обучения", price: "300 RR", desc: "Индивидуальный симулятор онбординга: профессиональное дообучение, обучение продукту и процессам." },
-          ].map(({ icon: Icon, title, price, desc }) => (
-            <div key={title} className="bg-[#1D3E5E]/60 rounded-2xl p-6 border border-white/10 hover:border-[#E7C768] transition flex flex-col gap-4">
+          ].map(({ icon: Icon, title, price, desc }, i) => (
+            <Reveal key={title} direction="up" delay={i * 120} className="bg-[#1D3E5E]/60 rounded-2xl p-6 border border-white/10 hover:border-[#E7C768] transition flex flex-col gap-4">
               <div className="flex items-start justify-between">
                 <div className="w-12 h-12 rounded-xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
                   <Icon className="w-6 h-6" />
@@ -429,13 +429,13 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg font-bold text-[#E7C768]">{title}</h3>
               <p className="text-sm text-slate-200 leading-relaxed">{desc}</p>
-            </div>
+            </Reveal>
           ))}
         </div>
-      </section>
+      </Reveal>
 
       {/* Calculator */}
-      <section className="px-4 md:px-8 py-16 bg-[#1D3E5E]/40 border-t border-b border-white/10" id="tariffs">
+      <Reveal as="section" direction="scale" id="tariffs" className="px-4 md:px-8 py-16 bg-[#1D3E5E]/40 border-t border-b border-white/10">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-3">
             <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto">
@@ -444,13 +444,13 @@ export default function LandingPage() {
           </div>
           <HiringCalculator />
         </div>
-      </section>
+      </Reveal>
 
       {/* Reviews */}
-      <ReviewsSection />
+      <Reveal direction="up"><ReviewsSection /></Reveal>
 
       {/* CTA */}
-      <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
+      <Reveal as="section" direction="up" className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
         <img
           src={MASCOT.megaphone} alt="Робот Рекрутер с рупором"
           width={160} height={160} loading="lazy" decoding="async"
@@ -478,7 +478,7 @@ export default function LandingPage() {
             </button>
           </>
         )}
-      </section>
+      </Reveal>
 
       {/* Footer */}
       <footer className="bg-[#17344F] text-white py-12 px-4 md:px-8 border-t-2 border-[#E7C768]">
