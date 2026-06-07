@@ -233,7 +233,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       }
       await (supabase as any).from("candidate_scores").upsert({ candidate_id: candidateId, interview_score: avg, overall_score: avg }, { onConflict: "candidate_id" });
       onCompleted?.(passed, avg);
-      setStage("done");
+      // Не переключаем стадию автоматически — пользователь увидит результат
+      // этапа «Ситуации» и сам нажмёт кнопку «Показать итоговую оценку».
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
   };
