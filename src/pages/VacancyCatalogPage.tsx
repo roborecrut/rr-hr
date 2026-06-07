@@ -3,12 +3,13 @@
  * Карточки ведут на действующие лендинги конкретных вакансий
  * (/com{company_slug}/vac{project_slug}/vacancy). Доступ без регистрации.
  */
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
 import RRImage from "@/components/RRImage";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Search, Sparkles, Briefcase, MapPin, Wallet, Clock, Building2, Filter, X, Loader, ArrowRight,
+  Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
+  Sparkles, Zap, Users, CheckCircle2,
 } from "lucide-react";
 
 type Vac = {
@@ -51,9 +52,15 @@ export default function VacancyCatalogPage() {
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiResults, setAiResults] = useState<{ id: string; rank?: number }[] | null>(null);
-  const [aiQuery, setAiQuery] = useState("");
+  const PAGE_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Скролл наверх при заходе на страницу — иначе после перехода с лендинга
+  // позиция остаётся внизу.
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, []);
 
   useEffect(() => {
     let cancel = false;
@@ -112,9 +119,7 @@ export default function VacancyCatalogPage() {
     if (companyFilter) list = list.filter((v) => v.company_name === companyFilter);
     if (industryFilter) list = list.filter((v) => v.industry === industryFilter);
     if (roleFilter) list = list.filter((v) => v.role_name === roleFilter);
-    // Когда активен ИИ-поиск, не применяем буквальный текстовый фильтр —
-    // релевантность уже определена нейросетью.
-    if (q.trim() && !aiResults) {
+    if (q.trim()) {
       const needle = q.trim().toLowerCase();
       list = list.filter((v) =>
         (v.role_name || "").toLowerCase().includes(needle) ||
@@ -124,14 +129,30 @@ export default function VacancyCatalogPage() {
         (v.schedule_terms || "").toLowerCase().includes(needle)
       );
     }
-    if (aiResults && aiResults.length) {
-      const order = new Map(aiResults.map((r, i) => [r.id, i]));
-      list = list
-        .filter((v) => order.has(v.id))
-        .sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
-    }
     return list;
-  }, [vacs, q, companyFilter, industryFilter, roleFilter, aiResults]);
+  }, [vacs, q, companyFilter, industryFilter, roleFilter]);
+
+  // Сброс пагинации при смене фильтров/поиска.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [q, companyFilter, industryFilter, roleFilter]);
+
+  // Догрузка следующих 20 при подкручивании к низу списка.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          setVisibleCount((c) => Math.min(c + PAGE_SIZE, filtered.length));
+        }
+      }
+    }, { rootMargin: "400px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [filtered.length]);
+
+  const visible = filtered.slice(0, visibleCount);
 
   const openVacancy = (v: Vac) => {
     if (v.company_slug && v.slug) {
@@ -140,30 +161,6 @@ export default function VacancyCatalogPage() {
       navigate(`/job?id=${encodeURIComponent(v.slug || v.id)}`);
     }
   };
-
-  const runAiSearch = async () => {
-    if (!q.trim() || aiBusy) return;
-    setAiBusy(true);
-    setAiQuery(q.trim());
-    try {
-      const { data, error } = await supabase.rpc("search_vacancies", {
-        q: q.trim(),
-        match_count: 100,
-      });
-      if (error) throw error;
-      const results = Array.isArray(data)
-        ? (data as any[]).map((r) => ({ id: r.id as string, rank: Number(r.rank) || 0 }))
-        : [];
-      setAiResults(results);
-    } catch (e) {
-      console.error("search_vacancies failed", e);
-      setAiResults([]);
-    } finally {
-      setAiBusy(false);
-    }
-  };
-
-  const clearAi = () => { setAiResults(null); setAiQuery(""); };
 
   return (
     <div className="brand-editor min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white font-sans">
