@@ -415,7 +415,12 @@ export default function CompanyLanding() {
 
   return (
     <div className="bg-gradient-to-b from-[#112335] to-[#1C3A56] min-h-screen text-white font-sans antialiased flex flex-col justify-between">
-      
+      <h1 className="sr-only">
+        {selectedVacancy?.roleName
+          ? `${selectedVacancy.roleName} — ${displayCompany.name}`
+          : displayCompany.name}
+      </h1>
+
       {/* Dynamic Header */}
       <header className="sticky top-0 z-40 bg-[#112335]/95 backdrop-blur-md border-b border-[#204569]/40 py-2">
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
