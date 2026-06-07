@@ -84,7 +84,6 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
             <button onClick={() => navigate("/")} className="px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">Главная</button>
             <button onClick={() => navigate("/vacancy")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Каталог</button>
-            <button onClick={handleOpenCabinet} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Кабинет</button>
           </nav>
 
           {isAuthed ? (
