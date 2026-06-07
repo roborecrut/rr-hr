@@ -25,6 +25,12 @@ import {
   LogOut,
   LayoutDashboard,
   Play,
+  Briefcase,
+  Search,
+  Building2,
+  Rocket,
+  CheckCircle2,
+  Zap,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -85,6 +91,9 @@ export default function LandingPage() {
 
           <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
             <button onClick={() => navigate("/")} className="px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">Главная</button>
+            <button onClick={() => navigate("/vacancy")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-[#E7C768]" /> Вакансии
+            </button>
             <button onClick={() => navigate("/demo")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Демо-интервью</button>
           </nav>
 
@@ -111,6 +120,7 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
+            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Вакансии</button>
             <button onClick={() => { navigate("/demo"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Демо-интервью</button>
             {isAuthed ? (
               <>
@@ -249,6 +259,138 @@ export default function LandingPage() {
             <button onClick={() => navigate("/demo")} className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm py-3 rounded-xl shadow inline-flex items-center justify-center gap-2">
               <Play className="w-4 h-4" /> Попробовать с моей должностью
             </button>
+          </div>
+        </div>
+      </section>
+
+      {/* VACANCIES SHOWCASE — для соискателей и работодателей */}
+      <section
+        id="vacancies"
+        aria-labelledby="vacancies-title"
+        className="px-4 md:px-8 py-20 border-t border-white/10 bg-gradient-to-b from-[#17344F] to-[#1D3E5E]/60"
+      >
+        <div className="max-w-7xl mx-auto">
+          <header className="text-center max-w-3xl mx-auto mb-12 space-y-4">
+            <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full px-3 py-1.5">
+              <Sparkles className="w-4 h-4 text-emerald-300" />
+              <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Новое · Каталог вакансий открыт всем</span>
+            </div>
+            <h2 id="vacancies-title" className="text-3xl md:text-5xl font-bold leading-tight">
+              Найти работу через ИИ —{" "}
+              <span className="bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">бесплатно и без HR</span>
+            </h2>
+            <p className="text-slate-200 text-base md:text-lg">
+              Каталог всех активных вакансий со всех компаний платформы. Откликайтесь и проходите ИИ-собеседование напрямую — без рекрутёров,
+              без анкет «расскажите о себе» и без многонедельных ожиданий. А работодатели видят, как должна выглядеть современная система найма,
+              на живых примерах — и собирают такую же за 5 минут вместе с нейросетью.
+            </p>
+          </header>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Соискателю */}
+            <article className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-[#1D3E5E]/60 to-[#17344F]/40 border border-emerald-400/20 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+              <div className="flex items-start gap-5">
+                <img
+                  src={MASCOT.shine}
+                  alt="Робот Рекрутер радуется — кандидат нашёл работу через ИИ"
+                  width={120}
+                  height={120}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl flex-shrink-0"
+                />
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/30 rounded-full px-3 py-1">
+                    <Search className="w-3.5 h-3.5 text-emerald-300" />
+                    <span className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Для соискателей</span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                    Откликайся за минуту и проходи интервью с ИИ
+                  </h3>
+                </div>
+              </div>
+              <ul className="space-y-2.5 text-sm md:text-base text-slate-100">
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" /> Все активные вакансии всех компаний в одном каталоге</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" /> Умный поиск по должности, отрасли, окладу и графику</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" /> ИИ оценивает резюме, диалог и ситуативные кейсы — без живого HR</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-emerald-300 flex-shrink-0 mt-0.5" /> Ответ от работодателя — в тот же день, не через две недели</li>
+              </ul>
+              <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-2">
+                <button
+                  onClick={() => navigate("/vacancy")}
+                  className="cursor-pointer inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-400 to-emerald-500 text-[#0a2018] font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"
+                >
+                  <Briefcase className="w-5 h-5" /> Каталог вакансий
+                </button>
+                <button
+                  onClick={() => navigate("/demo")}
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-5 py-4 rounded-xl transition"
+                >
+                  <Play className="w-4 h-4 text-[#E7C768]" /> Сначала демо-интервью
+                </button>
+              </div>
+            </article>
+
+            {/* Работодателю */}
+            <article className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E7C768]/15 via-[#1D3E5E]/60 to-[#17344F]/40 border border-[#E7C768]/30 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+              <div className="flex items-start gap-5">
+                <img
+                  src={MASCOT.success}
+                  alt="Робот Рекрутер показывает готовую систему найма для работодателя"
+                  width={120}
+                  height={120}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-24 h-24 md:w-32 md:h-32 object-contain drop-shadow-2xl flex-shrink-0"
+                />
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 bg-[#E7C768]/20 border border-[#E7C768]/40 rounded-full px-3 py-1">
+                    <Building2 className="w-3.5 h-3.5 text-[#E7C768]" />
+                    <span className="text-[10px] font-bold text-[#E7C768] uppercase tracking-wider">Для работодателей</span>
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+                    Посмотри живые примеры — и собери такую же за 5 минут
+                  </h3>
+                </div>
+              </div>
+              <ul className="space-y-2.5 text-sm md:text-base text-slate-100">
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#E7C768] flex-shrink-0 mt-0.5" /> Готовые лендинги вакансий: дизайн, чат-консультант, описания, условия</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#E7C768] flex-shrink-0 mt-0.5" /> Сценарии ИИ-интервью со скорингом и ситуативными кейсами под отрасль</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#E7C768] flex-shrink-0 mt-0.5" /> Системы онбординга и обучения с тестами и тренажёрами</li>
+                <li className="flex items-start gap-2"><CheckCircle2 className="w-5 h-5 text-[#E7C768] flex-shrink-0 mt-0.5" /> Нет своей вакансии и материалов? RR соберёт всё с нуля — нужна только должность</li>
+              </ul>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-white/5 border border-white/10 rounded-xl py-2">
+                  <div className="text-[#E7C768] font-extrabold text-lg">5 мин</div>
+                  <div className="text-[10px] text-slate-300 uppercase tracking-wider">на запуск</div>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl py-2">
+                  <div className="text-emerald-300 font-extrabold text-lg">0 ₽</div>
+                  <div className="text-[10px] text-slate-300 uppercase tracking-wider">на старт</div>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl py-2">
+                  <div className="text-white font-extrabold text-lg">+1000 RR</div>
+                  <div className="text-[10px] text-slate-300 uppercase tracking-wider">бонус</div>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 mt-auto pt-2">
+                <button
+                  onClick={() => navigate("/vacancy")}
+                  className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-5 py-4 rounded-xl transition"
+                >
+                  <Briefcase className="w-4 h-4 text-[#E7C768]" /> Смотреть примеры
+                </button>
+                <button
+                  onClick={isAuthed ? () => navigate(profilePath) : handleOpenCabinet}
+                  className="cursor-pointer inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition"
+                >
+                  <Rocket className="w-5 h-5" /> Создать свою за 5 минут
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-300/80 flex items-center gap-1.5">
+                <Zap className="w-3 h-3 text-[#E7C768]" /> Нейросеть сама напишет вакансию, чек-листы и материалы обучения
+              </p>
+            </article>
           </div>
         </div>
       </section>
