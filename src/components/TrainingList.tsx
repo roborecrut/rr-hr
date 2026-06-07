@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GraduationCap, Plus, Pencil, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { JobProject } from "../types";
@@ -17,13 +17,19 @@ type SystemSummary = {
 export default function TrainingList({ projects, onOpen, onCreate }: Props) {
   const [summaries, setSummaries] = useState<Record<string, SystemSummary>>({});
   const [loading, setLoading] = useState(true);
+  // Stable key so we only re-fetch when the actual set of project IDs changes,
+  // not on every parent re-render (EmployerPanel refetches every 4s).
+  const idsKey = useMemo(() => projects.map(p => p.id).slice().sort().join(","), [projects]);
+  const firstLoad = useRef(true);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      setLoading(true);
-      const ids = projects.map(p => p.id);
-      if (!ids.length) { setSummaries({}); setLoading(false); return; }
+      // Only show the loading state on the very first fetch — silent refresh
+      // afterwards prevents the list from flashing every few seconds.
+      if (firstLoad.current) setLoading(true);
+      const ids = idsKey ? idsKey.split(",").filter(Boolean) : [];
+      if (!ids.length) { setSummaries({}); setLoading(false); firstLoad.current = false; return; }
       const [{ data: blocks }, { data: tests }] = await Promise.all([
         supabase.from("training_blocks").select("project_id,stage,materials_md").in("project_id", ids),
         supabase.from("training_stage_tests").select("project_id,stage,questions").in("project_id", ids),
@@ -43,9 +49,10 @@ export default function TrainingList({ projects, onOpen, onCreate }: Props) {
       });
       setSummaries(map);
       setLoading(false);
+      firstLoad.current = false;
     })();
     return () => { cancelled = true; };
-  }, [projects]);
+  }, [idsKey]);
 
   const existing = projects.filter(p => summaries[p.id]);
 
