@@ -870,6 +870,27 @@ export default function CandidateFlow() {
         setCandidate(activeCand);
         setCurrentStage(activeCand.currentStage || "terms");
 
+        // Load real scores from candidate_scores for /scoring tab and progress UI.
+        try {
+          const { data: sc } = await (supabase as any).from("candidate_scores")
+            .select("resume_score, checklist_score, situations_score, interview_score, overall_score, assessment_summary, resume_feedback, checklist_feedback, situations_feedback")
+            .eq("candidate_id", activeCand.id).maybeSingle();
+          if (sc) {
+            (activeCand as any).scores = {
+              resumeScore: sc.resume_score == null ? undefined : Number(sc.resume_score),
+              checklistScore: sc.checklist_score == null ? undefined : Number(sc.checklist_score),
+              situationsScore: sc.situations_score == null ? undefined : Number(sc.situations_score),
+              interviewScore: sc.interview_score == null ? undefined : Number(sc.interview_score),
+              overallScore: sc.overall_score == null ? undefined : Number(sc.overall_score),
+              assessmentSummary: sc.assessment_summary || "",
+              resumeFeedback: sc.resume_feedback || null,
+              checklistFeedback: sc.checklist_feedback || null,
+              situationsFeedback: sc.situations_feedback || null,
+            };
+            setCandidate({ ...activeCand });
+          }
+        } catch {}
+
         // Set editing initial fields
         setProfName(activeCand.name || "");
         setProfEmail(activeCand.email || "");
