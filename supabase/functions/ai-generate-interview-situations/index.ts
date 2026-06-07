@@ -5,7 +5,7 @@ import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string };
+  const body = await req.json().catch(() => null) as null | { project_id: string; wishes?: string };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
 
   const admin = getAdminClient();
@@ -29,7 +29,9 @@ Deno.serve(async (req) => {
 - criteria — критерии хорошего ответа (3-6 пунктов через ";"), используются для оценки.
 Без markdown.`;
 
+  const wishes = (body.wishes || "").trim().slice(0, 1000);
   const msg = `Подготовь 3 ролевые ситуации для оценки кандидата на вакансию.
+${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 Должность: ${(proj as any).role_name || ""}
 Компания: ${companyName}
 Контекст: ${(proj as any).vacancy_text || ""}

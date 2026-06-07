@@ -5,7 +5,7 @@ import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string };
+  const body = await req.json().catch(() => null) as null | { project_id: string; wishes?: string };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
 
   const admin = getAdminClient();
@@ -28,7 +28,9 @@ Deno.serve(async (req) => {
 - Последние 10 — kind:"text", options=null, correct=null, expected_answer=эталонный ответ 2-4 предложения.
 - id="q1".."q20". Без markdown, без обёрток.`;
 
+  const wishes = (body.wishes || "").trim().slice(0, 1000);
   const msg = `Составь чек-лист из 20 проверочных вопросов для собеседования на вакансию.
+${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 Должность: ${(proj as any).role_name || ""}
 Компания: ${companyName}
 Описание вакансии: ${(proj as any).vacancy_text || ""}
