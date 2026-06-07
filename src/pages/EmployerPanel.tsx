@@ -223,6 +223,8 @@ export default function EmployerPanel() {
   // Fetching data state
   const [projects, setProjects] = useState<JobProject[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  // Training tab: list ↔ editor toggle
+  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
@@ -4443,11 +4445,24 @@ export default function EmployerPanel() {
           )}
 
           {activeTab === "training" && (
-            <TrainingWizard
-              projects={projects}
-              addAuditEvent={addAuditEvent}
-              refreshProjects={fetchData}
-            />
+            <>
+              {trainingView.mode === "list" ? (
+                <TrainingList
+                  projects={projects}
+                  onOpen={(projectId) => setTrainingView({ mode: "edit", projectId })}
+                  onCreate={() => setTrainingView({ mode: "create" })}
+                />
+              ) : (
+                <TrainingWizard
+                  projects={projects}
+                  addAuditEvent={addAuditEvent}
+                  refreshProjects={fetchData}
+                  initialProjectId={trainingView.mode === "edit" ? trainingView.projectId : undefined}
+                  createMode={trainingView.mode === "create"}
+                  onBack={() => setTrainingView({ mode: "list" })}
+                />
+              )}
+            </>
           )}
 
         </main>
