@@ -11,6 +11,7 @@ import HiringCalculator from "../components/HiringCalculator";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
+import { MASCOT } from "@/lib/mascotImages";
 import {
   Chrome,
   ArrowRight,
@@ -24,8 +25,6 @@ import {
   LogOut,
   LayoutDashboard,
   Play,
-  ListChecks,
-  FileText,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -218,9 +217,9 @@ export default function LandingPage() {
               Так ты увидишь, как Робот Рекрутер работает с твоими будущими кандидатами.
             </p>
             <div className="grid grid-cols-3 gap-3">
-              <DemoStepCard icon={<MessageSquare className="w-5 h-5"/>} step="1" label="Ситуация" />
-              <DemoStepCard icon={<ListChecks className="w-5 h-5"/>} step="2" label="Чек-лист" />
-              <DemoStepCard icon={<FileText className="w-5 h-5"/>} step="3" label="Резюме" />
+              <DemoStepCard mascot={MASCOT.serious}  step="1" label="Ситуация"  hint="Ролевая сцена" />
+              <DemoStepCard mascot={MASCOT.question} step="2" label="Чек-лист"  hint="Проверка знаний" />
+              <DemoStepCard mascot={MASCOT.clock}    step="3" label="Резюме"    hint="Скрининг ИИ" />
             </div>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
