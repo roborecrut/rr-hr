@@ -80,7 +80,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased flex flex-col">
+    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
         <div className="flex items-center justify-between gap-4 w-full max-w-7xl mx-auto">
