@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     const arr = tryParseJson<any[]>(r.text);
     if (!Array.isArray(arr) || arr.length < 5) throw new Error("bad_json");
 
-    const questions = arr.slice(0, 20).map((q, i) => {
+    const questions = arr.slice(0, 30).map((q, i) => {
       const kind = q.kind === "text" ? "text" : "choice";
       const opts = Array.isArray(q.options) ? q.options.map((o: any) => typeof o === "string" ? o : String(o?.text || "")) : null;
       return {

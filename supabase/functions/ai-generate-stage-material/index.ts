@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => null) as null | {
     project_id: string; stage: string; source_text?: string;
+    context_keys?: string[]; wishes?: string;
   };
   if (!body?.project_id || !body?.stage || !STAGE_TITLES[body.stage]) {
     return jsonResponse({ error: "bad_body" }, 400);
@@ -47,27 +48,30 @@ Deno.serve(async (req) => {
     `Условия: ${proj.conditions || ""}`,
     `Мотивация: ${proj.motivation || ""}`,
   ];
-  if (body.stage === "professional") {
-    ctx.push(`Базовый материал по профессии: ${proj.training_professional_text || proj.training_prof_text || ""}`);
+
+  // Available context blocks (by key). Front-end may pass `context_keys` to
+  // include a custom subset; otherwise all non-empty blocks are included.
+  const blocks: Record<string, string> = {
+    intro:        proj.training_intro_text || "",
+    professional: proj.training_professional_text || proj.training_prof_text || "",
+    product:      proj.training_product_text || "",
+    systems:      proj.training_systems_text || proj.training_system_text || "",
+    regulations:  proj.training_regulations_text || "",
+    wiki:         proj.training_wiki_text || "",
+    company:      company ? [company.name, company.description_text, company.products_text, company.mission_text, company.system_text, company.schedule_text, company.payouts_text].filter(Boolean).join("\n") : "",
+  };
+  const labels: Record<string, string> = {
+    intro: "Введение", professional: "Профессиональный блок", product: "Продуктовый блок",
+    systems: "Системный блок", regulations: "Регламенты", wiki: "Wiki", company: "Компания",
+  };
+  const selected = Array.isArray(body.context_keys) && body.context_keys.length
+    ? body.context_keys
+    : Object.keys(blocks);
+  for (const k of selected) {
+    if (blocks[k]) ctx.push(`${labels[k] || k}: ${blocks[k]}`);
   }
-  if (body.stage === "product" && company) {
-    ctx.push(`Компания: ${company.name || ""}`);
-    ctx.push(`Описание: ${company.description_text || ""}`);
-    ctx.push(`Продукты/услуги: ${company.products_text || ""}`);
-    ctx.push(`Миссия: ${company.mission_text || ""}`);
-    ctx.push(`Базовый материал по продукту: ${proj.training_product_text || ""}`);
-  }
-  if (body.stage === "system") {
-    if (company) {
-      ctx.push(`Системы и процессы компании: ${company.system_text || ""}`);
-      ctx.push(`График: ${company.schedule_text || ""}`);
-      ctx.push(`Выплаты: ${company.payouts_text || ""}`);
-    }
-    ctx.push(`Система работы: ${proj.training_systems_text || proj.training_system_text || ""}`);
-    ctx.push(`База Wiki: ${proj.training_wiki_text || ""}`);
-    ctx.push(`Регламенты: ${proj.training_regulations_text || ""}`);
-  }
-  if (body.source_text) ctx.push(`Дополнительный материал:\n${body.source_text.slice(0, 8000)}`);
+  if (body.source_text) ctx.push(`Дополнительный материал (из файла):\n${body.source_text.slice(0, 8000)}`);
+  const wishes = (body.wishes || "").trim().slice(0, 1000);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });
@@ -75,7 +79,7 @@ Deno.serve(async (req) => {
 
   const msg = `Подготовь учебный материал в Markdown для этапа «${STAGE_TITLES[body.stage]}». Фокус: ${STAGE_FOCUS[body.stage]}.
 Объём 1500–3000 слов. Структура: вводный абзац, разделы H2 (минимум 3), внутри H3/списки/чек-листы, в конце «Контрольные точки». Не более 10 000 символов. Только Markdown, без преамбулы.
-
+${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 КОНТЕКСТ:
 ${ctx.filter(Boolean).join("\n")}`;
 
