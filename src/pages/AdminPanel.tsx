@@ -942,3 +942,90 @@ function LogsSection() {
     </div>
   );
 }
+
+/* ============== Reviews moderation ============== */
+function ReviewsSection({ setToast }: { setToast: (t: any) => void }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<any | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(500);
+    setRows(data || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const del = async (id: string) => {
+    if (!confirm("Удалить отзыв?")) return;
+    const { error } = await supabase.from("reviews").delete().eq("id", id);
+    if (error) { setToast({ kind: "err", text: error.message }); return; }
+    setToast({ kind: "ok", text: "Отзыв удалён" });
+    load();
+  };
+
+  const regenAi = async (id: string) => {
+    setBusy(id);
+    try {
+      const { data, error } = await supabase.functions.invoke("reviews-ai-reply", { body: { review_id: id } });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error(String((data as any).error));
+      setToast({ kind: "ok", text: "Ответ ИИ обновлён" });
+      load();
+    } catch (e: any) {
+      setToast({ kind: "err", text: e?.message || "Ошибка" });
+    } finally { setBusy(null); }
+  };
+
+  return (
+    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-white">Отзывы — модерация</h2>
+        <button onClick={load} className="text-slate-300 hover:text-white inline-flex items-center gap-1 text-sm">
+          <RefreshCw className="w-4 h-4" /> Обновить
+        </button>
+      </div>
+      {loading ? (
+        <div className="p-6 text-center text-slate-400"><Loader2 className="w-5 h-5 animate-spin inline" /></div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" style={{ minWidth: 1100 }}>
+            <thead className="text-xs text-slate-400 border-b border-white/10">
+              <tr>
+                <th className="text-left p-2">Дата</th>
+                <th className="text-left p-2">Автор</th>
+                <th className="text-left p-2">Отзыв</th>
+                <th className="text-left p-2">Ответ ИИ</th>
+                <th className="text-left p-2">Ответ админа</th>
+                <th className="text-center p-2">Опубл.</th>
+                <th className="text-right p-2">Действия</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
+                  <td className="p-2 text-slate-300 whitespace-nowrap">{new Date(r.created_at).toLocaleDateString("ru-RU")}</td>
+                  <td className="p-2 text-white whitespace-nowrap">{r.first_name} {r.last_name}</td>
+                  <td className="p-2 text-slate-200"><div className="max-w-[300px] line-clamp-3">{r.content}</div></td>
+                  <td className="p-2 text-slate-300"><div className="max-w-[260px] line-clamp-3">{r.ai_reply || "—"}</div></td>
+                  <td className="p-2 text-emerald-200"><div className="max-w-[260px] line-clamp-3">{r.admin_reply || "—"}</div></td>
+                  <td className="p-2 text-center">{r.is_published ? "✓" : "—"}</td>
+                  <td className="p-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <button disabled={busy === r.id} onClick={() => regenAi(r.id)} className="text-xs px-2 py-1 rounded bg-[#E7C768]/20 text-[#E7C768] hover:bg-[#E7C768]/30 mr-1 disabled:opacity-50">
+                      {busy === r.id ? "…" : "ИИ"}
+                    </button>
+                    <button onClick={() => del(r.id)} className="text-xs px-2 py-1 rounded bg-rose-500/20 text-rose-200 hover:bg-rose-500/30">Удалить</button>
+                  </td>
+                </tr>
+              ))}
+              {rows.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-slate-400">Нет отзывов</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <DetailsModal title="Отзыв" data={selected} table="reviews" labels={RU_LABELS.reviews} onClose={() => setSelected(null)} onSaved={load} />
+    </div>
+  );
+}
