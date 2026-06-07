@@ -2,7 +2,7 @@
  * Лендинг работодателя — Google-only регистрация, бонус 1000 RR (10 ед.),
  * три карточки услуг и калькулятор Робот vs HR.
  */
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
