@@ -65,3 +65,15 @@ verify_jwt = false
 
 [functions.robokassa-create]
 verify_jwt = true
+
+[functions.ai-demo-prepare]
+verify_jwt = false
+
+[functions.ai-demo-grade-situations]
+verify_jwt = false
+
+[functions.ai-demo-grade-checklist]
+verify_jwt = false
+
+[functions.ai-demo-screen-resume]
+verify_jwt = false

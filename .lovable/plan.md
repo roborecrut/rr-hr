@@ -1,80 +1,90 @@
-# План работ по кабинету кандидата
+## Цель
 
-## 1. Стабильный URL кандидата после регистрации
-- В `CandidateAuthModal` / `signup-bootstrap` / `CandidateFlow` после `candidate_email_signup` вместо `/<empPub>/<projectUUID>/<candidateUUID>/profile` собирать `/com{company.public_id}/vac{project.public_id}/cand{candidate.public_id}/profile`.
-- Использовать `public_id` из ответа RPC (он уже возвращает `public_id`, нужно также подтянуть `company.public_id` и `project.public_id` — добавить в RPC `candidate_email_signup`/`candidate_email_login` поля `company_public_id`, `project_public_id`).
-- Везде в навигации (`navigate(...)`, ссылки в карточках вакансий и кнопке «Перейти к условиям») перейти на схему `com{X}/vac{Y}/cand{Z}/...`.
+Превратить страницу каталога профессий в полноценную бесплатную демо-версию интервью с Роботом Рекрутером. Любой посетитель (без регистрации) выбирает должность из готовых шаблонов и проходит 3 этапа в обратном порядке: **Ситуация → Чеклист → Скрининг резюме**, получает итоговый отчёт ИИ и видит CTA «Создай свою систему найма». Прогресс сохраняется в `localStorage`.
 
-## 2. Кликабельная кнопка «Перейти к условиям вакансии»
-- В `CandidateFlow`/карточке активной вакансии заменить декоративную кнопку на `<Link to={\`/com${companyPub}/vac${projectPub}/cand${candPub}/terms/vacancy\`}>`.
+## 1. Маршрутизация
 
-## 3. Перекомпоновка профиля кандидата
-Новый порядок блоков:
-1. **Контактные данные** (с кнопкой «Редактировать») + **Степень прохождения** (прогресс по этапам).
-2. **Большой блок «Выберите компанию и вакансию»** — переезд из левой колонки в центральную секцию, перенос списка применённых заявок + поиска новых.
-3. **Файловое досье кандидата** — резюме + документы:
-   - Использовать существующий `DocumentUploader` (с оверлеем маскота, кнопкой «Распознать», `AIRestartGate`).
-   - **Бакет**: использовать уже существующий **`candidate-resumes`** (private). Для дополнительных документов кандидата создать новый бакет `candidate-docs` (private) — миграция + RLS на `storage.objects`: владелец = `candidate_id` из метаданных, чтение/запись только для своего кандидата и работодателя-владельца проекта.
+`src/App.tsx`:
+- удалить роут `/vacancy` и страницу `src/pages/MainCatalogPage.tsx`;
+- добавить роут `/demo` → новая страница `src/pages/DemoInterviewPage.tsx`;
+- ссылки на `/vacancy` в коде (хедер главной, мобильное меню, футер) заменить на `/demo`.
 
-## 4. Красивые табы для блоков условий
-- В страницах `terms/vacancy|onboarding|team|system` использовать тот же парсер `[Иконка Заголовок] описание | подсказка` из `VacancySections.tsx`.
-- Вынести компонент `TabbedChecklistBlock` в `src/components/TabbedChecklistBlock.tsx` и переиспользовать его и на лендинге, и в кабинете (стили: liquid-glass синий градиент, золото для заголовков).
+## 2. Источник контента для демо
 
-## 5. Ребрендинг ProTalk → RR в UI
-- Заменить в **UI-текстах** (кнопки, тосты, плейсхолдеры) все «ProTalk» на «RR» в: `DocumentIngestField.tsx`, `DocumentUploader.tsx`, `AIRestartGate.tsx`, `CandidateInterview.tsx`, `aiReady.ts` (текст загрузки), `EmployerPanel.tsx`.
-- Внутренние имена файлов/каналов логов (`protalk.ts`, `channel_name: "ai-..."`, `server_name`) — **не трогаем** (это серверные идентификаторы).
+В `job_titles.field_templates` лежат только текстовые блоки вакансии (`vacancy_text`, `motivation_text`, `schedule_text`, `payouts_text`, `team_text_vac`, `system_text_vac`, `tasks_activity_text` и т.п.) — **готовых вопросов для чеклиста/ситуаций/критериев резюме там нет**. Поэтому контент для трёх этапов будем генерировать ИИ один раз и кэшировать.
 
-## 6. Богатая оценка чеклиста
-- В `ai-interview-grade-checklist`: для всех вопросов (включая `choice`) передавать в RR полный набор `question`, `expected/correct`, `candidate_answer` и просить JSON:
-  ```json
-  {"items":[{"id","score","max","verdict":"correct|partial|wrong","explanation","what_was_right","what_was_wrong"}],
-   "total":0..100,"summary":"...","strengths":[],"gaps":[]}
-  ```
-- Сохранять полный объект в `candidate_scores.checklist_feedback jsonb` (новая колонка).
-- В кабинете кандидата на странице результатов чеклиста отрисовать карточки по каждому вопросу + итоговые «Плюсы/Минусы» в Liquid-Glass.
+Решение: новая edge-функция `ai-demo-prepare` (stateless, без биллинга и БД), которая принимает `{ title, vacancy_text }`, вызывает ProTalk и возвращает:
+```json
+{
+  "situations": [{ "id", "title", "brief" }, ... 2-3 шт],
+  "checklist":  [{ "id", "kind":"choice|text", "question", "options?" }, ... 5-7 шт],
+  "resume_criteria": "markdown с критериями для скрининга"
+}
+```
+Результат кэшируется в `localStorage` ключом `demo:tpl:<job_title_id>` навечно (бесплатно для нас на повторных входах).
 
-## 7. Сохранение всех результатов интервью
-- Сейчас `resume_score` сохраняется, а `checklist_score`/`situations_score` после ребилда страницы пропадают, т.к. читаются из локального стейта `CandidateInterview`.
-- Перечитывать `candidate_scores` (resume_score, resume_feedback, checklist_score, checklist_feedback, situations_score, situations_feedback) при mount страницы интервью.
-- Гарантировать что edge-функции `ai-interview-grade-checklist` и `ai-interview-grade-situations` всегда делают upsert по `candidate_id` (а не update по `id`, который может быть NULL).
+Для оценки ответов — три тонкие stateless-функции, по аналогии с боевыми, но без `spend_pack`, без записи в БД, принимают данные напрямую:
+- `ai-demo-grade-situations` — `{ title, situations, answers }` → `[{ id, feedback, score }]`
+- `ai-demo-grade-checklist` — `{ title, questions, answers }` → `{ score, per_question:[{id, ok, comment}] }`
+- `ai-demo-screen-resume` — `{ title, vacancy_text, criteria_md, resume_text }` → `{ score, summary, strengths[], gaps[] }`
 
-## 8. Реальные оценки на странице `/scoring`
-- В `CandidateFlow`/`CandidateScoring` убрать заглушки и читать `candidate_scores` по `candidate_id`. Если строки нет — показывать «нет данных», а не моки.
-- Те же поля видны в CRM работодателя (`EmployerPanel`) — они уже подтягивают `candidate_scores`, после фикса п.7 данные совпадут.
+Каждая функция отдельно дергает `/restart` не делает — общий `/restart` происходит один раз в начале демо (см. ниже). Логирование в `ai_logs` оставляем (полезно для отладки), биллинг — отсутствует.
 
-## 9. Этапность интервью (resume → checklist → situations)
-- В `CandidateInterview` (и роутинге) перед рендером checklist проверять `resume_score != null`, перед situations — `checklist_score != null`. Иначе показывать `<StageLockedNotice/>` с кнопкой «Перейти к предыдущему этапу».
+## 3. Страница `/demo` (`src/pages/DemoInterviewPage.tsx`)
 
-## 10. Списание баланса работодателя за интервью
-- Точка списания — нажатие «Оценить резюме» (`ai-interview-screen-resume`).
-- В начале функции вызывать `spend_pack(candidate_id, 'interview')` (RPC уже идемпотентен по ключу `pack:interview:{candidate_id}`), значит повторное прохождение для **того же кандидата+вакансии** = бесплатно. Для другой вакансии — другой `candidate_id` → новое списание.
-- При недостатке кредитов — возвращать `{error:'no_credits'}` и фронт показывает баннер п.11.
+Состояния (всё в `localStorage` под ключом `demo:state`):
+```
+{ titleId, stage: 'pick' | 'restart' | 'situations' | 'checklist' | 'resume' | 'done',
+  template, sitAnswers, checkAnswers, resumeText,
+  sitResult, checkResult, resumeResult, finalScore }
+```
 
-## 11. «Вакансия на паузе» при нулевом балансе
-- На входе на страницу интервью вызывать RPC-проверку `can_start_interview(candidate_id)` (новая security-definer функция: проверяет наличие уже списанной транзакции `pack:interview:{cand}` ИЛИ положительный баланс/кредиты работодателя).
-- Если нельзя — рендерить `<VacancyPausedNotice/>` с кликабельными контактами работодателя (телефон `tel:`, telegram `https://t.me/...`, email `mailto:`).
+Экраны:
+1. **Выбор должности** — список из `fetchJobTitles()` с поиском-фильтром. Кнопки «Добавить свою должность» **нет**, разрешены только шаблоны. Клик по карточке → переход к шагу 2 для выбранной роли.
+2. **Запуск ИИ** — оверлей с маскотом, вызов `aiRestart()` + `ai-demo-prepare` параллельно (с `LoadingPhrase`). После успеха — переход к этапу 1.
+3. **Этап 1 — Ситуация** — отрисовка из `situations`, поля ответов, кнопка «Отправить» → `ai-demo-grade-situations`, показ feedback, кнопка «Далее».
+4. **Этап 2 — Чеклист** — отрисовка из `checklist`, отправка → `ai-demo-grade-checklist`.
+5. **Этап 3 — Скрининг резюме** — textarea + загрузка файла через существующий `candidate-upload-file` опционально (или просто текст для упрощения; см. вопрос ниже не нужен, делаем только текстовое поле для скорости MVP). Отправка → `ai-demo-screen-resume`.
+6. **Финал** — карточка с итоговым отчётом: общий балл (среднее из трёх), сильные стороны, пробелы, комментарии по каждому этапу. Две крупные CTA:
+   - «🚀 Создать свою систему найма» → `/main` (на якорь регистрации работодателя);
+   - «↻ Пройти ещё раз с другой должностью» → очистка `localStorage`, возврат к шагу 1.
 
-## 12. Кликабельные контакты владельца вакансии
-- В блоке «Контакты владельца» кабинета кандидата обернуть значения в `<a href="tel:...">`, `<a href="mailto:...">`, `<a href="https://t.me/{handle}">` (нормализовать @handle).
+UX: визуальный шаг-индикатор «1 Ситуация → 2 Чеклист → 3 Резюме». Дизайн — бренд-палитра, `.brand-editor`, золотые заголовки, синий градиент. Маскот `Mascot` из существующего компонента.
 
----
+Реюз кода: вынести из `CandidateInterview.tsx` чистые UI-блоки (рендер вопроса, ситуации, ответов) в подкомпоненты или просто продублировать минимально — `CandidateInterview` сильно привязан к `projectId/candidateId`, поэтому в демо пишем независимую, более простую версию.
 
-## Технические детали
+## 4. Главный лендинг (`src/pages/LandingPage.tsx`)
 
-### Миграции
-1. Колонки `candidate_scores`:
-   - `resume_feedback jsonb`, `checklist_feedback jsonb`, `situations_feedback jsonb` (если нет).
-2. RPC `candidate_email_signup` / `candidate_email_login` — добавить в возвращаемый JSON `company_public_id`, `project_public_id`.
-3. Бакет `candidate-docs` (private) + RLS на `storage.objects` для `bucket_id='candidate-docs'`.
-4. Новая RPC `public.can_start_interview(_candidate uuid) returns jsonb` — для п.11.
+Полный рефакторинг с акцентом на демо:
+- **Hero** — заголовок «Попробуй ИИ-интервью бесплатно. Прямо сейчас.», подзаголовок про 3 этапа, главный CTA «🎮 Начать демо-интервью» → `/demo`, вторичный CTA «Я работодатель — создать систему» → раздел регистрации.
+- **Блок «Как работает демо»** — три карточки «1. Ситуация / 2. Чеклист / 3. Скрининг резюме», иконки, короткий текст, кнопка «Попробовать» → `/demo`.
+- **Блок «Хочешь так же у себя?»** — описание системы найма для работодателей + CTA на регистрацию.
+- Удалить/заменить старые блоки про «Каталог профессий» (кнопки, баннеры, ссылки `/vacancy`). Тарифы, FAQ, отзывы, футер — оставить.
+- В хедере пункт «Каталог Профессий» заменить на «Демо-интервью» → `/demo`.
 
-### Файлы фронта (правка)
-- `src/pages/CandidateFlow.tsx`, `src/components/CandidateAuthModal.tsx`, `src/components/CandidateInterview.tsx`, `src/components/CandidateDetailsModal.tsx`, `src/components/DocumentUploader.tsx`, `src/components/DocumentIngestField.tsx`, `src/components/AIRestartGate.tsx`, `src/lib/aiReady.ts`, `src/pages/EmployerPanel.tsx`.
-- Новые: `src/components/TabbedChecklistBlock.tsx`, `src/components/VacancyPausedNotice.tsx`, `src/components/StageLockedNotice.tsx`, `src/components/ChecklistResults.tsx`.
+## 5. Технические детали
 
-### Edge-функции
-- Правки: `ai-interview-screen-resume` (списание), `ai-interview-grade-checklist` (богатый фидбек + сохранение), `ai-interview-grade-situations` (сохранение фидбека).
-- Новых функций не требуется.
+**Новые файлы:**
+- `src/pages/DemoInterviewPage.tsx`
+- `src/lib/demoSession.ts` — хелперы для `localStorage` (load/save/clear).
+- `supabase/functions/ai-demo-prepare/index.ts`
+- `supabase/functions/ai-demo-grade-situations/index.ts`
+- `supabase/functions/ai-demo-grade-checklist/index.ts`
+- `supabase/functions/ai-demo-screen-resume/index.ts`
 
-### Дизайн
-Все новые экраны — в текущем brand-стиле (Apple Liquid Glass на градиенте `#17344F → #265582`, золотые заголовки, белый текст), карточки без тёмно-серого/чёрного.
+**Изменения:**
+- `src/App.tsx` — роуты.
+- `src/pages/LandingPage.tsx` — рефакторинг hero/секций.
+- Удалить `src/pages/MainCatalogPage.tsx`.
+- Глобальный поиск ссылок `/vacancy` → заменить на `/demo` (в хедере главной, мобильном меню, футере, любых CTA).
+- `supabase/config.toml` — зарегистрировать новые функции с `verify_jwt = false` (демо публичное).
+
+**Безопасность/расход:**
+- Демо-функции stateless, без записи в БД и без биллинга — никакие лимиты работодателя не списываются.
+- Чтобы недоброжелатели не выжигали ProTalk-кредиты: добавить простой rate-limit по IP в каждой demo-функции (in-memory Map с TTL 60 сек, лимит 30 запросов/мин на IP) — достаточно для MVP. `ai-demo-prepare` дополнительно мемоизирует результат на клиенте, так что обычный пользователь дергает её 1 раз на должность.
+
+**Не делаем:**
+- Привязку демо к учётке/компании/вакансии.
+- Сохранение результатов в БД.
+- Возможность добавить свою должность (только готовые шаблоны).
+- Загрузку резюме файлом на этапе 3 (только текст) — это можно докрутить позже, чтобы не раздувать MVP.

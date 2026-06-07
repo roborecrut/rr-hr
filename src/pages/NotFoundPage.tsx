@@ -32,10 +32,10 @@ export default function NotFoundPage() {
             На главную
           </button>
           <button
-            onClick={() => navigate("/vacancy")}
+            onClick={() => navigate("/demo")}
             className="px-6 py-3 rounded-lg border border-white/30 text-white hover:bg-white/10 transition"
           >
-            Каталог вакансий
+            Демо-интервью
           </button>
         </div>
       </div>

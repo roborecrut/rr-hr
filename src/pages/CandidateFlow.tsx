@@ -1616,10 +1616,10 @@ export default function CandidateFlow() {
             свяжитесь с работодателем напрямую, если у вас остались вопросы.
           </p>
           <button
-            onClick={() => navigate("/vacancy")}
+            onClick={() => navigate("/demo")}
             className="bg-[#E7C768] text-[#17344F] font-bold text-xs py-2.5 px-5 rounded-xl hover:bg-[#F4EE8E] transition"
           >
-            Каталог открытых вакансий
+            Попробовать демо-интервью
           </button>
         </div>
       </div>

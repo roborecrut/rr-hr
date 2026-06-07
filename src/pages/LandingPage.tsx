@@ -2,7 +2,7 @@
  * Лендинг работодателя — Google-only регистрация, бонус 1000 RR (10 ед.),
  * три карточки услуг и калькулятор Робот vs HR.
  */
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
@@ -23,6 +23,9 @@ import {
   Gift,
   LogOut,
   LayoutDashboard,
+  Play,
+  ListChecks,
+  FileText,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -83,7 +86,7 @@ export default function LandingPage() {
 
           <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
             <button onClick={() => navigate("/")} className="px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20">Главная</button>
-            <button onClick={() => navigate("/vacancy")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Каталог</button>
+            <button onClick={() => navigate("/demo")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Демо-интервью</button>
           </nav>
 
           {isAuthed ? (
@@ -109,7 +112,7 @@ export default function LandingPage() {
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Каталог</button>
+            <button onClick={() => { navigate("/demo"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Демо-интервью</button>
             {isAuthed ? (
               <>
                 <button onClick={() => { navigate(profilePath); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl bg-[#E7C768] text-[#17344F] font-bold">Кабинет</button>
@@ -172,10 +175,10 @@ export default function LandingPage() {
                 </button>
               )}
               <button
-                onClick={() => navigate("/vacancy")}
+                onClick={() => navigate("/demo")}
                 className="cursor-pointer flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-6 py-4 rounded-xl transition"
               >
-                Открыть каталог должностей <ArrowRight className="w-4 h-4 text-[#E7C768]" />
+                <Play className="w-4 h-4 text-[#E7C768]" /> Пройти демо-интервью бесплатно
               </button>
             </div>
           </div>
@@ -195,6 +198,58 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* DEMO PROMO — главный CTA для всех посетителей */}
+      <section className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1D3E5E]/80 to-[#17344F]/50">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full px-3 py-1.5">
+              <Play className="w-4 h-4 text-emerald-300" />
+              <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Без регистрации · бесплатно</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
+              Сначала попробуй сам — <span className="bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">пройди ИИ-интервью</span>
+            </h2>
+            <p className="text-base text-slate-200">
+              Выбери любую должность из каталога — ИИ за минуту сгенерирует под неё ролевую ситуацию, чек-лист и оценит твоё резюме.
+              Так ты увидишь, как Робот Рекрутер работает с твоими будущими кандидатами.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <DemoStepCard icon={<MessageSquare className="w-5 h-5"/>} step="1" label="Ситуация" />
+              <DemoStepCard icon={<ListChecks className="w-5 h-5"/>} step="2" label="Чек-лист" />
+              <DemoStepCard icon={<FileText className="w-5 h-5"/>} step="3" label="Резюме" />
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={() => navigate("/demo")}
+                className="cursor-pointer bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-bold text-base px-6 py-4 rounded-xl shadow-xl hover:-translate-y-0.5 transition flex items-center justify-center gap-2"
+              >
+                <Play className="w-5 h-5" /> Запустить демо-интервью
+              </button>
+              <button
+                onClick={() => document.getElementById("tariffs")?.scrollIntoView({ behavior: "smooth" })}
+                className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-5 py-4 rounded-xl flex items-center justify-center gap-2"
+              >
+                Я работодатель — посмотреть сравнение <ArrowRight className="w-4 h-4 text-[#E7C768]" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-[#17344F]/70 border border-white/10 rounded-3xl p-6 shadow-2xl space-y-3">
+            <div className="text-xs uppercase font-mono font-bold text-[#E7C768]/80">Как это выглядит</div>
+            <div className="bg-black/30 border border-white/10 rounded-xl p-4 text-sm text-slate-200 italic">
+              «Клиент говорит: «У вас слишком дорого, у конкурентов дешевле на 15%». Что вы ответите?»
+            </div>
+            <div className="bg-black/30 border border-white/10 rounded-xl p-4 text-sm">
+              <div className="text-[10px] font-bold text-[#E7C768] uppercase">Оценка ИИ</div>
+              <div className="text-2xl font-extrabold text-emerald-300 mt-1">82/100</div>
+              <div className="text-xs text-slate-300 mt-1">Чётко выстроен аргумент через ценность, не уходишь в скидку, удерживаешь позицию.</div>
+            </div>
+            <button onClick={() => navigate("/demo")} className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm py-3 rounded-xl shadow inline-flex items-center justify-center gap-2">
+              <Play className="w-4 h-4" /> Попробовать с моей должностью
+            </button>
           </div>
         </div>
       </section>
@@ -333,6 +388,16 @@ export default function LandingPage() {
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} intent="employer" />
       <EmployerAIAssistant />
+    </div>
+  );
+}
+
+function DemoStepCard({ icon, step, label }: { icon: React.ReactNode; step: string; label: string }) {
+  return (
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
+      <div className="w-9 h-9 mx-auto rounded-lg bg-[#E7C768]/20 text-[#E7C768] flex items-center justify-center">{icon}</div>
+      <div className="text-[10px] uppercase font-bold text-slate-400 mt-2">Шаг {step}</div>
+      <div className="text-xs font-bold text-white">{label}</div>
     </div>
   );
 }
