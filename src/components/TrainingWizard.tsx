@@ -91,6 +91,44 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
   const project = useMemo(() => projects.find(p => p.id === projectId) || null, [projects, projectId]);
 
+  // Reset per-stage source uploads when the project changes
+  useEffect(() => {
+    setSources({ professional: "", product: "", system: "" });
+  }, [project?.id]);
+
+  // Markdown toolbar helper — wraps current selection or inserts at caret
+  const applyMd = (prefix: string, suffix = "", placeholder = "") => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    const before = materials.slice(0, start);
+    const sel = materials.slice(start, end) || placeholder;
+    const after = materials.slice(end);
+    const insert = `${prefix}${sel}${suffix}`;
+    const next = `${before}${insert}${after}`.slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = before.length + prefix.length;
+      ta.setSelectionRange(pos, pos + sel.length);
+    });
+  };
+  const applyLinePrefix = (prefix: string) => {
+    const ta = materialsRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart ?? 0;
+    const end = ta.selectionEnd ?? 0;
+    const lineStart = materials.lastIndexOf("\n", start - 1) + 1;
+    const lineEnd = materials.indexOf("\n", end);
+    const realEnd = lineEnd === -1 ? materials.length : lineEnd;
+    const segment = materials.slice(lineStart, realEnd);
+    const replaced = segment.split("\n").map(l => l.startsWith(prefix) ? l : `${prefix}${l}`).join("\n");
+    const next = (materials.slice(0, lineStart) + replaced + materials.slice(realEnd)).slice(0, 10000);
+    setMaterials(next);
+    requestAnimationFrame(() => ta.focus());
+  };
+
   // Load stage block + test
   useEffect(() => {
     if (!project) return;
