@@ -110,6 +110,11 @@ const RU_LABELS: Record<string, Record<string, string>> = {
     function_error: "Ошибка функции", function_call_params: "Параметры вызова",
     server_name: "Сервер", created_at: "Дата",
   },
+  reviews: {
+    first_name: "Имя", last_name: "Фамилия", content: "Текст отзыва",
+    ai_reply: "Ответ ИИ", admin_reply: "Ответ администратора",
+    is_published: "Опубликован", created_at: "Создан", updated_at: "Обновлён",
+  },
 };
 
 /** Computed/virtual fields that come from RPCs and aren't real columns. */
