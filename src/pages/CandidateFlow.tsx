@@ -1992,7 +1992,8 @@ export default function CandidateFlow() {
                 </button>
               </form>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* 1. Google + Telegram metadata details */}
                 {/* 1. Контакты + соцсети */}
@@ -2064,19 +2065,40 @@ export default function CandidateFlow() {
                     })}
                   </div>
                 </div>
+              </div>
 
-                {/* 3. Active Job context card & Multi-vacancy system */}
+              {/* 3. Active Job context card & Multi-vacancy system */}
                 <div className="bg-black/25 p-5 rounded-2xl border border-white/5 space-y-4 text-left">
-                  <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">📂 Выберите Компанию & Вакансию</h3>
+                  <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-2">
+                    <h3 className="font-bold text-xs text-[#E7C768] uppercase">📂 Выберите Компанию & Вакансию</h3>
+                    {(companyFull?.public_id || (project as any)?.companyPublicId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cpid = companyFull?.public_id || (project as any)?.companyPublicId;
+                          if (cpid) navigate(`/com${cpid}`);
+                        }}
+                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#E7C768] border border-[#E7C768]/30 transition whitespace-nowrap"
+                        title="Все активные вакансии компании"
+                      >
+                        Все вакансии компании →
+                      </button>
+                    )}
+                  </div>
                   
                   {!(path.split("/").filter(Boolean).length >= 4 && path.split("/").filter(Boolean).findIndex(p => p.startsWith("candidate")) >= 2) && (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-200 leading-normal mb-2">
-                      ⚠️ Пожалуйста, <strong>выберите одну из активных вакансий ниже</strong>, чтобы начать проходить этапы ИИ-собеседования для соответствующего работодателя.
+                      ⚠️ Пожалуйста, <strong>выберите одну из ваших вакансий ниже</strong>, чтобы продолжить прохождение ИИ-отбора.
                     </div>
                   )}
 
-                  <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin pr-1 text-xs">
-                    {allProjects.map((proj) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    {(() => {
+                      const regIds = new Set(applications.map(a => a.project_id).filter(Boolean) as string[]);
+                      const list = allProjects.filter((p: any) => p.id === project?.id || regIds.has(p.id));
+                      if (!list.length && project) list.push(project as any);
+                      return list;
+                    })().map((proj: any) => {
                       const slug = proj.companySlug || "";
                       const candidateId = candidate?.id || "";
                       const companyPub = (proj as any).companyPublicId || (proj as any).companySlug || "";
@@ -2174,7 +2196,6 @@ export default function CandidateFlow() {
                     })}
                   </div>
                 </div>
-
               </div>
             )}
 
