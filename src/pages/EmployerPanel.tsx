@@ -3107,13 +3107,16 @@ export default function EmployerPanel() {
                             training_wiki_text: setupTrainingWikiText,
                             training_regulations_text: setupTrainingRegulationsText,
                           };
-                          const value = await aiEnhanceSingle({
-                            field: key,
-                            value: getters[key] || "",
-                            company_name: setupCompanyName,
-                            role_name: setupRoleName,
-                            template: field.example,
-                            hint: `canonical_format:${field.preview}`,
+                          const value = await aiWaitRun({
+                            title: `ИИ улучшает «${field.label}»`,
+                            task: () => aiEnhanceSingle({
+                              field: key,
+                              value: getters[key] || "",
+                              company_name: setupCompanyName,
+                              role_name: setupRoleName,
+                              template: field.example,
+                              hint: `canonical_format:${field.preview}`,
+                            }),
                           });
                           if (value) {
                             // Reuse the same switch via onChange-style patch.
@@ -4601,13 +4604,16 @@ export default function EmployerPanel() {
                     const { aiEnhanceSingle } = await import("@/lib/aiClient");
                     const field = VACANCY_FIELDS_BY_KEY[key];
                     const current = projectToVacancyValues(editingProject)[key] || "";
-                    const value = await aiEnhanceSingle({
-                      field: key,
-                      value: current,
-                      company_name: editingProject.companyName,
-                      role_name: editingProject.roleName,
-                      template: field.example,
-                      hint: `canonical_format:${field.preview}`,
+                    const value = await aiWaitRun({
+                      title: `ИИ улучшает «${field.label}»`,
+                      task: () => aiEnhanceSingle({
+                        field: key,
+                        value: current,
+                        company_name: editingProject.companyName,
+                        role_name: editingProject.roleName,
+                        template: field.example,
+                        hint: `canonical_format:${field.preview}`,
+                      }),
                     });
                     if (value) {
                       setEditingProject({
