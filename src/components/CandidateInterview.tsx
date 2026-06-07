@@ -233,7 +233,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       }
       await (supabase as any).from("candidate_scores").upsert({ candidate_id: candidateId, interview_score: avg, overall_score: avg }, { onConflict: "candidate_id" });
       onCompleted?.(passed, avg);
-      setStage("done");
+      // Не переключаем стадию автоматически — пользователь увидит результат
+      // этапа «Ситуации» и сам нажмёт кнопку «Показать итоговую оценку».
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
   };
@@ -252,6 +253,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const stageLocked = (s: Stage) => {
     if (s === "checklist") return resumeResult?.score == null;
     if (s === "situations") return checklistScore == null;
+    if (s === "done") return finalScore == null;
     return false;
   };
 
@@ -302,6 +304,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           {stageBadge("resume", "1. Резюме", resumeResult?.score ?? null)}
           {stageBadge("checklist", "2. Чек-лист", checklistScore)}
           {stageBadge("situations", "3. Ситуации", situationsScore)}
+          {stageBadge("done", "4. Итог", finalScore)}
         </div>
       </div>
 
@@ -492,7 +495,14 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                   <div className="text-sm text-slate-200">{f.feedback}</div>
                 </div>
               ))}
-              <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+              <div className="flex flex-wrap gap-2">
+                {finalScore != null && (
+                  <button onClick={() => setStage("done")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-1">
+                    <Award className="w-4 h-4"/> Показать итоговую оценку →
+                  </button>
+                )}
+                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+              </div>
             </div>
           ) : situations.length === 0 ? (
             <p className="text-sm text-amber-300">Ситуации ещё не настроены работодателем.</p>
