@@ -3375,15 +3375,15 @@ export default function EmployerPanel() {
                       ) : draftFilePath && newCompanyFiles ? (
                         <span className="text-[#E7C768]">Файл загружен в Supabase: {newCompanyFiles} ✓</span>
                       ) : (
-                        <span>Загрузите презентацию или описание компании — затем нажмите кнопку «Отправить документ в ProTalk» и ИИ извлечёт текст</span>
+                        <span>Загрузите презентацию или описание компании — затем нажмите кнопку «Распознать текст» и ИИ извлечёт его</span>
                       )}
                     </div>
                     <span className="text-[10px] text-white/70 block font-mono">
                       {isParsingFile 
-                        ? "⚡ ProTalk извлекает текст о компании из документа…" 
+                        ? "⚡ ИИ извлекает текст о компании из документа…" 
                         : isUploadingFile
                           ? "Файл сейчас сохраняется в облако…"
-                          : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки появится кнопка «Отправить документ в ProTalk»."
+                          : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки появится кнопка «Распознать текст»."
                       }
                     </span>
                     {uploadError ? (
@@ -3401,7 +3401,7 @@ export default function EmployerPanel() {
                         className="btn-brand-secondary px-5 py-2.5 text-xs flex items-center justify-center gap-1.5 shadow-md"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        Отправить документ в ProTalk
+                        Распознать текст
                       </button>
                     </div>
                   )}

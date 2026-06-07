@@ -175,7 +175,7 @@ export function DocumentIngestField({
         <div className="flex gap-2">
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
           <Button type="button" size="sm" className="btn-brand-primary" disabled={busy || !url.trim()} onClick={handleUrl}>
-            Отправить в ProTalk
+            Распознать текст
           </Button>
         </div>
       ) : null}
@@ -184,7 +184,7 @@ export function DocumentIngestField({
           <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-[#E7C768]"/>Файл загружен: {uploaded.filename}</span>
           <Button type="button" size="sm" className="btn-brand-primary" disabled={busy} onClick={sendToProTalk}>
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Отправить документ в ProTalk
+            Распознать текст
           </Button>
         </div>
       ) : null}
