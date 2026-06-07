@@ -6,6 +6,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
 import RRImage from "@/components/RRImage";
+import SiteHeader from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useSeo, SITE_URL } from "@/lib/seo";
 import {
