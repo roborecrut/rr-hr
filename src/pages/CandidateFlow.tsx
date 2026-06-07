@@ -1633,14 +1633,23 @@ export default function CandidateFlow() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 w-full">
           {/* Logo & Vacancy info */}
-          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => { const id = candidate?.id || localStorage.getItem("cand_session_id") || ""; if (id) navigate(`/${id}/profile`); }}>
+          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => {
+            const companyPub = companyFull?.public_id || (project as any)?.companyPublicId || "";
+            const projectPub = (project as any)?.publicId || (project as any)?.slug || "";
+            const candPub = candidate?.publicId || "";
+            if (companyPub && projectPub && candPub) {
+              navigate(`/com${companyPub}/vac${projectPub}/cand${candPub}/profile`);
+            } else if (candPub) {
+              navigate(`/cand${candPub}/profile`);
+            }
+          }}>
             <div className="bg-[#E7C768]/10 p-1.5 rounded-xl border border-[#E7C768]/20">
               <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={32} alt="RR" className="w-8 h-8 object-contain" />
             </div>
             <div className="text-left">
               <span className="font-extrabold text-sm tracking-tight text-[#E7C768] block leading-none">ЛИЧНЫЙ КАБИНЕТ СОИСКАТЕЛЯ</span>
               <span className="text-[10px] block text-slate-350 mt-1">
-                ID кандидата: <strong className="text-white font-mono">{candidate?.id || localStorage.getItem("cand_session_id") || "—"}</strong>
+                ID кандидата: <strong className="text-white font-mono">{candidate?.publicId || "—"}</strong>
               </span>
             </div>
           </div>
