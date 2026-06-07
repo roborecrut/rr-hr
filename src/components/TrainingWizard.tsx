@@ -641,6 +641,17 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               <span className="text-[11px] text-slate-400">из {test.total_score || (test.questions.length * 5) || 100} возможных</span>
               <span className="text-[10px] text-slate-500 ml-auto">Меняйте под свои требования и нажмите «Сохранить тест».</span>
             </div>
+            {/* Shuffle toggle */}
+            <label className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={test.shuffle}
+                onChange={(e) => setTest(t => ({ ...t, shuffle: e.target.checked }))}
+                className="accent-[#E7C768] w-4 h-4"
+              />
+              <span className="text-[11px] text-slate-200 font-bold">Случайный порядок вопросов и вариантов ответа</span>
+              <span className="text-[10px] text-slate-500 ml-auto">При повторной сдаче кандидат увидит вопросы и варианты в другом порядке.</span>
+            </label>
             <div>
               <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
               <textarea rows={2} maxLength={1000} value={wishesTest}
