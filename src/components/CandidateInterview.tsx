@@ -331,9 +331,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               {uploadedResume && !parsing && (
                 <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white" style={{background:"rgba(255,255,255,0.06)",border:"1px solid rgba(231,199,104,0.3)"}}>
                   <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-[#E7C768]"/>Резюме загружено: {uploadedResume.filename}</span>
-                  <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                    <Send className="w-3.5 h-3.5"/> Отправить резюме в RR
-                  </button>
+                  {aiReady ? (
+                    <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <Send className="w-3.5 h-3.5"/> Отправить резюме в RR
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-[#E7C768]/80">
+                      <Loader className="w-3.5 h-3.5 animate-spin"/> Готовим ИИ…
+                    </span>
+                  )}
                 </div>
               )}
               {uploadError && <div className="text-xs text-[#FF4C4C]">{uploadError}</div>}
