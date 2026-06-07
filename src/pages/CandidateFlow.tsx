@@ -13,7 +13,6 @@ import CandidateInterview from "../components/CandidateInterview";
 import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
 import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
-import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { getCandidateSession, saveCandidateSession, type CandidateApplication } from "@/lib/candidateSession";
@@ -21,7 +20,6 @@ import {
   FileText,
   Upload,
   Send,
-  Loader,
   Award,
   BookOpen,
   ArrowRight,
@@ -34,7 +32,6 @@ import {
   ExternalLink,
   Menu,
   User,
-  MessageSquare,
   Building,
   Clock,
   Coins,
@@ -602,39 +599,7 @@ export default function CandidateFlow() {
     }
   }, [path]);
 
-  // Floating AI Assistant states
-  const [assistOpen, setAssistOpen] = useState(false);
-  const [assistTextInput, setAssistTextInput] = useState("");
-  const [assistHistory, setAssistHistory] = useState<{ sender: "ai" | "user", text: string }[]>([
-    { sender: "ai", text: "Привет! Я твой ИИ Робот-Помощник. Спрашивай меня обо всем — о регламентах, вакансии, графике, выплатах или обучении! 😊" }
-  ]);
-  const [assistLoading, setAssistLoading] = useState(false);
-
-  const handleSendAssist = async () => {
-    if (!assistTextInput.trim()) return;
-    const userText = assistTextInput;
-    setAssistHistory(prev => [...prev, { sender: "user", text: userText }]);
-    setAssistTextInput("");
-    setAssistLoading(true);
-
-    try {
-      const { aiChat } = await import("@/lib/aiClient");
-      const contextLine = `Раздел: ${activeTab}; Подраздел: ${activeTab === "terms" ? termsSubTab : (activeTab === "training" ? trainingSubTab : "")}`;
-      const reply = await aiChat({
-        kind: "candidate",
-        candidate_id: candidate?.id,
-        project_id: candidate?.projectId,
-        context: contextLine,
-        messages: [{ role: "user", content: userText }],
-      });
-      setAssistHistory(prev => [...prev, { sender: "ai", text: reply || "Я задумался… попробуйте задать вопрос иначе." }]);
-    } catch (err) {
-      console.error(err);
-      setAssistHistory(prev => [...prev, { sender: "ai", text: "Не удалось отправить сообщение. Пожалуйста, проверьте интернет-соединение." }]);
-    } finally {
-      setAssistLoading(false);
-    }
-  };
+  // (Floating AI Assistant removed from the candidate cabinet by request.)
 
   // Profile management edit states
   const [editingProfile, setEditingProfile] = useState(false);
@@ -2130,7 +2095,22 @@ export default function CandidateFlow() {
                         >
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0">
-                              <span className="text-[10px] text-slate-300 font-bold block uppercase tracking-wide truncate">{proj.companyName || "ООО РобоРекрут"}</span>
+                              {(() => {
+                                const cpid = (proj as any).companyPublicId;
+                                const label = proj.companyName || "ООО РобоРекрут";
+                                return cpid ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/com${cpid}`); }}
+                                    className="text-[10px] text-[#E7C768] font-bold block uppercase tracking-wide truncate hover:underline text-left"
+                                    title="Открыть страницу компании"
+                                  >
+                                    {label}
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-300 font-bold block uppercase tracking-wide truncate">{label}</span>
+                                );
+                              })()}
                               <strong className={`${isSelected ? "text-[#E7C768]" : "text-white"} font-extrabold text-xs block mt-0.5`}>{proj.roleName}</strong>
                             </div>
                             {isSelected && (
@@ -2329,7 +2309,42 @@ export default function CandidateFlow() {
                 {termsSubTab === "company" && (
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Манифест организации</span>
-                    <h2 className="text-xl font-bold text-white">Информация о компании: {project?.companyName || "ООО Работодатель"}</h2>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-3 flex-wrap">
+                      {(() => {
+                        const cpid = companyFull?.public_id || (project as any)?.companyPublicId;
+                        const logo = companyFull?.logo_url || (project as any)?.logoUrl;
+                        const label = project?.companyName || "ООО Работодатель";
+                        const go = () => cpid && navigate(`/com${cpid}`);
+                        return (
+                          <>
+                            {logo && (
+                              <button
+                                type="button"
+                                onClick={go}
+                                disabled={!cpid}
+                                title={cpid ? "Открыть страницу компании" : ""}
+                                className={`w-10 h-10 rounded-xl bg-white/10 border border-white/15 p-1 flex items-center justify-center ${cpid ? "hover:border-[#E7C768] cursor-pointer" : "cursor-default"}`}
+                              >
+                                <img src={logo} alt={label} className="w-full h-full object-contain rounded-lg" referrerPolicy="no-referrer" />
+                              </button>
+                            )}
+                            <span className="text-slate-200">Информация о компании:</span>
+                            {cpid ? (
+                              <button
+                                type="button"
+                                onClick={go}
+                                title="Открыть страницу компании"
+                                className="text-[#E7C768] hover:underline"
+                              >
+                                {label}
+                              </button>
+                            ) : (
+                              <span>{label}</span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </h2>
                     <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
                       {companyFull?.description_text || companyFull?.about_text || `Компания ${project?.companyName || ""}.`}
                     </p>
@@ -2700,99 +2715,6 @@ export default function CandidateFlow() {
         )}
 
       </main>
-
-      {/* Small footer */}
-      <footer className="py-4 text-center text-xs text-gray-400 border-t border-white/5 bg-[#1A1A1A]">
-        © 2026 Робот Рекрутер. Система обучения соискателей.
-      </footer>
-
-      {/* Floating AI Assistant Widget in the bottom-right corner of every sub-page */}
-      <div className="fixed bottom-6 right-6 z-50">
-        
-        {/* Pulsing highlight */}
-        {!assistOpen && (
-          <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-[#E7C768] rounded-full animate-ping"></div>
-        )}
-
-        {/* Circular Trigger button */}
-        <button
-          type="button"
-          onClick={() => setAssistOpen(!assistOpen)}
-          className="cursor-pointer w-14 h-14 bg-gradient-to-tr from-[#FF1A1A] to-[#E54C00] hover:from-[#FF3333] hover:to-[#FF5500] text-white rounded-full flex items-center justify-center shadow-2xl transition duration-200 transform hover:scale-105 active:scale-95 border-2 border-white/20"
-        >
-          {assistOpen ? <X className="w-6 h-6 animate-spin-once" /> : <MessageSquare className="w-6 h-6" />}
-        </button>
-
-        {/* Dialog Window */}
-        {assistOpen && (
-          <div className="absolute bottom-18 right-0 w-80 md:w-96 bg-[#17344F]/95 backdrop-blur border border-white/20 shadow-2xl rounded-2xl flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="p-4 bg-gradient-to-r from-[#17344F] to-[#1E4468] border-b border-white/10 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#E7C768]/20 flex items-center justify-center border border-[#E7C768]/40">
-                  <Cpu className="w-4 h-4 text-[#E7C768]" />
-                </div>
-                <div className="text-left">
-                  <h4 className="font-bold text-xs text-white">ИИ-Помощник соискателя ⚡</h4>
-                  <span className="text-[9px] text-[#E7C768]">Робот RR всегда онлайн</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAssistOpen(false)}
-                className="text-gray-400 hover:text-white transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Content History area */}
-            <div className="p-3 space-y-3 max-h-64 overflow-y-auto bg-black/25 flex flex-col text-left">
-              {assistHistory.map((msg, idx) => {
-                const isAI = msg.sender === "ai";
-                return (
-                  <div key={idx} className={`flex ${isAI ? "justify-start" : "justify-end"}`}>
-                    <div className={`p-2.5 rounded-xl text-[11px] leading-relaxed max-w-[85%] font-normal ${
-                      isAI 
-                        ? "bg-[#1E4468]/65 text-white border border-white/5 rounded-tl-none" 
-                        : "bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white rounded-tr-none"
-                    }`}>
-                      <div className="markdown-body">
-                        <Markdown>{msg.text}</Markdown>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {assistLoading && (
-                <div className="flex justify-start items-center gap-1.5 text-[10px] text-gray-400">
-                  <Loader className="w-3.5 h-3.5 animate-spin" />
-                  <span>ИИ Робот размышляет...</span>
-                </div>
-              )}
-            </div>
-
-            {/* Footer Input form */}
-            <div className="p-3 border-t border-white/10 bg-black/45 flex gap-2">
-              <input
-                type="text"
-                placeholder="Задать любой вопрос по разделу..."
-                className="flex-1 bg-black/35 text-white text-xs px-3 py-2 rounded-xl focus:outline-none focus:border-[#E7C768] placeholder-gray-400"
-                value={assistTextInput}
-                onChange={(e) => setAssistTextInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendAssist()}
-              />
-              <button
-                type="button"
-                onClick={handleSendAssist}
-                className="cursor-pointer bg-[#E7C768] hover:bg-[#E7C768]/90 text-[#17344F] p-2 rounded-xl transition"
-              >
-                <Send className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
     </div>
   );

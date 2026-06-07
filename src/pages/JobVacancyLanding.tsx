@@ -10,6 +10,7 @@ import Mascot from "../components/Mascot";
 import Markdown from "react-markdown";
 import { JobProject, Message } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import VacancyAIAssistant from "@/components/VacancyAIAssistant";
 import {
   Briefcase,
   DollarSign,
@@ -666,13 +667,37 @@ export default function JobVacancyLanding() {
         </div>
       )}
 
-      {/* Elegant Footer */}
-      <footer className="border-t border-white/10 py-6 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4">
-          © {new Date().getFullYear()} Робот Рекрутер RR. Все права защищены.
-        </div>
-      </footer>
-
+      {/* Floating AI Assistant — per-vacancy knowledge base */}
+      {project && (
+        <VacancyAIAssistant
+          projectId={project.id}
+          roleName={project.roleName}
+          companyName={project.companyName}
+          logoUrl={project.logoUrl || (companyData as any)?.logo_url}
+          context={(() => {
+            const p: any = project; const c: any = companyData || {};
+            const parts: string[] = [
+              `Вакансия: ${project.roleName}`,
+              `Компания: ${project.companyName}`,
+            ];
+            if (project.salaryTerms) parts.push(`Оплата: ${project.salaryTerms}`);
+            if (project.scheduleTerms) parts.push(`График: ${project.scheduleTerms}`);
+            if (p.vacancyText) parts.push(`Задачи/требования/условия:\n${p.vacancyText}`);
+            if (p.tasksActivityText) parts.push(`Ежедневный процесс:\n${p.tasksActivityText}`);
+            if (p.scheduleText) parts.push(`График подробно:\n${p.scheduleText}`);
+            if (p.payoutsText) parts.push(`Выплаты:\n${p.payoutsText}`);
+            if (project.motivationText || p.motivationTextDetail) parts.push(`Мотивация:\n${p.motivationTextDetail || project.motivationText}`);
+            if (p.onboardingText) parts.push(`Оформление:\n${p.onboardingText}`);
+            if (p.teamText) parts.push(`Команда:\n${p.teamText}`);
+            if (p.systemText) parts.push(`Система работы:\n${p.systemText}`);
+            if (project.customWiki) parts.push(`Wiki:\n${project.customWiki}`);
+            if (c.description_text) parts.push(`О компании:\n${c.description_text}`);
+            if (c.mission_text) parts.push(`Миссия:\n${c.mission_text}`);
+            if (c.products_text) parts.push(`Продукты:\n${c.products_text}`);
+            return `Отвечай ТОЛЬКО на основе этих данных по текущей вакансии и компании. Если в данных нет ответа — честно скажи, что уточнишь у работодателя.\n\n${parts.join("\n\n")}`;
+          })()}
+        />
+      )}
     </div>
   );
 }
