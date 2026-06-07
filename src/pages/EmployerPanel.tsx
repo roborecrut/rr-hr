@@ -4505,11 +4505,34 @@ export default function EmployerPanel() {
                     } catch {}
                   }}
                   onCreate={async () => {
-                    setInterviewView({ mode: "create" });
+                    // Ask the user to confirm the per-vacancy charge for the
+                    // interview system BEFORE opening the wizard.
+                    let existing = new Set<string>();
                     try {
-                      const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      const ids = projects.map(p => p.id);
+                      if (ids.length) {
+                        const { data } = await (supabase as any)
+                          .from("interview_blocks")
+                          .select("project_id")
+                          .in("project_id", ids);
+                        (data || []).forEach((r: any) => existing.add(r.project_id));
+                      }
                     } catch {}
+                    setSpendDialog({
+                      kind: "interview_setup",
+                      pickProjects: projects,
+                      excludeProjectIds: existing,
+                      onConfirmed: async (projectId) => {
+                        setSpendDialog(null);
+                        setInterviewView({ mode: "create", projectId });
+                        await fetchBillingState();
+                        try {
+                          const { aiRestart } = await import("@/lib/aiClient");
+                          aiRestart(employerId).catch(() => {});
+                        } catch {}
+                      },
+                      onCancel: () => setSpendDialog(null),
+                    });
                   }}
                 />
               ) : (
@@ -4517,7 +4540,11 @@ export default function EmployerPanel() {
                   projects={projects}
                   addAuditEvent={addAuditEvent}
                   refreshProjects={fetchData}
-                  initialProjectId={interviewView.mode === "edit" ? interviewView.projectId : undefined}
+                  initialProjectId={
+                    interviewView.mode === "edit"
+                      ? interviewView.projectId
+                      : (interviewView.mode === "create" ? interviewView.projectId : undefined)
+                  }
                   createMode={interviewView.mode === "create"}
                   onBack={() => setInterviewView({ mode: "list" })}
                 />
