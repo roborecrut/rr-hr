@@ -1824,7 +1824,7 @@ export default function CandidateFlow() {
                 <span className="text-[#E7C768] font-bold text-xs uppercase tracking-wider block">Личный кабинет соискателя</span>
                 <h2 className="text-2xl font-bold text-white mt-1">Профиль кандидата: {candidate?.name || "Алексей Иванов"}</h2>
                 <p className="text-xs text-gray-300 mt-1">
-                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "—"}</span>
+                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. ID кандидата: <span className="font-mono text-xs text-[#E7C768]">{candidate?.publicId || "—"}</span>
                 </p>
               </div>
               
