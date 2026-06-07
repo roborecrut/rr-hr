@@ -32,6 +32,7 @@ export default function Reveal({
   threshold = 0.12,
   reAnimate = true,
   style,
+  ...rest
 }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
   const [visible, setVisible] = useState(false);
@@ -72,6 +73,7 @@ export default function Reveal({
         transitionDelay: `${delay}ms`,
         ...style,
       }}
+      {...rest}
     >
       {children}
     </Tag>
