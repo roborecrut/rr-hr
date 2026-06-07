@@ -138,7 +138,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         patch[opt.column] = (contextValues[k] || "").slice(0, CONTEXT_MAX) || null;
         if (opt.fallbackColumn) patch[opt.fallbackColumn] = patch[opt.column];
       });
-      const { error } = await supabase.from("projects").update(patch).eq("id", project.id);
+      const { error } = await (supabase.from("projects") as any).update(patch).eq("id", project.id);
       if (error) throw error;
       setContextDirty({});
       addAuditEvent("success", "Контекст сохранён в БД", `Полей обновлено: ${dirtyKeys.length}`);
@@ -478,7 +478,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
             {previewMd ? (
               <div className="bg-[#0F2A42]/80 border border-white/10 rounded-xl p-4 prose prose-invert prose-sm max-w-none min-h-[200px]">
-                <Markdown remarkPlugins={[remarkGfm]}>{materials || "_Пусто_"}</Markdown>
+                <EmbeddedMarkdown>{materials || "_Пусто_"}</EmbeddedMarkdown>
               </div>
             ) : (
               <>
