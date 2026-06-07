@@ -1,84 +1,84 @@
 
-## Что строим
+## Что делаем
 
-1. **БД** — новые таблицы под посты, комментарии, реакции (на пост и комментарий).
-2. **Маршруты** `/blog` (лента) и `/blog/post{public_id}` (страница статьи).
-3. **Хедер лендинга** — пункт «Блог» рядом с «Вакансии» (десктоп + мобайл).
-4. **Админ-раздел** `Блог` в `/admin` — список постов + редактор (фото + markdown).
-5. **Редактор** — клон UX из `TrainingWizard`: тулбар (H1/H2, жирный/курсив/код, списки, ссылка, YouTube/VK/Rutube/Google Docs), переключатель «Редактор / Превью», превью использует `RichTrainingMarkdown` / `RichTrainingMaterialCard` — те же стили, что в личном кабинете кандидата.
-6. **Загрузка обложки** — в бакет `posts` (он уже создан).
-7. **2 демо-статьи** загрузить через insert.
+Добавляем публичный блок отзывов на главной странице, систему модерации в `/admin`, авто-ответ ИИ ProTalk на основе FAQ, и заполняем 10 тестовых отзывов с ответами.
 
-## Структура БД (миграция)
+## 1. База данных (миграция)
 
-```text
-posts
-  id uuid pk
-  public_id text unique  -- формат "7" + порядковый: 700001, 700002, …
-  title text
-  slug text             -- = public_id (для url /blog/post{public_id})
-  cover_url text        -- ссылка из bucket posts
-  content_md text       -- markdown без лимита
-  excerpt text          -- авто (первые 100 символов чистого текста)
-  author_id uuid (auth.users)
-  is_published bool default true
-  created_at, updated_at timestamptz
-```
-- `seq_post_pid` старт с 700001, триггер заполняет `public_id` и `slug`.
-- Триггер `posts_set_excerpt`: чистит markdown (убирает `#`, `**`, ссылки, картинки, код-блоки) → берёт 100 символов.
+Новая таблица `public.reviews`:
+- `id uuid pk`
+- `first_name text` (1–50)
+- `last_name text` (1–50)
+- `content text` (1–500)
+- `ai_reply text` — авто-ответ ProTalk
+- `admin_reply text` — ответ админа (редактируемый)
+- `is_published boolean default true` — модерация (админ может скрыть)
+- `created_at`, `updated_at`
 
-```text
-post_comments
-  id uuid pk
-  post_id uuid → posts
-  parent_id uuid → post_comments (nullable, для ответов 1 уровня)
-  user_id uuid (auth.users)
-  body text (<= 2000)
-  created_at, updated_at
+RLS + GRANTs:
+- `anon`/`authenticated` — `SELECT` только где `is_published = true`
+- `anon`/`authenticated` — `INSERT` (любой пользователь оставляет отзыв; валидация длины — через CHECK)
+- `UPDATE`/`DELETE` — только админ (`has_role(auth.uid(),'admin')`)
+- `service_role` — полный доступ (для edge function)
+- rate-limit на вставку через существующий `rl_hit` в edge функции
 
-post_reactions      -- на пост или на коммент (взаимоисключающе)
-  id uuid pk
-  post_id uuid (nullable)
-  comment_id uuid (nullable)
-  user_id uuid
-  kind text  -- 'like' | 'fire' | 'heart' | 'clap' | 'wow'
-  unique(user_id, post_id, comment_id, kind)
-  check (post_id is not null xor comment_id is not null)
-```
+Триггер `set_updated_at`.
 
-**GRANT/RLS**
-- `posts`: `GRANT SELECT TO anon, authenticated`; админу — всё через service_role и политику `has_role(auth.uid(),'admin')`. Публичное чтение `is_published = true`.
-- `post_comments`: select для anon+authenticated (всем видны), insert/update/delete только своему (`auth.uid() = user_id`), админ всё.
-- `post_reactions`: select всем, insert/delete только своим.
+## 2. Edge-функция `reviews-submit`
+
+`supabase/functions/reviews-submit/index.ts`:
+- Принимает `{ first_name, last_name, content }`, Zod-валидация (длина, trim).
+- Rate-limit по IP (`rl_hit`, 5/час).
+- Вставляет строку в `reviews` через service_role.
+- В фоне (await перед ответом, чтобы записать `ai_reply`):
+  - Тянет последние ~30 `faq_items` (`question` + `answer`) как контекст.
+  - Зовёт ProTalk через существующий `_shared/protalk.ts` со спец-промтом «Ты — представитель HR-RR, ответь вежливо на отзыв пользователя, опираясь на FAQ ниже…».
+  - Сохраняет ответ в `ai_reply`.
+- Возвращает созданный отзыв.
+
+## 3. Лендинг — блок «Отзывы»
+
+`src/components/ReviewsSection.tsx` + подключить в `src/pages/LandingPage.tsx`:
+- Заголовок «Отзывы» в текущем брендовом стиле (синий градиент, золотые заголовки).
+- Сетка карточек: имя + фамилия (без аватарок), текст, дата; под отзывом — `ai_reply` (плашка «Ответ HR-RR ИИ») и/или `admin_reply` (плашка «Ответ администратора»).
+- Кнопка «Оставить отзыв» → модалка с полями: Имя, Фамилия, Текст (счётчик 0/500). Zod-валидация. Сабмит → edge function → toast → перезагрузка списка.
+- Грузим публикуемые отзывы напрямую из `supabase.from('reviews')` (RLS пропустит).
+
+## 4. Админка — раздел «Отзывы»
+
+Новая вкладка в `src/pages/AdminPanel.tsx` (`ReviewsSection`):
+- Таблица: дата, ФИ, текст (line-clamp), `ai_reply` (line-clamp), `admin_reply`, статус (опубликован/скрыт), действия.
+- Клик по строке → `DetailsModal` с `table="reviews"` (использует уже существующий механизм inline-редактирования всех полей — админ правит `admin_reply`, переключает `is_published`, редактирует `ai_reply` при необходимости).
+- Кнопка «Удалить» (DELETE через supabase + подтверждение).
+- Кнопка «Сгенерировать ответ ИИ» в строке — зовёт edge-функцию `reviews-ai-reply` для одного отзыва (та же логика, что и при вставке, но по `id`).
+
+## 5. Edge-функция `reviews-ai-reply`
+
+Для админской кнопки и сидинга:
+- Принимает `{ review_id }`, требует JWT с ролью admin.
+- Берёт отзыв + FAQ, зовёт ProTalk, обновляет `ai_reply`.
+
+## 6. Сидинг 10 тестовых отзывов
+
+Через `supabase--insert` после миграции:
+- 10 строк с реалистичными ФИ и текстами разной тональности.
+- Каждый с заранее заготовленным `ai_reply` (имитация ProTalk-ответа) и `admin_reply` (вежливый ответ админа), `is_published=true`.
+
+## Технические детали
+
+- Стиль модалки отзыва и кнопок: `.brand-editor`, `.btn-brand-primary` — по project memory.
+- Импорт ProTalk: `supabase/functions/_shared/protalk.ts` (уже есть `callProTalk` + `logToDb`).
+- Никаких аватарок (как просил пользователь).
+- Лендинг доступен анонимам — никакого auth-гейта на чтение/публикацию.
 
 ## Файлы
 
-- `supabase/migrations/<ts>_blog.sql` — таблицы, sequence, триггеры, RLS, GRANT.
-- `src/pages/BlogListPage.tsx` — `/blog`. Карточки: обложка (16:9), заголовок, excerpt (100 симв.). Клик → `/blog/post{public_id}`. Брендовый фон + RR-маскот на пустом состоянии.
-- `src/pages/BlogPostPage.tsx` — `/blog/post:pid`. Хедер с обложкой, заголовок, контент через `RichTrainingMaterialCard`, блок реакций под постом, блок комментариев.
-- `src/components/MarkdownEditor.tsx` — выделим переиспользуемый редактор (тулбар + textarea + переключатель Превью). На основе кода из `TrainingWizard.tsx` строк 169–222 и 557–599. Будет использоваться в редакторе постов; в `TrainingWizard` пока не трогаем, чтобы не рисковать регрессией.
-- `src/components/admin/BlogAdmin.tsx` — список постов в админке + кнопка «Новая статья», модал/инлайн-форма: upload обложки в bucket `posts`, поле title, `MarkdownEditor`, чекбокс «Опубликовано», сохранить/удалить.
-- `src/components/PostComments.tsx` — список + форма ответа (для auth), кнопки «Ответить», лайки/реакции (5 эмодзи), счётчики, скрытие формы для гостей с CTA «Войдите, чтобы комментировать».
-- `src/components/PostReactions.tsx` — переиспользуемые реакции (для поста и для комментария).
-- `src/lib/mdExcerpt.ts` — js-хелпер: чистит markdown в плоский текст для превью карточки.
-- `src/App.tsx` — добавить `<Route path="/blog" ... />` и `<Route path="/blog/post:pid" ... />`.
-- `src/pages/LandingPage.tsx` — добавить кнопку «Блог» в десктоп- и мобайл-навигацию (рядом с «Вакансии»).
-- `src/pages/AdminPanel.tsx` — добавить секцию `blog` в `SECTIONS`, рендерить `BlogAdmin`.
+Новые:
+- `supabase/migrations/<ts>_reviews.sql`
+- `supabase/functions/reviews-submit/index.ts`
+- `supabase/functions/reviews-ai-reply/index.ts`
+- `src/components/ReviewsSection.tsx`
 
-## Загрузка обложки
-
-В `BlogAdmin` — `supabase.storage.from('posts').upload(...)` с именем `${crypto.randomUUID()}.${ext}`, затем `getPublicUrl` → пишем в `posts.cover_url`. (Бакет уже создан пользователем; если он private — попрошу включить public; статьи публичные.)
-
-## Демо-статьи (через `supabase--insert`)
-
-После применения миграции вставлю два поста:
-1. «Как ИИ-интервью заменяет первичный скрининг HR» (≈3–4 экрана markdown с H1/H2, списками, цитатами).
-2. «5 шагов, чтобы запустить онбординг в RR за вечер».
-Обложки — публичные URL из бакета `posts` (заглушки можно сгенерировать `imagegen` или временно использовать существующие RR-маскоты, если пользователь захочет — уточню при реализации).
-
-## Открытые вопросы (отвечу по умолчанию, если не возразите)
-
-- Реакции: 5 типов (👍 ❤️ 🔥 👏 😮). Лайк = «👍».
-- Ответы на комментарии — 1 уровень вложенности (как в большинстве блогов). Ответы на ответы остаются в той же ветке.
-- Редактирование/удаление комментария — автор и админ.
-- `/blog` доступен всем (без авторизации); комментировать/реагировать — только авторизованным.
+Изменяемые:
+- `src/pages/LandingPage.tsx` — подключить блок.
+- `src/pages/AdminPanel.tsx` — новая вкладка «Отзывы», `RU_LABELS.reviews`.
