@@ -341,10 +341,10 @@ export default function LandingPage() {
                   <Play className="w-4 h-4 text-[#E7C768]" /> Сначала демо-интервью
                 </button>
               </div>
-            </article>
+            </Reveal>
 
             {/* Работодателю */}
-            <article className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E7C768]/15 via-[#1D3E5E]/60 to-[#17344F]/40 border border-[#E7C768]/30 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+            <Reveal as="article" direction="right" delay={120} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E7C768]/15 via-[#1D3E5E]/60 to-[#17344F]/40 border border-[#E7C768]/30 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
               <div className="flex items-start gap-5">
                 <img
                   src={MASCOT.success}
@@ -402,10 +402,10 @@ export default function LandingPage() {
               <p className="text-[11px] text-slate-300/80 flex items-center gap-1.5">
                 <Zap className="w-3 h-3 text-[#E7C768]" /> Нейросеть сама напишет вакансию, чек-листы и материалы обучения
               </p>
-            </article>
+            </Reveal>
           </div>
         </div>
-      </section>
+      </Reveal>
 
       {/* 3 product cards */}
       <section className="px-4 md:px-8 py-16 max-w-7xl mx-auto w-full border-t border-white/10">
