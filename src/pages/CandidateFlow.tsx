@@ -2463,11 +2463,12 @@ export default function CandidateFlow() {
             <div className="flex items-center justify-center py-4">
               <div className="w-32 h-32 rounded-full border-4 border-[#E7C768] bg-amber-950/45 flex flex-col items-center justify-center shadow-md">
                 <span className="text-4xl font-black text-[#E7C768]">
-                  {Math.round(
-                    ((candidate?.scores?.resumeScore !== undefined ? candidate.scores.resumeScore : 70) +
-                     (candidate?.scores?.checklistScore !== undefined ? candidate.scores.checklistScore : 80) +
-                     (candidate?.scores?.situationsScore !== undefined ? candidate.scores.situationsScore : 75)) / 3
-                  )}
+                  {(() => {
+                    const s = candidate?.scores || ({} as any);
+                    const vals = [s.resumeScore, s.checklistScore, s.situationsScore].filter((x: any) => typeof x === "number");
+                    if (!vals.length) return "—";
+                    return Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length);
+                  })()}
                 </span>
                 <span className="text-[10px] font-bold uppercase text-gray-300 font-mono">Общий балл</span>
               </div>
@@ -2478,19 +2479,19 @@ export default function CandidateFlow() {
               <div className="bg-black/25 p-3 rounded-xl border border-[#FAFAFA]/5 text-center flex flex-col justify-between">
                 <span className="text-[9px] text-slate-300 uppercase font-semibold font-mono block">1. Резюме</span>
                 <strong className="text-[#E7C768] font-extrabold text-lg block mt-1">
-                  {candidate?.scores?.resumeScore !== undefined ? candidate.scores.resumeScore : 70}/100
+                  {candidate?.scores?.resumeScore !== undefined ? `${candidate.scores.resumeScore}/100` : "—"}
                 </strong>
               </div>
               <div className="bg-black/25 p-3 rounded-xl border border-[#FAFAFA]/5 text-center flex flex-col justify-between">
                 <span className="text-[9px] text-slate-300 uppercase font-semibold font-mono block">2. Чек-лист</span>
                 <strong className="text-[#E7C768] font-extrabold text-lg block mt-1">
-                  {candidate?.scores?.checklistScore !== undefined ? candidate.scores.checklistScore : 80}/100
+                  {candidate?.scores?.checklistScore !== undefined ? `${candidate.scores.checklistScore}/100` : "—"}
                 </strong>
               </div>
               <div className="bg-[#101010]/35 p-3 rounded-xl border border-[#FAFAFA]/5 text-center flex flex-col justify-between">
                 <span className="text-[9px] text-slate-300 uppercase font-semibold font-mono block">3. Ситуации</span>
                 <strong className="text-[#E7C768] font-extrabold text-lg block mt-1">
-                  {candidate?.scores?.situationsScore !== undefined ? candidate.scores.situationsScore : 75}/100
+                  {candidate?.scores?.situationsScore !== undefined ? `${candidate.scores.situationsScore}/100` : "—"}
                 </strong>
               </div>
             </div>
@@ -2500,9 +2501,17 @@ export default function CandidateFlow() {
               <span className="text-xs font-bold text-[#E7C768] uppercase flex items-center gap-1">
                 <Cpu className="w-4 h-4 text-[#E7C768]" /> Разбор ваших навыков ИИ Роботом:
               </span>
-              <p className="text-xs text-gray-200 leading-relaxed italic font-normal">
-                "{candidate?.scores?.assessmentSummary || "Кандидат продемонстрировал хорошие базовые результаты на собеседовании. Выявлены отличные черты коммуникатора. Следующий шаг - изучение специфики нашего продукта и преодоление пробелов в знаниях."}"
+              <p className="text-xs text-gray-200 leading-relaxed italic font-normal whitespace-pre-wrap">
+                {candidate?.scores?.assessmentSummary
+                  ? `"${candidate.scores.assessmentSummary}"`
+                  : "Пройдите ИИ-собеседование, чтобы получить персональный разбор результатов."}
               </p>
+              {candidate?.scores?.checklistFeedback?.summary ? (
+                <p className="text-[11px] text-emerald-200 mt-2"><b>Чек-лист:</b> {candidate.scores.checklistFeedback.summary}</p>
+              ) : null}
+              {candidate?.scores?.situationsFeedback?.advice ? (
+                <p className="text-[11px] text-amber-200 mt-1"><b>Ситуации:</b> {candidate.scores.situationsFeedback.advice}</p>
+              ) : null}
             </div>
 
             {/* Training action CTA */}
