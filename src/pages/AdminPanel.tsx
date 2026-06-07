@@ -12,15 +12,16 @@ import RRImage from "@/components/RRImage";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import CandidateDetailsModal from "@/components/CandidateDetailsModal";
+import BlogAdmin from "@/components/admin/BlogAdmin";
 import {
   Search, ShieldCheck, LogOut, Loader2, RefreshCw, Users, Building2, Briefcase,
   MessageSquare, GraduationCap, Mail, KeyRound, Wallet, Sparkles, ArrowLeft,
-  Plus, Minus, X,
+  Plus, Minus, X, BookOpen,
 } from "lucide-react";
 
 type SectionKey =
   | "clients" | "candidates" | "companies" | "vacancies"
-  | "interviews" | "trainings" | "mailings" | "roles"
+  | "interviews" | "trainings" | "blog" | "mailings" | "roles"
   | "accounts" | "ai";
 
 const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
@@ -30,6 +31,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "vacancies",  label: "Вакансии",  icon: Briefcase },
   { key: "interviews", label: "Интервью",  icon: MessageSquare },
   { key: "trainings",  label: "Обучения",  icon: GraduationCap },
+  { key: "blog",       label: "Блог",      icon: BookOpen },
   { key: "mailings",   label: "Рассылки",  icon: Mail },
   { key: "roles",      label: "Роли",      icon: KeyRound },
   { key: "accounts",   label: "Счета",     icon: Wallet },
@@ -171,6 +173,7 @@ export default function AdminPanel() {
           {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
           {section === "interviews" && <SimpleTable table="interviews"  title="Интервью" />}
           {section === "trainings"  && <SimpleTable table="candidate_training_progress" title="Прогресс обучения" />}
+          {section === "blog"       && <BlogAdmin />}
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
           {section === "accounts"   && <AccountsSection setToast={setToast} />}
