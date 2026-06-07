@@ -337,11 +337,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
     try {
       const total = test.questions.reduce((s, q) => s + (q.points || 5), 0);
       if (test.id) {
-        await supabase.from("training_stage_tests").update({
+        await (supabase as any).from("training_stage_tests").update({
           questions: test.questions, pass_score: test.pass_score, total_score: total, shuffle_questions: test.shuffle,
         }).eq("id", test.id);
       } else {
-        const { data, error } = await supabase.from("training_stage_tests").insert({
+        const { data, error } = await (supabase as any).from("training_stage_tests").insert({
           project_id: project.id, stage,
           questions: test.questions, pass_score: test.pass_score, total_score: total, shuffle_questions: test.shuffle,
         }).select("*").single();
