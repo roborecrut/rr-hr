@@ -101,10 +101,22 @@ export default function CandidateStageTraining({
         setShuffle(r.shuffle !== false);
         setPassScore(r.pass_score || 70);
         setTotalScore(r.total_score || 100);
+        // Restore last attempt result from DB so it persists across reloads
+        const { data: prog } = await supabase.from("candidate_stage_progress")
+          .select("last_score,last_feedback,last_answers,passed_at,attempts,best_score")
+          .eq("candidate_id", candidateId).eq("stage", active).maybeSingle();
+        if (cancelled) return;
+        if (prog && (prog.attempts || 0) > 0 && prog.last_feedback) {
+          setLastResult({
+            score: Number(prog.last_score || 0),
+            passed: !!prog.passed_at,
+            per_question: Array.isArray(prog.last_feedback) ? prog.last_feedback : [],
+          });
+        }
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [active, projectId]);
+  }, [active, projectId, candidateId]);
 
   const canEnter = (s: Stage) => {
     const idx = STAGES.findIndex(x => x.key === s);
@@ -115,14 +127,6 @@ export default function CandidateStageTraining({
   const submit = async () => {
     setChecking(true);
     try {
-      // Списание лимита у работодателя за обучение этого кандидата:
-      // только при первой отправке теста на проверку.
-      // RPC spend_pack идемпотентен по idem_key — повторные тесты бесплатны.
-      try {
-        await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
-      } catch (e) {
-        console.warn("spend_pack(training) failed", e);
-      }
       const payload = examQuestions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
       const r = await aiWaitRun<any>({
         title: "Проверка ответов",
@@ -131,9 +135,20 @@ export default function CandidateStageTraining({
         }),
       });
       if (!r) return;
+      // Списание лимита у работодателя — только после получения первой оценки от ИИ
+      // по первому профессиональному тесту. RPC spend_pack идемпотентен по idem_key,
+      // повторные тесты ничего не списывают.
+      if (active === "professional") {
+        try {
+          await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
+        } catch (e) {
+          console.warn("spend_pack(training) failed", e);
+        }
+      }
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
       setProgress(p => ({ ...p, [active]: { passed: r.passed || p[active].passed, best: Math.max(p[active].best, r.score), attempts: r.attempts } }));
       setMode("result");
+      try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
     } catch (e: any) {
       alert("Ошибка проверки: " + (e?.message || ""));
     } finally { setChecking(false); }
@@ -154,6 +169,7 @@ export default function CandidateStageTraining({
     setExamQuestions(qs);
     setAnswers({});
     setMode("exam");
+    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
   };
 
   return (
