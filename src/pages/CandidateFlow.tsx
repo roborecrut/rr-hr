@@ -10,6 +10,8 @@ import Mascot from "../components/Mascot";
 import TrainingCoursePreview from "../components/TrainingCoursePreview";
 import CandidateStageTraining from "../components/CandidateStageTraining";
 import CandidateInterview from "../components/CandidateInterview";
+import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
+import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
 import Markdown from "react-markdown";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
@@ -2229,6 +2231,9 @@ export default function CandidateFlow() {
                   </label>
                 </div>
               </div>
+
+              {/* Дополнительные документы кандидата (bucket: candidate-docs) */}
+              <CandidateDocsDossier candidateId={candidate?.id || ""} />
             </div>
 
           </div>
@@ -2292,9 +2297,12 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Опубликованная вакансия</span>
                     <h2 className="text-2xl font-bold text-white">{project?.roleName || "Специалист"}</h2>
-                    <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
-                      {projectFull?.vacancy_text || `Мы ищем специалиста на должность ${project?.roleName || ""}.`}
-                    </p>
+                    <TabbedChecklistBlock
+                      text={projectFull?.vacancy_text || `• Мы ищем специалиста на должность ${project?.roleName || ""}.`}
+                      tabsHeader="Ключевые задачи и направления"
+                      checklistHeader="Что входит в работу"
+                      emptyHint="Подробное описание вакансии пока не заполнено."
+                    />
                     {projectFull?.tasks_activity_text && (
                       <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-2">
                         <h4 className="text-xs font-bold text-[#E7C768] uppercase">Задачи и Деятельность</h4>
@@ -2340,9 +2348,12 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Правила адаптации</span>
                     <h2 className="text-xl font-bold text-white font-serif">Оформление и трудоустройство</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {projectFull?.onboarding_text || "Процесс оформления прозрачный, в соответствии со стандартами."}
-                    </p>
+                    <TabbedChecklistBlock
+                      text={projectFull?.onboarding_text || "• Процесс оформления прозрачный, в соответствии со стандартами."}
+                      tabsHeader="Этапы трудоустройства"
+                      checklistHeader="Что важно знать про оформление"
+                      emptyHint="Информация про оформление пока не заполнена."
+                    />
                   </div>
                 )}
 
@@ -2370,9 +2381,12 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Коллеги</span>
                     <h2 className="text-xl font-bold text-white font-serif">Ваша рабочая группа</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap">
-                      {projectFull?.team_text || companyFull?.team_text || "Информация о команде уточняется."}
-                    </p>
+                    <TabbedChecklistBlock
+                      text={projectFull?.team_text || companyFull?.team_text || "• Информация о команде уточняется."}
+                      tabsHeader="Команда и роли"
+                      checklistHeader="Кто будет рядом"
+                      emptyHint="Информация о команде пока не заполнена."
+                    />
                   </div>
                 )}
 
@@ -2380,9 +2394,12 @@ export default function CandidateFlow() {
                   <div className="space-y-4 animate-fadeIn">
                     <span className="text-[#E7C768] text-xs font-bold uppercase tracking-wider block">Регламенты</span>
                     <h2 className="text-xl font-bold text-white font-serif">Базовая Wiki-система</h2>
-                    <p className="text-xs text-slate-300 leading-relaxed font-mono whitespace-pre-wrap bg-black/40 p-4 rounded-xl border border-white/5">
-                      {projectFull?.system_text || companyFull?.system_text || project?.customWiki || "Регламенты уточняются."}
-                    </p>
+                    <TabbedChecklistBlock
+                      text={projectFull?.system_text || companyFull?.system_text || project?.customWiki || "• Регламенты уточняются."}
+                      tabsHeader="Интерактивный кабинет: рабочие платформы"
+                      checklistHeader="Ежедневная система регламентов и отчетности"
+                      emptyHint="Регламенты пока не описаны."
+                    />
                   </div>
                 )}
 
