@@ -303,6 +303,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           {stageBadge("resume", "1. Резюме", resumeResult?.score ?? null)}
           {stageBadge("checklist", "2. Чек-лист", checklistScore)}
           {stageBadge("situations", "3. Ситуации", situationsScore)}
+          {stageBadge("done", "4. Итог", finalScore)}
         </div>
       </div>
 
