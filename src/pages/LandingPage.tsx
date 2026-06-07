@@ -201,8 +201,6 @@ export default function LandingPage() {
                 <Play className="w-4 h-4 text-[#E7C768]" /> Пройти демо-интервью бесплатно
               </button>
             </div>
-          </div>
-
           </Reveal>
 
           <Reveal direction="right" delay={150} className="lg:col-span-5 flex justify-center">
@@ -220,7 +218,6 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-          </div>
           </Reveal>
         </div>
       </Reveal>
