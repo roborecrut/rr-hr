@@ -797,8 +797,8 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
 
           {/* Interactive Work Tools Dashboard Panel — only if we have tagged tabs */}
           {allTabs.length > 0 && activeTab && (
-          <div className="bg-gradient-to-br from-[#12283C] to-[#142331] border-2 border-amber-500/20 rounded-2xl p-4 sm:p-5 text-left space-y-4">
-            <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/5">
+          <div className="bg-gradient-to-br from-[#17344F] to-[#265582] border-2 border-amber-500/25 rounded-2xl p-4 sm:p-5 text-left space-y-4 shadow-[0_20px_60px_-30px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center gap-2.5 pb-2.5 border-b border-white/10">
               <Cpu className="w-5 h-5 text-amber-300 animate-pulse" />
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">Интерактивный кабинет: Рабочие платформы</h4>
@@ -818,7 +818,7 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
                       className={`transition text-[10px] sm:text-xs font-bold p-2 rounded-xl border text-center cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis ${
                         isActive 
                           ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow-md" 
-                          : "bg-[#112335]/70 text-slate-300 border-white/5 hover:bg-white/5"
+                          : "bg-white/10 text-white border-white/15 hover:bg-white/20"
                       }`}
                     >
                       {tab.title}
@@ -828,17 +828,17 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
             </div>
 
             {/* Platform workflow description block */}
-            <div className="bg-[#112335] border border-[#E7C768]/15 p-4 rounded-xl space-y-2.5 min-h-[140px] flex flex-col justify-between">
+            <div className="bg-white/10 backdrop-blur-sm border border-[#E7C768]/25 p-4 rounded-xl space-y-2.5 min-h-[140px] flex flex-col justify-between">
               <div className="space-y-2">
                 <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-widest block">
                   {activeTab.title}
                 </span>
-                <p className="text-xs text-slate-200 leading-relaxed font-sans">
+                <p className="text-xs text-white leading-relaxed font-sans">
                   {activeTab.desc}
                 </p>
               </div>
               {activeTab.tip && (
-                <div className="text-[10px] bg-amber-500/10 border border-amber-500/20 p-2 rounded-lg text-amber-300 font-mono font-medium leading-tight mt-2.5">
+                <div className="text-[10px] bg-amber-500/15 border border-amber-500/30 p-2 rounded-lg text-amber-200 font-mono font-medium leading-tight mt-2.5">
                   {activeTab.tip}
                 </div>
               )}
@@ -848,11 +848,11 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
 
           {/* Core Daily Workflow Criteria Checklist */}
           {plainLines.length > 0 && (
-          <div className="bg-black/10 border border-white/5 p-4 rounded-xl space-y-3.5 text-left">
-            <span className="text-[10px] font-mono text-slate-300 block uppercase tracking-widest">⚙️ Ежедневная система регламентов и отчетности:</span>
+          <div className="bg-gradient-to-br from-[#17344F] to-[#265582] border border-white/10 p-4 rounded-xl space-y-3.5 text-left">
+            <span className="text-[10px] font-mono text-amber-300 block uppercase tracking-widest">⚙️ Ежедневная система регламентов и отчетности:</span>
             <div className="space-y-2.5">
               {plainLines.map((crt, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-xs text-slate-200">
+                <div key={i} className="flex items-start gap-2.5 text-xs text-white">
                   <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>{crt}</span>
                 </div>
@@ -862,7 +862,7 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
           )}
 
           {allTabs.length === 0 && plainLines.length === 0 && (
-            <div className="bg-black/10 border border-white/5 p-4 rounded-xl text-xs text-slate-400 italic">
+            <div className="bg-white/5 border border-white/10 p-4 rounded-xl text-xs text-slate-200 italic">
               Сведения о системе работы пока не заполнены.
             </div>
           )}
