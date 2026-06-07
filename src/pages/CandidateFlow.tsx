@@ -1633,14 +1633,23 @@ export default function CandidateFlow() {
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-3">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4 w-full">
           {/* Logo & Vacancy info */}
-          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => { const id = candidate?.id || localStorage.getItem("cand_session_id") || ""; if (id) navigate(`/${id}/profile`); }}>
+          <div className="flex items-center gap-2.5 cursor-pointer w-full lg:w-auto" onClick={() => {
+            const companyPub = companyFull?.public_id || (project as any)?.companyPublicId || "";
+            const projectPub = (project as any)?.publicId || (project as any)?.slug || "";
+            const candPub = candidate?.publicId || "";
+            if (companyPub && projectPub && candPub) {
+              navigate(`/com${companyPub}/vac${projectPub}/cand${candPub}/profile`);
+            } else if (candPub) {
+              navigate(`/cand${candPub}/profile`);
+            }
+          }}>
             <div className="bg-[#E7C768]/10 p-1.5 rounded-xl border border-[#E7C768]/20">
               <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={32} alt="RR" className="w-8 h-8 object-contain" />
             </div>
             <div className="text-left">
               <span className="font-extrabold text-sm tracking-tight text-[#E7C768] block leading-none">ЛИЧНЫЙ КАБИНЕТ СОИСКАТЕЛЯ</span>
               <span className="text-[10px] block text-slate-350 mt-1">
-                ID кандидата: <strong className="text-white font-mono">{candidate?.id || localStorage.getItem("cand_session_id") || "—"}</strong>
+                ID кандидата: <strong className="text-white font-mono">{candidate?.publicId || "—"}</strong>
               </span>
             </div>
           </div>
@@ -1815,7 +1824,7 @@ export default function CandidateFlow() {
                 <span className="text-[#E7C768] font-bold text-xs uppercase tracking-wider block">Личный кабинет соискателя</span>
                 <h2 className="text-2xl font-bold text-white mt-1">Профиль кандидата: {candidate?.name || "Алексей Иванов"}</h2>
                 <p className="text-xs text-gray-300 mt-1">
-                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. Идентификатор сессии: <span className="font-mono text-xs text-[#E7C768]">{candidate?.id || "—"}</span>
+                  Зарегистрирован через {candidate?.registeredVia === "telegram" ? "Telegram 🤖" : "Email ✉️"}. ID кандидата: <span className="font-mono text-xs text-[#E7C768]">{candidate?.publicId || "—"}</span>
                 </p>
               </div>
               
@@ -1983,7 +1992,8 @@ export default function CandidateFlow() {
                 </button>
               </form>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* 1. Google + Telegram metadata details */}
                 {/* 1. Контакты + соцсети */}
@@ -2055,19 +2065,40 @@ export default function CandidateFlow() {
                     })}
                   </div>
                 </div>
+              </div>
 
-                {/* 3. Active Job context card & Multi-vacancy system */}
+              {/* 3. Active Job context card & Multi-vacancy system */}
                 <div className="bg-black/25 p-5 rounded-2xl border border-white/5 space-y-4 text-left">
-                  <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">📂 Выберите Компанию & Вакансию</h3>
+                  <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-2">
+                    <h3 className="font-bold text-xs text-[#E7C768] uppercase">📂 Выберите Компанию & Вакансию</h3>
+                    {(companyFull?.public_id || (project as any)?.companyPublicId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cpid = companyFull?.public_id || (project as any)?.companyPublicId;
+                          if (cpid) navigate(`/com${cpid}`);
+                        }}
+                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#E7C768] border border-[#E7C768]/30 transition whitespace-nowrap"
+                        title="Все активные вакансии компании"
+                      >
+                        Все вакансии компании →
+                      </button>
+                    )}
+                  </div>
                   
                   {!(path.split("/").filter(Boolean).length >= 4 && path.split("/").filter(Boolean).findIndex(p => p.startsWith("candidate")) >= 2) && (
                     <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-200 leading-normal mb-2">
-                      ⚠️ Пожалуйста, <strong>выберите одну из активных вакансий ниже</strong>, чтобы начать проходить этапы ИИ-собеседования для соответствующего работодателя.
+                      ⚠️ Пожалуйста, <strong>выберите одну из ваших вакансий ниже</strong>, чтобы продолжить прохождение ИИ-отбора.
                     </div>
                   )}
 
-                  <div className="space-y-4 max-h-[350px] overflow-y-auto scrollbar-thin pr-1 text-xs">
-                    {allProjects.map((proj) => {
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    {(() => {
+                      const regIds = new Set(applications.map(a => a.project_id).filter(Boolean) as string[]);
+                      const list = allProjects.filter((p: any) => p.id === project?.id || regIds.has(p.id));
+                      if (!list.length && project) list.push(project as any);
+                      return list;
+                    })().map((proj: any) => {
                       const slug = proj.companySlug || "";
                       const candidateId = candidate?.id || "";
                       const companyPub = (proj as any).companyPublicId || (proj as any).companySlug || "";
@@ -2165,7 +2196,6 @@ export default function CandidateFlow() {
                     })}
                   </div>
                 </div>
-
               </div>
             )}
 
