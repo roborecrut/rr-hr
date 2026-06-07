@@ -724,14 +724,15 @@ function LogsSection() {
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
       ) : (
         <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
-          <div className="overflow-x-auto max-h-[60vh]">
-            <table className="w-full text-left text-[11px]">
+          <div className="overflow-x-auto overflow-y-auto max-h-[60vh]" style={{ WebkitOverflowScrolling: "touch" }}>
+            <table className="text-left text-[11px]" style={{ minWidth: 1400 }}>
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
                 <tr>
                   <th className="p-2.5">Дата</th>
                   <th className="p-2.5">Канал</th>
                   <th className="p-2.5">LLM</th>
                   <th className="p-2.5">Сообщение</th>
+                  <th className="p-2.5">Ответ RR</th>
                   <th className="p-2.5 text-right">Токенов</th>
                   <th className="p-2.5 text-right">₽</th>
                 </tr>
@@ -744,7 +745,8 @@ function LogsSection() {
                       <td className="p-2.5 text-slate-400 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</td>
                       <td className="p-2.5 text-slate-200">{r.channel_name || "—"}</td>
                       <td className="p-2.5 text-slate-400">{r.llm || "—"}</td>
-                      <td className="p-2.5 text-slate-200 truncate max-w-[420px]">{r.user_message || "—"}</td>
+                      <td className="p-2.5 text-slate-200 align-top"><div className="max-w-[360px] line-clamp-3">{r.user_message || "—"}</div></td>
+                      <td className="p-2.5 text-slate-200 align-top"><div className="max-w-[420px] line-clamp-3">{r.bot_reply || "—"}</div></td>
                       <td className="p-2.5 text-right font-mono text-[#E7C768]">{(r.tokens_total || 0).toLocaleString("ru-RU")}</td>
                       <td className="p-2.5 text-right font-mono text-[#F4EE8E]">
                         {rub.toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
@@ -753,7 +755,7 @@ function LogsSection() {
                   );
                 })}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="p-6 text-center text-slate-400">Нет записей</td></tr>
+                  <tr><td colSpan={7} className="p-6 text-center text-slate-400">Нет записей</td></tr>
                 )}
               </tbody>
             </table>
