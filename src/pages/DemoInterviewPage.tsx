@@ -176,36 +176,25 @@ export default function DemoInterviewPage() {
     finally { setBusy(false); }
   };
 
-  // Чек-лист — оценивается локально (есть `correct` и `explanation` в шаблоне),
-  // никаких ИИ-вызовов и трат не требуется.
-  const submitChecklist = () => {
+  // Чек-лист — оценивается ИИ, как и в реальном интервью (тот же промпт).
+  // Передаём все вопросы (с эталонами correct/expected) и ответы кандидата —
+  // нейросеть даёт подробный разбор по каждому пункту, summary, strengths, gaps.
+  const submitChecklist = async () => {
     if (!state?.template) return;
-    const qs = state.template.checklist;
-    const items = qs.map(q => {
-      const ans = (state.checkAnswers[q.id] || "").toString().trim();
-      const correct = (q.correct || "").toString().trim();
-      const ok = q.kind === "choice"
-        ? !!ans && !!correct && ans === correct
-        : !!ans && correct ? ans.toLowerCase().includes(correct.toLowerCase()) : !!ans;
-      return {
-        id: q.id, question: q.question, answer: ans || "",
-        correct: correct || null,
-        verdict: ok ? "correct" : ans ? "wrong" : "skip",
-        score: ok ? 1 : 0, max: 1,
-        explanation: q.expected_answer || "",
-      };
-    });
-    const total = items.length || 1;
-    const right = items.filter(i => i.verdict === "correct").length;
-    const score = Math.round((right / total) * 100);
-    const strengths = items.filter(i => i.verdict === "correct").slice(0, 5).map(i => i.question);
-    const gaps = items.filter(i => i.verdict !== "correct").slice(0, 5).map(i => i.question);
-    const summary = right === total
-      ? "Отлично! Все ответы верные — крепкая теоретическая база."
-      : right >= total * 0.6
-        ? `Хороший результат: ${right} из ${total}. Подтяните слабые места — и будет идеально.`
-        : `Пока ${right} из ${total}. Стоит освежить базовые знания по профессии.`;
-    setState(s => s ? { ...s, checkResult: { score, feedback: { items, summary, strengths, gaps } } } : s);
+    setBusy(true);
+    try {
+      const r = await aiWaitRun<any>({
+        title: "Проверка чек-листа",
+        task: () => call("ai-demo-grade-checklist", {
+          title: state.title,
+          questions: state.template!.checklist,
+          answers: state.checkAnswers,
+        }),
+      });
+      if (!r) return;
+      setState(s => s ? { ...s, checkResult: { score: r.score, feedback: r.feedback } } : s);
+    } catch (e: any) { alert(e?.message || "Ошибка"); }
+    finally { setBusy(false); }
   };
 
   const submitResume = async () => {
