@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { MessageSquare, Send, X, Sparkles, ShieldCheck, Loader2 } from "lucide-react";
 
 type Review = {
@@ -48,11 +55,20 @@ export default function ReviewsSection() {
         {rows.length === 0 ? (
           <div className="text-center text-slate-400 py-10">Пока нет отзывов — будьте первым.</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {rows.map((r) => (
-              <ReviewCard key={r.id} r={r} />
-            ))}
-          </div>
+          <Carousel
+            opts={{ loop: true, align: "start" }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-4">
+              {rows.map((r) => (
+                <CarouselItem key={r.id} className="pl-4 basis-full md:basis-1/2 lg:basis-1/3">
+                  <ReviewCard r={r} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <CarouselPrevious className="left-0 md:-left-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" />
+            <CarouselNext className="right-0 md:-right-10 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" />
+          </Carousel>
         )}
       </div>
 
@@ -65,7 +81,7 @@ function ReviewCard({ r }: { r: Review }) {
   const date = new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
   const initials = `${(r.first_name[0] || "?").toUpperCase()}${(r.last_name[0] || "").toUpperCase()}`;
   return (
-    <article className="bg-[#1D3E5E]/80 border border-white/10 rounded-2xl p-5 space-y-3 backdrop-blur">
+    <article className="bg-[#1D3E5E]/80 border border-white/10 rounded-2xl p-5 space-y-3 backdrop-blur h-full">
       <header className="flex items-center justify-between">
         <div>
           <div className="font-bold text-white">{r.first_name} {r.last_name}</div>
