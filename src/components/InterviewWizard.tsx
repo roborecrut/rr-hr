@@ -213,6 +213,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "checklist" && (
               <div className="space-y-3">
+                <div className="text-[10px] text-slate-400 font-bold">Вопросов: {checklist.length}/30</div>
                 {checklist.length === 0 && <p className="text-xs text-slate-400">Нет вопросов. Нажмите «Сгенерировать ИИ» или добавьте вручную.</p>}
                 {checklist.map((q, i) => (
                   <div key={q.id || i} className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
@@ -237,8 +238,8 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <button onClick={() => setChecklist([...checklist, { id: `q${checklist.length+1}`, kind: "choice", question: "", options: ["","","",""], correct: "" }])} className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-1"><Plus className="w-3 h-3"/>Choice</button>
-                  <button onClick={() => setChecklist([...checklist, { id: `q${checklist.length+1}`, kind: "text", question: "", expected_answer: "" }])} className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-1"><Plus className="w-3 h-3"/>Text</button>
+                  <button disabled={checklist.length >= 30} onClick={() => setChecklist([...checklist, { id: `q${Date.now()}`, kind: "choice", question: "", options: ["","","",""], correct: "" }])} className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3"/>С вариантами</button>
+                  <button disabled={checklist.length >= 30} onClick={() => setChecklist([...checklist, { id: `q${Date.now()}`, kind: "text", question: "", expected_answer: "" }])} className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-1.5 flex items-center gap-1 disabled:opacity-40"><Plus className="w-3 h-3"/>Текстовый</button>
                   <button onClick={() => saveBlock("checklist", { questions: checklist })} disabled={saving} className="ml-auto bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1"><Save className="w-3.5 h-3.5"/>Сохранить</button>
                 </div>
               </div>
