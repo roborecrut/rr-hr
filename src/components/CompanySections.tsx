@@ -27,6 +27,8 @@ type Props = {
   /** When inside /vac.../company, hint banner with switcher back */
   currentVacancy?: JobProject | null;
   onBackToVacancy?: () => void;
+  /** Hide the in-page sticky tabs (when the parent renders them in the header). */
+  hideStickyNav?: boolean;
 };
 
 function renderText(raw?: string | null) {
@@ -142,6 +144,7 @@ export default function CompanySections({
   companySlug,
   currentVacancy,
   onBackToVacancy,
+  hideStickyNav,
 }: Props) {
   if (!company) return null;
 
@@ -269,7 +272,7 @@ export default function CompanySections({
       </div>
 
       {/* Sticky in-page nav */}
-      {navItems.length > 1 && <StickyNav items={navItems} />}
+      {!hideStickyNav && navItems.length > 1 && <StickyNav items={navItems} />}
 
       {/* Two-column section layout on desktop; one column on mobile */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
