@@ -1,0 +1,1 @@
+UPDATE public.projects SET is_published = true WHERE is_published = false AND company_id IS NOT NULL AND role_name IS NOT NULL AND btrim(role_name) <> '';
