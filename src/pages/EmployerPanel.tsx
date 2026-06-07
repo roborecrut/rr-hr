@@ -4469,8 +4469,20 @@ export default function EmployerPanel() {
               {trainingView.mode === "list" ? (
                 <TrainingList
                   projects={projects}
-                  onOpen={(projectId) => setTrainingView({ mode: "edit", projectId })}
-                  onCreate={() => setTrainingView({ mode: "create" })}
+                  onOpen={async (projectId) => {
+                    setTrainingView({ mode: "edit", projectId });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
+                  onCreate={async () => {
+                    setTrainingView({ mode: "create" });
+                    try {
+                      const { aiRestart } = await import("@/lib/aiClient");
+                      aiRestart(employerId).catch(() => {});
+                    } catch {}
+                  }}
                 />
               ) : (
                 <TrainingWizard
