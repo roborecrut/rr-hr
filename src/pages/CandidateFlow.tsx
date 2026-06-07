@@ -760,12 +760,14 @@ export default function CandidateFlow() {
         // Supabase fallback — pull published projects + parent company name/slug
         const { data } = await supabase
           .from("projects")
-          .select("*, companies(name, slug, logo_url)")
+          .select("*, companies(name, slug, logo_url, public_id)")
           .eq("is_published", true);
         projsList = (data || []).map((p: any) => ({
           id: p.id,
           companyName: p.companies?.name || "",
           companySlug: p.companies?.slug || undefined,
+          companyPublicId: p.companies?.public_id || undefined,
+          publicId: p.public_id || undefined,
           employerId: p.employer_id,
           roleName: p.role_name,
           salaryTerms: p.salary_terms || undefined,
