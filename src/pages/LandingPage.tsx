@@ -31,6 +31,7 @@ import {
   Rocket,
   CheckCircle2,
   Zap,
+  BookOpen,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -94,6 +95,9 @@ export default function LandingPage() {
             <button onClick={() => navigate("/vacancy")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5">
               <Briefcase className="w-4 h-4 text-[#E7C768]" /> Вакансии
             </button>
+            <button onClick={() => navigate("/blog")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5">
+              <BookOpen className="w-4 h-4 text-[#E7C768]" /> Блог
+            </button>
             <button onClick={() => navigate("/demo")} className="px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10">Демо-интервью</button>
           </nav>
 
@@ -121,6 +125,7 @@ export default function LandingPage() {
           <div className="md:hidden mt-4 flex flex-col gap-2 border-t border-white/10 pt-4">
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Главная</button>
             <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Вакансии</button>
+            <button onClick={() => { navigate("/blog"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Блог</button>
             <button onClick={() => { navigate("/demo"); setMobileMenuOpen(false); }} className="text-left px-3 py-2 rounded-xl text-slate-200 hover:bg-white/10">Демо-интервью</button>
             {isAuthed ? (
               <>
