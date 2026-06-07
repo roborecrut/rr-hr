@@ -8,6 +8,7 @@ import Markdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
 import EmployerAIAssistant from "@/components/EmployerAIAssistant";
+import { useSeo, SITE_URL } from "@/lib/seo";
 
 type FaqItem = {
   id: string;
@@ -33,6 +34,25 @@ export default function FaqPage() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+
+  useSeo({
+    title: "База знаний — Робот Рекрутер",
+    description: "Ответы на частые вопросы о платформе Робот Рекрутер: тарифы, ИИ-интервью, настройка вакансий, интеграции и поддержка.",
+    canonical: `${SITE_URL}/faq`,
+    ogUrl: `${SITE_URL}/faq`,
+    ogType: "website",
+    jsonLd: items.length
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: items.slice(0, 50).map((it) => ({
+            "@type": "Question",
+            name: it.question,
+            acceptedAnswer: { "@type": "Answer", text: it.answer },
+          })),
+        }
+      : undefined,
+  });
 
   useEffect(() => {
     let cancelled = false;

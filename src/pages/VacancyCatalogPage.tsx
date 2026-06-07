@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
 import RRImage from "@/components/RRImage";
 import { supabase } from "@/integrations/supabase/client";
+import { useSeo, SITE_URL } from "@/lib/seo";
 import {
   Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
   Sparkles, Zap, Users,
@@ -43,6 +44,13 @@ function firstLine(text: string | null | undefined): string | undefined {
 
 export default function VacancyCatalogPage() {
   const { navigate } = useRouter();
+  useSeo({
+    title: "Каталог вакансий — Робот Рекрутер",
+    description: "Актуальные открытые вакансии компаний платформы Робот Рекрутер. Откликнуться можно без регистрации — ИИ проведёт первичное собеседование.",
+    canonical: `${SITE_URL}/vacancy`,
+    ogUrl: `${SITE_URL}/vacancy`,
+    ogType: "website",
+  });
   const [loading, setLoading] = useState(true);
   const [vacs, setVacs] = useState<Vac[]>([]);
 
