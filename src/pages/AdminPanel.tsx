@@ -23,7 +23,7 @@ import {
 type SectionKey =
   | "clients" | "candidates" | "companies" | "vacancies"
   | "interviews" | "trainings" | "blog" | "mailings" | "roles"
-  | "accounts" | "ai" | "logs";
+  | "accounts" | "ai" | "logs" | "reviews";
 
 const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "clients",    label: "Клиенты",   icon: Users },
@@ -33,6 +33,7 @@ const SECTIONS: { key: SectionKey; label: string; icon: any }[] = [
   { key: "interviews", label: "Интервью",  icon: MessageSquare },
   { key: "trainings",  label: "Обучения",  icon: GraduationCap },
   { key: "blog",       label: "Блог",      icon: BookOpen },
+  { key: "reviews",    label: "Отзывы",    icon: MessageSquare },
   { key: "mailings",   label: "Рассылки",  icon: Mail },
   { key: "roles",      label: "Роли",      icon: KeyRound },
   { key: "accounts",   label: "Счета",     icon: Wallet },
