@@ -417,6 +417,9 @@ export default function EmployerPanel() {
   const [packQty, setPackQty] = useState<{ interview: number; training: number }>({ interview: 10, training: 0 });
   const [packBusy, setPackBusy] = useState<boolean>(false);
   const [fixedBusy, setFixedBusy] = useState<null | "landing" | "interview_setup" | "training_setup">(null);
+  const [fixedQty, setFixedQty] = useState<Record<"landing" | "interview_setup" | "training_setup", number>>({
+    landing: 1, interview_setup: 1, training_setup: 1,
+  });
   const [referrer, setReferrer] = useState<null | { name: string; email: string; phone: string | null; telegram: string | null; public_id: string }>(null);
   const [referees, setReferees] = useState<Array<{ name: string; email: string; created_at: string; bonus_rr: number }>>([]);
 
