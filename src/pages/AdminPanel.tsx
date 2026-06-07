@@ -621,3 +621,121 @@ function AISection() {
     </div>
   );
 }
+
+/* ============== Logs (ProTalk usage) ============== */
+
+// 10 000 000 tokens === 300 ₽  →  0.00003 ₽ per token
+const RUB_PER_TOKEN = 300 / 10_000_000;
+
+function LogsSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any)
+      .from("logs")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    setRows((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) =>
+      [r.user_message, r.bot_reply, r.channel_name, r.bot_id, r.llm, r.user_social_id]
+        .some((v) => v && String(v).toLowerCase().includes(q))
+    );
+  }, [rows, search]);
+
+  const totalTokens = useMemo(
+    () => filtered.reduce((s, r) => s + (Number(r.tokens_total) || 0), 0),
+    [filtered]
+  );
+  const totalRub = totalTokens * RUB_PER_TOKEN;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+        <div>
+          <h2 className="text-base font-bold text-[#E7C768]">Логи сообщений ProTalk — {rows.length}</h2>
+          <p className="text-[11px] text-slate-300 mt-0.5">
+            Тариф: 10 000 000 токенов = 300 ₽ (≈ {RUB_PER_TOKEN.toFixed(6)} ₽ за токен)
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по сообщению / каналу / боту..."
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 w-72" />
+          <button onClick={load} className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5">
+            <RefreshCw className="w-3.5 h-3.5" /> Обновить
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-slate-300">Записей в выборке</div>
+          <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{filtered.length}</div>
+        </div>
+        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-slate-300">Сумма токенов (tokens_total)</div>
+          <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{totalTokens.toLocaleString("ru-RU")}</div>
+        </div>
+        <div className="bg-gradient-to-br from-[#E7C768]/20 to-[#D99E41]/20 border border-[#E7C768]/40 rounded-2xl p-4">
+          <div className="text-[10px] uppercase tracking-wider text-[#E7C768]">Расход ProTalk, ₽</div>
+          <div className="text-2xl font-bold text-[#F4EE8E] font-mono mt-1">
+            {totalRub.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto max-h-[60vh]">
+            <table className="w-full text-left text-[11px]">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
+                <tr>
+                  <th className="p-2.5">Дата</th>
+                  <th className="p-2.5">Канал</th>
+                  <th className="p-2.5">LLM</th>
+                  <th className="p-2.5">Сообщение</th>
+                  <th className="p-2.5 text-right">Токенов</th>
+                  <th className="p-2.5 text-right">₽</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r) => {
+                  const rub = (Number(r.tokens_total) || 0) * RUB_PER_TOKEN;
+                  return (
+                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
+                      <td className="p-2.5 text-slate-400 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : "—"}</td>
+                      <td className="p-2.5 text-slate-200">{r.channel_name || "—"}</td>
+                      <td className="p-2.5 text-slate-400">{r.llm || "—"}</td>
+                      <td className="p-2.5 text-slate-200 truncate max-w-[420px]">{r.user_message || "—"}</td>
+                      <td className="p-2.5 text-right font-mono text-[#E7C768]">{(r.tokens_total || 0).toLocaleString("ru-RU")}</td>
+                      <td className="p-2.5 text-right font-mono text-[#F4EE8E]">
+                        {rub.toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={6} className="p-6 text-center text-slate-400">Нет записей</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <DetailsModal title="Лог сообщения" data={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
