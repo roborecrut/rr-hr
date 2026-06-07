@@ -133,6 +133,36 @@ export default function CompanyLanding() {
 
   const visibleTabs = allTabs.filter(t => t.textVal && t.textVal.trim() !== "");
 
+  // Tabs for the company landing view (when no vacancy is open).
+  // Mirrors the section order used inside <CompanySections />.
+  const companyNavItems = React.useMemo(() => {
+    if (!company) return [] as { id: string; label: string }[];
+    const order = [
+      { key: "description_text", label: "О компании" },
+      { key: "products_text",    label: "Продукты" },
+      { key: "mission_text",     label: "Миссия" },
+      { key: "about_text",       label: "О нас" },
+      { key: "team_text",        label: "Команда" },
+      { key: "payouts_text",     label: "Выплаты" },
+      { key: "schedule_text",    label: "График" },
+      { key: "system_text",      label: "ИИ-Система" },
+    ];
+    const items = order
+      .filter((o) => company[o.key] && String(company[o.key]).trim() !== "")
+      .map((o) => ({ id: `sec-${o.key}`, label: o.label }));
+    const stats = company.stats && typeof company.stats === "object" ? company.stats : null;
+    const statEntries = stats ? Object.entries(stats).filter(([k]) => k !== "labels") : [];
+    if (statEntries.length) items.push({ id: "sec-stats", label: "Показатели" });
+    if (vacancies.length)   items.push({ id: "sec-vacancies", label: "Вакансии" });
+    return items;
+  }, [company, vacancies.length]);
+
+  const showCompanyTabs = (!vacancyId || subTab === "company") && companyNavItems.length > 1;
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   useEffect(() => {
     if (selectedVacancy && visibleTabs.length > 0) {
       const isCurrentTabVisible = visibleTabs.some(t => t.key === subTab);
@@ -410,11 +440,26 @@ export default function CompanyLanding() {
               </div>
             )}
 
+            {/* Desktop Tabs for company landing (no vacancy selected) */}
+            {!selectedVacancy && showCompanyTabs && (
+              <div className="hidden md:flex items-center gap-1.5 overflow-x-auto select-none py-1">
+                {companyNavItems.map((it) => (
+                  <button
+                    key={it.id}
+                    onClick={() => scrollToSection(it.id)}
+                    className="transition px-3 py-1.5 text-xs font-bold rounded-lg border cursor-pointer whitespace-nowrap bg-black/25 text-slate-300 border-white/5 hover:bg-white/5 hover:text-white"
+                  >
+                    {it.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Right block: hamburger on mobile only — login is available only on a vacancy page */}
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="md:hidden text-slate-300 hover:text-white p-2 border border-white/10 rounded-xl bg-black/25 focus:outline-none transition shrink-0"
+                className={`${(selectedVacancy || showCompanyTabs) ? "md:hidden" : "hidden"} text-slate-300 hover:text-white p-2 border border-white/10 rounded-xl bg-black/25 focus:outline-none transition shrink-0`}
               >
                 {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 animate-pulse" />}
               </button>
@@ -460,6 +505,22 @@ export default function CompanyLanding() {
               )}
             </div>
           )}
+
+          {/* Mobile expandable hamburger menu drawer — company landing view */}
+          {menuOpen && !selectedVacancy && showCompanyTabs && (
+            <div className="md:hidden py-3 border-t border-white/5 space-y-2 animate-fadeIn">
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider px-2 block mb-0.5">Разделы страницы:</span>
+              {companyNavItems.map((it) => (
+                <button
+                  key={it.id}
+                  onClick={() => { setMenuOpen(false); scrollToSection(it.id); }}
+                  className="w-full text-left transition px-3.5 py-2.5 text-xs font-bold rounded-xl border bg-black/25 text-slate-300 border-white/5 hover:bg-white/5"
+                >
+                  {it.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -476,6 +537,7 @@ export default function CompanyLanding() {
               company={company}
               vacancies={vacancies}
               companySlug={companySlug}
+              hideStickyNav
               currentVacancy={vacancyId ? selectedVacancy : null}
               onOpenVacancy={(v) =>
                 navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)
