@@ -2542,12 +2542,24 @@ export default function EmployerPanel() {
                 <span className="font-mono text-[#E7C768] font-black">{balance} RR</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Лимит интервью:</span>
+                <span className="text-slate-300">ИИ-Интервью:</span>
                 <span className="font-mono text-white font-bold">{interviewCredits} шт</span>
               </div>
               <div className="text-[11px] flex justify-between">
-                <span className="text-slate-305">Лимит обучений:</span>
+                <span className="text-slate-300">ИИ-Обучений:</span>
                 <span className="font-mono text-white font-bold">{trainingCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Вакансий:</span>
+                <span className="font-mono text-white font-bold">{landingCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Систем Обучений:</span>
+                <span className="font-mono text-white font-bold">{trainingSetupCredits} шт</span>
+              </div>
+              <div className="text-[11px] flex justify-between">
+                <span className="text-slate-300">ИИ-Систем Интервью:</span>
+                <span className="font-mono text-white font-bold">{interviewSetupCredits} шт</span>
               </div>
             </div>
           </div>
