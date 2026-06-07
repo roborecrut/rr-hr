@@ -172,24 +172,40 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
 // 2. 🔥 MOTIVATION VIEW
 // -------------------------------------------------------------
 export const MotivationView: React.FC<SectionProps> = ({ project, onChangeText, isEditable }) => {
-  const text = project.motivationTextDetail || project.motivationText || "• Премии до 30% за высокую скорость заполнения карточек CRM\n• Еженедельные выплаты за успешные звонки\n• Компенсация затрат на интернет\n• Обучение за счет компании и кураторство";
-  const points = text.split("\n").map(l => l.replace(/^[•\s-*]+/, "").trim()).filter(Boolean);
+  const detailText = project.motivationTextDetail || "• Премии до 30% за высокую скорость заполнения карточек CRM\n• Еженедельные выплаты за успешные звонки\n• Компенсация затрат на интернет\n• Обучение за счет компании и кураторство";
+  const bannerText = project.motivationText || "";
+  const points = detailText.split("\n").map(l => l.replace(/^[•\s-*]+/, "").trim()).filter(Boolean);
 
   return (
     <div className="space-y-6">
       {isEditable ? (
         <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+          <label className="text-xs font-bold text-amber-300 block">Краткая мотивация (баннер):</label>
+          <textarea
+            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            rows={2}
+            value={bannerText}
+            onChange={(e) => onChangeText?.("motivationText", e.target.value)}
+            placeholder="Одно-два предложения для верхнего блока"
+          />
           <label className="text-xs font-bold text-amber-300 block">Полный текст мотивации и льгот:</label>
           <textarea
             className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={5}
-            value={text}
+            value={detailText}
             onChange={(e) => onChangeText?.("motivationTextDetail", e.target.value)}
             placeholder="Каждое преимущество пишите с новой строки для генерации анимированных карточек"
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-5">
+          {bannerText && (
+            <div className="bg-gradient-to-r from-[#12283C] to-[#1A344D] border-l-4 border-[#E7C768] p-4 rounded-r-2xl text-left">
+              <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-widest block mb-1">Главное о мотивации</span>
+              <p className="text-xs text-white font-medium leading-relaxed">{bannerText}</p>
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {points.map((pt, i) => (
             <div key={i} className="bg-gradient-to-br from-[#12283C] to-[#1A344D] border border-white/5 hover:border-amber-500/20 p-4 rounded-2xl flex items-start gap-3 transition hover:shadow-lg">
               <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
@@ -204,6 +220,7 @@ export const MotivationView: React.FC<SectionProps> = ({ project, onChangeText, 
           {points.length === 0 && (
             <span className="text-xs text-slate-400 italic">Специальные льготы пока не описаны. Вы можете отредактировать их в кабинете работодателя.</span>
           )}
+          </div>
         </div>
       )}
     </div>
