@@ -4,6 +4,7 @@ import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, Alert
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import Reveal from "@/components/Reveal";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
