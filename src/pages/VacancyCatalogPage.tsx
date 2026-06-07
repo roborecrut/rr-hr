@@ -52,7 +52,7 @@ export default function VacancyCatalogPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   const [aiBusy, setAiBusy] = useState(false);
-  const [aiResults, setAiResults] = useState<{ id: string; reason?: string }[] | null>(null);
+  const [aiResults, setAiResults] = useState<{ id: string; rank?: number }[] | null>(null);
   const [aiQuery, setAiQuery] = useState("");
 
   useEffect(() => {
@@ -146,24 +146,17 @@ export default function VacancyCatalogPage() {
     setAiBusy(true);
     setAiQuery(q.trim());
     try {
-      const payload = {
-        query: q.trim(),
-        vacancies: vacs.map((v) => ({
-          id: v.id,
-          role: v.role_name || "",
-          company: v.company_name || "",
-          industry: v.industry || undefined,
-          salary: firstLine(v.salary_terms),
-          schedule: firstLine(v.schedule_terms),
-          summary: summarize(v.vacancy_text, 400),
-        })),
-      };
-      const { data, error } = await supabase.functions.invoke("ai-vacancy-search", { body: payload });
+      const { data, error } = await supabase.rpc("search_vacancies", {
+        q: q.trim(),
+        match_count: 100,
+      });
       if (error) throw error;
-      const results = Array.isArray((data as any)?.results) ? (data as any).results : [];
+      const results = Array.isArray(data)
+        ? (data as any[]).map((r) => ({ id: r.id as string, rank: Number(r.rank) || 0 }))
+        : [];
       setAiResults(results);
     } catch (e) {
-      console.error("ai-vacancy-search failed", e);
+      console.error("search_vacancies failed", e);
       setAiResults([]);
     } finally {
       setAiBusy(false);
@@ -221,7 +214,7 @@ export default function VacancyCatalogPage() {
                 className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-[#F5D67A] via-[#E8B84E] to-[#C9933A] text-[#17344F] font-semibold hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {aiBusy ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                ИИ-поиск
+                Умный поиск
               </button>
               <button
                 onClick={() => setShowFilters((v) => !v)}
@@ -281,11 +274,11 @@ export default function VacancyCatalogPage() {
             {aiResults && (
               <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center gap-2 text-sm">
                 <Sparkles className="w-4 h-4 text-[#E8B84E]" />
-                <span className="text-white/70">ИИ-подборка по запросу:</span>
+                <span className="text-white/70">Подборка по запросу:</span>
                 <span className="font-medium">«{aiQuery}»</span>
                 <span className="text-white/60">— найдено {aiResults.length}</span>
                 <button onClick={clearAi} className="ml-auto inline-flex items-center gap-1 text-white/70 hover:text-white transition">
-                  <X className="w-3 h-3" /> Сбросить ИИ-поиск
+                  <X className="w-3 h-3" /> Сбросить умный поиск
                 </button>
               </div>
             )}
@@ -313,7 +306,6 @@ export default function VacancyCatalogPage() {
         ) : (
           <div className="grid gap-3">
             {filtered.map((v) => {
-              const aiReason = aiResults?.find((r) => r.id === v.id)?.reason;
               return (
                 <article
                   key={v.id}
@@ -361,13 +353,6 @@ export default function VacancyCatalogPage() {
                         <p className="mt-3 text-sm text-white/70 line-clamp-2">
                           {summarize(v.vacancy_text, 220)}
                         </p>
-                      )}
-
-                      {aiReason && (
-                        <div className="mt-3 flex items-start gap-2 text-xs text-[#F5D67A]/90 bg-[#E8B84E]/10 border border-[#E8B84E]/20 rounded-lg px-3 py-2">
-                          <Sparkles className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
-                          <span>{aiReason}</span>
-                        </div>
                       )}
                     </div>
                   </div>

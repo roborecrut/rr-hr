@@ -1470,6 +1470,7 @@ export type Database = {
           salary_terms: string | null
           schedule_terms: string | null
           schedule_text: string | null
+          search_tsv: unknown
           slug: string | null
           stats: Json
           status: Database["public"]["Enums"]["entity_status"]
@@ -1516,6 +1517,7 @@ export type Database = {
           salary_terms?: string | null
           schedule_terms?: string | null
           schedule_text?: string | null
+          search_tsv?: unknown
           slug?: string | null
           stats?: Json
           status?: Database["public"]["Enums"]["entity_status"]
@@ -1562,6 +1564,7 @@ export type Database = {
           salary_terms?: string | null
           schedule_terms?: string | null
           schedule_text?: string | null
+          search_tsv?: unknown
           slug?: string | null
           stats?: Json
           status?: Database["public"]["Enums"]["entity_status"]
@@ -2320,6 +2323,15 @@ export type Database = {
         Args: { _amount: number; _inv_id: number; _payload: Json }
         Returns: Json
       }
+      search_vacancies: {
+        Args: { match_count?: number; q: string }
+        Returns: {
+          id: string
+          rank: number
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       slugify_ru: { Args: { _input: string }; Returns: string }
       spend_fixed:
         | { Args: { _item: string; _project: string }; Returns: Json }
