@@ -2097,10 +2097,19 @@ export default function CandidateFlow() {
                     {allProjects.map((proj) => {
                       const slug = proj.companySlug || "";
                       const candidateId = candidate?.id || "";
+                      const companyPub = (proj as any).companyPublicId || (proj as any).companySlug || "";
+                      const projectPub = (proj as any).publicId || (proj as any).slug || "";
+                      const candPub = candidate?.publicId || "";
                       const isSelected = project?.id === proj.id;
-                      
-                      // Precise tab path keeping current states
-                      const targetPathOfThisProj = `/${slug}/${proj.id}/${candidateId}/profile`;
+
+                      // Canonical URL — only use the new schema so the page survives a reload.
+                      const canonicalProfile = companyPub && projectPub && candPub
+                        ? `/com${companyPub}/vac${projectPub}/cand${candPub}/profile`
+                        : `/${slug}/${proj.id}/${candidateId}/profile`;
+                      const canonicalTerms = companyPub && projectPub && candPub
+                        ? `/com${companyPub}/vac${projectPub}/cand${candPub}/terms/vacancy`
+                        : `/${slug}/${proj.id}/${candidateId}/terms/vacancy`;
+                      const targetPathOfThisProj = isSelected ? canonicalTerms : canonicalProfile;
 
                       return (
                         <div 
@@ -2158,7 +2167,7 @@ export default function CandidateFlow() {
                               <div className="pt-1.5">
                                 <span className="text-[9px] text-slate-400 block font-mono">Адрес страницы кандидата:</span>
                                 <div className="bg-black/35 p-2 rounded-lg border border-white/5 overflow-x-auto text-[9px] text-[#E7C768] font-mono whitespace-nowrap scrollbar-thin mt-1">
-                                  {`/${slug}/${proj.id}/${candidateId}/profile`}
+                                  {canonicalProfile}
                                 </div>
                               </div>
                             )}
