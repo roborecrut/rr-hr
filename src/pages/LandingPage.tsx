@@ -10,6 +10,7 @@ import AuthModal from "../components/AuthModal";
 import HiringCalculator from "../components/HiringCalculator";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import ReviewsSection from "../components/ReviewsSection";
+import Reveal from "../components/Reveal";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
 import { MASCOT } from "@/lib/mascotImages";
