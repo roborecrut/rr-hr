@@ -12,6 +12,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import AuthModal from "@/components/AuthModal";
 import { fetchJobTitles, type JobTitle } from "@/lib/jobTitles";
 import { aiRestart } from "@/lib/aiClient";
+import { MASCOT } from "@/lib/mascotImages";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -67,7 +68,9 @@ export default function DemoInterviewPage() {
   // Persist state
   useEffect(() => { if (state) saveDemoState(state); }, [state]);
 
-  // Auto-prepare template when entering the restart stage
+  // Auto-load the interview template from the DB when entering the restart stage.
+  // All content (situations / checklist / resume_criteria) is already authored
+  // in `job_titles.interview_template` — no AI generation is needed.
   useEffect(() => {
     if (!state || state.stage !== "restart" || state.template || preparingRef.current) return;
     preparingRef.current = true;
@@ -75,38 +78,71 @@ export default function DemoInterviewPage() {
 
     (async () => {
       try {
-        // 1) reset AI dialog (overlay shows automatically)
+        // Reset ProTalk dialog context once, so per-stage grading calls start fresh.
         aiRestart().catch(() => {});
 
-        // 2) cached template?
+        // Cached template?
         const cached = loadCachedTemplate(state.titleId);
         if (cached) {
           setState(s => s ? { ...s, template: cached, stage: "situations" } : s);
           return;
         }
 
-        // 3) fetch vacancy_text from job_titles (best-effort, public read)
-        let vacancyText = "";
-        try {
-          const { data } = await supabase.from("job_titles").select("field_templates").eq("id", state.titleId).maybeSingle();
-          const ft = (data as any)?.field_templates || {};
-          vacancyText = String(ft.vacancy_text || "").slice(0, 5000);
-        } catch { /* ignore */ }
+        // Read the prebuilt template + vacancy text from job_titles.
+        const { data, error } = await supabase
+          .from("job_titles")
+          .select("field_templates, interview_template")
+          .eq("id", state.titleId)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("Шаблон должности не найден");
 
-        // 4) ask AI for the demo bundle
-        const r = await call("ai-demo-prepare", { title: state.title, vacancy_text: vacancyText });
+        const ft = (data as any).field_templates || {};
+        const it = (data as any).interview_template || {};
+        const vacancyText = String(ft.vacancy_text || "").slice(0, 5000);
+
+        const rawSituations = Array.isArray(it?.situations?.situations)
+          ? it.situations.situations
+          : Array.isArray(it?.situations) ? it.situations : [];
+        const situations = rawSituations.map((s: any, i: number) => ({
+          id: String(s.id || `s${i + 1}`),
+          title: String(s.title || `Ситуация ${i + 1}`),
+          brief: String(s.brief || s.text || ""),
+          criteria: String(s.criteria || ""),
+        })).filter((s: any) => s.brief);
+
+        const rawChecklist = Array.isArray(it?.checklist?.questions)
+          ? it.checklist.questions
+          : Array.isArray(it?.checklist) ? it.checklist : [];
+        const checklist = rawChecklist.map((q: any, i: number) => ({
+          id: String(q.id || `q${i + 1}`),
+          kind: (q.kind === "text" ? "text" : "choice") as "choice" | "text",
+          question: String(q.question || ""),
+          options: Array.isArray(q.options) ? q.options.map(String) : null,
+          correct: q.correct != null ? String(q.correct) : null,
+          expected_answer: q.explanation ? String(q.explanation) : null,
+        })).filter((q: any) => q.question);
+
+        const resume_criteria = typeof it.resume_criteria === "string"
+          ? it.resume_criteria
+          : String(it?.resume_criteria?.text || "");
+
+        if (!situations.length || !checklist.length) {
+          throw new Error("Шаблон интервью для этой должности ещё не заполнен. Попробуйте другую профессию.");
+        }
+
         const tpl: DemoTemplate = {
           titleId: state.titleId,
           title: state.title,
           vacancy_text: vacancyText,
-          situations: r.situations || [],
-          checklist: r.checklist || [],
-          resume_criteria: r.resume_criteria || "",
+          situations,
+          checklist,
+          resume_criteria,
         };
         saveCachedTemplate(tpl);
         setState(s => s ? { ...s, template: tpl, stage: "situations" } : s);
       } catch (e: any) {
-        setPrepError(e?.message || "Не удалось подготовить демо. Попробуйте ещё раз.");
+        setPrepError(e?.message || "Не удалось загрузить демо. Попробуйте ещё раз.");
       } finally {
         preparingRef.current = false;
       }
@@ -140,18 +176,36 @@ export default function DemoInterviewPage() {
     finally { setBusy(false); }
   };
 
-  const submitChecklist = async () => {
+  // Чек-лист — оценивается локально (есть `correct` и `explanation` в шаблоне),
+  // никаких ИИ-вызовов и трат не требуется.
+  const submitChecklist = () => {
     if (!state?.template) return;
-    setBusy(true);
-    try {
-      const r = await aiWaitRun<any>({
-        title: "Проверка чек-листа",
-        task: () => call("ai-demo-grade-checklist", { title: state.title, questions: state.template!.checklist, answers: state.checkAnswers }),
-      });
-      if (!r) return;
-      setState(s => s ? { ...s, checkResult: { score: r.score, feedback: r.feedback } } : s);
-    } catch (e: any) { alert(e?.message || "Ошибка"); }
-    finally { setBusy(false); }
+    const qs = state.template.checklist;
+    const items = qs.map(q => {
+      const ans = (state.checkAnswers[q.id] || "").toString().trim();
+      const correct = (q.correct || "").toString().trim();
+      const ok = q.kind === "choice"
+        ? !!ans && !!correct && ans === correct
+        : !!ans && correct ? ans.toLowerCase().includes(correct.toLowerCase()) : !!ans;
+      return {
+        id: q.id, question: q.question, answer: ans || "",
+        correct: correct || null,
+        verdict: ok ? "correct" : ans ? "wrong" : "skip",
+        score: ok ? 1 : 0, max: 1,
+        explanation: q.expected_answer || "",
+      };
+    });
+    const total = items.length || 1;
+    const right = items.filter(i => i.verdict === "correct").length;
+    const score = Math.round((right / total) * 100);
+    const strengths = items.filter(i => i.verdict === "correct").slice(0, 5).map(i => i.question);
+    const gaps = items.filter(i => i.verdict !== "correct").slice(0, 5).map(i => i.question);
+    const summary = right === total
+      ? "Отлично! Все ответы верные — крепкая теоретическая база."
+      : right >= total * 0.6
+        ? `Хороший результат: ${right} из ${total}. Подтяните слабые места — и будет идеально.`
+        : `Пока ${right} из ${total}. Стоит освежить базовые знания по профессии.`;
+    setState(s => s ? { ...s, checkResult: { score, feedback: { items, summary, strengths, gaps } } } : s);
   };
 
   const submitResume = async () => {
