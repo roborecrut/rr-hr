@@ -1819,6 +1819,42 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          admin_reply: string | null
+          ai_reply: string | null
+          content: string
+          created_at: string
+          first_name: string
+          id: string
+          is_published: boolean
+          last_name: string
+          updated_at: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          ai_reply?: string | null
+          content: string
+          created_at?: string
+          first_name: string
+          id?: string
+          is_published?: boolean
+          last_name: string
+          updated_at?: string
+        }
+        Update: {
+          admin_reply?: string | null
+          ai_reply?: string | null
+          content?: string
+          created_at?: string
+          first_name?: string
+          id?: string
+          is_published?: boolean
+          last_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       test_connection: {
         Row: {
           created_at: string
