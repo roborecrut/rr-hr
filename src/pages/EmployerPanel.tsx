@@ -4565,11 +4565,32 @@ export default function EmployerPanel() {
                     } catch {}
                   }}
                   onCreate={async () => {
-                    setTrainingView({ mode: "create" });
+                    let existing = new Set<string>();
                     try {
-                      const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      const ids = projects.map(p => p.id);
+                      if (ids.length) {
+                        const { data } = await supabase
+                          .from("training_blocks")
+                          .select("project_id")
+                          .in("project_id", ids);
+                        (data || []).forEach((r: any) => existing.add(r.project_id));
+                      }
                     } catch {}
+                    setSpendDialog({
+                      kind: "training_setup",
+                      pickProjects: projects,
+                      excludeProjectIds: existing,
+                      onConfirmed: async (projectId) => {
+                        setSpendDialog(null);
+                        setTrainingView({ mode: "create", projectId });
+                        await fetchBillingState();
+                        try {
+                          const { aiRestart } = await import("@/lib/aiClient");
+                          aiRestart(employerId).catch(() => {});
+                        } catch {}
+                      },
+                      onCancel: () => setSpendDialog(null),
+                    });
                   }}
                 />
               ) : (
@@ -4577,7 +4598,11 @@ export default function EmployerPanel() {
                   projects={projects}
                   addAuditEvent={addAuditEvent}
                   refreshProjects={fetchData}
-                  initialProjectId={trainingView.mode === "edit" ? trainingView.projectId : undefined}
+                  initialProjectId={
+                    trainingView.mode === "edit"
+                      ? trainingView.projectId
+                      : (trainingView.mode === "create" ? trainingView.projectId : undefined)
+                  }
                   createMode={trainingView.mode === "create"}
                   onBack={() => setTrainingView({ mode: "list" })}
                 />
