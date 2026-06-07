@@ -48,7 +48,7 @@ const FN_URL = (fn: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functio
 export default function InterviewWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const [projectId, setProjectId] = useState(initialProjectId || "");
-  const lockedProject = !!initialProjectId && !createMode;
+  const lockedProject = !!initialProjectId;
   const [kind, setKind] = useState<Kind>("resume");
   const [resumeMd, setResumeMd] = useState("");
   const [checklist, setChecklist] = useState<ChecklistQ[]>([]);

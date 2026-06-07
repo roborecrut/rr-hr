@@ -13,6 +13,7 @@ import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
 import InterviewList from "../components/InterviewList";
 import InterviewWizard from "../components/InterviewWizard";
+import SpendConfirmDialog, { type SpendKind } from "../components/SpendConfirmDialog";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
 import {
@@ -225,14 +226,26 @@ export default function EmployerPanel() {
   const [projects, setProjects] = useState<JobProject[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   // Training tab: list ↔ editor toggle
-  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
+  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
   // Interview tab: list ↔ editor toggle (mirrors training)
-  const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
+  const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
   const [copiedProjectId, setCopiedProjectId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Spend-confirm modal (charge for landing / interview_setup / training_setup
+  // *before* opening the corresponding wizard).
+  type SpendDialogState = {
+    kind: SpendKind;
+    projectId?: string;
+    pickProjects?: JobProject[];
+    excludeProjectIds?: Set<string>;
+    onConfirmed: (projectId: string) => void;
+    onCancel?: () => void;
+  };
+  const [spendDialog, setSpendDialog] = useState<SpendDialogState | null>(null);
 
   // CRM States
   const [crmSearch, setCrmSearch] = useState("");
@@ -1553,8 +1566,10 @@ export default function EmployerPanel() {
       const { data, error } = await supabase.rpc("project_create_draft" as any, { _company: companyId });
       if (error) throw error;
       const d = data as any;
-      setDraftProjectId(d?.id || null);
-      setDraftProjectPublicId(d?.public_id || null);
+      const newDraftId: string | null = d?.id || null;
+      const newDraftPublicId: string | null = d?.public_id || null;
+      setDraftProjectId(newDraftId);
+      setDraftProjectPublicId(newDraftPublicId);
       // Reset wizard fields so the user starts clean.
       setSetupCompanyName(selectedCompanyName);
       setSetupRoleName("");
@@ -1581,12 +1596,30 @@ export default function EmployerPanel() {
       setVacancyFileName("");
       setVacancyUploadError("");
       setVacancyRawText("");
-      // Open vacancy editor IMMEDIATELY — restart happens in background
-      setShowAddNewVacancy(true);
-      try {
-        const { aiRestart } = await import("@/lib/aiClient");
-        aiRestart(employerId).catch(() => {});
-      } catch {}
+      // Before opening the editor, ask the user to confirm the landing charge.
+      // The wizard is only revealed after a successful spend (or already-paid).
+      if (!newDraftId) throw new Error("Не удалось создать черновик вакансии");
+      setSpendDialog({
+        kind: "landing",
+        projectId: newDraftId,
+        onConfirmed: async () => {
+          setSpendDialog(null);
+          setShowAddNewVacancy(true);
+          await fetchBillingState();
+          try {
+            const { aiRestart } = await import("@/lib/aiClient");
+            aiRestart(employerId).catch(() => {});
+          } catch {}
+        },
+        onCancel: async () => {
+          setSpendDialog(null);
+          // Drop the unused draft so the list does not accumulate phantom rows.
+          try { await supabase.from("projects").delete().eq("id", newDraftId); } catch {}
+          setDraftProjectId(null);
+          setDraftProjectPublicId(null);
+          fetchData();
+        },
+      });
     } catch (err: any) {
       console.error(err);
       addAuditEvent("warning", "Ошибка создания вакансии", err?.message || "RPC error");
@@ -4472,11 +4505,34 @@ export default function EmployerPanel() {
                     } catch {}
                   }}
                   onCreate={async () => {
-                    setInterviewView({ mode: "create" });
+                    // Ask the user to confirm the per-vacancy charge for the
+                    // interview system BEFORE opening the wizard.
+                    let existing = new Set<string>();
                     try {
-                      const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      const ids = projects.map(p => p.id);
+                      if (ids.length) {
+                        const { data } = await (supabase as any)
+                          .from("interview_blocks")
+                          .select("project_id")
+                          .in("project_id", ids);
+                        (data || []).forEach((r: any) => existing.add(r.project_id));
+                      }
                     } catch {}
+                    setSpendDialog({
+                      kind: "interview_setup",
+                      pickProjects: projects,
+                      excludeProjectIds: existing,
+                      onConfirmed: async (projectId) => {
+                        setSpendDialog(null);
+                        setInterviewView({ mode: "create", projectId });
+                        await fetchBillingState();
+                        try {
+                          const { aiRestart } = await import("@/lib/aiClient");
+                          aiRestart(employerId).catch(() => {});
+                        } catch {}
+                      },
+                      onCancel: () => setSpendDialog(null),
+                    });
                   }}
                 />
               ) : (
@@ -4484,7 +4540,11 @@ export default function EmployerPanel() {
                   projects={projects}
                   addAuditEvent={addAuditEvent}
                   refreshProjects={fetchData}
-                  initialProjectId={interviewView.mode === "edit" ? interviewView.projectId : undefined}
+                  initialProjectId={
+                    interviewView.mode === "edit"
+                      ? interviewView.projectId
+                      : (interviewView.mode === "create" ? interviewView.projectId : undefined)
+                  }
                   createMode={interviewView.mode === "create"}
                   onBack={() => setInterviewView({ mode: "list" })}
                 />
@@ -4505,11 +4565,32 @@ export default function EmployerPanel() {
                     } catch {}
                   }}
                   onCreate={async () => {
-                    setTrainingView({ mode: "create" });
+                    let existing = new Set<string>();
                     try {
-                      const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      const ids = projects.map(p => p.id);
+                      if (ids.length) {
+                        const { data } = await supabase
+                          .from("training_blocks")
+                          .select("project_id")
+                          .in("project_id", ids);
+                        (data || []).forEach((r: any) => existing.add(r.project_id));
+                      }
                     } catch {}
+                    setSpendDialog({
+                      kind: "training_setup",
+                      pickProjects: projects,
+                      excludeProjectIds: existing,
+                      onConfirmed: async (projectId) => {
+                        setSpendDialog(null);
+                        setTrainingView({ mode: "create", projectId });
+                        await fetchBillingState();
+                        try {
+                          const { aiRestart } = await import("@/lib/aiClient");
+                          aiRestart(employerId).catch(() => {});
+                        } catch {}
+                      },
+                      onCancel: () => setSpendDialog(null),
+                    });
                   }}
                 />
               ) : (
@@ -4517,7 +4598,11 @@ export default function EmployerPanel() {
                   projects={projects}
                   addAuditEvent={addAuditEvent}
                   refreshProjects={fetchData}
-                  initialProjectId={trainingView.mode === "edit" ? trainingView.projectId : undefined}
+                  initialProjectId={
+                    trainingView.mode === "edit"
+                      ? trainingView.projectId
+                      : (trainingView.mode === "create" ? trainingView.projectId : undefined)
+                  }
                   createMode={trainingView.mode === "create"}
                   onBack={() => setTrainingView({ mode: "list" })}
                 />
@@ -4532,6 +4617,33 @@ export default function EmployerPanel() {
         candidateId={selectedCandidateId}
         onClose={() => setSelectedCandidateId(null)}
       />
+
+      {/* Spend-confirm dialog: charges for landing / interview / training
+          systems BEFORE opening the corresponding wizard. */}
+      {spendDialog && (
+        <SpendConfirmDialog
+          open
+          kind={spendDialog.kind}
+          projectId={spendDialog.projectId}
+          pickProjects={spendDialog.pickProjects}
+          excludeProjectIds={spendDialog.excludeProjectIds}
+          balance={balance}
+          credits={
+            spendDialog.kind === "landing"
+              ? landingCredits
+              : spendDialog.kind === "interview_setup"
+              ? interviewSetupCredits
+              : trainingSetupCredits
+          }
+          onConfirmed={(pid) => spendDialog.onConfirmed(pid)}
+          onClose={() => (spendDialog.onCancel ? spendDialog.onCancel() : setSpendDialog(null))}
+          onGoToBilling={() => {
+            setSpendDialog(null);
+            const empId = employerId || "";
+            if (empId) navigate(`/emp${empId}/tariff`);
+          }}
+        />
+      )}
 
       {/* MODAL WINDOW FOR PAYMENT */}
       {selectedPlanToBuy && (
