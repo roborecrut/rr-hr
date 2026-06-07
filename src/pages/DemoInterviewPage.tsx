@@ -34,6 +34,19 @@ async function call(fn: string, body: any) {
   return j;
 }
 
+function shuffleChecklist<T>(items: T[]): T[] {
+  const shuffled = [...items];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+function randomizeTemplateChecklist(template: DemoTemplate): DemoTemplate {
+  return { ...template, checklist: shuffleChecklist(template.checklist) };
+}
+
 const STAGE_ORDER: DemoStage[] = ["situations", "checklist", "resume"];
 const STAGE_LABEL: Record<DemoStage, string> = {
   pick: "Выбор",
@@ -48,7 +61,11 @@ export default function DemoInterviewPage() {
   const navigate = useNavigate();
   const { run: aiWaitRun } = useAIWait();
 
-  const [state, setState] = useState<DemoState | null>(() => loadDemoState());
+  const [state, setState] = useState<DemoState | null>(() => {
+    const saved = loadDemoState();
+    if (!saved?.template || saved.checkResult) return saved;
+    return { ...saved, template: randomizeTemplateChecklist(saved.template) };
+  });
   const [titles, setTitles] = useState<JobTitle[]>([]);
   const [search, setSearch] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
