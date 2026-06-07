@@ -253,6 +253,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const stageLocked = (s: Stage) => {
     if (s === "checklist") return resumeResult?.score == null;
     if (s === "situations") return checklistScore == null;
+    if (s === "done") return finalScore == null;
     return false;
   };
 
