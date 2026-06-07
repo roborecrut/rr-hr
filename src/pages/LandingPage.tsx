@@ -11,6 +11,7 @@ import HiringCalculator from "../components/HiringCalculator";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
+import { MASCOT } from "@/lib/mascotImages";
 import {
   Chrome,
   ArrowRight,
@@ -24,8 +25,6 @@ import {
   LogOut,
   LayoutDashboard,
   Play,
-  ListChecks,
-  FileText,
 } from "lucide-react";
 
 export default function LandingPage() {
@@ -218,9 +217,9 @@ export default function LandingPage() {
               Так ты увидишь, как Робот Рекрутер работает с твоими будущими кандидатами.
             </p>
             <div className="grid grid-cols-3 gap-3">
-              <DemoStepCard icon={<MessageSquare className="w-5 h-5"/>} step="1" label="Ситуация" />
-              <DemoStepCard icon={<ListChecks className="w-5 h-5"/>} step="2" label="Чек-лист" />
-              <DemoStepCard icon={<FileText className="w-5 h-5"/>} step="3" label="Резюме" />
+              <DemoStepCard mascot={MASCOT.serious}  step="1" label="Ситуация"  hint="Ролевая сцена" />
+              <DemoStepCard mascot={MASCOT.question} step="2" label="Чек-лист"  hint="Проверка знаний" />
+              <DemoStepCard mascot={MASCOT.clock}    step="3" label="Резюме"    hint="Скрининг ИИ" />
             </div>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
@@ -298,6 +297,11 @@ export default function LandingPage() {
 
       {/* CTA */}
       <section className="px-4 md:px-8 py-16 max-w-4xl mx-auto text-center space-y-6">
+        <img
+          src={MASCOT.megaphone} alt="Робот Рекрутер с рупором"
+          width={160} height={160} loading="lazy" decoding="async"
+          className="w-32 h-32 md:w-40 md:h-40 object-contain mx-auto drop-shadow-2xl"
+        />
         <h2 className="text-3xl md:text-4xl font-bold">Готовы автоматизировать найм?</h2>
         {isAuthed ? (
           <>
@@ -392,12 +396,17 @@ export default function LandingPage() {
   );
 }
 
-function DemoStepCard({ icon, step, label }: { icon: React.ReactNode; step: string; label: string }) {
+function DemoStepCard({ mascot, step, label, hint }: { mascot: string; step: string; label: string; hint?: string }) {
   return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center">
-      <div className="w-9 h-9 mx-auto rounded-lg bg-[#E7C768]/20 text-[#E7C768] flex items-center justify-center">{icon}</div>
-      <div className="text-[10px] uppercase font-bold text-slate-400 mt-2">Шаг {step}</div>
+    <div className="bg-white/5 border border-white/10 rounded-xl p-3 text-center flex flex-col items-center gap-1">
+      <img
+        src={mascot} alt={label}
+        width={80} height={80} loading="lazy" decoding="async"
+        className="w-16 h-16 md:w-20 md:h-20 object-contain drop-shadow"
+      />
+      <div className="text-[10px] uppercase font-bold text-slate-400 mt-1">Шаг {step}</div>
       <div className="text-xs font-bold text-white">{label}</div>
+      {hint && <div className="text-[10px] text-slate-400">{hint}</div>}
     </div>
   );
 }
