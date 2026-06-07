@@ -308,8 +308,8 @@ export default function JobVacancyLanding() {
             <button onClick={() => navigate("/")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white">
               Главная
             </button>
-            <button onClick={() => navigate("/vacancy")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white">
-              Каталог Профессий
+            <button onClick={() => navigate("/demo")} className="transition px-3 py-2 rounded-xl text-slate-300 hover:text-white">
+              Демо-интервью
             </button>
             <button
               onClick={() => setShowApplyModal(true)}
@@ -335,8 +335,8 @@ export default function JobVacancyLanding() {
             <button onClick={() => { navigate("/"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 text-slate-300 hover:text-white">
               Главная
             </button>
-            <button onClick={() => { navigate("/vacancy"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 text-slate-300 hover:text-white">
-              Каталог Профессий
+            <button onClick={() => { navigate("/demo"); setMobileMenuOpen(false); }} className="transition text-left w-full px-4 py-3 text-slate-300 hover:text-white">
+              Демо-интервью
             </button>
             <button 
               onClick={() => { setShowApplyModal(true); setMobileMenuOpen(false); }} 
