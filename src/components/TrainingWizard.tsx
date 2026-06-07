@@ -525,7 +525,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               showDistribute={false}
               label="Загрузить материал (PDF / DOC / Markdown) или вставить ссылку"
               placeholder="ИИ извлечёт текст и оформит его в учебный материал"
-              maxLength={10000}
+              maxLength={20000}
             />
 
             <div>
@@ -544,8 +544,10 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             {busyMaterial && <LoadingPhrase entity="training" />}
 
             {previewMd ? (
-              <div className="bg-[#0F2A42]/80 border border-white/10 rounded-xl p-4 prose prose-invert prose-sm max-w-none min-h-[200px]">
-                <EmbeddedMarkdown>{materials || "_Пусто_"}</EmbeddedMarkdown>
+              <div className="min-h-[200px]">
+                <RichTrainingMaterialCard title={`Превью учебного материала — ${stageTitle || ""}`}>
+                  {materials || "_Пусто_"}
+                </RichTrainingMaterialCard>
               </div>
             ) : (
               <>
@@ -584,16 +586,16 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 <textarea
                 ref={materialsRef}
                 rows={14}
-                maxLength={10000}
+                maxLength={20000}
                 value={materials}
                 onChange={(e) => setMaterials(e.target.value)}
-                placeholder="Markdown учебного материала (до 10 000 символов)…"
+                placeholder="Markdown учебного материала (до 20 000 символов)…"
                 className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono focus:outline-[#E7C768]"
                 />
               </>
             )}
             <div className="flex items-center justify-between gap-2 text-[10px] text-slate-400">
-              <span>{materials.length}/10000 символов</span>
+              <span>{materials.length}/20000 символов</span>
               <div className="flex items-center gap-2">
                 {saving && (
                   <span className="flex items-center gap-1.5 text-[#E7C768] animate-pulse">
