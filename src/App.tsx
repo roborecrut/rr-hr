@@ -6,6 +6,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import LandingPage from "./pages/LandingPage";
 import DemoInterviewPage from "./pages/DemoInterviewPage";
+import VacancyCatalogPage from "./pages/VacancyCatalogPage";
 import EmployerPanel from "./pages/EmployerPanel";
 import CandidateFlow from "./pages/CandidateFlow";
 import AdminPanel from "./pages/AdminPanel";
@@ -29,6 +30,8 @@ export default function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
         <Route path="/demo" element={<DemoInterviewPage />} />
+        <Route path="/vacancy" element={<VacancyCatalogPage />} />
+        <Route path="/vacancies" element={<VacancyCatalogPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/job" element={<JobVacancyLanding />} />
         <Route path="/auth" element={<LandingPage />} />
