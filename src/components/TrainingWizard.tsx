@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,7 +55,11 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
   const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100 });
-  const [source, setSource] = useState<string>("");
+  // Per-stage uploaded source text (one file context per stage)
+  const [sources, setSources] = useState<Record<Stage, string>>({ professional: "", product: "", system: "" });
+  const source = sources[stage] || "";
+  const setSource = (v: string) => setSources(s => ({ ...s, [stage]: v }));
+  const materialsRef = useRef<HTMLTextAreaElement | null>(null);
   const [busyMaterial, setBusyMaterial] = useState(false);
   const [busyTest, setBusyTest] = useState(false);
   const [saving, setSaving] = useState(false);
