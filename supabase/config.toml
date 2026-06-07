@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.ai-demo-grade-checklist]
 verify_jwt = false
+
+[functions.demo-upload-resume]
+verify_jwt = false

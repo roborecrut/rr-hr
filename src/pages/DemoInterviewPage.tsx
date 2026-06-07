@@ -5,7 +5,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Briefcase, ArrowRight, ChevronRight, Loader, Send, RefreshCw, Award, MessageSquare, ListChecks, FileText, Sparkles, Rocket, X, Menu, Chrome } from "lucide-react";
+import { Search, Briefcase, ArrowRight, ChevronRight, Loader, Send, RefreshCw, Award, MessageSquare, ListChecks, FileText, Sparkles, Rocket, X, Menu, Chrome, Upload, CheckCircle2 } from "lucide-react";
 import RRImage from "@/components/RRImage";
 import Mascot from "@/components/Mascot";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
@@ -56,6 +56,13 @@ export default function DemoInterviewPage() {
   const [busy, setBusy] = useState(false);
   const [prepError, setPrepError] = useState("");
   const preparingRef = useRef(false);
+
+  // Resume file upload (mirrors CandidateInterview behaviour).
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [parsing, setParsing] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadedResume, setUploadedResume] = useState<{ bucket: string; path: string; filename: string } | null>(null);
 
   // Load catalog
   useEffect(() => {
@@ -216,6 +223,56 @@ export default function DemoInterviewPage() {
       setState(s => s ? { ...s, resumeResult, finalScore, stage: "done" } : s);
     } catch (e: any) { alert(e?.message || "Ошибка"); }
     finally { setBusy(false); }
+  };
+
+  // Upload a resume file (PDF/DOC/TXT) to the same `candidate-resumes` bucket
+  // under a `demo/` prefix — no candidate session needed.
+  const onUploadResume = async (f: File) => {
+    if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { alert("Файл больше 10 МБ"); return; }
+    setUploading(true);
+    setUploadError("");
+    try {
+      const form = new FormData();
+      form.append("file", f);
+      const res = await fetch(FN("demo-upload-resume"), {
+        method: "POST",
+        headers: { "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: form,
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      setUploadedResume({ bucket: j.bucket, path: j.path, filename: f.name });
+    } catch (e: any) {
+      setUploadError(e?.message || "Не удалось загрузить резюме");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  // Ask RR to parse the uploaded file into clean text (same prompt the real flow uses).
+  // ai-ingest-document deletes the source file from storage after parsing.
+  const sendResumeToRR = async () => {
+    if (!uploadedResume || !state) return;
+    setParsing(true);
+    try {
+      const r = await aiWaitRun<any>({
+        title: "Распознавание резюме",
+        task: () => call("ai-ingest-document", {
+          entity: "resume", bucket: uploadedResume.bucket, file_path: uploadedResume.path, filename: uploadedResume.filename,
+        }),
+      });
+      if (!r) return;
+      const text = String(r?.text || "").slice(0, 20000);
+      if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
+      setState(s => s ? { ...s, resumeText: text } : s);
+      setUploadedResume(null);
+    } catch (e: any) {
+      alert(e?.message || "Не удалось распознать файл");
+    } finally {
+      setParsing(false);
+    }
   };
 
   const filteredTitles = useMemo(() => {
@@ -479,11 +536,38 @@ export default function DemoInterviewPage() {
                 <div className="p-3 text-xs text-slate-200 whitespace-pre-wrap">{state.template.resume_criteria}</div>
               </details>
             )}
+            {/* File upload — same UX as реальный кандидатский поток. */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={parsing || busy || uploading}
+                onClick={() => fileRef.current?.click()}
+                className="bg-white/10 hover:bg-white/15 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-2 disabled:opacity-60"
+              >
+                {uploading ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
+                {uploading ? "Загружаем…" : "Загрузить файл резюме (PDF/DOC/TXT)"}
+              </button>
+              <input
+                ref={fileRef} type="file" className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadResume(f); }}
+              />
+            </div>
+            {uploadedResume && !parsing && (
+              <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white bg-white/5 border border-[#E7C768]/30">
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-[#E7C768]"/>Файл загружен: {uploadedResume.filename}</span>
+                <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                  <Send className="w-3.5 h-3.5"/> Распознать в текст
+                </button>
+              </div>
+            )}
+            {uploadError && <div className="text-xs text-[#FF4C4C]">{uploadError}</div>}
+            {parsing && <LoadingPhrase entity="interview" />}
             <textarea
               value={state.resumeText}
               onChange={e => setState(s => s ? { ...s, resumeText: e.target.value } : s)}
               rows={12} maxLength={20000}
-              placeholder="Вставьте текст вашего резюме (минимум 50 символов)..."
+              placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
               className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
             />
             {busy && <LoadingPhrase entity="interview" />}
