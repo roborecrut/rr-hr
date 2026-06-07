@@ -507,6 +507,8 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedRow, setSelectedRow] = useState<any | null>(null);
+  const [selectedTx, setSelectedTx] = useState<any | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -545,10 +547,10 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 <tbody className="divide-y divide-white/5">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-white/5">
-                      <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
-                      <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
-                      <td className="p-3 font-mono text-[#E7C768] font-bold">{r.balance}</td>
-                      <td className="p-3 flex items-center gap-1">
+                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => setSelectedRow(r)}>{r.public_id}</td>
+                      <td className="p-3 cursor-pointer" onClick={() => setSelectedRow(r)}><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => setSelectedRow(r)}>{r.balance}</td>
+                      <td className="p-3 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {[100, 500, 1000].map((d) => (
                           <React.Fragment key={d}>
                             <button onClick={() => adjust(r.id, d)} className="px-2 py-1 rounded bg-emerald-500/20 hover:bg-emerald-500/40 text-emerald-200 text-[10px] font-bold flex items-center gap-0.5"><Plus className="w-3 h-3" />{d}</button>
@@ -572,7 +574,7 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {txs.map((t) => (
-                    <tr key={t.id}>
+                    <tr key={t.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelectedTx(t)}>
                       <td className="p-2.5 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
                       <td className="p-2.5">{t.type}</td>
                       <td className="p-2.5 font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
@@ -586,6 +588,8 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </>
       )}
+      <DetailsModal title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`} data={selectedRow} onClose={() => setSelectedRow(null)} />
+      <DetailsModal title="Транзакция" data={selectedTx} onClose={() => setSelectedTx(null)} />
     </div>
   );
 }
