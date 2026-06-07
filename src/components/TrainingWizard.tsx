@@ -39,13 +39,19 @@ type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; tota
 const MAX_QUESTIONS = 30;
 
 const CONTEXT_OPTIONS: { key: string; label: string; column: string; fallbackColumn?: string }[] = [
-  { key: "intro",        label: "Введение",         column: "training_intro_text" },
+  { key: "intro",        label: "Введение",         column: "training_wiki_text",          fallbackColumn: "training_intro_text" },
   { key: "professional", label: "Профессиональный", column: "training_professional_text", fallbackColumn: "training_prof_text" },
   { key: "product",      label: "Продуктовый",      column: "training_product_text" },
   { key: "systems",      label: "Системный",        column: "training_systems_text",      fallbackColumn: "training_system_text" },
   { key: "regulations",  label: "Регламенты",       column: "training_regulations_text" },
 ];
 const CONTEXT_MAX = 1500;
+
+const STAGE_DEFAULT_CONTEXT: Record<Stage, string[]> = {
+  professional: ["intro", "professional"],
+  product:      ["product"],
+  system:       ["systems", "regulations"],
+};
 
 export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
@@ -64,7 +70,17 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [busyTest, setBusyTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewMd, setPreviewMd] = useState(false);
-  const [contextKeys, setContextKeys] = useState<string[]>(CONTEXT_OPTIONS.map(o => o.key));
+  const [contextKeysByStage, setContextKeysByStage] = useState<Record<Stage, string[]>>({
+    professional: STAGE_DEFAULT_CONTEXT.professional,
+    product:      STAGE_DEFAULT_CONTEXT.product,
+    system:       STAGE_DEFAULT_CONTEXT.system,
+  });
+  const contextKeys = contextKeysByStage[stage];
+  const toggleContextKey = (k: string) =>
+    setContextKeysByStage(s => ({
+      ...s,
+      [stage]: s[stage].includes(k) ? s[stage].filter(x => x !== k) : [...s[stage], k],
+    }));
   const [wishesMaterial, setWishesMaterial] = useState("");
   const [wishesTest, setWishesTest] = useState("");
   const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
@@ -405,82 +421,6 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
       {project && (
         <>
-          {/* Context sources — checkboxes + editable preview of each block */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div>
-                <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
-                <p className="text-[11px] text-slate-400">Отметьте блоки, которые передавать ИИ. Содержимое можно править прямо здесь и сохранить в БД вакансии.</p>
-              </div>
-              <button type="button" onClick={saveContextValues}
-                disabled={contextSaving || !Object.values(contextDirty).some(Boolean)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1.5 disabled:opacity-40">
-                {contextSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                Сохранить контекст в БД
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {CONTEXT_OPTIONS.map(opt => {
-                const checked = contextKeys.includes(opt.key);
-                const filled = !!(contextValues[opt.key] || "").trim();
-                return (
-                  <label key={opt.key} className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer flex items-center gap-1.5 ${
-                    checked ? "bg-[#E7C768]/15 border-[#E7C768]/50 text-[#E7C768]" : "bg-white/5 border-white/10 text-slate-300"
-                  }`}>
-                    <input type="checkbox" checked={checked} className="accent-[#E7C768]"
-                      onChange={() => setContextKeys(s => s.includes(opt.key) ? s.filter(k => k !== opt.key) : [...s, opt.key])} />
-                    {opt.label}
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${filled ? "bg-emerald-500/20 text-emerald-200" : "bg-white/10 text-slate-400"}`}>
-                      {filled ? `${(contextValues[opt.key] || "").length}` : "пусто"}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2">
-              {CONTEXT_OPTIONS.map(opt => {
-                const checked = contextKeys.includes(opt.key);
-                const isOpen = contextExpanded[opt.key] ?? checked;
-                const dirty = !!contextDirty[opt.key];
-                const val = contextValues[opt.key] || "";
-                return (
-                  <div key={opt.key} className={`rounded-xl border ${dirty ? "border-[#E7C768]/60 bg-[#E7C768]/5" : "border-white/10 bg-[#17344F]/40"}`}>
-                    <button type="button"
-                      onClick={() => setContextExpanded(e => ({ ...e, [opt.key]: !isOpen }))}
-                      className="w-full flex items-center justify-between px-3 py-2 text-left">
-                      <span className="text-[11px] font-bold text-white flex items-center gap-2">
-                        {opt.label}
-                        {dirty && <span className="text-[9px] text-[#E7C768]">● не сохранено</span>}
-                      </span>
-                      <span className="flex items-center gap-2 text-[10px] text-slate-400">
-                        <span>{val.length}/{CONTEXT_MAX}</span>
-                        {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                      </span>
-                    </button>
-                    {isOpen && (
-                      <div className="px-3 pb-3">
-                        <textarea
-                          rows={4}
-                          maxLength={CONTEXT_MAX}
-                          value={val}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setContextValues(s => ({ ...s, [opt.key]: v }));
-                            setContextDirty(d => ({ ...d, [opt.key]: true }));
-                          }}
-                          placeholder={`Текст блока «${opt.label}» (передаётся ИИ). Если пусто — блок не передаётся.`}
-                          className="w-full bg-[#0F2A42]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Stage tabs */}
           <div className="grid grid-cols-3 gap-2">
             {STAGES.map(s => (
@@ -492,6 +432,75 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 <div className="text-[10px] opacity-80 mt-0.5">{s.hint}</div>
               </button>
             ))}
+          </div>
+
+          {/* Context sources — placed under the stage selector. Each row = textarea + checkbox on right. */}
+          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
+                <p className="text-[11px] text-slate-400">
+                  Галочки справа отмечают, какие блоки передавать ИИ для выбранного раздела «{STAGES.find(s => s.key === stage)?.title}». Содержимое можно править здесь и сохранить в БД вакансии.
+                </p>
+              </div>
+              <button type="button" onClick={saveContextValues}
+                disabled={contextSaving || !Object.values(contextDirty).some(Boolean)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1.5 disabled:opacity-40">
+                {contextSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Сохранить контекст в БД
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {CONTEXT_OPTIONS.map(opt => {
+                const checked = contextKeys.includes(opt.key);
+                const isOpen = contextExpanded[opt.key] ?? true;
+                const dirty = !!contextDirty[opt.key];
+                const val = contextValues[opt.key] || "";
+                return (
+                  <div key={opt.key} className={`rounded-xl border ${dirty ? "border-[#E7C768]/60 bg-[#E7C768]/5" : "border-white/10 bg-[#17344F]/40"}`}>
+                    <div className="flex items-center justify-between px-3 py-2 gap-3">
+                      <button type="button"
+                        onClick={() => setContextExpanded(e => ({ ...e, [opt.key]: !isOpen }))}
+                        className="flex-1 flex items-center justify-between text-left">
+                        <span className="text-[11px] font-bold text-white flex items-center gap-2">
+                          {opt.label}
+                          {dirty && <span className="text-[9px] text-[#E7C768]">● не сохранено</span>}
+                        </span>
+                        <span className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <span>{val.length}/{CONTEXT_MAX}</span>
+                          {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </span>
+                      </button>
+                      <label
+                        title={checked ? "Передавать ИИ" : "Не передавать ИИ"}
+                        className={`shrink-0 w-6 h-6 rounded-md border flex items-center justify-center cursor-pointer ${
+                          checked ? "bg-[#E7C768] border-[#E7C768]" : "bg-white/5 border-white/20"
+                        }`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleContextKey(opt.key)} className="hidden" />
+                        {checked && <CheckCircle2 className="w-3.5 h-3.5 text-[#1D3E5E]" />}
+                      </label>
+                    </div>
+                    {isOpen && (
+                      <div className="px-3 pb-3 flex gap-2 items-start">
+                        <textarea
+                          rows={4}
+                          maxLength={CONTEXT_MAX}
+                          value={val}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setContextValues(s => ({ ...s, [opt.key]: v }));
+                            setContextDirty(d => ({ ...d, [opt.key]: true }));
+                          }}
+                          placeholder={`Текст блока «${opt.label}» (передаётся ИИ, если галочка справа активна).`}
+                          className="flex-1 bg-[#0F2A42]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* Materials */}
