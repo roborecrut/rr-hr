@@ -48,6 +48,7 @@ export default function VacancyCatalogPage() {
   const [q, setQ] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("");
   const [industryFilter, setIndustryFilter] = useState<string>("");
+  const [roleFilter, setRoleFilter] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
   const [aiBusy, setAiBusy] = useState(false);
@@ -100,11 +101,20 @@ export default function VacancyCatalogPage() {
     return Array.from(s).sort((a, b) => a.localeCompare(b, "ru"));
   }, [vacs]);
 
+  const roles = useMemo(() => {
+    const s = new Set<string>();
+    vacs.forEach((v) => { if (v.role_name) s.add(v.role_name); });
+    return Array.from(s).sort((a, b) => a.localeCompare(b, "ru"));
+  }, [vacs]);
+
   const filtered = useMemo(() => {
     let list = vacs;
     if (companyFilter) list = list.filter((v) => v.company_name === companyFilter);
     if (industryFilter) list = list.filter((v) => v.industry === industryFilter);
-    if (q.trim()) {
+    if (roleFilter) list = list.filter((v) => v.role_name === roleFilter);
+    // Когда активен ИИ-поиск, не применяем буквальный текстовый фильтр —
+    // релевантность уже определена нейросетью.
+    if (q.trim() && !aiResults) {
       const needle = q.trim().toLowerCase();
       list = list.filter((v) =>
         (v.role_name || "").toLowerCase().includes(needle) ||
@@ -121,7 +131,7 @@ export default function VacancyCatalogPage() {
         .sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
     }
     return list;
-  }, [vacs, q, companyFilter, industryFilter, aiResults]);
+  }, [vacs, q, companyFilter, industryFilter, roleFilter, aiResults]);
 
   const openVacancy = (v: Vac) => {
     if (v.company_slug && v.slug) {
@@ -223,7 +233,18 @@ export default function VacancyCatalogPage() {
             </div>
 
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3 pt-3 border-t border-white/10">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 pt-3 border-t border-white/10">
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="text-white/60">Должность</span>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="bg-white/10 border border-white/15 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-[#E8B84E]/60"
+                  >
+                    <option value="" className="text-slate-800">Все должности</option>
+                    {roles.map((c) => (<option key={c} value={c} className="text-slate-800">{c}</option>))}
+                  </select>
+                </label>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-white/60">Компания</span>
                   <select
@@ -246,10 +267,10 @@ export default function VacancyCatalogPage() {
                     {industries.map((c) => (<option key={c} value={c} className="text-slate-800">{c}</option>))}
                   </select>
                 </label>
-                {(companyFilter || industryFilter) && (
+                {(companyFilter || industryFilter || roleFilter) && (
                   <button
-                    onClick={() => { setCompanyFilter(""); setIndustryFilter(""); }}
-                    className="md:col-span-2 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition text-sm"
+                    onClick={() => { setCompanyFilter(""); setIndustryFilter(""); setRoleFilter(""); }}
+                    className="md:col-span-3 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition text-sm"
                   >
                     <X className="w-4 h-4" /> Сбросить фильтры
                   </button>
@@ -285,7 +306,7 @@ export default function VacancyCatalogPage() {
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl bg-white/5 border border-white/10 p-8 text-center text-white/70">
             По вашему запросу ничего не найдено.{" "}
-            <button onClick={() => { setQ(""); clearAi(); setCompanyFilter(""); setIndustryFilter(""); }} className="underline hover:text-white">
+            <button onClick={() => { setQ(""); clearAi(); setCompanyFilter(""); setIndustryFilter(""); setRoleFilter(""); }} className="underline hover:text-white">
               Сбросить поиск
             </button>
           </div>
