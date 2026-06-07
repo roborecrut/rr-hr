@@ -7,7 +7,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
 
-  const body = await req.json().catch(() => null) as null | { project_id: string; stage: string };
+  const body = await req.json().catch(() => null) as null | {
+    project_id: string; stage: string; wishes?: string; context_keys?: string[];
+  };
   if (!body?.project_id || !body?.stage) return jsonResponse({ error: "bad_body" }, 400);
   if (!["professional","product","system"].includes(body.stage)) return jsonResponse({ error: "bad_stage" }, 400);
 
@@ -16,20 +18,36 @@ Deno.serve(async (req) => {
 
   const { data: blocks } = await admin.from("training_blocks")
     .select("materials_md,title").eq("project_id", body.project_id).eq("stage", body.stage);
-  const combined = (blocks || []).map((b: any) => `## ${b.title || ""}\n${b.materials_md || ""}`).join("\n\n");
+  let combined = (blocks || []).map((b: any) => `## ${b.title || ""}\n${b.materials_md || ""}`).join("\n\n");
+  if (Array.isArray(body.context_keys) && body.context_keys.length) {
+    const { data: proj } = await admin.from("projects").select("*").eq("id", body.project_id).maybeSingle();
+    const p: any = proj || {};
+    const map: Record<string, string> = {
+      intro: p.training_intro_text || "",
+      professional: p.training_professional_text || p.training_prof_text || "",
+      product: p.training_product_text || "",
+      systems: p.training_systems_text || p.training_system_text || "",
+      regulations: p.training_regulations_text || "",
+      wiki: p.training_wiki_text || "",
+    };
+    const extra = body.context_keys.map(k => map[k]).filter(Boolean).join("\n\n");
+    if (extra) combined += `\n\n## Дополнительный контекст\n${extra}`;
+  }
   if (!combined.trim()) return jsonResponse({ error: "no_material" }, 400);
+  const wishes = (body.wishes || "").trim().slice(0, 1000);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });
   const socialId = buildSocialId({ user_id: user?.id });
 
-  const SCHEMA = `JSON-массив из РОВНО 20 элементов, без markdown, без обёрток. Каждый элемент:
+  const SCHEMA = `JSON-массив из 20 элементов (можно до 30, но не больше), без markdown, без обёрток. Каждый элемент:
 {"id":string,"kind":"choice"|"text","question":string,"options":[{"text":string,"is_correct":boolean}]|null,"correct":string|null,"expected_answer":string|null,"points":5,"explanation":string}
 — Первые 10 — kind:"choice", 4 варианта, ровно 1 правильный. Уклон в негативные формулировки («Что НЕ относится…», «Какой подход НЕЛЬЗЯ применять…»). Поле "correct" = текст правильного варианта.
 — Последние 10 — kind:"text". options=null, correct=null, expected_answer — развернутый эталонный ответ (3-6 предложений), по которому будет оцениваться ответ кандидата.
-— id уникален в массиве (например "q1".."q20"). points=5 у всех. Итого 100, проходной 70.`;
+— id уникален в массиве (например "q1".."q20"). points=5 у всех.`;
 
   const msg = `На основе материала ниже составь тест по этапу обучения.
+${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
 
 МАТЕРИАЛ:
 ${combined.slice(0, 12000)}
@@ -44,7 +62,7 @@ ${combined.slice(0, 12000)}
     const arr = tryParseJson<any[]>(r.text);
     if (!Array.isArray(arr) || arr.length === 0) throw new Error("bad_quiz_json");
 
-    const questions = arr.slice(0, 20).map((q, i) => ({
+    const questions = arr.slice(0, 30).map((q, i) => ({
       id: String(q.id || `q${i+1}`),
       kind: q.kind === "text" ? "text" : "choice",
       question: String(q.question || "").slice(0, 1000),

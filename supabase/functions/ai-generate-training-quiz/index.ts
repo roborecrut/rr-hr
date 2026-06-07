@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     if (!Array.isArray(arr) || arr.length === 0) throw new Error("bad_quiz_json");
 
     await admin.from("training_questions").delete().eq("block_id", body.block_id);
-    const rows = arr.slice(0, 20).map((q, i) => ({
+    const rows = arr.slice(0, 30).map((q, i) => ({
       block_id: body.block_id,
       order_no: i + 1,
       kind: q.kind === "text" ? "text" : "choice",

@@ -72,7 +72,7 @@ export function DocumentUploader({
   onRawTextChange,
   maxChars = 5000,
   title = "Распознавание текста из файла",
-  hint = "Шаг 1 — загрузите файл в Supabase. Шаг 2 — нажмите «Распознать документ» (ИИ извлечёт текст). Шаг 3 — нажмите «Оформить красиво с помощью ИИ».",
+  hint = "Шаг 1 — загрузите файл в Supabase. Шаг 2 — нажмите «Распознать текст» (ИИ извлечёт текст). Шаг 3 — нажмите «Оформить красиво с помощью ИИ».",
   onEnhance,
   enhanceBusy = false,
   canEnhance = true,
@@ -231,7 +231,7 @@ export function DocumentUploader({
           ) : parsing ? (
             <span className="text-[#E7C768] flex items-center gap-1.5">
               <RefreshCw className="w-4 h-4 animate-spin" />
-              ProTalk извлекает текст…
+              ИИ извлекает текст…
             </span>
           ) : filePath ? (
             <span className="text-[#E7C768] flex items-center gap-1.5">
@@ -240,7 +240,7 @@ export function DocumentUploader({
           ) : (
             <span className="flex items-center gap-1.5">
               <Upload className="w-4 h-4 text-[#E7C768]" />
-              Кликните или перетащите файл — затем нажмите «Распознать документ»
+              Кликните или перетащите файл — затем нажмите «Распознать текст»
             </span>
           )}
         </div>
@@ -261,7 +261,7 @@ export function DocumentUploader({
             className="btn-brand-secondary px-5 py-2.5 text-xs flex items-center justify-center gap-1.5 shadow-md"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            {aiReady ? "Распознать документ" : "ИИ готовится…"}
+            {aiReady ? "Распознать текст" : "ИИ готовится…"}
           </button>
         </div>
       ) : null}

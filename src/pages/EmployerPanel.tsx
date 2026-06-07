@@ -10,6 +10,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
+import TrainingList from "../components/TrainingList";
 import InterviewWizard from "../components/InterviewWizard";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
@@ -222,6 +223,8 @@ export default function EmployerPanel() {
   // Fetching data state
   const [projects, setProjects] = useState<JobProject[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  // Training tab: list ↔ editor toggle
+  const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create" }>({ mode: "list" });
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
@@ -3375,15 +3378,15 @@ export default function EmployerPanel() {
                       ) : draftFilePath && newCompanyFiles ? (
                         <span className="text-[#E7C768]">Файл загружен в Supabase: {newCompanyFiles} ✓</span>
                       ) : (
-                        <span>Загрузите презентацию или описание компании — затем нажмите кнопку «Отправить документ в ProTalk» и ИИ извлечёт текст</span>
+                        <span>Загрузите презентацию или описание компании — затем нажмите кнопку «Распознать текст» и ИИ извлечёт его</span>
                       )}
                     </div>
                     <span className="text-[10px] text-white/70 block font-mono">
                       {isParsingFile 
-                        ? "⚡ ProTalk извлекает текст о компании из документа…" 
+                        ? "⚡ ИИ извлекает текст о компании из документа…" 
                         : isUploadingFile
                           ? "Файл сейчас сохраняется в облако…"
-                          : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки появится кнопка «Отправить документ в ProTalk»."
+                          : "Поддерживаются PDF, DOCX, TXT, MD. После загрузки появится кнопка «Распознать текст»."
                       }
                     </span>
                     {uploadError ? (
@@ -3401,7 +3404,7 @@ export default function EmployerPanel() {
                         className="btn-brand-secondary px-5 py-2.5 text-xs flex items-center justify-center gap-1.5 shadow-md"
                       >
                         <Sparkles className="w-3.5 h-3.5" />
-                        Отправить документ в ProTalk
+                        Распознать текст
                       </button>
                     </div>
                   )}
@@ -4442,11 +4445,24 @@ export default function EmployerPanel() {
           )}
 
           {activeTab === "training" && (
-            <TrainingWizard
-              projects={projects}
-              addAuditEvent={addAuditEvent}
-              refreshProjects={fetchData}
-            />
+            <>
+              {trainingView.mode === "list" ? (
+                <TrainingList
+                  projects={projects}
+                  onOpen={(projectId) => setTrainingView({ mode: "edit", projectId })}
+                  onCreate={() => setTrainingView({ mode: "create" })}
+                />
+              ) : (
+                <TrainingWizard
+                  projects={projects}
+                  addAuditEvent={addAuditEvent}
+                  refreshProjects={fetchData}
+                  initialProjectId={trainingView.mode === "edit" ? trainingView.projectId : undefined}
+                  createMode={trainingView.mode === "create"}
+                  onBack={() => setTrainingView({ mode: "list" })}
+                />
+              )}
+            </>
           )}
 
         </main>
