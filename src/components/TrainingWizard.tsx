@@ -405,13 +405,25 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
       {project && (
         <>
-          {/* Context sources */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-2">
-            <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
-            <p className="text-[11px] text-slate-400">Отметьте, какие сведения вакансии передавать ИИ при генерации материала и теста.</p>
+          {/* Context sources — checkboxes + editable preview of each block */}
+          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
+                <p className="text-[11px] text-slate-400">Отметьте блоки, которые передавать ИИ. Содержимое можно править прямо здесь и сохранить в БД вакансии.</p>
+              </div>
+              <button type="button" onClick={saveContextValues}
+                disabled={contextSaving || !Object.values(contextDirty).some(Boolean)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1.5 disabled:opacity-40">
+                {contextSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Сохранить контекст в БД
+              </button>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               {CONTEXT_OPTIONS.map(opt => {
                 const checked = contextKeys.includes(opt.key);
+                const filled = !!(contextValues[opt.key] || "").trim();
                 return (
                   <label key={opt.key} className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer flex items-center gap-1.5 ${
                     checked ? "bg-[#E7C768]/15 border-[#E7C768]/50 text-[#E7C768]" : "bg-white/5 border-white/10 text-slate-300"
@@ -419,7 +431,51 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                     <input type="checkbox" checked={checked} className="accent-[#E7C768]"
                       onChange={() => setContextKeys(s => s.includes(opt.key) ? s.filter(k => k !== opt.key) : [...s, opt.key])} />
                     {opt.label}
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${filled ? "bg-emerald-500/20 text-emerald-200" : "bg-white/10 text-slate-400"}`}>
+                      {filled ? `${(contextValues[opt.key] || "").length}` : "пусто"}
+                    </span>
                   </label>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              {CONTEXT_OPTIONS.map(opt => {
+                const checked = contextKeys.includes(opt.key);
+                const isOpen = contextExpanded[opt.key] ?? checked;
+                const dirty = !!contextDirty[opt.key];
+                const val = contextValues[opt.key] || "";
+                return (
+                  <div key={opt.key} className={`rounded-xl border ${dirty ? "border-[#E7C768]/60 bg-[#E7C768]/5" : "border-white/10 bg-[#17344F]/40"}`}>
+                    <button type="button"
+                      onClick={() => setContextExpanded(e => ({ ...e, [opt.key]: !isOpen }))}
+                      className="w-full flex items-center justify-between px-3 py-2 text-left">
+                      <span className="text-[11px] font-bold text-white flex items-center gap-2">
+                        {opt.label}
+                        {dirty && <span className="text-[9px] text-[#E7C768]">● не сохранено</span>}
+                      </span>
+                      <span className="flex items-center gap-2 text-[10px] text-slate-400">
+                        <span>{val.length}/{CONTEXT_MAX}</span>
+                        {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="px-3 pb-3">
+                        <textarea
+                          rows={4}
+                          maxLength={CONTEXT_MAX}
+                          value={val}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setContextValues(s => ({ ...s, [opt.key]: v }));
+                            setContextDirty(d => ({ ...d, [opt.key]: true }));
+                          }}
+                          placeholder={`Текст блока «${opt.label}» (передаётся ИИ). Если пусто — блок не передаётся.`}
+                          className="w-full bg-[#0F2A42]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
+                        />
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
