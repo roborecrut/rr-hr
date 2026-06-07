@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil } from "lucide-react";
+import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,12 @@ interface Props {
   projects: JobProject[];
   refreshProjects: () => Promise<void> | void;
   addAuditEvent: AuditFn;
+  /** When set, opens the editor for this vacancy and locks the picker. */
+  initialProjectId?: string;
+  /** When set, opens in "create new" mode — user must pick a vacancy. */
+  createMode?: boolean;
+  /** Back-to-list callback. */
+  onBack?: () => void;
 }
 
 const STAGES: { key: Stage; title: string; hint: string }[] = [
@@ -31,9 +37,20 @@ type QuestionRow = {
 };
 type TestRow = { id?: string; questions: QuestionRow[]; pass_score: number; total_score: number };
 
-export default function TrainingWizard({ projects, refreshProjects, addAuditEvent }: Props) {
+const MAX_QUESTIONS = 30;
+
+const CONTEXT_OPTIONS: { key: string; label: string }[] = [
+  { key: "intro",        label: "Введение" },
+  { key: "professional", label: "Профессиональный" },
+  { key: "product",      label: "Продуктовый" },
+  { key: "systems",      label: "Системный" },
+  { key: "regulations",  label: "Регламенты" },
+];
+
+export default function TrainingWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
-  const [projectId, setProjectId] = useState<string>("");
+  const [projectId, setProjectId] = useState<string>(initialProjectId || "");
+  const lockedProject = !!initialProjectId && !createMode;
   const [stage, setStage] = useState<Stage>("professional");
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
@@ -43,12 +60,30 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   const [busyTest, setBusyTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [previewMd, setPreviewMd] = useState(false);
+  const [contextKeys, setContextKeys] = useState<string[]>(CONTEXT_OPTIONS.map(o => o.key));
+  const [wishesMaterial, setWishesMaterial] = useState("");
+  const [wishesTest, setWishesTest] = useState("");
+  const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search).get("project");
-    if (q && projects.some(p => p.id === q)) setProjectId(q);
-  }, [projects]);
+    if (!initialProjectId && q && projects.some(p => p.id === q)) setProjectId(q);
+  }, [projects, initialProjectId]);
+
+  // When in "create" mode, fetch list of projects that already have a system
+  // so the picker can warn the user.
+  useEffect(() => {
+    if (!createMode) return;
+    (async () => {
+      const ids = projects.map(p => p.id);
+      if (!ids.length) return;
+      const { data } = await supabase.from("training_blocks").select("project_id").in("project_id", ids);
+      const set = new Set<string>();
+      (data || []).forEach((r: any) => set.add(r.project_id));
+      setExistingSystems(set);
+    })();
+  }, [createMode, projects]);
 
   const project = useMemo(() => projects.find(p => p.id === projectId) || null, [projects, projectId]);
 
@@ -98,6 +133,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         title: "Генерация учебного материала",
         task: () => callEdge<{ text: string }>("ai-generate-stage-material", {
           project_id: project.id, stage, source_text: source || undefined,
+          context_keys: contextKeys, wishes: wishesMaterial || undefined,
         }),
       });
       if (!r) return;
@@ -118,6 +154,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
         title: "Генерация теста по материалу",
         task: () => callEdge<{ count: number; total_score: number }>("ai-generate-stage-test", {
           project_id: project.id, stage,
+          context_keys: contextKeys, wishes: wishesTest || undefined,
         }),
       });
       if (!r) return;
