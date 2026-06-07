@@ -279,6 +279,7 @@ export default function LandingPage() {
         as="section"
         direction="up"
         id="vacancies"
+        aria-labelledby="vacancies-title"
         className="px-4 md:px-8 py-20 border-t border-white/10 bg-gradient-to-b from-[#17344F] to-[#1D3E5E]/60"
       >
         <div className="max-w-7xl mx-auto">
