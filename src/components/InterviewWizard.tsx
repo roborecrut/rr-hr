@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { MessageSquare, RefreshCw, Sparkles, Save, Plus, Trash2, Wand2, FileText } from "lucide-react";
+import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info } from "lucide-react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,12 @@ interface Props {
   projects: JobProject[];
   refreshProjects: () => Promise<void> | void;
   addAuditEvent: AuditFn;
+  /** When set, opens the editor for this vacancy and locks the picker. */
+  initialProjectId?: string;
+  /** When set, opens in "create new" mode — user must pick a vacancy. */
+  createMode?: boolean;
+  /** Back-to-list callback. */
+  onBack?: () => void;
 }
 
 const KINDS: { key: Kind; title: string; hint: string }[] = [
@@ -28,24 +34,54 @@ const KINDS: { key: Kind; title: string; hint: string }[] = [
   { key: "situations", title: "3. Ситуации",  hint: "3 ролевые ситуации" },
 ];
 
+const WISH_PLACEHOLDER: Record<Kind, string> = {
+  resume:     "Например: «Обязательно опыт от 2 лет в B2B-продажах», «Кандидаты только из РФ», «Игнорировать резюме без релевантного опыта в FMCG».",
+  checklist:  "Например: «Больше вопросов про CRM Bitrix24», «Добавь 3 каверзных вопроса с НЕ», «Включи проверку знания скриптов холодных звонков».",
+  situations: "Например: «Ситуация со сложным клиентом, требующим скидку 30%», «Ситуация эскалации жалобы», «Кейс срыва сделки в последний момент».",
+};
+const WISH_EXAMPLE: Record<Kind, string> = {
+  resume:     "Что писать: 1) обязательные/желательные навыки и опыт; 2) красные флаги (что отсеивает кандидата сразу); 3) на что обратить особое внимание в этой конкретной вакансии (отрасль, продукт, локация).",
+  checklist:  "Что писать: 1) акцент на конкретные технологии/продукты, которые надо проверить; 2) формат вопросов (каверзные, кейсы, термины); 3) что НЕ должно быть в вопросах (исключаемые темы).",
+  situations: "Что писать: 1) тип конфликтных ситуаций, характерных для вашей компании; 2) стиль поведения «контрагента» (агрессивный/мягкий клиент); 3) на какие компетенции делать упор (эмпатия, аргументация, навыки переговоров).",
+};
+
 const FN_URL = (fn: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`;
 
-export default function InterviewWizard({ projects, refreshProjects, addAuditEvent }: Props) {
+export default function InterviewWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(initialProjectId || "");
+  const lockedProject = !!initialProjectId && !createMode;
   const [kind, setKind] = useState<Kind>("resume");
   const [resumeMd, setResumeMd] = useState("");
   const [checklist, setChecklist] = useState<ChecklistQ[]>([]);
   const [situations, setSituations] = useState<Situation[]>([]);
   const [passScore, setPassScore] = useState(75);
   const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState<null | Kind | "pass">(null);
+  const [savedFlash, setSavedFlash] = useState<null | Kind | "pass">(null);
+  const [wishes, setWishes] = useState<Record<Kind, string>>({ resume: "", checklist: "", situations: "" });
+  const [showExample, setShowExample] = useState<Record<Kind, boolean>>({ resume: false, checklist: false, situations: false });
+  const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
 
   const project = useMemo(() => projects.find(p => p.id === projectId) || null, [projects, projectId]);
 
+  // Don't auto-pick a project in list/create flow — the user must choose explicitly
+  // when creating, and the picker is locked when editing.
   useEffect(() => {
-    if (!projectId && projects.length) setProjectId(projects[0].id);
-  }, [projects, projectId]);
+    if (initialProjectId) setProjectId(initialProjectId);
+  }, [initialProjectId]);
+
+  useEffect(() => {
+    if (!createMode) return;
+    (async () => {
+      const ids = projects.map(p => p.id);
+      if (!ids.length) return;
+      const { data } = await (supabase as any).from("interview_blocks").select("project_id").in("project_id", ids);
+      const set = new Set<string>();
+      (data || []).forEach((r: any) => set.add(r.project_id));
+      setExistingSystems(set);
+    })();
+  }, [createMode, projects]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -75,8 +111,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     return j;
   };
 
+  const flash = (key: Kind | "pass") => {
+    setSavedFlash(key);
+    setTimeout(() => setSavedFlash(s => (s === key ? null : s)), 2200);
+  };
+
   const saveBlock = async (k: Kind, payload: any) => {
-    setSaving(true);
+    if (!projectId) return;
+    setSaving(k);
     try {
       const { data: existing } = await (supabase as any).from("interview_blocks").select("id").eq("project_id", projectId).eq("kind", k).maybeSingle();
       if (existing?.id) {
@@ -84,15 +126,21 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       } else {
         await (supabase as any).from("interview_blocks").insert({ project_id: projectId, kind: k, payload });
       }
-      addAuditEvent("success", "Сохранено", `Заготовка интервью (${k}) сохранена`);
+      addAuditEvent("success", "Сохранено в БД", `Блок интервью (${k}) сохранён`);
+      flash(k);
     } catch (e: any) {
       addAuditEvent("warning", "Ошибка", e?.message || "save failed");
-    } finally { setSaving(false); }
+    } finally { setSaving(null); }
   };
 
   const savePassScore = async () => {
-    await (supabase as any).from("projects").update({ interview_pass_score: passScore }).eq("id", projectId);
-    addAuditEvent("success", "Сохранено", `Проходной балл интервью: ${passScore}`);
+    if (!projectId) return;
+    setSaving("pass");
+    try {
+      await (supabase as any).from("projects").update({ interview_pass_score: passScore }).eq("id", projectId);
+      addAuditEvent("success", "Сохранено в БД", `Проходной балл интервью: ${passScore}`);
+      flash("pass");
+    } finally { setSaving(null); }
   };
 
   const generate = async () => {
@@ -102,14 +150,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       if (kind === "resume") {
         const r = await aiWaitRun({
           title: "Генерация критериев резюме",
-          task: () => callEdge("ai-generate-interview-resume-criteria", { project_id: projectId }),
+          task: () => callEdge("ai-generate-interview-resume-criteria", { project_id: projectId, wishes: wishes.resume || undefined }),
         });
         if (!r) return;
         setResumeMd(r.criteria_md || "");
       } else if (kind === "checklist") {
         const r = await aiWaitRun({
           title: "Генерация чек-листа интервью",
-          task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId }),
+          task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId, wishes: wishes.checklist || undefined }),
         });
         if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
@@ -117,7 +165,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       } else {
         const r = await aiWaitRun({
           title: "Генерация ролевых ситуаций",
-          task: () => callEdge("ai-generate-interview-situations", { project_id: projectId }),
+          task: () => callEdge("ai-generate-interview-situations", { project_id: projectId, wishes: wishes.situations || undefined }),
         });
         if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","situations").maybeSingle();
