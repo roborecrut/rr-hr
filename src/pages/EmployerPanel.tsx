@@ -1644,11 +1644,20 @@ export default function EmployerPanel() {
       addAuditEvent("warning", "Не указана должность", "Введите должность перед сохранением.");
       return;
     }
+    if (!setupCompanyName.trim()) {
+      addAuditEvent("warning", "Не выбрана компания", "Выберите компанию перед сохранением вакансии.");
+      return;
+    }
     setIsGenerating(true);
     try {
       // Resolve the company id from the selected company name (if any).
       const matched = companiesList.find(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase());
       const companyId = (matched as any)?.id || null;
+      if (!companyId) {
+        addAuditEvent("warning", "Компания не найдена", "Выберите существующую компанию из списка.");
+        setIsGenerating(false);
+        return;
+      }
 
       const patch: any = {
         company_id: companyId,
@@ -1735,9 +1744,15 @@ export default function EmployerPanel() {
         (c) => c.name.toLowerCase() === (ep.companyName || "").toLowerCase(),
       );
       const newCompanyId = (matchedCo as any)?.id ?? null;
+      if (!newCompanyId) {
+        alert("Выберите компанию из списка перед сохранением вакансии.");
+        setIsSavingEdit(false);
+        return;
+      }
       const patch: any = {
         role_name: ep.roleName,
         company_id: newCompanyId,
+        is_published: true,
         salary_terms: ep.salaryTerms ?? null,
         schedule_terms: ep.scheduleTerms ?? null,
         motivation_text: ep.motivationText ?? null,
