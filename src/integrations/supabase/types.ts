@@ -1898,6 +1898,7 @@ export type Database = {
           pass_score: number
           project_id: string
           questions: Json
+          shuffle_questions: boolean
           stage: string
           total_score: number
           updated_at: string
@@ -1909,6 +1910,7 @@ export type Database = {
           pass_score?: number
           project_id: string
           questions?: Json
+          shuffle_questions?: boolean
           stage: string
           total_score?: number
           updated_at?: string
@@ -1920,6 +1922,7 @@ export type Database = {
           pass_score?: number
           project_id?: string
           questions?: Json
+          shuffle_questions?: boolean
           stage?: string
           total_score?: number
           updated_at?: string

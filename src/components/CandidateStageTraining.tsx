@@ -86,10 +86,13 @@ export default function CandidateStageTraining({
       setLastResult(null);
       try {
         const { data: blocks } = await supabase.from("training_blocks")
-          .select("materials_md,title").eq("project_id", projectId).eq("stage", active);
+          .select("materials_md,title,updated_at")
+          .eq("project_id", projectId).eq("stage", active)
+          .order("updated_at", { ascending: false })
+          .limit(1);
         if (cancelled) return;
-        const combined = (blocks || []).map((b: any) => `## ${b.title || ""}\n${b.materials_md || ""}`).join("\n\n");
-        setMaterial(combined);
+        const b: any = (blocks || [])[0];
+        setMaterial(b ? (b.materials_md || "") : "");
         const r = await callEdge<{ questions: Q[]; pass_score: number; total_score: number; shuffle?: boolean }>("ai-list-stage-questions", {
           project_id: projectId, stage: active,
         });
@@ -206,6 +209,15 @@ export default function CandidateStageTraining({
         </div>
       ) : mode === "reading" ? (
         <div className="space-y-4">
+          {questions.length > 0 && (
+            <button type="button" onClick={startExam}
+              className="w-full bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white text-sm py-3.5 px-6 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition">
+              <Sparkles className="w-4 h-4" />
+              {progress[active].attempts > 0
+                ? `Перепройти тест (${questions.length} вопр., проходной ${passScore}/${totalScore})`
+                : `Перейти к тесту (${questions.length} вопр., проходной ${passScore}/${totalScore})`}
+            </button>
+          )}
           {material ? (
             <RichTrainingMaterialCard title={STAGES.find(s => s.key === active)?.title}>
               {material}
