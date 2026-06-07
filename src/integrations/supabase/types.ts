@@ -2321,7 +2321,12 @@ export type Database = {
         Returns: Json
       }
       slugify_ru: { Args: { _input: string }; Returns: string }
-      spend_fixed: { Args: { _item: string; _project: string }; Returns: Json }
+      spend_fixed:
+        | { Args: { _item: string; _project: string }; Returns: Json }
+        | {
+            Args: { _item: string; _prefer?: string; _project: string }
+            Returns: Json
+          }
       spend_pack: { Args: { _candidate: string; _kind: string }; Returns: Json }
       spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
       topup_rr: { Args: { _amount_rub: number }; Returns: Json }
