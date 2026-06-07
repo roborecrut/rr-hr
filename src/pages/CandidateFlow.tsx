@@ -2230,6 +2230,9 @@ export default function CandidateFlow() {
                   </label>
                 </div>
               </div>
+
+              {/* Дополнительные документы кандидата (bucket: candidate-docs) */}
+              <CandidateDocsDossier candidateId={candidate?.id || ""} />
             </div>
 
           </div>
