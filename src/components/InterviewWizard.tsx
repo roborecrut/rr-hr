@@ -52,6 +52,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [kind, setKind] = useState<Kind>("resume");
   const [resumeMd, setResumeMd] = useState("");
   const [checklist, setChecklist] = useState<ChecklistQ[]>([]);
+  const [checklistShuffle, setChecklistShuffle] = useState(true);
   const [situations, setSituations] = useState<Situation[]>([]);
   const [passScore, setPassScore] = useState(75);
   const [busy, setBusy] = useState(false);
@@ -93,6 +94,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       (blocks || []).forEach((b: any) => map[b.kind] = b.payload || {});
       setResumeMd(String(map.resume?.criteria_md || ""));
       setChecklist(Array.isArray(map.checklist?.questions) ? map.checklist.questions : []);
+      setChecklistShuffle(map.checklist?.shuffle !== false);
       setSituations(Array.isArray(map.situations?.situations) ? map.situations.situations : []);
     })();
   }, [projectId]);
