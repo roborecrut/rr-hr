@@ -30,7 +30,7 @@ export default function Reveal({
   className = "",
   as = "div",
   threshold = 0.12,
-  reAnimate = true,
+  reAnimate = false,
   style,
   ...rest
 }: RevealProps) {
