@@ -2087,9 +2087,15 @@ export default function CandidateFlow() {
                       { id: "certified", title: "Выдан электронный сертификат", stageVal: "certified" }
                     ].map((step, idx) => {
                       const stagesList = ["terms", "interview", "scoring", "training", "certified"];
-                      const currentIdx = stagesList.indexOf(currentStage);
+                      // Берём максимальный из сохранённого `current_stage` и фактически
+                      // вычисленного `effectiveStage` — чтобы прогресс на профиле кандидата
+                      // соответствовал реально пройденным этапам по текущей вакансии.
+                      const idxA = stagesList.indexOf(currentStage);
+                      const idxB = stagesList.indexOf(effectiveStage);
+                      const currentIdx = Math.max(idxA, idxB);
+                      const effectiveCurrent = stagesList[Math.max(0, currentIdx)] || currentStage;
                       const isPast = currentIdx > idx;
-                      const isCurrent = currentStage === step.stageVal;
+                      const isCurrent = effectiveCurrent === step.stageVal;
                       return (
                         <div key={step.id} className="flex items-start gap-2.5 p-1">
                           <CheckCircle className={`w-4 h-4 shrink-0 mt-0.5 ${isPast ? "text-emerald-400" : isCurrent ? "text-[#E7C768] animate-pulse" : "text-gray-600"}`} />
