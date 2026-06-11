@@ -1172,7 +1172,7 @@ function VacanciesAnalyticsSection() {
   const [progress, setProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<any | null>(null);
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
@@ -1262,7 +1262,7 @@ function VacanciesAnalyticsSection() {
             const st = stats[p.id] || { registrations: 0, screening: 0, checklist: 0, situations: 0, training: 0, sumScore: 0, scoreCount: 0 };
             const avg = st.scoreCount > 0 ? Math.round(st.sumScore / st.scoreCount) : null;
             return (
-              <div key={p.id} onClick={() => setSelected(p)}
+              <div key={p.id} onClick={() => openEntity("project", p.id)}
                 className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
@@ -1299,14 +1299,6 @@ function VacanciesAnalyticsSection() {
           )}
         </div>
       )}
-      <DetailsModal
-        title={`Вакансия · ${selected?.role_name || ""}`}
-        data={selected}
-        table="projects"
-        labels={RU_LABELS.projects}
-        omitKeys={OMIT_KEYS.projects}
-        onClose={() => setSelected(null)}
-      />
     </div>
   );
 }
