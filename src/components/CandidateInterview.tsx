@@ -7,6 +7,7 @@ import { getCandidateSession } from "@/lib/candidateSession";
 import { aiRestart } from "@/lib/aiClient";
 import { useAIReady, waitForAIReady } from "@/lib/aiReady";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
+import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -63,6 +64,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [resumeEditMode, setResumeEditMode] = useState(false);
+  const [pausedOpen, setPausedOpen] = useState(false);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -140,7 +142,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       });
       if (!r) return;
       setResumeResult(r.result);
-    } catch (e: any) { alert(e?.message || "Ошибка"); }
+    } catch (e: any) {
+      if (isVacancyPausedError(e)) { setPausedOpen(true); }
+      else { alert(e?.message || "Ошибка"); }
+    }
     finally { setBusy(false); }
   };
 
