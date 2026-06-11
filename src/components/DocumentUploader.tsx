@@ -217,6 +217,7 @@ export function DocumentUploader({
           type="file"
           accept={accept}
           className="hidden"
+          onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; setFilePath(null); setFileName(""); setUploadError(""); }}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void handleFile(f);

@@ -116,6 +116,7 @@ export const CandidateDocsDossier: React.FC<{ candidateId: string }> = ({ candid
             accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.txt,.md"
             className="hidden"
             disabled={busy}
+            onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; }}
             onChange={(e) => handleUpload(e.target.files)}
           />
         </label>
