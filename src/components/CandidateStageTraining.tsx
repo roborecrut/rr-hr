@@ -349,6 +349,7 @@ export default function CandidateStageTraining({
           </div>
         </Reveal>
       )}
+      <VacancyPausedDialog open={pausedOpen} projectId={projectId} onClose={() => setPausedOpen(false)} />
     </div>
   );
 }
