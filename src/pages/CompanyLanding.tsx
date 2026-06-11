@@ -15,6 +15,7 @@ import CandidateAuthModal from "../components/CandidateAuthModal";
 import CompanySections from "../components/CompanySections";
 import SitePreview from "../components/SitePreview";
 import VacancyAIAssistant from "@/components/VacancyAIAssistant";
+import VacancyCard from "@/components/VacancyCard";
 import { useSeo, SITE_URL } from "@/lib/seo";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
@@ -712,26 +713,24 @@ export default function CompanyLanding() {
                   Все открытые вакансии компании ({vacancies.length}):
                 </h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {vacancies.map((v) => (
-                  <div
+                  <VacancyCard
                     key={v.id}
-                    onClick={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
-                    className={`cursor-pointer border p-4 rounded-2xl text-left transition ${
-                      selectedVacancy?.id === v.id
-                        ? "bg-[#E7C768]/15 border-[#E7C768]/70 ring-1 ring-[#E7C768]/50"
-                        : "bg-[#1D3E5E]/45 border-white/5 hover:border-white/20 hover:bg-[#1D3E5E]/60"
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-1">
-                      <h4 className="font-extrabold text-sm text-white line-clamp-1">{v.roleName}</h4>
-                      {selectedVacancy?.id === v.id && (
-                        <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[8px] font-bold px-1.5 py-0.5 rounded uppercase shrink-0">Выбрана</span>
-                      )}
-                    </div>
-                    <span className="text-[11px] font-bold text-[#E7C768] block mt-1">{v.salaryTerms}</span>
-                    <span className="text-[10px] text-slate-350 block mt-0.5 font-sans">{v.scheduleTerms}</span>
-                  </div>
+                    vacancy={{
+                      id: v.id,
+                      roleName: v.roleName,
+                      companyName: company?.name || null,
+                      companyLogo: company?.logo_url || v.logoUrl || null,
+                      industry: (company as any)?.industry || null,
+                      salaryTerms: v.salaryTerms || null,
+                      scheduleTerms: v.scheduleTerms || null,
+                      vacancyText: v.vacancyText || null,
+                    }}
+                    active={selectedVacancy?.id === v.id}
+                    showCompany={false}
+                    onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
+                  />
                 ))}
               </div>
             </div>
