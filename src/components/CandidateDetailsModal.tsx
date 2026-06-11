@@ -8,6 +8,7 @@
 
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import RichMarkdown from "@/components/RichMarkdown";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
@@ -232,9 +233,11 @@ export default function CandidateDetailsModal({
                   {s.assessment_summary}
                 </div>
               )}
-              <pre className="text-[11px] text-slate-200 whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto font-sans">
-                {c.resume_text || "Резюме не загружено"}
-              </pre>
+              <div className="text-[11px] text-slate-200 leading-relaxed max-h-64 overflow-y-auto">
+                {c.resume_text
+                  ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
+                  : <span className="italic text-slate-500">Резюме не загружено</span>}
+              </div>
             </div>
 
             {/* Interview transcripts */}
@@ -245,7 +248,9 @@ export default function CandidateDetailsModal({
                   <div key={i.id} className="text-[11px] text-slate-300">
                     <div className="text-slate-400 font-mono text-[10px]">#{i.public_id} · {i.status} · {i.started_at ? new Date(i.started_at).toLocaleString() : "—"}</div>
                     {i.transcript_text && (
-                      <pre className="whitespace-pre-wrap mt-1 max-h-40 overflow-y-auto font-sans bg-black/20 p-2 rounded">{i.transcript_text}</pre>
+                      <div className="mt-1 max-h-40 overflow-y-auto bg-black/20 p-2 rounded">
+                        <RichMarkdown tone="chat">{i.transcript_text}</RichMarkdown>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -267,7 +272,9 @@ export default function CandidateDetailsModal({
                           {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
+                      <div className="text-[11px] text-slate-200 mt-1">
+                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                      </div>
                       {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
                     </div>
                   ))}
@@ -290,7 +297,9 @@ export default function CandidateDetailsModal({
                           {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
                         </span>
                       </div>
-                      <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
+                      <div className="text-[11px] text-slate-200 mt-1">
+                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                      </div>
                       {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
                     </div>
                   ))}
@@ -305,7 +314,9 @@ export default function CandidateDetailsModal({
                   {otherAnswers.map((a: any) => (
                     <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
                       <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                      <div className="text-[11px] text-slate-200 whitespace-pre-wrap mt-1">{a.answer_text || "(пусто)"}</div>
+                      <div className="text-[11px] text-slate-200 mt-1">
+                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                      </div>
                     </div>
                   ))}
                 </div>
