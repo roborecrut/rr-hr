@@ -459,6 +459,43 @@ export default function CandidateFlow() {
   // а не устаревшее значение `candidates.current_stage`.
   const [effectiveStage, setEffectiveStage] = useState<string>("terms");
 
+  // Считаем фактический этап прохождения по реальным данным:
+  // terms → есть привязка к вакансии; interview → есть оценка резюме/чек-листа;
+  // scoring → есть overall_score; training → пройдены все 3 stage_progress;
+  // certified → выдан сертификат.
+  useEffect(() => {
+    const candId = candidate?.id;
+    const projId = project?.id;
+    if (!candId) { setEffectiveStage("terms"); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const [{ data: sc }, { data: prog }, { data: cert }] = await Promise.all([
+          (supabase as any).from("candidate_scores")
+            .select("resume_score,checklist_score,situations_score,interview_score,overall_score")
+            .eq("candidate_id", candId).maybeSingle(),
+          (supabase as any).from("candidate_stage_progress")
+            .select("stage,passed_at").eq("candidate_id", candId),
+          (supabase as any).from("certifications")
+            .select("id").eq("candidate_id", candId).limit(1),
+        ]);
+        if (cancelled) return;
+        const passedStages = new Set<string>((prog || []).filter((r: any) => !!r.passed_at).map((r: any) => r.stage));
+        const trainingDone = ["professional","product","system"].every((s) => passedStages.has(s));
+        let stage: string = "terms";
+        if (projId) stage = "terms";
+        if (sc?.resume_score != null || sc?.checklist_score != null || sc?.situations_score != null) stage = "interview";
+        if (sc?.interview_score != null || sc?.overall_score != null) stage = "scoring";
+        if (trainingDone) stage = "training";
+        if ((cert || []).length > 0) stage = "certified";
+        setEffectiveStage(stage);
+      } catch {
+        if (!cancelled) setEffectiveStage(currentStage || "terms");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidate?.id, project?.id, currentStage]);
+
   // Main navigation tab
   const [activeTab, setActiveTabState] = useState<string>("profile");
   
