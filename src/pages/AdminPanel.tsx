@@ -336,7 +336,7 @@ export default function AdminPanel() {
           {section === "clients"    && <ClientsSection setToast={setToast} />}
           {section === "candidates" && <CandidatesSection />}
           {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
-          {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
+          {section === "vacancies"  && <VacanciesAnalyticsSection />}
           {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
           {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
           {section === "blog"       && <BlogAdmin />}
