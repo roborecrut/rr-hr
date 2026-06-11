@@ -2431,6 +2431,29 @@ export default function EmployerPanel() {
     );
   }
 
+  // Onboarding (#7): пошаговая активация разделов кабинета.
+  // Каждый шаг разблокирует следующий: 1) профиль → 2) компания → 3) вакансия → 4) обучение → 5) интервью.
+  const hasCompany = (companiesList?.length || 0) > 0;
+  const hasVacancy = (projects?.length || 0) > 0;
+  const setupStep = !hasCompany ? 2 : !hasVacancy ? 3 : !hasTrainingSetup ? 4 : !hasInterviewSetup ? 5 : 6;
+  const setupDone = setupStep === 6;
+  const tabDisabled = (key: "vacancies" | "training" | "interviews") => {
+    if (key === "vacancies")  return !hasCompany;
+    if (key === "training")   return !hasVacancy;
+    if (key === "interviews") return !hasTrainingSetup;
+    return false;
+  };
+  const tabHint = (key: "vacancies" | "training" | "interviews") => {
+    if (key === "vacancies"  && !hasCompany)        return "Сначала добавьте компанию в разделе «Мои Компании»";
+    if (key === "training"   && !hasVacancy)        return "Сначала создайте вакансию в разделе «Вакансии & ИИ»";
+    if (key === "interviews" && !hasTrainingSetup)  return "Сначала настройте систему обучения в разделе «Обучение»";
+    return "";
+  };
+  const guardedNavigate = (key: "vacancies" | "training" | "interviews", url: string) => {
+    if (tabDisabled(key)) { addAuditEvent("warning", "Шаг ещё не пройден", tabHint(key)); return; }
+    navigate(url);
+  };
+
   // Render content area based on six main tabs
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
