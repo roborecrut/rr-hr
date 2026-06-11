@@ -1,84 +1,93 @@
+# Общий план: 24 задачи
 
-## Что делаем
+Реализация партиями по 3–6 задач за итерацию. После каждой партии — пауза для приёмки. Старт: **Партия 1 (Оверлеи/маскот)**.
 
-Добавляем публичный блок отзывов на главной странице, систему модерации в `/admin`, авто-ответ ИИ ProTalk на основе FAQ, и заполняем 10 тестовых отзывов с ответами.
+## Сквозные решения
 
-## 1. База данных (миграция)
+- **Реалтайм:** для баланса/лимитов (#5) — Supabase Realtime подписка на `wallets`/`transactions` (мгновенно). Для аналитики вакансий (#9) — гибрид: Realtime на `candidate_scores`/`candidate_stage_progress` + ленивый пересчёт счётчиков на клиенте. Включение публикации делается одной миграцией.
+- **Маркдаун (#10, #11, #14):** один общий компонент `<RichMarkdown variant="chat|resume|training" />` на базе текущего `RichTrainingMarkdown`. В чатах — облегчённый вариант (без тяжёлых блоков обучения), в резюме/скрининге — полный. Это уберёт дублирование стилей и обеспечит единый UI.
+- **Кэш (#4, #18):** один утилитный модуль `src/lib/cacheReset.ts` с `resetAppCache({ keepEmployer?, keepCandidate? })` — точечно чистит React Query, sessionStorage и проектные ключи localStorage, **сохраняя** ключи профилей (`rr.employer.session`, `rr.candidate.session`).
+- **Карточка вакансии (#3):** новый `src/components/VacancyCard.tsx`, используется в `VacancyCatalogPage`, `CompanyLanding`, `JobVacancyLanding` (motivation), `CandidateFlow` (условия). Описание формируется из `vacancy_text` через тот же `summarize`, fallback — `salary_terms + schedule_terms`.
 
-Новая таблица `public.reviews`:
-- `id uuid pk`
-- `first_name text` (1–50)
-- `last_name text` (1–50)
-- `content text` (1–500)
-- `ai_reply text` — авто-ответ ProTalk
-- `admin_reply text` — ответ админа (редактируемый)
-- `is_published boolean default true` — модерация (админ может скрыть)
-- `created_at`, `updated_at`
+## Партии
 
-RLS + GRANTs:
-- `anon`/`authenticated` — `SELECT` только где `is_published = true`
-- `anon`/`authenticated` — `INSERT` (любой пользователь оставляет отзыв; валидация длины — через CHECK)
-- `UPDATE`/`DELETE` — только админ (`has_role(auth.uid(),'admin')`)
-- `service_role` — полный доступ (для edge function)
-- rate-limit на вставку через существующий `rl_hit` в edge функции
+### Партия 1 — Оверлеи и маскот (#1, #24)
+- `AIWaitProvider.tsx` и `AIRestartGate.tsx`: убрать CSS `aiwait-typing/airg-typing` (мигающий курсор + steps animation), убрать ротацию `phraseIdx` (без смены каждые 2.8с — оставить **одну** фразу на сессию, выбранную случайно), убрать `aiwait-dots`.
+- Заменить на плавную «печатающую» анимацию: посимвольный JS-таймер с интервалом **200 мс** (5 cps), без курсора-мигалки. Реализуем хук `useTypewriter(text, cps)`.
+- Зафиксировать раскладку: контейнер бабла = `min-h-[88px]`, `max-h-[88px]` (или `min-h` + `overflow-hidden`), маскот всегда в той же позиции — `flex` с фиксированной высотой ряда. Длина фразы больше не двигает робота.
+- #24: словарь русских названий полей `FIELD_LABELS_RU` (vacancy/company/training/interview) в `src/lib/fieldLabels.ts`. Везде, где `aiEnhanceSingle({ field })` вызывается с заголовком оверлея, передавать русское имя из словаря.
 
-Триггер `set_updated_at`.
+### Партия 2 — Карточка вакансии и каталог (#3, #13, #2, #17)
+- Создать `VacancyCard.tsx` (логотип компании, роль, описание ≤220 симв., зарплата, график, CTA).
+- `VacancyCatalogPage`: сетка `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`, мобильные отступы `px-[3%]`, `box-border` чтобы карточки не выходили за край.
+- Заменить локальные рендеры карточек в `CompanyLanding`, `JobVacancyLanding` (hero убрать дубль «о компании» — #2: оставить блок только в секции «О компании») и в блоке мотивации (#17 — показывать **все активные** вакансии компании, не фильтровать по текущей).
+- Проверить, что `vacancy_text` приходит во всех запросах (новые вакансии без описания на карточке — вероятно, в выборках `select(...)` не запрошено поле; синхронизировать запросы).
 
-## 2. Edge-функция `reviews-submit`
+### Партия 3 — Кэш и сессии (#4, #18)
+- `src/lib/cacheReset.ts`: чистит `queryClient.clear()`, `sessionStorage.clear()`, и из localStorage все ключи кроме whitelist (`rr.employer.session`, `rr.candidate.session`, бренд-настройки).
+- Хуки на маршрутах:
+  - Выход из ЛК работодателя → `resetAppCache({ keepEmployer: true })`.
+  - Вход на `/` → `resetAppCache({ keepEmployer: true, keepCandidate: true })`.
+  - Переход по реф-ссылке `?ref=...` → полный сброс.
+  - Вход в ЛК кандидата → `resetAppCache({ keepCandidate: true })`.
+  - Выход из ЛК кандидата + переход на лендинг компании → `resetAppCache({})`.
+- Добавить `<meta http-equiv="Cache-Control" content="no-store" />` на чувствительных страницах через `useSeo`.
 
-`supabase/functions/reviews-submit/index.ts`:
-- Принимает `{ first_name, last_name, content }`, Zod-валидация (длина, trim).
-- Rate-limit по IP (`rl_hit`, 5/час).
-- Вставляет строку в `reviews` через service_role.
-- В фоне (await перед ответом, чтобы записать `ai_reply`):
-  - Тянет последние ~30 `faq_items` (`question` + `answer`) как контекст.
-  - Зовёт ProTalk через существующий `_shared/protalk.ts` со спец-промтом «Ты — представитель HR-RR, ответь вежливо на отзыв пользователя, опираясь на FAQ ниже…».
-  - Сохраняет ответ в `ai_reply`.
-- Возвращает созданный отзыв.
+### Партия 4 — Бизнес-баги (#12, #15, #16)
+- #12: в `DocumentUploader`/`DocumentIngestField` при `<input type="file" onChange>` всегда брать `files[0]?.name` из текущего события, сбрасывать `inputRef.current.value = ""` перед открытием диалога, не читать кэшированное имя из state без обновления.
+- #15: в местах проверки баланса (`candidate-start-interview` и т.п.) перед `throw "No credits"` проверять `wallets.balance > 0` и `vacancy.is_active`. Если баланс есть — пропускать. Если нет — открывать новый компонент `VacancyPausedDialog` с контактами работодателя (`employers.email`, `telegram`, `phone`).
+- #16: пересмотреть расчёт прогресса в `CandidateFlow` — текущий этап брать из `candidate_stage_progress` по `(candidate_id, vacancy_id)`, а не из глобального state. Добавить хелпер `getCandidateProgress(candidateId, vacancyId)`.
 
-## 3. Лендинг — блок «Отзывы»
+### Партия 5 — Реалтайм и админка балансов (#5, #9)
+- Realtime подписка на `wallets` и `transactions` в `AdminPanel` (раздел работодателей и счетов). Цена в карточке обновляется по событию `UPDATE`.
+- Миграция: `ALTER PUBLICATION supabase_realtime ADD TABLE public.wallets, public.transactions, public.candidate_scores, public.candidate_stage_progress;` + `REPLICA IDENTITY FULL`.
+- #9: в админке раздела «Вакансии» — карточка аналитики по каждой вакансии (счётчики screening/checklist/situations/обучений/регистраций/ср.балл) с подпиской на `candidate_scores` + `candidate_stage_progress`.
 
-`src/components/ReviewsSection.tsx` + подключить в `src/pages/LandingPage.tsx`:
-- Заголовок «Отзывы» в текущем брендовом стиле (синий градиент, золотые заголовки).
-- Сетка карточек: имя + фамилия (без аватарок), текст, дата; под отзывом — `ai_reply` (плашка «Ответ HR-RR ИИ») и/или `admin_reply` (плашка «Ответ администратора»).
-- Кнопка «Оставить отзыв» → модалка с полями: Имя, Фамилия, Текст (счётчик 0/500). Zod-валидация. Сабмит → edge function → toast → перезагрузка списка.
-- Грузим публикуемые отзывы напрямую из `supabase.from('reviews')` (RLS пропустит).
+### Партия 6 — Админ UI русификация и поиск (#6, #8, #20, #21)
+- Везде в `AdminPanel` (клиенты, кандидаты, компании, вакансии, интервью, обучение): заголовки карточек = ФИО / email (gmail) / название компании, а не id. Универсальный `<EntityCard>` с поиском по этим полям.
+- #8: в таблице «Последние транзакции» добавить колонки email и имя из `employers`/`profiles` + поиск.
+- #20: в карточке клиента — вкладки «Транзакции» (история списаний по вакансиям + что куплено) и «Компании/Вакансии» (привязки).
+- #21: клики по названию компании/вакансии = навигация к карточке соответствующей сущности; обратно из карточки компании/вакансии — на карточку клиента (используем `react-router` + query-param модалок).
 
-## 4. Админка — раздел «Отзывы»
+### Партия 7 — Пошаговый онбординг работодателя (#7)
+- В `EmployerPanel` ввести состояние `setupStep` (computed from БД: companyExists → vacancyExists → trainingExists → interviewExists).
+- Кнопки разделов «Вакансия», «Обучение», «Интервью» получают `disabled` + тултип «Сначала создайте … ».
+- Бейдж текущего шага в шапке кабинета.
 
-Новая вкладка в `src/pages/AdminPanel.tsx` (`ReviewsSection`):
-- Таблица: дата, ФИ, текст (line-clamp), `ai_reply` (line-clamp), `admin_reply`, статус (опубликован/скрыт), действия.
-- Клик по строке → `DetailsModal` с `table="reviews"` (использует уже существующий механизм inline-редактирования всех полей — админ правит `admin_reply`, переключает `is_published`, редактирует `ai_reply` при необходимости).
-- Кнопка «Удалить» (DELETE через supabase + подтверждение).
-- Кнопка «Сгенерировать ответ ИИ» в строке — зовёт edge-функцию `reviews-ai-reply` для одного отзыва (та же логика, что и при вставке, но по `id`).
+### Партия 8 — Маркдаун (#10, #11, #14)
+- Вынести `RichTrainingMarkdown` → `<RichMarkdown variant="training|chat|resume" />`.
+- Подключить в:
+  - Карточка кандидата → «Распознанный текст резюме».
+  - `EmployerAIAssistant`, `VacancyAIAssistant`, AI-чат на главном лендинге — рендер `message.parts` через `<RichMarkdown variant="chat" />` внутри бабла.
+  - Демо-скрининг и ЛК кандидата → окно распознанного текста (показывать целиком, без обрезки; кнопка «Свернуть»).
 
-## 5. Edge-функция `reviews-ai-reply`
-
-Для админской кнопки и сидинга:
-- Принимает `{ review_id }`, требует JWT с ролью admin.
-- Берёт отзыв + FAQ, зовёт ProTalk, обновляет `ai_reply`.
-
-## 6. Сидинг 10 тестовых отзывов
-
-Через `supabase--insert` после миграции:
-- 10 строк с реалистичными ФИ и текстами разной тональности.
-- Каждый с заранее заготовленным `ai_reply` (имитация ProTalk-ответа) и `admin_reply` (вежливый ответ админа), `is_published=true`.
+### Партия 9 — Хеддер, ЛК кандидата, мелочи (#22, #23, #19)
+- #23: в `SiteHeader.tsx` иконки навигации показываются всегда (не скрываются на md), а текст скрывается на md.
+- #22: в карточке кандидата (админ + СРМ работодателя) этапы обучения — раскрыть на всю ширину карточки (`w-full`, убрать `max-w-...` контейнер).
+- #19: в системных промптах `ai-enhance`, `ai-generate-onboarding`, `ai-generate-interview-*` добавить инструкцию «Используй русский язык, избегай англицизмов кроме общеупотребимых терминов и тех, что явно указал пользователь».
 
 ## Технические детали
 
-- Стиль модалки отзыва и кнопок: `.brand-editor`, `.btn-brand-primary` — по project memory.
-- Импорт ProTalk: `supabase/functions/_shared/protalk.ts` (уже есть `callProTalk` + `logToDb`).
-- Никаких аватарок (как просил пользователь).
-- Лендинг доступен анонимам — никакого auth-гейта на чтение/публикацию.
+```text
+Новые файлы:
+  src/components/VacancyCard.tsx
+  src/components/VacancyPausedDialog.tsx
+  src/components/RichMarkdown.tsx           (рефактор RichTrainingMarkdown)
+  src/components/admin/EntityCard.tsx
+  src/hooks/useTypewriter.ts
+  src/hooks/useEmployerSetupStep.ts
+  src/hooks/useRealtimeWallet.ts
+  src/lib/cacheReset.ts
+  src/lib/fieldLabels.ts
 
-## Файлы
+Миграции:
+  - ALTER PUBLICATION supabase_realtime ADD TABLE ... (wallets, transactions,
+    candidate_scores, candidate_stage_progress) + REPLICA IDENTITY FULL
+```
 
-Новые:
-- `supabase/migrations/<ts>_reviews.sql`
-- `supabase/functions/reviews-submit/index.ts`
-- `supabase/functions/reviews-ai-reply/index.ts`
-- `src/components/ReviewsSection.tsx`
+## Что вне плана
+- Не трогаем дизайн-токены и бренд-палитру.
+- Не меняем структуру таблиц БД (только публикация Realtime).
+- Не переписываем edge-функции целиком — точечные правки промптов (#19) и проверки баланса (#15).
 
-Изменяемые:
-- `src/pages/LandingPage.tsx` — подключить блок.
-- `src/pages/AdminPanel.tsx` — новая вкладка «Отзывы», `RU_LABELS.reviews`.
+После утверждения плана начинаю с **Партии 1 (Оверлеи и маскот)**.
