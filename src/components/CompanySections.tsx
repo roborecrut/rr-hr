@@ -12,7 +12,6 @@ import {
   Cpu,
   BarChart3,
   Briefcase,
-  ArrowRight,
   // Globe icon no longer needed — website now rendered as banner in hero.
 } from "lucide-react";
 import type { JobProject } from "../types";
