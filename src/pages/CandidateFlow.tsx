@@ -454,6 +454,10 @@ export default function CandidateFlow() {
 
   // Flow navigation stage index: "terms" | "interview" | "scoring" | "training" | "certified"
   const [currentStage, setCurrentStage] = useState<string>("terms");
+  // Реальный прогресс по (candidate_id, project_id) — считаем из БД, чтобы
+  // прогресс-бар на профиле кандидата отражал фактически пройденные этапы,
+  // а не устаревшее значение `candidates.current_stage`.
+  const [effectiveStage, setEffectiveStage] = useState<string>("terms");
 
   // Main navigation tab
   const [activeTab, setActiveTabState] = useState<string>("profile");
