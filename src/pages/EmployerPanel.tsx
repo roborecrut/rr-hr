@@ -1290,6 +1290,27 @@ export default function EmployerPanel() {
     return () => { cancelled = true; };
   }, [employerId, path, navigate, activeTab, authReady, authUserId]);
 
+  // Onboarding (#7): hasTrainingSetup / hasInterviewSetup на основе training_blocks / interview_blocks
+  // по всем вакансиям работодателя.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const projIds = projects.map((p: any) => p.id).filter(Boolean);
+      if (projIds.length === 0) {
+        if (!cancelled) { setHasTrainingSetup(false); setHasInterviewSetup(false); }
+        return;
+      }
+      const [tr, iv] = await Promise.all([
+        (supabase as any).from("training_blocks").select("id").in("project_id", projIds).limit(1),
+        (supabase as any).from("interview_blocks").select("id").in("project_id", projIds).limit(1),
+      ]);
+      if (cancelled) return;
+      setHasTrainingSetup((((tr as any).data as any[]) || []).length > 0);
+      setHasInterviewSetup((((iv as any).data as any[]) || []).length > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [projects]);
+
   // Load profile email for the authenticated user
   useEffect(() => {
     let cancelled = false;
