@@ -335,61 +335,25 @@ export default function CompanySections({
           eyebrow="Открытые позиции"
           title={`Вакансии · ${vacancies.length}`}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-            {vacancies.map((v) => {
-              const isCurrent = currentVacancy?.id === v.id;
-              return (
-                <button
-                  key={v.id}
-                  onClick={() => onOpenVacancy(v)}
-                  className={[
-                    "text-left p-4 rounded-2xl border transition-all group",
-                    "bg-black/30 hover:bg-black/40",
-                    isCurrent
-                      ? "border-[#E7C768]/70 ring-1 ring-[#E7C768]/40"
-                      : "border-white/10 hover:border-[#E7C768]/40",
-                  ].join(" ")}
-                >
-                  <div className="flex items-start gap-3">
-                    {company.logo_url ? (
-                      <img
-                        src={company.logo_url}
-                        alt=""
-                        referrerPolicy="no-referrer"
-                        className="w-10 h-10 rounded-xl object-contain p-1 bg-white/10 border border-white/10 shrink-0"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-xl bg-[#E7C768]/15 border border-[#E7C768]/30 text-[#E7C768] font-black flex items-center justify-center shrink-0">
-                        {(v.roleName || "?")[0]}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-extrabold text-sm text-white truncate">
-                          {v.roleName}
-                        </h4>
-                        {isCurrent && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                            Текущая
-                          </span>
-                        )}
-                      </div>
-                      {v.salaryTerms && (
-                        <div className="mt-1 text-[12px] font-bold text-[#E7C768]">
-                          {v.salaryTerms}
-                        </div>
-                      )}
-                      {v.scheduleTerms && (
-                        <div className="mt-0.5 text-[11px] text-slate-300">
-                          {v.scheduleTerms}
-                        </div>
-                      )}
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-slate-500 group-hover:text-[#E7C768] transition shrink-0 mt-1" />
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {vacancies.map((v) => (
+              <VacancyCard
+                key={v.id}
+                vacancy={{
+                  id: v.id,
+                  roleName: v.roleName,
+                  companyName: company?.name || null,
+                  companyLogo: company?.logo_url || (v as any).logoUrl || null,
+                  industry: company?.industry || null,
+                  salaryTerms: v.salaryTerms || null,
+                  scheduleTerms: v.scheduleTerms || null,
+                  vacancyText: (v as any).vacancyText || null,
+                }}
+                active={currentVacancy?.id === v.id}
+                showCompany={false}
+                onOpen={() => onOpenVacancy(v)}
+              />
+            ))}
           </div>
         </SectionCard>
       )}
