@@ -217,6 +217,11 @@ export default function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [section, setSection] = useState<SectionKey>("clients");
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [entityStack, setEntityStack] = useState<{ kind: "employer" | "company" | "project"; id: string }[]>([]);
+  const openEntity = (kind: "employer" | "company" | "project", id: string) => {
+    setEntityStack((s) => [...s, { kind, id }]);
+  };
+  const closeEntity = () => setEntityStack((s) => s.slice(0, -1));
 
   // Access gate
   useEffect(() => {
@@ -333,9 +338,10 @@ export default function AdminPanel() {
         </aside>
 
         <section className="lg:col-span-10 space-y-4">
+          <EntityNavContext.Provider value={{ openEntity }}>
           {section === "clients"    && <ClientsSection setToast={setToast} />}
           {section === "candidates" && <CandidatesSection />}
-          {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
+          {section === "companies"  && <CompaniesListSection />}
           {section === "vacancies"  && <VacanciesAnalyticsSection />}
           {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
           {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
@@ -346,6 +352,14 @@ export default function AdminPanel() {
           {section === "logs"       && <LogsSection />}
           {section === "ai"         && <AISection />}
           {section === "reviews"    && <ReviewsSection setToast={setToast} />}
+          {entityStack.length > 0 && (
+            <EntityModal
+              entity={entityStack[entityStack.length - 1]}
+              setToast={setToast}
+              onClose={closeEntity}
+            />
+          )}
+          </EntityNavContext.Provider>
         </section>
       </main>
     </div>
