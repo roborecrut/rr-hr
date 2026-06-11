@@ -239,11 +239,8 @@ export default function CompanySections({
                 ))}
               </div>
             )}
-            {company.description_text && (
-              <p className="mt-2 text-sm text-slate-300 line-clamp-2 max-w-2xl">
-                {String(company.description_text).split("\n")[0]}
-              </p>
-            )}
+            {/* Описание компании показывается ниже — в блоке «О компании», */}
+            {/* чтобы не дублировать его в hero-секции (#2). */}
             <div className="mt-4 flex flex-wrap gap-2">
               {vacancies.length > 0 && (
                 <a
