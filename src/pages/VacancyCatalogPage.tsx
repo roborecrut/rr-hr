@@ -5,13 +5,12 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
-import RRImage from "@/components/RRImage";
 import SiteHeader from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useSeo, SITE_URL } from "@/lib/seo";
 import VacancyCard from "@/components/VacancyCard";
 import {
-  Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
+  Search, Filter, X,
   Sparkles, Zap, Users,
 } from "lucide-react";
 
@@ -32,17 +31,7 @@ type Vac = {
   industry: string | null;
 };
 
-function summarize(text: string | null, max = 240): string {
-  if (!text) return "";
-  const clean = String(text).replace(/\s+/g, " ").trim();
-  return clean.length > max ? clean.slice(0, max - 1).trimEnd() + "…" : clean;
-}
-
-function firstLine(text: string | null | undefined): string | undefined {
-  if (!text) return undefined;
-  const l = String(text).split("\n").map((s) => s.replace(/^[•\-\s*]+/, "").trim()).find((s) => s.length > 0);
-  return l || undefined;
-}
+// Карточка вакансии вынесена в `@/components/VacancyCard`.
 
 export default function VacancyCatalogPage() {
   const { navigate } = useRouter();
