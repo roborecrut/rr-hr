@@ -2458,6 +2458,10 @@ export type Database = {
       }
       get_my_referees: { Args: never; Returns: Json }
       get_my_referrer: { Args: never; Returns: Json }
+      get_vacancy_employer_contacts: {
+        Args: { _project_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

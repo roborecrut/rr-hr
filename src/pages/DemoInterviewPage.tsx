@@ -541,6 +541,7 @@ export default function DemoInterviewPage() {
               <input
                 ref={fileRef} type="file" className="hidden"
                 accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; }}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadResume(f); }}
               />
             </div>

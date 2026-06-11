@@ -169,6 +169,7 @@ export function DocumentIngestField({
         </Button>
         <input ref={fileRef} type="file" className="hidden"
           accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+          onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; setUploaded(null); setUploadError(""); }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       </div>
       {urlOpen ? (
