@@ -336,7 +336,7 @@ export default function AdminPanel() {
           {section === "clients"    && <ClientsSection setToast={setToast} />}
           {section === "candidates" && <CandidatesSection />}
           {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
-          {section === "vacancies"  && <SimpleTable table="projects"    title="Вакансии" />}
+          {section === "vacancies"  && <VacanciesAnalyticsSection />}
           {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
           {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
           {section === "blog"       && <BlogAdmin />}
@@ -711,6 +711,23 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   };
   useEffect(() => { load(); }, []);
 
+  // Realtime: обновляем балансы и транзакции мгновенно
+  useEffect(() => {
+    const ch = supabase
+      .channel("admin-accounts-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallets" }, () => { load(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "transactions" }, (p: any) => {
+        setTxs((prev) => [p.new, ...prev].slice(0, 200));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "transactions" }, (p: any) => {
+        setTxs((prev) => prev.map((t) => (t.id === p.new.id ? p.new : t)));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "employers" }, () => { load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const adjust = async (employerId: string, delta: number) => {
     const note = window.prompt(`Комментарий к ${delta > 0 ? "начислению" : "списанию"} ${Math.abs(delta)} RR:`, "Корректировка администратором");
     if (note === null) return;
@@ -790,6 +807,153 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
         table="transactions"
         labels={RU_LABELS.transactions}
         onClose={() => setSelectedTx(null)}
+      />
+    </div>
+  );
+}
+
+function VacanciesAnalyticsSection() {
+  const [projects, setProjects] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Record<string, any>>({});
+  const [cands, setCands] = useState<any[]>([]);
+  const [scores, setScores] = useState<any[]>([]);
+  const [progress, setProgress] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<any | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [p, co, c, s, pr] = await Promise.all([
+      (supabase as any).from("projects").select("id, public_id, role_name, status, is_published, company_id, created_at, max_interviews, max_trainings").order("created_at", { ascending: false }).limit(500),
+      (supabase as any).from("companies").select("id, name, public_id").limit(1000),
+      (supabase as any).from("candidates").select("id, project_id, current_stage, created_at").limit(5000),
+      (supabase as any).from("candidate_scores").select("candidate_id, resume_score, checklist_score, situations_score, overall_score").limit(5000),
+      (supabase as any).from("candidate_stage_progress").select("candidate_id, stage, status").limit(5000),
+    ]);
+    setProjects(((p as any).data as any[]) || []);
+    const coMap: Record<string, any> = {};
+    (((co as any).data as any[]) || []).forEach((x) => { coMap[x.id] = x; });
+    setCompanies(coMap);
+    setCands(((c as any).data as any[]) || []);
+    setScores(((s as any).data as any[]) || []);
+    setProgress(((pr as any).data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  // Realtime: счётчики обновляются мгновенно
+  useEffect(() => {
+    const ch = supabase
+      .channel("admin-vacancies-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_scores" }, () => { load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_stage_progress" }, () => { load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidates" }, () => { load(); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "projects" }, () => { load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const candById = useMemo(() => {
+    const m: Record<string, any> = {};
+    cands.forEach((c) => { m[c.id] = c; });
+    return m;
+  }, [cands]);
+
+  const stats = useMemo(() => {
+    const byProj: Record<string, any> = {};
+    projects.forEach((p) => {
+      byProj[p.id] = { registrations: 0, screening: 0, checklist: 0, situations: 0, training: 0, sumScore: 0, scoreCount: 0 };
+    });
+    cands.forEach((c) => { if (byProj[c.project_id]) byProj[c.project_id].registrations++; });
+    scores.forEach((s) => {
+      const c = candById[s.candidate_id];
+      const b = c && byProj[c.project_id];
+      if (!b) return;
+      if (s.resume_score != null) b.screening++;
+      if (s.checklist_score != null) b.checklist++;
+      if (s.situations_score != null) b.situations++;
+      if (s.overall_score != null) { b.sumScore += Number(s.overall_score); b.scoreCount++; }
+    });
+    progress.forEach((pp) => {
+      const c = candById[pp.candidate_id];
+      const b = c && byProj[c.project_id];
+      if (!b) return;
+      if (pp.status === "completed" || pp.status === "done") b.training++;
+    });
+    return byProj;
+  }, [projects, cands, scores, progress, candById]);
+
+  const filtered = projects.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    const co = companies[p.company_id];
+    return (p.role_name || "").toLowerCase().includes(q)
+      || (p.public_id || "").toLowerCase().includes(q)
+      || (co?.name || "").toLowerCase().includes(q);
+  });
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-[#E7C768]">Вакансии — {projects.length} <span className="text-[10px] text-emerald-300 ml-2">● live</span></h2>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по роли / компании / ID…"
+          className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[220px]" />
+      </div>
+      {loading && projects.length === 0 ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка…</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {filtered.map((p) => {
+            const co = companies[p.company_id];
+            const st = stats[p.id] || { registrations: 0, screening: 0, checklist: 0, situations: 0, training: 0, sumScore: 0, scoreCount: 0 };
+            const avg = st.scoreCount > 0 ? Math.round(st.sumScore / st.scoreCount) : null;
+            return (
+              <div key={p.id} onClick={() => setSelected(p)}
+                className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-bold text-white truncate">{p.role_name || "—"}</div>
+                    <div className="text-[11px] text-slate-300 truncate">{co?.name || "—"}</div>
+                    <div className="text-[10px] text-slate-500 font-mono">#{p.public_id}</div>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${p.is_published ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-500/20 text-slate-300"}`}>
+                    {p.is_published ? "опубл." : p.status || "draft"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 mt-3 text-center">
+                  {[
+                    { label: "Регистр.", value: st.registrations, color: "text-sky-300" },
+                    { label: "Скрининг", value: st.screening, color: "text-cyan-300" },
+                    { label: "Чек-лист", value: st.checklist, color: "text-violet-300" },
+                    { label: "Ситуации", value: st.situations, color: "text-amber-300" },
+                    { label: "Обучений", value: st.training, color: "text-emerald-300" },
+                    { label: "Ср. балл", value: avg ?? "—", color: "text-[#E7C768]" },
+                  ].map((k) => (
+                    <div key={k.label} className="bg-[#17344F]/60 rounded-lg px-1.5 py-1.5 border border-white/5">
+                      <div className={`text-sm font-bold font-mono ${k.color}`}>{k.value}</div>
+                      <div className="text-[9px] text-slate-400 uppercase tracking-wider">{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">
+              Ничего не найдено
+            </div>
+          )}
+        </div>
+      )}
+      <DetailsModal
+        title={`Вакансия · ${selected?.role_name || ""}`}
+        data={selected}
+        table="projects"
+        labels={RU_LABELS.projects}
+        omitKeys={OMIT_KEYS.projects}
+        onClose={() => setSelected(null)}
       />
     </div>
   );
