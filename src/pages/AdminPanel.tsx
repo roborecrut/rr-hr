@@ -1027,18 +1027,24 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
+  const [search, setSearch] = useState("");
+  const [walletMap, setWalletMap] = useState<Record<string, string>>({});
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
-    const [emp, t] = await Promise.all([
+    const [emp, t, w] = await Promise.all([
       supabase.rpc("admin_list_employers" as any),
       (supabase as any).from("transactions").select("*").order("created_at", { ascending: false }).limit(200),
+      (supabase as any).from("wallets").select("id, employer_id"),
     ]);
     if ((emp as any).error) setToast({ kind: "err", text: (emp as any).error.message });
     setRows(((emp as any).data as any[]) || []);
     setTxs(((t as any).data as any[]) || []);
+    const wmap: Record<string, string> = {};
+    (((w as any).data as any[]) || []).forEach((x: any) => { wmap[x.id] = x.employer_id; });
+    setWalletMap(wmap);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
