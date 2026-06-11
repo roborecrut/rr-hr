@@ -327,9 +327,9 @@ export default function CandidateDetailsModal({
             {stageProgress.length > 0 && (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
                 <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Briefcase className="w-3.5 h-3.5" /> Этапы (Профессия/Продукт/Система)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="flex flex-col gap-2 w-full">
                   {stageProgress.map((sp) => (
-                    <div key={sp.id || sp.stage} className="bg-black/30 rounded-lg p-2 border border-white/5">
+                    <div key={sp.id || sp.stage} className="bg-black/30 rounded-lg p-3 border border-white/5 w-full">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-bold text-white capitalize">{sp.stage}</span>
                         <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${sp.passed_at ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
