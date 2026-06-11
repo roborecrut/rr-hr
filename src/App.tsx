@@ -20,6 +20,7 @@ import OfferPage from "./pages/OfferPage";
 import { PaymentSuccessPage, PaymentFailPage } from "./pages/PaymentResultPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
 import SessionBootstrap from "./components/SessionBootstrap";
+import CacheResetGuard from "./components/CacheResetGuard";
 import { AIWaitProvider } from "./components/AIWaitProvider";
 import { AIRestartGate } from "./components/AIRestartGate";
 
@@ -28,6 +29,7 @@ export default function App() {
     <BrowserRouter>
       <AIWaitProvider>
         <SessionBootstrap />
+        <CacheResetGuard />
         <AIRestartGate />
         <Routes>
         <Route path="/" element={<LandingPage />} />
