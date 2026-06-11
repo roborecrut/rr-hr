@@ -691,7 +691,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<any | null>(null);
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
@@ -751,7 +751,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 </div>
                 <div className="space-y-2 mt-2">
                   {items.length === 0 ? <div className="text-center py-6 text-slate-500 text-[11px]">Пусто</div> : items.map((r) => (
-                    <div key={r.id} onClick={() => setSelected(r)}
+                    <div key={r.id} onClick={() => openEntity("employer", r.id)}
                       className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl cursor-pointer transition">
                       <div className="text-xs font-bold text-[#E7C768] truncate">{r.name || r.email || `Emp #${r.public_id}`}</div>
                       <div className="text-[10px] text-slate-300 truncate">{r.email}</div>
@@ -781,7 +781,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 {filtered.map((r) => {
                   const cls = classifyClient(r);
                   return (
-                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
+                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => openEntity("employer", r.id)}>
                       <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
                       <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
                       <td className="p-3 text-[10px]">{r.contact_phone || "—"} {r.contact_telegram && `· ${r.contact_telegram}`}</td>
@@ -798,18 +798,6 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </div>
       )}
-      <DetailsModal
-        title={`Клиент · ${selected?.name || selected?.email || ""}`}
-        data={selected}
-        table="employers"
-        labels={RU_LABELS.employers}
-        omitKeys={OMIT_KEYS.employers}
-        extra={selected && (
-          <ClientLimitsEditor row={selected} setToast={setToast} onChanged={load} />
-        )}
-        onClose={() => setSelected(null)}
-        onSaved={() => { setSelected(null); load(); }}
-      />
     </div>
   );
 }
