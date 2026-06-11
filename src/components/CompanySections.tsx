@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { JobProject } from "../types";
 import SitePreview from "./SitePreview";
+import VacancyCard from "./VacancyCard";
 
 type Props = {
   company: any;
