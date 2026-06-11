@@ -320,7 +320,7 @@ export default function VacancyCatalogPage() {
             ))}
             <div ref={sentinelRef} className="col-span-full h-10" />
             {visibleCount < filtered.length && (
-              <div className="text-center text-white/50 text-sm py-4">Загружаем ещё…</div>
+              <div className="col-span-full text-center text-white/50 text-sm py-4">Загружаем ещё…</div>
             )}
           </div>
         )}
