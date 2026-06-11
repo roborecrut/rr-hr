@@ -19,6 +19,8 @@ import {
   LayoutDashboard,
   Briefcase,
   BookOpen,
+  Home,
+  Video,
 } from "lucide-react";
 
 type Props = {
@@ -75,9 +77,10 @@ export default function SiteHeader({ active }: Props) {
         onClick={() => navigate(to)}
         className={
           isActive
-            ? "px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20 inline-flex items-center gap-1.5"
-            : "px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5"
+            ? "px-2.5 lg:px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20 inline-flex items-center gap-1.5"
+            : "px-2.5 lg:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5"
         }
+        aria-label={typeof label === "string" ? label : undefined}
       >
         {label}
       </button>
@@ -109,26 +112,26 @@ export default function SiteHeader({ active }: Props) {
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center gap-2 text-sm font-semibold">
-            {navBtn("home", "Главная", "/")}
-            {navBtn("vacancy", (<><Briefcase className="w-4 h-4 text-[#E7C768]" /> Вакансии</>), "/vacancy")}
-            {navBtn("blog", (<><BookOpen className="w-4 h-4 text-[#E7C768]" /> Блог</>), "/blog")}
-            {navBtn("faq", (<><Sparkles className="w-4 h-4 text-[#E7C768]" /> Вики</>), "/faq")}
-            {navBtn("demo", "Демо-интервью", "/demo")}
+          <nav className="hidden md:flex items-center gap-1 lg:gap-2 text-sm font-semibold">
+            {navBtn("home",    (<><Home      className="w-4 h-4 text-[#E7C768]" /><span className="hidden lg:inline">Главная</span></>), "/")}
+            {navBtn("vacancy", (<><Briefcase className="w-4 h-4 text-[#E7C768]" /><span className="hidden lg:inline">Вакансии</span></>), "/vacancy")}
+            {navBtn("blog",    (<><BookOpen  className="w-4 h-4 text-[#E7C768]" /><span className="hidden lg:inline">Блог</span></>), "/blog")}
+            {navBtn("faq",     (<><Sparkles  className="w-4 h-4 text-[#E7C768]" /><span className="hidden lg:inline">Вики</span></>), "/faq")}
+            {navBtn("demo",    (<><Video     className="w-4 h-4 text-[#E7C768]" /><span className="hidden lg:inline">Демо-интервью</span></>), "/demo")}
           </nav>
 
           {isAuthed ? (
             <div className="hidden md:flex items-center gap-2">
-              <button onClick={() => navigate(profilePath)} className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
-                <LayoutDashboard className="w-4 h-4" /> Кабинет
+              <button onClick={() => navigate(profilePath)} aria-label="Кабинет" className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-3 lg:px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+                <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Кабинет</span>
               </button>
-              <button onClick={handleLogout} className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-4 py-2 rounded-xl transition">
-                <LogOut className="w-4 h-4" /> Выйти
+              <button onClick={handleLogout} aria-label="Выйти" className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold text-sm px-3 lg:px-4 py-2 rounded-xl transition">
+                <LogOut className="w-4 h-4" /> <span className="hidden lg:inline">Выйти</span>
               </button>
             </div>
           ) : (
-            <button onClick={() => setIsAuthModalOpen(true)} className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
-              <Chrome className="w-4 h-4" /> Войти через Google
+            <button onClick={() => setIsAuthModalOpen(true)} aria-label="Войти через Google" className="hidden md:inline-flex items-center gap-2 bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] text-white font-bold text-sm px-3 lg:px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
+              <Chrome className="w-4 h-4" /> <span className="hidden lg:inline">Войти через Google</span>
             </button>
           )}
 
