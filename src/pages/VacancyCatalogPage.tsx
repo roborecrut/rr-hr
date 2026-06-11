@@ -5,12 +5,12 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "../components/RouterContext";
-import RRImage from "@/components/RRImage";
 import SiteHeader from "@/components/SiteHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { useSeo, SITE_URL } from "@/lib/seo";
+import VacancyCard from "@/components/VacancyCard";
 import {
-  Search, Wallet, Clock, Building2, Filter, X, ArrowRight,
+  Search, Filter, X,
   Sparkles, Zap, Users,
 } from "lucide-react";
 
@@ -31,17 +31,7 @@ type Vac = {
   industry: string | null;
 };
 
-function summarize(text: string | null, max = 240): string {
-  if (!text) return "";
-  const clean = String(text).replace(/\s+/g, " ").trim();
-  return clean.length > max ? clean.slice(0, max - 1).trimEnd() + "…" : clean;
-}
-
-function firstLine(text: string | null | undefined): string | undefined {
-  if (!text) return undefined;
-  const l = String(text).split("\n").map((s) => s.replace(/^[•\-\s*]+/, "").trim()).find((s) => s.length > 0);
-  return l || undefined;
-}
+// Карточка вакансии вынесена в `@/components/VacancyCard`.
 
 export default function VacancyCatalogPage() {
   const { navigate } = useRouter();
@@ -175,7 +165,7 @@ export default function VacancyCatalogPage() {
     <div className="brand-editor min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white font-sans">
       <SiteHeader active="vacancy" />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
+      <main className="max-w-7xl mx-auto px-[3%] md:px-8 py-8 md:py-12">
         {/* Hero / search */}
         <section className="mb-8">
           <h1 className="text-3xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-[#F5D67A] via-[#E8B84E] to-[#C9933A] bg-clip-text text-transparent">
@@ -287,9 +277,9 @@ export default function VacancyCatalogPage() {
 
         {/* List */}
         {loading ? (
-          <div className="grid gap-3">
-            {[1,2,3,4].map((i) => (
-              <div key={i} className="h-32 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {[1,2,3,4,5,6].map((i) => (
+              <div key={i} className="h-44 rounded-2xl bg-white/5 border border-white/10 animate-pulse" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
@@ -300,64 +290,26 @@ export default function VacancyCatalogPage() {
             </button>
           </div>
         ) : (
-          <div className="grid gap-3">
-            {visible.map((v) => {
-              return (
-                <article
-                  key={v.id}
-                  onClick={() => openVacancy(v)}
-                  className="group cursor-pointer rounded-2xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 hover:border-[#E8B84E]/40 p-4 md:p-5 transition-all shadow-lg hover:shadow-[#E8B84E]/10"
-                >
-                  <div className="flex flex-col md:flex-row md:items-start gap-4">
-                    <div className="flex-shrink-0">
-                      {v.company_logo ? (
-                        <RRImage src={v.company_logo} w={64} alt={v.company_name} className="w-14 h-14 md:w-16 md:h-16 rounded-xl object-contain bg-white/10 p-1" />
-                      ) : (
-                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-gradient-to-br from-[#E8B84E]/30 to-[#C9933A]/30 flex items-center justify-center">
-                          <Building2 className="w-7 h-7 text-[#F5D67A]" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h2 className="text-lg md:text-xl font-semibold text-white group-hover:text-[#F5D67A] transition truncate">
-                            {v.role_name || "Без названия"}
-                          </h2>
-                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-sm text-white/70">
-                            <span className="inline-flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> {v.company_name}</span>
-                            {v.industry && <span className="inline-flex items-center gap-1 text-white/50">• {v.industry}</span>}
-                          </div>
-                        </div>
-                        <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-[#E8B84E] group-hover:translate-x-1 transition" />
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {firstLine(v.salary_terms) && (
-                          <span className="inline-flex items-center gap-1.5 text-xs md:text-sm px-2.5 py-1 rounded-lg bg-[#E8B84E]/15 text-[#F5D67A] border border-[#E8B84E]/20">
-                            <Wallet className="w-3.5 h-3.5" /> {firstLine(v.salary_terms)}
-                          </span>
-                        )}
-                        {firstLine(v.schedule_terms) && (
-                          <span className="inline-flex items-center gap-1.5 text-xs md:text-sm px-2.5 py-1 rounded-lg bg-white/10 text-white/80 border border-white/15">
-                            <Clock className="w-3.5 h-3.5" /> {firstLine(v.schedule_terms)}
-                          </span>
-                        )}
-                      </div>
-
-                      {v.vacancy_text && (
-                        <p className="mt-3 text-sm text-white/70 line-clamp-2">
-                          {summarize(v.vacancy_text, 220)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-            <div ref={sentinelRef} className="h-10" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+            {visible.map((v) => (
+              <VacancyCard
+                key={v.id}
+                vacancy={{
+                  id: v.id,
+                  roleName: v.role_name,
+                  companyName: v.company_name,
+                  companyLogo: v.company_logo,
+                  industry: v.industry,
+                  salaryTerms: v.salary_terms,
+                  scheduleTerms: v.schedule_terms,
+                  vacancyText: v.vacancy_text,
+                }}
+                onOpen={() => openVacancy(v)}
+              />
+            ))}
+            <div ref={sentinelRef} className="col-span-full h-10" />
             {visibleCount < filtered.length && (
-              <div className="text-center text-white/50 text-sm py-4">Загружаем ещё…</div>
+              <div className="col-span-full text-center text-white/50 text-sm py-4">Загружаем ещё…</div>
             )}
           </div>
         )}
