@@ -522,6 +522,9 @@ export default function EmployerPanel() {
 
   // Companies custom database state
   const [companiesList, setCompaniesList] = useState<any[]>([]);
+  // Onboarding: пошаговая активация разделов (#7)
+  const [hasTrainingSetup, setHasTrainingSetup] = useState(false);
+  const [hasInterviewSetup, setHasInterviewSetup] = useState(false);
   const [showAddCompany, setShowAddCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyIndustry, setNewCompanyIndustry] = useState("");
