@@ -522,6 +522,9 @@ export default function EmployerPanel() {
 
   // Companies custom database state
   const [companiesList, setCompaniesList] = useState<any[]>([]);
+  // Onboarding: пошаговая активация разделов (#7)
+  const [hasTrainingSetup, setHasTrainingSetup] = useState(false);
+  const [hasInterviewSetup, setHasInterviewSetup] = useState(false);
   const [showAddCompany, setShowAddCompany] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState("");
   const [newCompanyIndustry, setNewCompanyIndustry] = useState("");
@@ -1286,6 +1289,27 @@ export default function EmployerPanel() {
     })();
     return () => { cancelled = true; };
   }, [employerId, path, navigate, activeTab, authReady, authUserId]);
+
+  // Onboarding (#7): hasTrainingSetup / hasInterviewSetup на основе training_blocks / interview_blocks
+  // по всем вакансиям работодателя.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const projIds = projects.map((p: any) => p.id).filter(Boolean);
+      if (projIds.length === 0) {
+        if (!cancelled) { setHasTrainingSetup(false); setHasInterviewSetup(false); }
+        return;
+      }
+      const [tr, iv] = await Promise.all([
+        (supabase as any).from("training_blocks").select("id").in("project_id", projIds).limit(1),
+        (supabase as any).from("interview_blocks").select("id").in("project_id", projIds).limit(1),
+      ]);
+      if (cancelled) return;
+      setHasTrainingSetup((((tr as any).data as any[]) || []).length > 0);
+      setHasInterviewSetup((((iv as any).data as any[]) || []).length > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [projects]);
 
   // Load profile email for the authenticated user
   useEffect(() => {
@@ -2407,6 +2431,29 @@ export default function EmployerPanel() {
     );
   }
 
+  // Onboarding (#7): пошаговая активация разделов кабинета.
+  // Каждый шаг разблокирует следующий: 1) профиль → 2) компания → 3) вакансия → 4) обучение → 5) интервью.
+  const hasCompany = (companiesList?.length || 0) > 0;
+  const hasVacancy = (projects?.length || 0) > 0;
+  const setupStep = !hasCompany ? 2 : !hasVacancy ? 3 : !hasTrainingSetup ? 4 : !hasInterviewSetup ? 5 : 6;
+  const setupDone = setupStep === 6;
+  const tabDisabled = (key: "vacancies" | "training" | "interviews") => {
+    if (key === "vacancies")  return !hasCompany;
+    if (key === "training")   return !hasVacancy;
+    if (key === "interviews") return !hasTrainingSetup;
+    return false;
+  };
+  const tabHint = (key: "vacancies" | "training" | "interviews") => {
+    if (key === "vacancies"  && !hasCompany)        return "Сначала добавьте компанию в разделе «Мои Компании»";
+    if (key === "training"   && !hasVacancy)        return "Сначала создайте вакансию в разделе «Вакансии & ИИ»";
+    if (key === "interviews" && !hasTrainingSetup)  return "Сначала настройте систему обучения в разделе «Обучение»";
+    return "";
+  };
+  const guardedNavigate = (key: "vacancies" | "training" | "interviews", url: string) => {
+    if (tabDisabled(key)) { addAuditEvent("warning", "Шаг ещё не пройден", tabHint(key)); return; }
+    navigate(url);
+  };
+
   // Render content area based on six main tabs
   return (
     <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
@@ -2438,6 +2485,12 @@ export default function EmployerPanel() {
                 referrerPolicy="no-referrer"
                 className="hidden sm:block w-9 h-9 rounded-full object-cover border border-white/20"
               />
+            )}
+            {!setupDone && (
+              <div className="hidden md:flex flex-col items-end text-right">
+                <span className="text-[10px] uppercase tracking-wider text-slate-300">Онбординг</span>
+                <span className="text-xs font-bold text-[#E7C768]">Шаг {setupStep - 1} из 4</span>
+              </div>
             )}
             <div className="text-right hidden sm:block">
               <span className="text-xs block text-[#E7C768] font-bold">{googleName || profileName}</span>
@@ -2485,33 +2538,39 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/vacancies`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("vacancies", `/emp${employerId}/vacancies`)}
+                disabled={tabDisabled("vacancies")}
+                title={tabHint("vacancies")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("vacancies") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-[#D99E41]" /> 3. Вакансии & ИИ
                 </span>
-                <span className="text-[10px] bg-amber-900/50 text-amber-200 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("vacancies") ? "bg-slate-700/50 text-slate-400" : "bg-amber-900/50 text-amber-200"}`}>{tabDisabled("vacancies") ? "🔒" : "Шаг 3"}</span>
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/training`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("training", `/emp${employerId}/training`)}
+                disabled={tabDisabled("training")}
+                title={tabHint("training")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("training") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 4. Обучение (ИИ)
                 </span>
-                <span className="text-[10px] bg-emerald-900/50 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("training") ? "bg-slate-700/50 text-slate-400" : "bg-emerald-900/50 text-emerald-200"}`}>{tabDisabled("training") ? "🔒" : "Шаг 4"}</span>
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/interviews`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("interviews", `/emp${employerId}/interviews`)}
+                disabled={tabDisabled("interviews")}
+                title={tabHint("interviews")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("interviews") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 5. Интервью (ИИ)
                 </span>
-                <span className="text-[10px] bg-sky-900/50 text-sky-200 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("interviews") ? "bg-slate-700/50 text-slate-400" : "bg-sky-900/50 text-sky-200"}`}>{tabDisabled("interviews") ? "🔒" : "Шаг 5"}</span>
               </button>
 
               <div className="h-px bg-white/10 my-2"></div>
