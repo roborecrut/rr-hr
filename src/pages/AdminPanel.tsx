@@ -711,6 +711,23 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   };
   useEffect(() => { load(); }, []);
 
+  // Realtime: обновляем балансы и транзакции мгновенно
+  useEffect(() => {
+    const ch = supabase
+      .channel("admin-accounts-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "wallets" }, () => { load(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "transactions" }, (p: any) => {
+        setTxs((prev) => [p.new, ...prev].slice(0, 200));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "transactions" }, (p: any) => {
+        setTxs((prev) => prev.map((t) => (t.id === p.new.id ? p.new : t)));
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "employers" }, () => { load(); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const adjust = async (employerId: string, delta: number) => {
     const note = window.prompt(`Комментарий к ${delta > 0 ? "начислению" : "списанию"} ${Math.abs(delta)} RR:`, "Корректировка администратором");
     if (note === null) return;
