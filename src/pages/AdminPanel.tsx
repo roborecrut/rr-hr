@@ -135,6 +135,324 @@ const LIMIT_FIELDS: { key: string; label: string }[] = [
   { key: "training_credits",        label: "Обучения" },
 ];
 
+/* ============== Entity navigation (cross-links между клиент↔компании↔вакансии) ============== */
+
+type EntityKind = "employer" | "company" | "project";
+const EntityNavContext = React.createContext<{ openEntity: (kind: EntityKind, id: string) => void }>({
+  openEntity: () => {},
+});
+const useEntityNav = () => React.useContext(EntityNavContext);
+
+function EntityLink({ kind, id, children }: { kind: EntityKind; id?: string | null; children: React.ReactNode }) {
+  const { openEntity } = useEntityNav();
+  if (!id) return <span className="text-slate-500">{children || "—"}</span>;
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); openEntity(kind, id); }}
+      className="text-[#E7C768] hover:underline text-left truncate max-w-full"
+    >
+      {children}
+    </button>
+  );
+}
+
+function EntityModal({
+  entity, setToast, onClose,
+}: {
+  entity: { kind: EntityKind; id: string };
+  setToast: (t: any) => void;
+  onClose: () => void;
+}) {
+  const [row, setRow] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const table = entity.kind === "employer" ? "employers" : entity.kind === "company" ? "companies" : "projects";
+
+  const load = async () => {
+    setLoading(true);
+    let q: any;
+    if (entity.kind === "employer") {
+      const { data } = await supabase.rpc("admin_list_employers" as any);
+      q = ((data as any[]) || []).find((x: any) => x.id === entity.id) || null;
+    } else {
+      const { data } = await (supabase as any).from(table).select("*").eq("id", entity.id).maybeSingle();
+      q = data;
+    }
+    setRow(q);
+    setLoading(false);
+  };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [entity.kind, entity.id]);
+
+  const title =
+    entity.kind === "employer" ? `Клиент · ${row?.name || row?.email || ""}` :
+    entity.kind === "company"  ? `Компания · ${row?.name || ""}` :
+                                 `Вакансия · ${row?.role_name || ""}`;
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-[#E7C768]" />
+      </div>
+    );
+  }
+
+  return (
+    <DetailsModal
+      title={title}
+      data={row}
+      table={table}
+      labels={RU_LABELS[table]}
+      omitKeys={OMIT_KEYS[table]}
+      onClose={onClose}
+      onSaved={() => { load(); }}
+      extra={
+        <>
+          {entity.kind === "employer" && row && (
+            <ClientLimitsEditor row={row} setToast={setToast} onChanged={load} />
+          )}
+          {entity.kind === "employer" && row && <ClientLinkedTabs employerId={row.id} />}
+          {entity.kind === "company"  && row && <CompanyLinks companyId={row.id} ownerEmployerId={row.owner_employer_id} />}
+          {entity.kind === "project"  && row && <ProjectLinks employerId={row.employer_id} companyId={row.company_id} projectId={row.id} />}
+        </>
+      }
+    />
+  );
+}
+
+/* ============== Linked tabs для карточки клиента (#20) ============== */
+
+function ClientLinkedTabs({ employerId }: { employerId: string }) {
+  const [tab, setTab] = useState<"txs" | "companies" | "vacancies">("txs");
+  const [txs, setTxs] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [projMap, setProjMap] = useState<Record<string, any>>({});
+  const [coMap, setCoMap] = useState<Record<string, any>>({});
+  const [candMap, setCandMap] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    (async () => {
+      const [w, co, pr] = await Promise.all([
+        (supabase as any).from("wallets").select("id, employer_id").eq("employer_id", employerId),
+        (supabase as any).from("companies").select("id, name, public_id, status, is_published").eq("owner_employer_id", employerId),
+        (supabase as any).from("projects").select("id, role_name, public_id, status, is_published, company_id, created_at").eq("employer_id", employerId).order("created_at", { ascending: false }),
+      ]);
+      const wallets = ((w as any).data as any[]) || [];
+      setCompanies(((co as any).data as any[]) || []);
+      const ps = ((pr as any).data as any[]) || [];
+      setProjects(ps);
+      const pm: Record<string, any> = {}; ps.forEach((p) => { pm[p.id] = p; }); setProjMap(pm);
+      const cm: Record<string, any> = {}; (((co as any).data as any[]) || []).forEach((c) => { cm[c.id] = c; }); setCoMap(cm);
+
+      if (wallets.length) {
+        const { data: t } = await (supabase as any).from("transactions")
+          .select("*").in("wallet_id", wallets.map((x) => x.id))
+          .order("created_at", { ascending: false }).limit(200);
+        const list = ((t as any[]) || []);
+        setTxs(list);
+        // Подгружаем имена кандидатов из ref_id, где ref_table = candidates
+        const candIds = Array.from(new Set(list.filter((x) => x.ref_table === "candidates" && x.ref_id).map((x) => x.ref_id)));
+        if (candIds.length) {
+          const { data: cs } = await (supabase as any).from("candidates")
+            .select("id, public_id, full_name, email, project_id").in("id", candIds);
+          const cmap: Record<string, any> = {};
+          (((cs as any[]) || [])).forEach((c) => { cmap[c.id] = c; });
+          setCandMap(cmap);
+        }
+      }
+    })();
+  }, [employerId]);
+
+  return (
+    <div className="mt-4 border-t border-white/10 pt-4">
+      <div className="flex gap-1 mb-3">
+        {[
+          { k: "txs", l: `Транзакции (${txs.length})` },
+          { k: "companies", l: `Компании (${companies.length})` },
+          { k: "vacancies", l: `Вакансии (${projects.length})` },
+        ].map((x) => (
+          <button key={x.k} onClick={() => setTab(x.k as any)}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold ${tab === x.k ? "bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/40" : "bg-white/5 text-slate-300 border border-white/10"}`}>
+            {x.l}
+          </button>
+        ))}
+      </div>
+      {tab === "txs" && (
+        <div className="max-h-80 overflow-y-auto bg-[#17344F]/40 border border-white/10 rounded-xl">
+          <table className="w-full text-[11px]">
+            <thead className="bg-[#17344F] text-[#E7C768] text-[10px] uppercase font-mono sticky top-0">
+              <tr><th className="p-2 text-left">Дата</th><th className="p-2 text-left">Тип</th><th className="p-2 text-right">RR</th><th className="p-2 text-left">Назначение</th></tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {txs.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">Нет транзакций</td></tr>}
+              {txs.map((t) => {
+                let target: React.ReactNode = t.note || "—";
+                if (t.ref_table === "projects" && t.ref_id && projMap[t.ref_id]) {
+                  target = <EntityLink kind="project" id={t.ref_id}>Вакансия: {projMap[t.ref_id].role_name || `#${projMap[t.ref_id].public_id}`}</EntityLink>;
+                } else if (t.ref_table === "candidates" && t.ref_id && candMap[t.ref_id]) {
+                  const c = candMap[t.ref_id];
+                  const proj = projMap[c.project_id];
+                  target = (
+                    <span>
+                      {c.full_name || c.email || `#${c.public_id}`}
+                      {proj && <> · <EntityLink kind="project" id={proj.id}>{proj.role_name}</EntityLink></>}
+                    </span>
+                  );
+                }
+                return (
+                  <tr key={t.id} className="hover:bg-white/5">
+                    <td className="p-2 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
+                    <td className="p-2">{t.type}</td>
+                    <td className="p-2 text-right font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
+                    <td className="p-2 text-slate-200">
+                      <div className="truncate max-w-[300px]" title={t.note || ""}>{target}</div>
+                      {t.note && (typeof target === "string" || (target as any)?.type !== EntityLink) && (
+                        <div className="text-[10px] text-slate-400 truncate max-w-[300px]">{t.note}</div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {tab === "companies" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {companies.length === 0 && <div className="col-span-full text-center py-6 text-slate-400 text-xs">Нет компаний</div>}
+          {companies.map((c) => (
+            <div key={c.id} className="bg-[#17344F]/60 border border-white/10 rounded-xl p-3">
+              <EntityLink kind="company" id={c.id}><span className="font-bold">{c.name || `Компания #${c.public_id}`}</span></EntityLink>
+              <div className="text-[10px] text-slate-400 font-mono">#{c.public_id} · {c.is_published ? "опубл." : c.status}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab === "vacancies" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {projects.length === 0 && <div className="col-span-full text-center py-6 text-slate-400 text-xs">Нет вакансий</div>}
+          {projects.map((p) => (
+            <div key={p.id} className="bg-[#17344F]/60 border border-white/10 rounded-xl p-3">
+              <EntityLink kind="project" id={p.id}><span className="font-bold">{p.role_name || `Вакансия #${p.public_id}`}</span></EntityLink>
+              <div className="text-[10px] text-slate-400">
+                #{p.public_id} · {p.is_published ? "опубл." : p.status}
+                {coMap[p.company_id] && <> · <EntityLink kind="company" id={p.company_id}>{coMap[p.company_id].name}</EntityLink></>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CompanyLinks({ companyId, ownerEmployerId }: { companyId: string; ownerEmployerId?: string | null }) {
+  const [projects, setProjects] = useState<any[]>([]);
+  useEffect(() => {
+    (async () => {
+      const { data } = await (supabase as any).from("projects").select("id, role_name, public_id, status, is_published").eq("company_id", companyId).order("created_at", { ascending: false });
+      setProjects((data as any[]) || []);
+    })();
+  }, [companyId]);
+  return (
+    <div className="mt-4 border-t border-white/10 pt-4 space-y-3">
+      {ownerEmployerId && (
+        <div className="text-xs text-slate-300">Владелец: <EntityLink kind="employer" id={ownerEmployerId}>открыть карточку клиента →</EntityLink></div>
+      )}
+      <div>
+        <div className="text-[11px] font-bold text-[#E7C768] mb-2">Вакансии этой компании ({projects.length})</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {projects.map((p) => (
+            <div key={p.id} className="bg-[#17344F]/60 border border-white/10 rounded-xl p-3">
+              <EntityLink kind="project" id={p.id}><span className="font-bold">{p.role_name || `#${p.public_id}`}</span></EntityLink>
+              <div className="text-[10px] text-slate-400">#{p.public_id} · {p.is_published ? "опубл." : p.status}</div>
+            </div>
+          ))}
+          {projects.length === 0 && <div className="text-xs text-slate-400 col-span-full">Нет вакансий</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProjectLinks({ employerId, companyId, projectId }: { employerId?: string | null; companyId?: string | null; projectId: string }) {
+  const [emp, setEmp] = useState<any | null>(null);
+  const [co, setCo] = useState<any | null>(null);
+  useEffect(() => {
+    (async () => {
+      if (employerId) {
+        const { data } = await (supabase as any).from("employers").select("id, name, email, public_id").eq("id", employerId).maybeSingle();
+        setEmp(data);
+      }
+      if (companyId) {
+        const { data } = await (supabase as any).from("companies").select("id, name, public_id").eq("id", companyId).maybeSingle();
+        setCo(data);
+      }
+    })();
+  }, [employerId, companyId]);
+  return (
+    <div className="mt-4 border-t border-white/10 pt-4 space-y-2 text-xs">
+      {emp && <div>Клиент: <EntityLink kind="employer" id={emp.id}>{emp.name || emp.email}</EntityLink></div>}
+      {co  && <div>Компания: <EntityLink kind="company" id={co.id}>{co.name}</EntityLink></div>}
+    </div>
+  );
+}
+
+/* ============== Companies list section (#6 — поиск по названию) ============== */
+
+function CompaniesListSection() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const { openEntity } = useEntityNav();
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any).from("companies")
+      .select("id, name, public_id, industry, status, is_published, owner_employer_id, created_at")
+      .order("created_at", { ascending: false }).limit(500);
+    setRows((data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const filtered = rows.filter((r) => !search ||
+    (r.name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.public_id || "").toLowerCase().includes(search.toLowerCase()) ||
+    (r.industry || "").toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-[#E7C768]">Компании — {rows.length}</h2>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по названию / отрасли / ID…"
+          className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
+      </div>
+      {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {filtered.map((r) => (
+            <div key={r.id} onClick={() => openEntity("company", r.id)}
+              className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-white truncate">{r.name || `Компания #${r.public_id}`}</div>
+                  <div className="text-[11px] text-slate-300 truncate">{r.industry || "—"}</div>
+                  <div className="text-[10px] text-slate-500 font-mono">#{r.public_id}</div>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${r.is_published ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-500/20 text-slate-300"}`}>
+                  {r.is_published ? "опубл." : r.status || "draft"}
+                </span>
+              </div>
+            </div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">Ничего не найдено</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ClientLimitsEditor({
   row, onChanged, setToast,
 }: { row: any; onChanged: () => void; setToast: (t: any) => void }) {
@@ -217,6 +535,11 @@ export default function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [section, setSection] = useState<SectionKey>("clients");
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [entityStack, setEntityStack] = useState<{ kind: "employer" | "company" | "project"; id: string }[]>([]);
+  const openEntity = (kind: "employer" | "company" | "project", id: string) => {
+    setEntityStack((s) => [...s, { kind, id }]);
+  };
+  const closeEntity = () => setEntityStack((s) => s.slice(0, -1));
 
   // Access gate
   useEffect(() => {
@@ -333,9 +656,10 @@ export default function AdminPanel() {
         </aside>
 
         <section className="lg:col-span-10 space-y-4">
+          <EntityNavContext.Provider value={{ openEntity }}>
           {section === "clients"    && <ClientsSection setToast={setToast} />}
           {section === "candidates" && <CandidatesSection />}
-          {section === "companies"  && <SimpleTable table="companies"   title="Компании" />}
+          {section === "companies"  && <CompaniesListSection />}
           {section === "vacancies"  && <VacanciesAnalyticsSection />}
           {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
           {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
@@ -346,6 +670,14 @@ export default function AdminPanel() {
           {section === "logs"       && <LogsSection />}
           {section === "ai"         && <AISection />}
           {section === "reviews"    && <ReviewsSection setToast={setToast} />}
+          {entityStack.length > 0 && (
+            <EntityModal
+              entity={entityStack[entityStack.length - 1]}
+              setToast={setToast}
+              onClose={closeEntity}
+            />
+          )}
+          </EntityNavContext.Provider>
         </section>
       </main>
     </div>
@@ -359,7 +691,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
   const [view, setView] = useState<"kanban" | "table">("kanban");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<any | null>(null);
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
@@ -419,7 +751,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 </div>
                 <div className="space-y-2 mt-2">
                   {items.length === 0 ? <div className="text-center py-6 text-slate-500 text-[11px]">Пусто</div> : items.map((r) => (
-                    <div key={r.id} onClick={() => setSelected(r)}
+                    <div key={r.id} onClick={() => openEntity("employer", r.id)}
                       className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl cursor-pointer transition">
                       <div className="text-xs font-bold text-[#E7C768] truncate">{r.name || r.email || `Emp #${r.public_id}`}</div>
                       <div className="text-[10px] text-slate-300 truncate">{r.email}</div>
@@ -449,7 +781,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
                 {filtered.map((r) => {
                   const cls = classifyClient(r);
                   return (
-                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
+                    <tr key={r.id} className="hover:bg-white/5 cursor-pointer" onClick={() => openEntity("employer", r.id)}>
                       <td className="p-3 font-mono text-slate-400">{r.public_id}</td>
                       <td className="p-3"><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
                       <td className="p-3 text-[10px]">{r.contact_phone || "—"} {r.contact_telegram && `· ${r.contact_telegram}`}</td>
@@ -466,18 +798,6 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
         </div>
       )}
-      <DetailsModal
-        title={`Клиент · ${selected?.name || selected?.email || ""}`}
-        data={selected}
-        table="employers"
-        labels={RU_LABELS.employers}
-        omitKeys={OMIT_KEYS.employers}
-        extra={selected && (
-          <ClientLimitsEditor row={selected} setToast={setToast} onChanged={load} />
-        )}
-        onClose={() => setSelected(null)}
-        onSaved={() => { setSelected(null); load(); }}
-      />
     </div>
   );
 }
@@ -695,18 +1015,24 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [txs, setTxs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedRow, setSelectedRow] = useState<any | null>(null);
   const [selectedTx, setSelectedTx] = useState<any | null>(null);
+  const [search, setSearch] = useState("");
+  const [walletMap, setWalletMap] = useState<Record<string, string>>({});
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
-    const [emp, t] = await Promise.all([
+    const [emp, t, w] = await Promise.all([
       supabase.rpc("admin_list_employers" as any),
       (supabase as any).from("transactions").select("*").order("created_at", { ascending: false }).limit(200),
+      (supabase as any).from("wallets").select("id, employer_id"),
     ]);
     if ((emp as any).error) setToast({ kind: "err", text: (emp as any).error.message });
     setRows(((emp as any).data as any[]) || []);
     setTxs(((t as any).data as any[]) || []);
+    const wmap: Record<string, string> = {};
+    (((w as any).data as any[]) || []).forEach((x: any) => { wmap[x.id] = x.employer_id; });
+    setWalletMap(wmap);
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
@@ -736,10 +1062,32 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
     else { setToast({ kind: "ok", text: "Баланс обновлён" }); load(); }
   };
 
+  const empById = useMemo(() => {
+    const m: Record<string, any> = {};
+    rows.forEach((r) => { m[r.id] = r; });
+    return m;
+  }, [rows]);
+
+  const enrichedTxs = useMemo(() => txs.map((t) => {
+    const empId = walletMap[t.wallet_id];
+    const emp = empId ? empById[empId] : null;
+    return { ...t, _emp_id: empId, _emp_name: emp?.name || "", _emp_email: emp?.email || "" };
+  }), [txs, walletMap, empById]);
+
+  const filteredTxs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return enrichedTxs;
+    return enrichedTxs.filter((t) =>
+      (t._emp_name || "").toLowerCase().includes(q) ||
+      (t._emp_email || "").toLowerCase().includes(q) ||
+      (t.note || "").toLowerCase().includes(q) ||
+      (t.type || "").toLowerCase().includes(q));
+  }, [enrichedTxs, search]);
+
   return (
     <div className="space-y-4">
       <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
-        <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы</h2>
+        <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы <span className="text-[10px] text-emerald-300 ml-2">● live</span></h2>
       </div>
       {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
         <>
@@ -752,9 +1100,9 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 <tbody className="divide-y divide-white/5">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-white/5">
-                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => setSelectedRow(r)}>{r.public_id}</td>
-                      <td className="p-3 cursor-pointer" onClick={() => setSelectedRow(r)}><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
-                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => setSelectedRow(r)}>{r.balance}</td>
+                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => openEntity("employer", r.id)}>{r.public_id}</td>
+                      <td className="p-3 cursor-pointer" onClick={() => openEntity("employer", r.id)}><div className="font-bold text-[#E7C768]">{r.name || r.email || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => openEntity("employer", r.id)}>{r.balance}</td>
                       <td className="p-3 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {[100, 500, 1000].map((d) => (
                           <React.Fragment key={d}>
@@ -771,36 +1119,40 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
 
           <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
-            <h3 className="text-sm font-bold text-[#E7C768] mb-3">Последние транзакции</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-sm font-bold text-[#E7C768]">Последние транзакции — {filteredTxs.length}</h3>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по клиенту / email / заметке…"
+                className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
+            </div>
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full text-left text-[11px]">
                 <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
-                  <tr><th className="p-2.5">Дата</th><th className="p-2.5">Тип</th><th className="p-2.5">Сумма</th><th className="p-2.5">Кошелёк</th><th className="p-2.5">Заметка</th></tr>
+                  <tr><th className="p-2.5">Дата</th><th className="p-2.5">Клиент</th><th className="p-2.5">Email</th><th className="p-2.5">Тип</th><th className="p-2.5">Сумма</th><th className="p-2.5">Заметка</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {txs.map((t) => (
+                  {filteredTxs.map((t) => (
                     <tr key={t.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelectedTx(t)}>
                       <td className="p-2.5 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
+                      <td className="p-2.5" onClick={(e) => e.stopPropagation()}>
+                        {t._emp_id ? (
+                          <EntityLink kind="employer" id={t._emp_id}>{t._emp_name || t._emp_email || "—"}</EntityLink>
+                        ) : <span className="text-slate-500">—</span>}
+                      </td>
+                      <td className="p-2.5 text-slate-300 text-[10px]">{t._emp_email || "—"}</td>
                       <td className="p-2.5">{t.type}</td>
                       <td className="p-2.5 font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
-                      <td className="p-2.5 font-mono text-[10px] text-slate-400">{(t.wallet_id || "").slice(0, 8)}</td>
-                      <td className="p-2.5">{t.note}</td>
+                      <td className="p-2.5 max-w-[320px] truncate" title={t.note || ""}>{t.note}</td>
                     </tr>
                   ))}
+                  {filteredTxs.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-center text-slate-400">Нет транзакций</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </>
       )}
-      <DetailsModal
-        title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`}
-        data={selectedRow}
-        table="employers"
-        labels={RU_LABELS.employers}
-        omitKeys={OMIT_KEYS.employers}
-        onClose={() => setSelectedRow(null)}
-      />
       <DetailsModal
         title="Транзакция"
         data={selectedTx}
@@ -820,7 +1172,7 @@ function VacanciesAnalyticsSection() {
   const [progress, setProgress] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<any | null>(null);
+  const { openEntity } = useEntityNav();
 
   const load = async () => {
     setLoading(true);
@@ -910,7 +1262,7 @@ function VacanciesAnalyticsSection() {
             const st = stats[p.id] || { registrations: 0, screening: 0, checklist: 0, situations: 0, training: 0, sumScore: 0, scoreCount: 0 };
             const avg = st.scoreCount > 0 ? Math.round(st.sumScore / st.scoreCount) : null;
             return (
-              <div key={p.id} onClick={() => setSelected(p)}
+              <div key={p.id} onClick={() => openEntity("project", p.id)}
                 className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
@@ -947,14 +1299,6 @@ function VacanciesAnalyticsSection() {
           )}
         </div>
       )}
-      <DetailsModal
-        title={`Вакансия · ${selected?.role_name || ""}`}
-        data={selected}
-        table="projects"
-        labels={RU_LABELS.projects}
-        omitKeys={OMIT_KEYS.projects}
-        onClose={() => setSelected(null)}
-      />
     </div>
   );
 }
