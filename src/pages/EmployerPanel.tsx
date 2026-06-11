@@ -27,6 +27,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import { useAIWait } from "../components/AIWaitProvider";
+import { ruField } from "@/lib/fieldLabels";
 import { useAIReady } from "../lib/aiReady";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
@@ -566,7 +567,7 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
       const newVal = await aiWaitRun({
-        title: `ИИ улучшает поле «${fieldName}»`,
+        title: `ИИ улучшает поле «${ruField(fieldName)}»`,
         task: () => aiEnhanceSingle({
           field: fieldName,
           value: currentVal,
@@ -1657,7 +1658,7 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
       const value = await aiWaitRun({
-        title: `ИИ улучшает поле «${fieldName}»`,
+        title: `ИИ улучшает поле «${ruField(fieldName)}»`,
         task: () => aiEnhanceSingle({
           field: fieldName,
           value: currentVal,
@@ -2176,7 +2177,7 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
       const value = await aiWaitRun({
-        title: `ИИ улучшает поле «${fieldName}»`,
+        title: `ИИ улучшает поле «${ruField(fieldName)}»`,
         task: () => aiEnhanceSingle({
           field: fieldName,
           value: currentVal,
@@ -2341,7 +2342,7 @@ export default function EmployerPanel() {
     try {
       const { aiEnhanceSingle } = await import("@/lib/aiClient");
       const value = await aiWaitRun({
-        title: `ИИ улучшает раздел «${fieldName}»`,
+        title: `ИИ улучшает раздел «${ruField(fieldName)}»`,
         task: () => aiEnhanceSingle({
           field: fieldName,
           value: currentVal,
