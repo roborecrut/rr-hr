@@ -2538,33 +2538,39 @@ export default function EmployerPanel() {
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/vacancies`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("vacancies", `/emp${employerId}/vacancies`)}
+                disabled={tabDisabled("vacancies")}
+                title={tabHint("vacancies")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("vacancies") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <Briefcase className="w-4 h-4 text-[#D99E41]" /> 3. Вакансии & ИИ
                 </span>
-                <span className="text-[10px] bg-amber-900/50 text-amber-200 px-1.5 py-0.5 rounded font-mono">Шаг 3</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("vacancies") ? "bg-slate-700/50 text-slate-400" : "bg-amber-900/50 text-amber-200"}`}>{tabDisabled("vacancies") ? "🔒" : "Шаг 3"}</span>
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/training`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("training", `/emp${employerId}/training`)}
+                disabled={tabDisabled("training")}
+                title={tabHint("training")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("training") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <GraduationCap className="w-4 h-4 text-[#D99E41]" /> 4. Обучение (ИИ)
                 </span>
-                <span className="text-[10px] bg-emerald-900/50 text-emerald-200 px-1.5 py-0.5 rounded font-mono">Шаг 4</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("training") ? "bg-slate-700/50 text-slate-400" : "bg-emerald-900/50 text-emerald-200"}`}>{tabDisabled("training") ? "🔒" : "Шаг 4"}</span>
               </button>
 
               <button
-                onClick={() => navigate(`/emp${employerId}/interviews`)}
-                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
+                onClick={() => guardedNavigate("interviews", `/emp${employerId}/interviews`)}
+                disabled={tabDisabled("interviews")}
+                title={tabHint("interviews")}
+                className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("interviews") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#D99E41]" /> 5. Интервью (ИИ)
                 </span>
-                <span className="text-[10px] bg-sky-900/50 text-sky-200 px-1.5 py-0.5 rounded font-mono">Шаг 5</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${tabDisabled("interviews") ? "bg-slate-700/50 text-slate-400" : "bg-sky-900/50 text-sky-200"}`}>{tabDisabled("interviews") ? "🔒" : "Шаг 5"}</span>
               </button>
 
               <div className="h-px bg-white/10 my-2"></div>
