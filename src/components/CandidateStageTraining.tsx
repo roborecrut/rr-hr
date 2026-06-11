@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import Reveal from "@/components/Reveal";
+import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
@@ -45,6 +46,7 @@ export default function CandidateStageTraining({
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [lastResult, setLastResult] = useState<{ score: number; passed: boolean; per_question: any[] } | null>(null);
+  const [pausedOpen, setPausedOpen] = useState(false);
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -141,8 +143,13 @@ export default function CandidateStageTraining({
       // повторные тесты ничего не списывают.
       if (active === "professional") {
         try {
-          await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
+          const { error: spErr } = await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
+          if (spErr && isVacancyPausedError(spErr)) {
+            setPausedOpen(true);
+            return;
+          }
         } catch (e) {
+          if (isVacancyPausedError(e)) { setPausedOpen(true); return; }
           console.warn("spend_pack(training) failed", e);
         }
       }
@@ -151,7 +158,8 @@ export default function CandidateStageTraining({
       setMode("result");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
     } catch (e: any) {
-      alert("Ошибка проверки: " + (e?.message || ""));
+      if (isVacancyPausedError(e)) setPausedOpen(true);
+      else alert("Ошибка проверки: " + (e?.message || ""));
     } finally { setChecking(false); }
   };
 
