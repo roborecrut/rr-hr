@@ -1074,10 +1074,32 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
     else { setToast({ kind: "ok", text: "Баланс обновлён" }); load(); }
   };
 
+  const empById = useMemo(() => {
+    const m: Record<string, any> = {};
+    rows.forEach((r) => { m[r.id] = r; });
+    return m;
+  }, [rows]);
+
+  const enrichedTxs = useMemo(() => txs.map((t) => {
+    const empId = walletMap[t.wallet_id];
+    const emp = empId ? empById[empId] : null;
+    return { ...t, _emp_id: empId, _emp_name: emp?.name || "", _emp_email: emp?.email || "" };
+  }), [txs, walletMap, empById]);
+
+  const filteredTxs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return enrichedTxs;
+    return enrichedTxs.filter((t) =>
+      (t._emp_name || "").toLowerCase().includes(q) ||
+      (t._emp_email || "").toLowerCase().includes(q) ||
+      (t.note || "").toLowerCase().includes(q) ||
+      (t.type || "").toLowerCase().includes(q));
+  }, [enrichedTxs, search]);
+
   return (
     <div className="space-y-4">
       <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
-        <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы</h2>
+        <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы <span className="text-[10px] text-emerald-300 ml-2">● live</span></h2>
       </div>
       {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
         <>
@@ -1090,9 +1112,9 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
                 <tbody className="divide-y divide-white/5">
                   {rows.map((r) => (
                     <tr key={r.id} className="hover:bg-white/5">
-                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => setSelectedRow(r)}>{r.public_id}</td>
-                      <td className="p-3 cursor-pointer" onClick={() => setSelectedRow(r)}><div className="font-bold">{r.name || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
-                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => setSelectedRow(r)}>{r.balance}</td>
+                      <td className="p-3 font-mono text-slate-400 cursor-pointer" onClick={() => openEntity("employer", r.id)}>{r.public_id}</td>
+                      <td className="p-3 cursor-pointer" onClick={() => openEntity("employer", r.id)}><div className="font-bold text-[#E7C768]">{r.name || r.email || "—"}</div><div className="text-[10px] text-slate-400">{r.email}</div></td>
+                      <td className="p-3 font-mono text-[#E7C768] font-bold cursor-pointer" onClick={() => openEntity("employer", r.id)}>{r.balance}</td>
                       <td className="p-3 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                         {[100, 500, 1000].map((d) => (
                           <React.Fragment key={d}>
@@ -1109,36 +1131,40 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
           </div>
 
           <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
-            <h3 className="text-sm font-bold text-[#E7C768] mb-3">Последние транзакции</h3>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h3 className="text-sm font-bold text-[#E7C768]">Последние транзакции — {filteredTxs.length}</h3>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по клиенту / email / заметке…"
+                className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
+            </div>
             <div className="overflow-x-auto max-h-96 overflow-y-auto">
               <table className="w-full text-left text-[11px]">
                 <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
-                  <tr><th className="p-2.5">Дата</th><th className="p-2.5">Тип</th><th className="p-2.5">Сумма</th><th className="p-2.5">Кошелёк</th><th className="p-2.5">Заметка</th></tr>
+                  <tr><th className="p-2.5">Дата</th><th className="p-2.5">Клиент</th><th className="p-2.5">Email</th><th className="p-2.5">Тип</th><th className="p-2.5">Сумма</th><th className="p-2.5">Заметка</th></tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {txs.map((t) => (
+                  {filteredTxs.map((t) => (
                     <tr key={t.id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelectedTx(t)}>
                       <td className="p-2.5 text-slate-400">{t.created_at ? new Date(t.created_at).toLocaleString() : ""}</td>
+                      <td className="p-2.5" onClick={(e) => e.stopPropagation()}>
+                        {t._emp_id ? (
+                          <EntityLink kind="employer" id={t._emp_id}>{t._emp_name || t._emp_email || "—"}</EntityLink>
+                        ) : <span className="text-slate-500">—</span>}
+                      </td>
+                      <td className="p-2.5 text-slate-300 text-[10px]">{t._emp_email || "—"}</td>
                       <td className="p-2.5">{t.type}</td>
                       <td className="p-2.5 font-mono font-bold text-[#E7C768]">{t.amount_rr}</td>
-                      <td className="p-2.5 font-mono text-[10px] text-slate-400">{(t.wallet_id || "").slice(0, 8)}</td>
-                      <td className="p-2.5">{t.note}</td>
+                      <td className="p-2.5 max-w-[320px] truncate" title={t.note || ""}>{t.note}</td>
                     </tr>
                   ))}
+                  {filteredTxs.length === 0 && (
+                    <tr><td colSpan={6} className="p-6 text-center text-slate-400">Нет транзакций</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </>
       )}
-      <DetailsModal
-        title={`Клиент · ${selectedRow?.name || selectedRow?.email || ""}`}
-        data={selectedRow}
-        table="employers"
-        labels={RU_LABELS.employers}
-        omitKeys={OMIT_KEYS.employers}
-        onClose={() => setSelectedRow(null)}
-      />
       <DetailsModal
         title="Транзакция"
         data={selectedTx}
