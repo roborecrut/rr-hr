@@ -2486,6 +2486,12 @@ export default function EmployerPanel() {
                 className="hidden sm:block w-9 h-9 rounded-full object-cover border border-white/20"
               />
             )}
+            {!setupDone && (
+              <div className="hidden md:flex flex-col items-end text-right">
+                <span className="text-[10px] uppercase tracking-wider text-slate-300">Онбординг</span>
+                <span className="text-xs font-bold text-[#E7C768]">Шаг {setupStep - 1} из 4</span>
+              </div>
+            )}
             <div className="text-right hidden sm:block">
               <span className="text-xs block text-[#E7C768] font-bold">{googleName || profileName}</span>
               <span className="text-[10px] block text-slate-300 font-mono">ID: {employerId}</span>
