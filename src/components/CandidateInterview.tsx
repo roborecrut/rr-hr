@@ -7,6 +7,7 @@ import { getCandidateSession } from "@/lib/candidateSession";
 import { aiRestart } from "@/lib/aiClient";
 import { useAIReady, waitForAIReady } from "@/lib/aiReady";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
+import RichMarkdown from "@/components/RichMarkdown";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
@@ -319,7 +320,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           {resumeResult ? (
             <div className="space-y-3">
               <div className="text-3xl font-extrabold text-emerald-300">{resumeResult.score}/100</div>
-              <p className="text-sm text-white whitespace-pre-wrap">{resumeResult.summary}</p>
+              <div className="text-sm text-white"><RichMarkdown tone="resume">{resumeResult.summary || ""}</RichMarkdown></div>
               {resumeResult.strengths?.length > 0 && (<div><div className="text-xs text-emerald-300 font-bold uppercase">Сильные стороны</div><ul className="text-sm text-slate-200 list-disc pl-5">{resumeResult.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul></div>)}
               {resumeResult.gaps?.length > 0 && (<div><div className="text-xs text-amber-300 font-bold uppercase">Что улучшить</div><ul className="text-sm text-slate-200 list-disc pl-5">{resumeResult.gaps.map((s, i) => <li key={i}>{s}</li>)}</ul></div>)}
               <div className="flex gap-2">
@@ -364,9 +365,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                   >
                     Редактировать
                   </button>
-                  <div className="prose prose-invert prose-sm max-w-none text-white prose-headings:text-[#E7C768] prose-strong:text-white prose-a:text-[#E7C768]">
-                    <EmbeddedMarkdown>{resumeText}</EmbeddedMarkdown>
-                  </div>
+                  <RichMarkdown tone="resume">{resumeText}</RichMarkdown>
                 </div>
               ) : (
                 <>
@@ -517,7 +516,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               {situations.map((s, i) => (
                 <div key={s.id} className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
                   <div className="text-sm text-[#E7C768] font-bold">Ситуация #{i+1}: {s.title}</div>
-                  <div className="text-sm text-slate-200 whitespace-pre-wrap">{s.brief}</div>
+                  <div className="text-sm text-slate-200"><RichMarkdown tone="chat">{s.brief}</RichMarkdown></div>
                   <textarea value={sitAnswers[s.id] || ""} onChange={e => setSitAnswers({ ...sitAnswers, [s.id]: e.target.value })} rows={4} placeholder="Ваш ответ..." className="w-full bg-black/30 text-white border border-white/10 rounded px-2 py-1 text-sm" />
                 </div>
               ))}

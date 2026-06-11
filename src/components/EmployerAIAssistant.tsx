@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, X, Sparkles } from "lucide-react";
 import Mascot from "./Mascot";
-import Markdown from "react-markdown";
+import RichMarkdown from "@/components/RichMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ChatMessage {
@@ -238,7 +238,7 @@ export default function EmployerAIAssistant() {
                       }`}
                     >
                       <div className="markdown-body">
-                        <Markdown>{m.text}</Markdown>
+                        <RichMarkdown tone="chat">{m.text}</RichMarkdown>
                       </div>
                     </div>
                     <span className="text-[8px] text-slate-400 font-mono mt-1 block px-1">

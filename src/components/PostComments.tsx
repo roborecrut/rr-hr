@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import PostReactions from "@/components/PostReactions";
 import { MessageSquare, Send, Trash2, Reply } from "lucide-react";
+import RichMarkdown from "@/components/RichMarkdown";
 
 type Comment = {
   id: string;
@@ -82,7 +83,9 @@ export default function PostComments({ postId, userId, onRequireLogin }: {
           </button>
         )}
       </div>
-      <div className="text-sm text-slate-100 whitespace-pre-wrap break-words">{c.body}</div>
+      <div className="text-sm text-slate-100 break-words">
+        <RichMarkdown tone="chat">{c.body}</RichMarkdown>
+      </div>
       <div className="mt-2 flex items-center gap-2">
         <PostReactions commentId={c.id} userId={userId} onRequireLogin={onRequireLogin} />
         {!isReply && (
