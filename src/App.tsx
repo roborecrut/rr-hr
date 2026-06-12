@@ -21,6 +21,7 @@ import { PaymentSuccessPage, PaymentFailPage } from "./pages/PaymentResultPage";
 import SegmentDispatcher from "./components/SegmentDispatcher";
 import SessionBootstrap from "./components/SessionBootstrap";
 import CacheResetGuard from "./components/CacheResetGuard";
+import AppVersionGuard from "./components/AppVersionGuard";
 import { AIWaitProvider } from "./components/AIWaitProvider";
 import { AIRestartGate } from "./components/AIRestartGate";
 
@@ -30,6 +31,7 @@ export default function App() {
       <AIWaitProvider>
         <SessionBootstrap />
         <CacheResetGuard />
+        <AppVersionGuard />
         <AIRestartGate />
         <Routes>
         <Route path="/" element={<LandingPage />} />
