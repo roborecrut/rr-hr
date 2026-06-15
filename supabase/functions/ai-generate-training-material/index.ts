@@ -2,6 +2,7 @@
 // Saves materials_md + ai_generated_at on training_blocks. Returns { text, block_id }.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerForProject } from "../_shared/auth.ts";
 
 const BLOCK_TITLES: Record<string, string> = {
   professional: "Профессиональные знания и навыки",
@@ -19,6 +20,9 @@ Deno.serve(async (req) => {
     project_id: string; block_key: string; source_text?: string;
   };
   if (!body?.project_id || !body?.block_key) return jsonResponse({ error: "bad_body" }, 400);
+
+  const guard = await requireEmployerForProject(req, body.project_id);
+  if (guard instanceof Response) return guard;
   if (!BLOCK_TITLES[body.block_key]) return jsonResponse({ error: "bad_block_key" }, 400);
 
   const admin = getAdminClient();
