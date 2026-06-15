@@ -177,7 +177,9 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
           title: "Генерация чек-листа интервью",
           task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId, wishes: wishes.checklist || undefined }),
           fallback: {
-            viewerAllowed: employerPublicId === "100006",
+            // Пилот резерва завершён — кнопка доступна всем работодателям
+            // при технических сбоях основной нейросети.
+            viewerAllowed: true,
             onSuccess: async () => {
               const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
               setChecklist((data as any)?.payload?.questions || []);
