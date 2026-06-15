@@ -324,6 +324,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             state.lastErrorFallbackAvailable &&
             !!state.lastErrorJobId
           }
+          fallbackBusy={state.fallbackBusy}
           onFallback={handleFallback}
           onRetry={handleRetry}
           onCancel={handleCancel}
@@ -342,13 +343,14 @@ interface OverlayProps {
   error: string;
   autoCloseOnSuccess: boolean;
   showFallback: boolean;
+  fallbackBusy: boolean;
   onFallback: () => void;
   onRetry: () => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, onFallback, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
