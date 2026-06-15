@@ -148,7 +148,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
         )}
 
         {isSuccess && (
-          <div className="bg-emerald-950/45 border-l-4 border-emerald-400 p-3 text-xs text-emerald-300 rounded-xl animate-pulse font-semibold">
+          <div className="bg-emerald-950/45 border-l-4 border-emerald-400 p-3 text-xs text-emerald-300 rounded-xl font-semibold">
             ✅ Вход через Google выполнен успешно! Начисляем +1000 RR и перенаправляем в кабинет...
           </div>
         )}

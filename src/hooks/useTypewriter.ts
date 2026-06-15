@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
 /**
- * Posимвольный typewriter без мигающего курсора.
- * cps — символов в секунду (по умолчанию 5).
- * При смене text — печать начинается с начала.
+ * Посимвольный typewriter без мигающего курсора.
+ * cps — символов в секунду (по умолчанию 40 — короткое сообщение
+ * 15–20 слов появляется примерно за 1–2 секунды).
  */
-export function useTypewriter(text: string, cps: number = 5): string {
+export function useTypewriter(text: string, cps: number = 40): string {
   const [shown, setShown] = useState("");
   useEffect(() => {
     setShown("");
