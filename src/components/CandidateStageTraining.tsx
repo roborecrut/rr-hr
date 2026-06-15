@@ -6,6 +6,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import Reveal from "@/components/Reveal";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
+import { toUserError, formatUserError } from "@/lib/userError";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
@@ -168,7 +169,7 @@ export default function CandidateStageTraining({
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
     } catch (e: any) {
       if (isVacancyPausedError(e)) setPausedOpen(true);
-      else alert("Ошибка проверки: " + (e?.message || ""));
+      else alert("Ошибка проверки: " + formatUserError(toUserError(e)));
     } finally { setChecking(false); }
   };
 

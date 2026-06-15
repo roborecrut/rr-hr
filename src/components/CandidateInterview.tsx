@@ -9,6 +9,7 @@ import { useAIReady, waitForAIReady } from "@/lib/aiReady";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import RichMarkdown from "@/components/RichMarkdown";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
+import { toUserError, formatUserError } from "@/lib/userError";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -155,7 +156,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setResumeResult(r.result);
     } catch (e: any) {
       if (isVacancyPausedError(e)) { setPausedOpen(true); }
-      else { alert(e?.message || "Ошибка"); }
+      else { alert(formatUserError(toUserError(e))); }
     }
     finally { setBusy(false); }
   };
@@ -178,10 +179,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         body: form,
       });
       const j = await res.json().catch(() => null);
-      if (!res.ok || !j?.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      if (!res.ok || !j?.ok) throw new Error(j?.error || "upload_failed");
       setUploadedResume({ bucket: j.bucket, path: j.path, filename: f.name });
     } catch (e: any) {
-      setUploadError(e?.message || "Не удалось загрузить резюме");
+      setUploadError(formatUserError(toUserError(e, { kind: "bad_file", message: "Не удалось загрузить резюме. Проверьте формат и размер файла." })));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -205,7 +206,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setResumeText(text);
       setUploadedResume(null);
     } catch (e: any) {
-      alert(e?.message || "Не удалось распознать файл");
+      alert(formatUserError(toUserError(e, { kind: "ai_temporary", message: "Не удалось распознать файл. Попробуйте ещё раз." })));
     } finally {
       setParsing(false);
     }
@@ -224,7 +225,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       if (!r) return;
       setChecklistScore(r.score);
       if (r.feedback) setChecklistFeedback(r.feedback);
-    } catch (e: any) { alert(e?.message || "Ошибка"); }
+    } catch (e: any) { alert(formatUserError(toUserError(e))); }
     finally { setBusy(false); }
   };
 
@@ -251,7 +252,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       onCompleted?.(passed, avg);
       // Не переключаем стадию автоматически — пользователь увидит результат
       // этапа «Ситуации» и сам нажмёт кнопку «Показать итоговую оценку».
-    } catch (e: any) { alert(e?.message || "Ошибка"); }
+    } catch (e: any) { alert(formatUserError(toUserError(e))); }
     finally { setBusy(false); }
   };
 
