@@ -253,11 +253,10 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       clearTimeout(phaseTimer);
       if (error || (data && (data as any).error)) {
-        const safeCode = (data as any)?.error || error?.message || "fallback_failed";
         setState((s) => ({
           ...s,
           status: "error",
-          error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${safeCode})`,
+          error: "Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку.",
           fallbackPhase: null,
           fallbackBusy: false,
         }));
@@ -270,12 +269,12 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setState((s) => ({ ...s, status: "idle", task: null, resolver: null, fallbackPhase: null, fallbackBusy: false }));
       busyRef.current = false;
       resolver?.(data);
-    } catch (e: any) {
+    } catch {
       clearTimeout(phaseTimer);
       setState((s) => ({
         ...s,
         status: "error",
-        error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${e?.message || "fallback_failed"})`,
+        error: "Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку.",
         fallbackPhase: null,
         fallbackBusy: false,
       }));
