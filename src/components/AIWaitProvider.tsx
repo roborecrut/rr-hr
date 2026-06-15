@@ -29,16 +29,26 @@ const IMG_SUCCESS = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/
 const IMG_ERROR = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR9.png";
 
 const PHRASES = [
-  "Ожидайте…",
-  "Я думаю…",
-  "Подбираю слова…",
-  "Сверяюсь с базой знаний…",
-  "Минутку…",
   "Анализирую контекст…",
-  "Формирую ответ…",
-  "Уточняю детали…",
+  "Сверяю ответы с критериями…",
+  "Проверяю логику и полноту…",
+  "Ищу сильные стороны…",
+  "Подбираю формулировки…",
+  "Сравниваю с требованиями вакансии…",
+  "Перечитываю детали…",
+  "Уточняю важные моменты…",
+  "Сверяюсь с базой знаний…",
+  "Прикидываю варианты ответа…",
+  "Раскладываю по полочкам…",
+  "Формирую рекомендации…",
+  "Готовлю краткий вывод…",
+  "Перепроверяю выводы…",
+  "Подсвечиваю главное…",
+  "Прохожусь по чек-листу ещё раз…",
+  "Доводим до ума…",
   "Почти готово…",
-  "Полирую формулировки…",
+  "Собираю итог…",
+  "Финальные штрихи…",
 ];
 
 // Универсальные стадии «живого» ожидания ИИ. Если серверная операция
@@ -140,7 +150,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState({
       status: "loading",
       title,
-      // одна фраза на сессию ожидания — без ротации/мигания
+      // стартуем со случайной фразы, дальше плавно ротируем по кругу
       phraseIdx: Math.floor(Math.random() * PHRASES.length),
       elapsed: 0,
       error: "",
@@ -237,7 +247,19 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => clearInterval(id);
   }, [state.status]);
 
-  // Фразы больше не ротируются — одна выбирается при старте ожидания.
+  // Плавная ротация фраз во время ожидания: ~каждые 3.6с, по кругу.
+  // Не слишком быстро, чтобы пользователь успевал прочитать каждую.
+  useEffect(() => {
+    if (state.status !== "loading") return;
+    const id = setInterval(() => {
+      setState((s) =>
+        s.status === "loading"
+          ? { ...s, phraseIdx: (s.phraseIdx + 1) % PHRASES.length }
+          : s,
+      );
+    }, 3600);
+    return () => clearInterval(id);
+  }, [state.status]);
 
   const handleRetry = useCallback(() => {
     if (!state.task) return;
