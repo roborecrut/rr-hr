@@ -59,7 +59,18 @@ Deno.serve(async (req) => {
 
   // Atomic begin: marks fallback_used + creates exactly one attempt row.
   const begin = await admin.rpc("begin_ai_fallback", { _job_id: body.job_id, _actor_user_id: ownerUserId });
-  if (begin.error) return jsonResponse({ error: begin.error.message }, 409);
+  if (begin.error) {
+    // Никогда не пробрасываем сырое сообщение Postgres (имена триггеров,
+    // транзишены и т.п.) — мапим на безопасный код.
+    const raw = String(begin.error.message || "");
+    let code = "fallback_begin_failed";
+    if (raw.includes("illegal_state_for_fallback") || raw.includes("ai_jobs_guard")) code = "illegal_state_for_fallback";
+    else if (raw.includes("fallback_not_allowed")) code = "fallback_not_allowed";
+    else if (raw.includes("forbidden")) code = "forbidden";
+    else if (raw.includes("job_not_found")) code = "not_found";
+    console.warn("begin_ai_fallback failed:", raw);
+    return jsonResponse({ error: code }, 409);
+  }
   const beginRes: any = begin.data;
   const attemptId: string = beginRes?.attempt_id;
 
