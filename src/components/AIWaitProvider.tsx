@@ -9,6 +9,9 @@ import React, {
 } from "react";
 import { rrImg } from "@/lib/img";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import { supabase } from "@/integrations/supabase/client";
+import { brandImage } from "@/config";
+import { toast } from "sonner";
 
 /**
  * Global AI wait overlay.
@@ -37,7 +40,14 @@ const PHRASES = [
   "Полирую формулировки…",
 ];
 
-type Status = "idle" | "loading" | "success" | "error";
+type Status = "idle" | "loading" | "success" | "error" | "fallback";
+
+interface FallbackConfig {
+  /** Only show the RR Pro Max button to viewers explicitly allowed by caller. */
+  viewerAllowed: boolean;
+  /** Called after the fallback returns successfully (refresh local state). */
+  onSuccess?: (data: any) => void | Promise<void>;
+}
 
 interface RunOptions<T> {
   title?: string;
@@ -46,6 +56,8 @@ interface RunOptions<T> {
   autoCloseOnSuccess?: boolean;
   /** Don't block the awaiting caller — resolve immediately, overlay handles UI */
   fireAndForget?: boolean;
+  /** Optional RR Pro Max fallback for technical AI failures. */
+  fallback?: FallbackConfig;
 }
 
 interface AIWaitContextValue {
@@ -78,6 +90,11 @@ interface State {
   resolver: ((v: any) => void) | null;
   timeoutMs: number;
   autoCloseOnSuccess: boolean;
+  fallback: FallbackConfig | null;
+  lastErrorJobId: string | null;
+  lastErrorFallbackAvailable: boolean;
+  fallbackPhase: "connecting" | "running" | null;
+  fallbackBusy: boolean;
 }
 
 export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -91,11 +108,16 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     resolver: null,
     timeoutMs: 120_000,
     autoCloseOnSuccess: true,
+    fallback: null,
+    lastErrorJobId: null,
+    lastErrorFallbackAvailable: false,
+    fallbackPhase: null,
+    fallbackBusy: false,
   });
 
   const cancelledRef = useRef(false);
 
-  const beginTask = useCallback((title: string, task: () => Promise<any>, timeoutMs: number, autoCloseOnSuccess: boolean, resolver: ((v: any) => void) | null) => {
+  const beginTask = useCallback((title: string, task: () => Promise<any>, timeoutMs: number, autoCloseOnSuccess: boolean, resolver: ((v: any) => void) | null, fallback: FallbackConfig | null) => {
     cancelledRef.current = false;
     setState({
       status: "loading",
@@ -108,6 +130,11 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       resolver,
       timeoutMs,
       autoCloseOnSuccess,
+      fallback,
+      lastErrorJobId: null,
+      lastErrorFallbackAvailable: false,
+      fallbackPhase: null,
+      fallbackBusy: false,
     });
 
     const startedAt = Date.now();
@@ -135,7 +162,14 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .catch((err: any) => {
         if (cancelledRef.current) return;
         const msg = err?.message || String(err) || "Неизвестная ошибка";
-        setState((s) => ({ ...s, status: "error", error: msg, elapsed: Math.round((Date.now() - startedAt) / 1000) }));
+        setState((s) => ({
+          ...s,
+          status: "error",
+          error: msg,
+          elapsed: Math.round((Date.now() - startedAt) / 1000),
+          lastErrorJobId: err?.jobId || null,
+          lastErrorFallbackAvailable: !!err?.fallbackAvailable,
+        }));
       });
   }, []);
 
@@ -143,22 +177,23 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const title = opts.title || "Запрос к ИИ";
     const timeoutMs = opts.timeoutMs ?? 120_000;
     const autoCloseOnSuccess = opts.autoCloseOnSuccess ?? true;
+    const fallback = opts.fallback || null;
 
     if (opts.fireAndForget) {
-      beginTask(title, opts.task, timeoutMs, autoCloseOnSuccess, null);
+      beginTask(title, opts.task, timeoutMs, autoCloseOnSuccess, null, fallback);
       return Promise.resolve(undefined);
     }
 
     return new Promise<T | undefined>((resolve) => {
-      beginTask(title, opts.task, timeoutMs, autoCloseOnSuccess, resolve as (v: any) => void);
+      beginTask(title, opts.task, timeoutMs, autoCloseOnSuccess, resolve as (v: any) => void, fallback);
     });
   }, [beginTask]);
 
   // Tick: elapsed seconds while loading
   useEffect(() => {
-    if (state.status !== "loading") return;
+    if (state.status !== "loading" && state.status !== "fallback") return;
     const id = setInterval(() => {
-      setState((s) => (s.status === "loading" ? { ...s, elapsed: s.elapsed + 1 } : s));
+      setState((s) => (s.status === "loading" || s.status === "fallback" ? { ...s, elapsed: s.elapsed + 1 } : s));
     }, 1000);
     return () => clearInterval(id);
   }, [state.status]);
@@ -167,7 +202,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleRetry = useCallback(() => {
     if (!state.task) return;
-    beginTask(state.title, state.task, state.timeoutMs, state.autoCloseOnSuccess, state.resolver);
+    beginTask(state.title, state.task, state.timeoutMs, state.autoCloseOnSuccess, state.resolver, state.fallback);
   }, [state, beginTask]);
 
   const handleCancel = useCallback(() => {
@@ -183,12 +218,69 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState((s) => ({ ...s, status: "idle", task: null, resolver: null }));
   }, [state.resolver]);
 
+  const handleFallback = useCallback(async () => {
+    const jobId = state.lastErrorJobId;
+    const fb = state.fallback;
+    if (!jobId || !fb) return;
+    // Switch to fallback overlay; lock button against double-click.
+    setState((s) => ({
+      ...s,
+      status: "fallback",
+      elapsed: 0,
+      error: "",
+      fallbackPhase: "connecting",
+      fallbackBusy: true,
+    }));
+    // Show "Подключаем" briefly, then "Повторяем" while the request runs.
+    const phaseTimer = setTimeout(() => {
+      setState((s) => (s.status === "fallback" ? { ...s, fallbackPhase: "running" } : s));
+    }, 1500);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-fallback-rr-pro-max", {
+        body: { job_id: jobId },
+      });
+      clearTimeout(phaseTimer);
+      if (error || (data && (data as any).error)) {
+        const safeCode = (data as any)?.error || error?.message || "fallback_failed";
+        setState((s) => ({
+          ...s,
+          status: "error",
+          error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${safeCode})`,
+          fallbackPhase: null,
+          fallbackBusy: false,
+        }));
+        return;
+      }
+      // Success — refresh caller state, close overlay, toast.
+      try { await fb.onSuccess?.(data); } catch { /* ignore caller-side errors */ }
+      toast.success("RR Pro Max успешно завершил задачу");
+      const resolver = state.resolver;
+      setState((s) => ({ ...s, status: "idle", task: null, resolver: null, fallbackPhase: null, fallbackBusy: false }));
+      resolver?.(data);
+    } catch (e: any) {
+      clearTimeout(phaseTimer);
+      setState((s) => ({
+        ...s,
+        status: "error",
+        error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${e?.message || "fallback_failed"})`,
+        fallbackPhase: null,
+        fallbackBusy: false,
+      }));
+    }
+  }, [state.lastErrorJobId, state.fallback, state.resolver]);
+
   const value = useMemo<AIWaitContextValue>(() => ({ run }), [run]);
 
   return (
     <AIWaitContext.Provider value={value}>
       {children}
       {state.status !== "idle" && (
+        state.status === "fallback" ? (
+          <FallbackOverlay
+            phase={state.fallbackPhase || "connecting"}
+            elapsed={state.elapsed}
+          />
+        ) : (
         <Overlay
           status={state.status}
           title={state.title}
@@ -196,28 +288,37 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           elapsed={state.elapsed}
           error={state.error}
           autoCloseOnSuccess={state.autoCloseOnSuccess}
+          showFallback={
+            state.status === "error" &&
+            !!state.fallback?.viewerAllowed &&
+            state.lastErrorFallbackAvailable &&
+            !!state.lastErrorJobId
+          }
+          onFallback={handleFallback}
           onRetry={handleRetry}
           onCancel={handleCancel}
           onNext={handleNext}
-        />
+        />)
       )}
     </AIWaitContext.Provider>
   );
 };
 
 interface OverlayProps {
-  status: Exclude<Status, "idle">;
+  status: Exclude<Status, "idle" | "fallback">;
   title: string;
   phrase: string;
   elapsed: number;
   error: string;
   autoCloseOnSuccess: boolean;
+  showFallback: boolean;
+  onFallback: () => void;
   onRetry: () => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, onFallback, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
@@ -292,7 +393,16 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
         )}
 
         {status === "error" && (
-          <div className="mt-4 flex justify-end gap-2">
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            {showFallback && (
+              <button
+                type="button"
+                onClick={onFallback}
+                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition"
+              >
+                Запустить RR Pro Max
+              </button>
+            )}
             <button
               type="button"
               onClick={onCancel}
@@ -309,6 +419,40 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const FallbackOverlay: React.FC<{ phase: "connecting" | "running"; elapsed: number }> = ({ phase, elapsed }) => {
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="relative w-full max-w-md rounded-3xl border border-[#E7C768]/40 bg-gradient-to-br from-[#17344F] to-[#265582] p-6 shadow-2xl animate-scale-in">
+        <div className="mb-3 text-center text-[11px] font-mono font-bold uppercase tracking-wider text-[#E7C768]">
+          RR Pro Max подключается к задаче
+        </div>
+        <div className="flex items-end gap-3 min-h-[140px]">
+          <div className="flex-1">
+            <div className="rounded-2xl px-4 py-3 text-sm font-medium shadow-lg border bg-white text-slate-900 border-slate-200">
+              Основная нейросеть не смогла завершить генерацию. RR Pro Max повторяет задачу с помощью нашей самой мощной резервной модели.
+            </div>
+            <div className="mt-3 rounded-xl bg-black/25 border border-white/10 px-3 py-2 text-xs text-slate-100 font-mono">
+              {phase === "connecting" ? "Подключаем резервную модель…" : "Повторяем генерацию…"}
+            </div>
+          </div>
+          <img
+            src={brandImage("RRproMax")}
+            alt="RR Pro Max"
+            loading="eager"
+            referrerPolicy="no-referrer"
+            className="w-32 h-32 object-contain drop-shadow-2xl shrink-0 self-end"
+            style={{ animation: "aiwait-float 4s ease-in-out infinite" }}
+          />
+        </div>
+        <div className="mt-4 text-center space-y-1">
+          <div className="text-[11px] text-slate-300/80">Не закрывайте окно — RR Pro Max работает над задачей</div>
+          <div className="text-2xl font-mono font-bold text-[#E7C768] tabular-nums">{elapsed}s</div>
+        </div>
       </div>
     </div>
   );
