@@ -416,12 +416,9 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
           />
         </div>
 
-        {/* Timer / footer */}
+        {/* Stage + live progress (no fake percent) */}
         {status === "loading" && (
-          <div className="mt-4 text-center space-y-1">
-            <div className="text-[11px] text-slate-300/80">Не закрывайте окно — идёт генерация</div>
-            <div className="text-2xl font-mono font-bold text-[#E7C768] tabular-nums">{elapsed}s</div>
-          </div>
+          <StageProgress elapsed={elapsed} />
         )}
 
         {status === "success" && !autoCloseOnSuccess && (
