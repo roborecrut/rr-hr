@@ -4414,7 +4414,7 @@ export default function EmployerPanel() {
                 </div>
                 <div className="bg-emerald-950/40 text-emerald-400 text-xs font-bold border border-emerald-500/30 px-3 py-1 rounded-full font-mono flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>ID работодателя: {employerId}</span>
+                  <span>Номер кабинета: {employerId}</span>
                 </div>
               </div>
 
