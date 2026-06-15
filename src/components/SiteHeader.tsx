@@ -75,12 +75,12 @@ export default function SiteHeader({ active }: Props) {
     return (
       <button
         onClick={() => navigate(to)}
+        aria-current={isActive ? "page" : undefined}
         className={
           isActive
-            ? "px-2.5 lg:px-3 py-2 rounded-xl text-[#E7C768] bg-white/10 border border-[#E7C768]/20 inline-flex items-center gap-1.5"
-            : "px-2.5 lg:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 inline-flex items-center gap-1.5"
+            ? "relative px-2.5 lg:px-3 py-2 rounded-xl text-[#F4EE8E] bg-white/15 border border-[#E7C768]/60 ring-1 ring-[#E7C768]/40 shadow-md shadow-[#E7C768]/10 inline-flex items-center gap-1.5 font-bold after:content-[''] after:absolute after:left-3 after:right-3 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-gradient-to-r after:from-[#F4D679] after:to-[#E7C768]"
+            : "px-2.5 lg:px-3 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 border border-transparent inline-flex items-center gap-1.5 transition"
         }
-        aria-label={typeof label === "string" ? label : undefined}
       >
         {label}
       </button>
