@@ -661,8 +661,8 @@ export default function AdminPanel() {
           {section === "candidates" && <CandidatesSection />}
           {section === "companies"  && <CompaniesListSection />}
           {section === "vacancies"  && <VacanciesAnalyticsSection />}
-          {section === "interviews" && <SimpleTable table="candidate_scores"  title="Интервью (оценки кандидатов)" />}
-          {section === "trainings"  && <SimpleTable table="candidate_stage_progress" title="Прогресс обучения" />}
+          {section === "interviews" && <InterviewsSection />}
+          {section === "trainings"  && <TrainingsSection />}
           {section === "blog"       && <BlogAdmin />}
           {section === "mailings"   && <MailingsSection />}
           {section === "roles"      && <RolesSection setToast={setToast} />}
