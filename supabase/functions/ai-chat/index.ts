@@ -29,12 +29,13 @@ const MAX_PUBLIC_CONTEXT_LEN = 6000;
 
 // Whitelist of fields ai-chat is allowed to expose to the public
 // vacancy_consultant branch. Anything not in this list is NEVER read or sent
-// to the LLM, no matter what the client provided.
+// to the LLM, no matter what the client provided. Internal-only fields
+// (system_text, custom_wiki, onboarding_text, motivation_text_detail,
+// team_text, scoring/prompts/notes) are deliberately excluded.
 const PUBLIC_PROJECT_FIELDS = [
   "id", "role_name", "salary_terms", "schedule_terms",
   "vacancy_text", "tasks_activity_text", "schedule_text", "payouts_text",
-  "motivation_text", "motivation_text_detail", "onboarding_text",
-  "team_text", "system_text", "custom_wiki",
+  "motivation_text",
   "is_published", "status", "archived_at", "deleted_at",
   "company_id",
 ] as const;
@@ -53,12 +54,7 @@ function buildPublicContext(project: Record<string, any>, company: Record<string
   if (project.tasks_activity_text) parts.push(`Ежедневный процесс:\n${project.tasks_activity_text}`);
   if (project.schedule_text) parts.push(`График подробно:\n${project.schedule_text}`);
   if (project.payouts_text) parts.push(`Выплаты:\n${project.payouts_text}`);
-  const motiv = project.motivation_text_detail || project.motivation_text;
-  if (motiv) parts.push(`Мотивация:\n${motiv}`);
-  if (project.onboarding_text) parts.push(`Оформление:\n${project.onboarding_text}`);
-  if (project.team_text) parts.push(`Команда:\n${project.team_text}`);
-  if (project.system_text) parts.push(`Система работы:\n${project.system_text}`);
-  if (project.custom_wiki) parts.push(`Wiki:\n${project.custom_wiki}`);
+  if (project.motivation_text) parts.push(`Мотивация:\n${project.motivation_text}`);
   if (company?.description_text) parts.push(`О компании:\n${company.description_text}`);
   if (company?.mission_text) parts.push(`Миссия:\n${company.mission_text}`);
   if (company?.products_text) parts.push(`Продукты:\n${company.products_text}`);
