@@ -45,20 +45,40 @@ Deno.serve(async (req) => {
   }
 
   const desc = `Пополнение баланса RR на ${amount} RR (счёт #${invId})`;
-  const sigBase = `${login}:${outSum}:${invId}:${pwd1}`;
-  const signature = await md5(sigBase);
 
-  const params = new URLSearchParams({
-    MerchantLogin: login,
-    OutSum: outSum,
-    InvId: String(invId),
-    Description: desc,
-    SignatureValue: signature,
-    Culture: "ru",
-    Encoding: "utf-8",
-  });
-  if (isTest) params.set("IsTest", "1");
+  // Фискальный чек: УСН доходы-расходы, НДС 5%.
+  const receipt = {
+    sno: "usn_income_outcome",
+    items: [{
+      name: desc.slice(0, 128),
+      quantity: 1,
+      sum: Number(outSum),
+      payment_method: "full_payment",
+      payment_object: "service",
+      tax: "vat5",
+    }],
+  };
+  const receiptJson = JSON.stringify(receipt);
+  const receiptEncoded = encodeURIComponent(receiptJson);
 
-  const payUrl = `https://auth.robokassa.ru/Merchant/Index.aspx?${params.toString()}`;
+  // Подпись: MerchantLogin:OutSum:InvId:Receipt(url-encoded):Password1
+  const signature = await md5(`${login}:${outSum}:${invId}:${receiptEncoded}:${pwd1}`);
+
+  // Собираем query-string вручную, чтобы Receipt был закодирован ровно один раз
+  // и совпал с тем, что вошло в подпись.
+  const pairs: Array<[string, string]> = [
+    ["MerchantLogin", encodeURIComponent(login)],
+    ["OutSum", encodeURIComponent(outSum)],
+    ["InvId", encodeURIComponent(String(invId))],
+    ["Description", encodeURIComponent(desc)],
+    ["Receipt", receiptEncoded],
+    ["SignatureValue", encodeURIComponent(signature)],
+    ["Culture", "ru"],
+    ["Encoding", "utf-8"],
+  ];
+  if (isTest) pairs.push(["IsTest", "1"]);
+  const qs = pairs.map(([k, v]) => `${k}=${v}`).join("&");
+
+  const payUrl = `https://auth.robokassa.ru/Merchant/Index.aspx?${qs}`;
   return jsonResponse({ ok: true, inv_id: invId, amount: amount, payment_url: payUrl, is_test: isTest });
 });
