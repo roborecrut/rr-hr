@@ -1,6 +1,7 @@
 // Analyze a company description (text or document URL) via ProTalk and return strict JSON.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 
 const SCHEMA = `Верни СТРОГО один JSON-объект без markdown с такими ключами и ограничениями длины (символы):
 {
@@ -30,6 +31,13 @@ Deno.serve(async (req) => {
     raw_text?: string;
   };
   if (!body || (!body.file_url && !body.raw_text)) return jsonResponse({ error: "bad_body" }, 400);
+
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+  if (body.company_id) {
+    const own = await assertProjectOwner({ userId: auth.userId, companyId: body.company_id });
+    if (own instanceof Response) return own;
+  }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });
