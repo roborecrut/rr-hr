@@ -1,11 +1,6 @@
 // Robokassa ResultURL приёмник. Проверяет подпись и помечает счёт оплаченным.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-
-async function md5(s: string): Promise<string> {
-  const buf = new TextEncoder().encode(s);
-  const hash = await crypto.subtle.digest("MD5", buf);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+import md5 from "https://esm.sh/blueimp-md5@2.19.0";
 
 function text(body: string, status = 200) {
   return new Response(body, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
@@ -33,7 +28,7 @@ Deno.serve(async (req) => {
     : (Deno.env.get("ROBOKASSA_PASSWORD2") || "");
   if (!pwd2) return text("not configured", 500);
 
-  const expected = await md5(`${outSum}:${invId}:${pwd2}`);
+  const expected = md5(`${outSum}:${invId}:${pwd2}`);
   if (expected.toLowerCase() !== sigIn) return text("bad signature", 400);
 
   const supaUrl = Deno.env.get("SUPABASE_URL")!;
