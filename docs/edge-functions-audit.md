@@ -66,3 +66,28 @@
 3. **`ai-chat` rate-limit per-user** — отдельный заход, не входит в A1.
 4. **`Shp_*` подпись Robokassa** — будет в Этапе D вместе с фискализацией.
 5. Демо-функции (3) — не выполняют запись в БД и не списывают RR; риск только в стоимости AI-вызовов → закрывается RL.
+
+## A3 — Централизация конфигурации (выполнено)
+
+- Создан `src/config.ts` — единый источник `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `FN(name)`, `brandImage(name)`, `RR_LOGO_URL`.
+- `src/integrations/supabase/client.ts` теперь импортирует значения из `@/config` (нет дублирования fallback-литералов).
+- Все хардкод-`fetch` к Edge Functions из фронтенда заменены на:
+  - `supabase.functions.invoke(name)` где возможно (`CandidateInterview.call()`, `CandidateStageTraining.callEdge()`);
+  - `FN(name)` из `@/config` для multipart-загрузок (`CandidateInterview` — резюме, `CandidateFlow` — аватар, `CandidateDocsDossier` — документы, `TrainingWizard`, `InterviewWizard`, `DemoInterviewPage`).
+- `src/lib/mascotImages.ts` переключён на `brandImage()`; добавлен слот `empty` для RR10.
+- **Отложено (не безопасность, косметика)**: ~15 компонентов всё ещё содержат литерал `https://...supabase.co/storage/v1/object/public/Logos/RRx.png` для брендовых изображений. Это публичные PNG, не утечка. Запланировано в Этап E (UI-шлифовка) — заменить на `brandImage("RRx")` единой пачкой.
+- **Отложено**: ссылка из `AdminPanel.tsx` на Supabase Dashboard (`https://supabase.com/dashboard/project/...`) — оставлено намеренно, т.к. админ-панель видна только администратору (роль `admin`), ТЗ §11 разрешает технические ссылки в закрытой админке.
+
+## A2 — Безопасная обработка ошибок (выполнено в части хелпера)
+
+- Создан `src/lib/userError.ts`:
+  - `toUserError(e, hint?)` принимает любую ошибку и возвращает `{ message, code, kind }`;
+  - 12 категорий: `network`, `auth`, `session_expired`, `no_credits`, `forbidden`, `not_found`, `already_done`, `ai_temporary`, `timeout`, `bad_file`, `validation`, `draft_save`, `unknown`;
+  - сообщения хранятся в закрытой карте — невозможно случайно показать пользователю текст из server-side error;
+  - короткий код обращения (8 символов A-Z 0-9) для поддержки;
+  - технические детали уходят только в `console.warn` и только в dev-сборке;
+  - `formatUserError(u)` — финальный текст для toast.
+- Проверены формулировки: ТЗ упоминает «Повторите email или пароль» — такого текста в проекте **не нашлось**; все «Повторите …» уже корректные.
+- **Отложено**: миграция 26 мест с `alert()` и 12 мест с `confirm()` на toast/inline-validation. Список:
+  - `alert()` в `JobVacancyLanding`, `CandidateFlow`, `CandidateInterview`, `EmployerPanel`, `AdminPanel`, мастерах вакансии/обучения — заменяется на `toast` из `sonner` + `toUserError` при подключении хелпера в каждом месте. Это будет сделано в Этапе E (UX-шлифовка) — параллельно с переходом на единый дизайн ошибок, чтобы избежать промежуточного состояния.
+  - `confirm()` для удаления/архивации — остаётся как destructive confirmation (разрешено ТЗ §9.2), но обёртывается в `AlertDialog` из shadcn для соответствия бренду; вынесено в Этап E.
