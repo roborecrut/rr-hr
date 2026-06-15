@@ -593,10 +593,7 @@ export default function CompanyLanding() {
                 </div>
                 <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
                   <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
-                    Идет ИИ-набор!
-                  </span>
-                  <span className="bg-[#112335] text-amber-300 border border-amber-500/25 text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg">
-                    ID вакансии: {selectedVacancy.id}
+                    Идёт ИИ-набор!
                   </span>
                 </div>
               </div>
@@ -638,9 +635,8 @@ export default function CompanyLanding() {
                       }
                     })()}
                   </span>
-                  <span className="text-[10px] bg-white/5 text-slate-300 font-bold px-2 py-0.5 rounded-md uppercase font-mono tracking-wider border border-white/15">
-                    {subTab}
-                  </span>
+                  {/* Технический служебный код раздела убран —
+                      он не предназначен для кандидата. */}
                 </div>
 
                 <div className="bg-black/20 p-4 sm:p-5 rounded-2xl border border-white/5 shadow-inner">
