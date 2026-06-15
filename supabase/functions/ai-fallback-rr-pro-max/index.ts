@@ -36,22 +36,10 @@ Deno.serve(async (req) => {
   if (ownerUserId && job.user_id !== ownerUserId) return jsonResponse({ error: "forbidden" }, 403);
   if (ownerCandidateId && job.candidate_id !== ownerCandidateId) return jsonResponse({ error: "forbidden" }, 403);
 
-  // Pilot gate: only employer with public_id = '100006' may run RR Pro Max
-  // in production. Server-side enforcement — frontend hiding is not enough.
-  if (ownerUserId) {
-    const empRow = await admin
-      .from("employers")
-      .select("public_id")
-      .eq("user_id", ownerUserId)
-      .maybeSingle();
-    const pid = String((empRow.data as any)?.public_id || "");
-    if (pid !== "100006") {
-      return jsonResponse({ error: "fallback_pilot_disabled" }, 403);
-    }
-  } else {
-    // Candidates are not in the pilot scope.
-    return jsonResponse({ error: "fallback_pilot_disabled" }, 403);
-  }
+  // Pilot завершён успешно — резервная модель доступна как работодателям,
+  // так и кандидатам после подтверждённого технического сбоя основной нейросети.
+  // Авторизация выше уже проверила владельца задачи (employer JWT или
+  // candidate session token).
 
   if (!RrProMaxProvider.isConfigured()) {
     return jsonResponse({ error: "fallback_not_configured" }, 503);
@@ -157,6 +145,60 @@ Deno.serve(async (req) => {
     await markJobStatus(body.job_id, "fallback_succeeded", true);
     await logToDb({ user_message: "[fallback]", bot_reply: "[ok]", channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
     return jsonResponse({ ok: true, count: questions.length, fallback_used: true });
+  }
+
+  // ── screen_resume: оценка резюме кандидата ──────────────────────────────
+  if (job.job_type === "screen_resume") {
+    const obj = tryParseJson<any>(run.text) || {};
+    if (typeof obj !== "object" || obj === null || obj.score === undefined) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const score = Math.max(0, Math.min(100, Number(obj.score) || 0));
+    const result = {
+      score,
+      summary: String(obj.summary || "").slice(0, 1500),
+      strengths: Array.isArray(obj.strengths) ? obj.strengths.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
+      gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
+    };
+    const candId = job.candidate_id || snap.candidate_id;
+    if (!candId) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    await admin.from("candidate_scores").upsert({
+      candidate_id: candId,
+      resume_score: score,
+      assessment_summary: result.summary,
+      resume_feedback: result,
+    }, { onConflict: "candidate_id" });
+    if (snap.resume_text) {
+      await admin.from("candidates").update({ resume_text: String(snap.resume_text).slice(0, 20000) }).eq("id", candId);
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `candidate_scores:${candId}:resume` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: "[ok]", channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, result, fallback_used: true });
+  }
+
+  // ── ingest_resume: распознавание текста резюме из загруженного файла ────
+  if (job.job_type === "ingest_resume") {
+    const text = String(run.text || "").slice(0, 10000);
+    if (!text.trim()) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_empty_response" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_empty_response" }, 502);
+    }
+    // После успешного распознавания резерва — чистим исходный файл.
+    if (snap.bucket && snap.file_path) {
+      await admin.storage.from(snap.bucket).remove([snap.file_path]).catch(() => {});
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: "ingest_resume:text_returned" });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${text.length}b]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, text, fallback_used: true });
   }
 
   await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_unknown" });
