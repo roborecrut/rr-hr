@@ -3,6 +3,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 const BLOCK_TITLES: Record<string, string> = {
   professional: "Профессиональные знания и навыки",
@@ -47,6 +48,23 @@ Deno.serve(async (req) => {
   const socialId = buildSocialId({ user_id: user?.id });
   const msg = `Сгенерируй учебный материал в Markdown по блоку «${BLOCK_TITLES[body.block_key]}» для вакансии. Объём 1500–3000 слов. Структура: Цели обучения → Ключевые знания → Примеры/кейсы → Чек-лист. Используй заголовки H2/H3 и списки. Не более 20 000 символов.\n\nКонтекст:\n${ctx}`;
 
+  const idem = `training_material:${body.project_id}:${body.block_key}`;
+  const job = await createOrReuseAiJob({
+    userId: user?.id || null,
+    jobType: "training_material",
+    idempotencyKey: idem,
+    requestSnapshot: {
+      message: msg,
+      project_id: body.project_id,
+      block_key: body.block_key,
+      block_title: BLOCK_TITLES[body.block_key],
+      timeout_ms: 180_000,
+    },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({
       messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
@@ -71,10 +89,17 @@ Deno.serve(async (req) => {
     }
 
     await logToDb({ user_message: msg, bot_reply: text, channel_id: chatId, user_social_id: socialId, channel_name: `ai-training-material:${body.block_key}`, server_name: "ai-generate-training-material", function_call_params: JSON.stringify({ project_id: body.project_id, block_key: body.block_key }) });
-    return jsonResponse({ ok: true, text, block_id: blockId });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_blocks:${blockId}:material` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, text, block_id: blockId, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
     await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: `ai-training-material:${body.block_key}`, server_name: "ai-generate-training-material", function_error: err });
-    return jsonResponse({ error: err }, 500);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });

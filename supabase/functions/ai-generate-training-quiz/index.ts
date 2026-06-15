@@ -3,6 +3,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -36,6 +37,23 @@ Deno.serve(async (req) => {
 
   const msg = `На основе материала ниже составь тест.\n\nМАТЕРИАЛ:\n${String(block.materials_md).slice(0, 9000)}\n\nВерни СТРОГО ${SCHEMA}`;
 
+  const idem = `training_quiz:${body.block_id}`;
+  const job = await createOrReuseAiJob({
+    userId: auth.userId,
+    jobType: "training_quiz",
+    idempotencyKey: idem,
+    requestSnapshot: {
+      message: msg,
+      block_id: body.block_id,
+      project_id: (block as any).project_id,
+      pass_score: block.pass_score || 70,
+      timeout_ms: 180_000,
+    },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({
       messages: [{ role: "system", content: "Ты — методист, создаёшь чёткие тесты по учебному материалу. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
@@ -62,10 +80,17 @@ Deno.serve(async (req) => {
     await admin.from("training_blocks").update({ total_score: total, pass_score: block.pass_score || 70 }).eq("id", body.block_id);
 
     await logToDb({ user_message: msg, bot_reply: r.text, channel_id: chatId, user_social_id: socialId, channel_name: "ai-training-quiz", server_name: "ai-generate-training-quiz", function_call_params: JSON.stringify({ block_id: body.block_id }) });
-    return jsonResponse({ ok: true, count: rows.length, total_score: total });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_questions:${body.block_id}` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, count: rows.length, total_score: total, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
     await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-training-quiz", server_name: "ai-generate-training-quiz", function_error: err });
-    return jsonResponse({ error: err }, 500);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });

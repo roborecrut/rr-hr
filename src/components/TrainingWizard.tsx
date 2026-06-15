@@ -258,7 +258,12 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((json as any)?.error || `http_${res.status}`);
+    if (!res.ok || (json as any)?.error) {
+      const e: any = new Error((json as any)?.error || `http_${res.status}`);
+      e.jobId = (json as any)?.job_id || null;
+      e.fallbackAvailable = !!(json as any)?.fallback_available;
+      throw e;
+    }
     return json as T;
   };
 
