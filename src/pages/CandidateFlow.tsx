@@ -2693,7 +2693,7 @@ export default function CandidateFlow() {
               <div className="space-y-2 relative z-10">
                 <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={64} alt="RR Logo" className="w-16 h-16 object-contain mx-auto drop-shadow" />
                 <h1 className="text-xs uppercase tracking-[0.2em] font-bold text-[#E7C768] font-serif">
-                  Сертификат Соответствия Квалификации
+                  Подтверждение прохождения программы компании
                 </h1>
                 <div className="text-[10px] text-gray-400 font-serif italic">Выдан платформой автоматического онбординга Робот Рекрутер (RR)</div>
               </div>
