@@ -40,9 +40,17 @@ export async function requireEmployerJwt(
 
   const token = authHeader.slice("Bearer ".length).trim();
   try {
-    const { data, error } = await supabase.auth.getClaims(token);
-    if (error || !data?.claims?.sub) return err("unauthorized", 401);
-    return { userId: data.claims.sub as string };
+    // supabase-js v2.45 не имеет надёжного getClaims на всех сборках edge —
+    // используем admin getUser(token), который валидирует JWT по тому же ключу
+    // и возвращает auth.users.id. Это устраняет ложные 401 при генерации
+    // ИИ-чек-листа / ситуаций, когда токен на самом деле валиден.
+    const url2 = Deno.env.get("SUPABASE_URL");
+    const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!url2 || !svc) return err("server_misconfigured", 500);
+    const admin = createClient(url2, svc);
+    const { data, error } = await admin.auth.getUser(token);
+    if (error || !data?.user?.id) return err("unauthorized", 401);
+    return { userId: data.user.id };
   } catch {
     return err("unauthorized", 401);
   }

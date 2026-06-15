@@ -144,6 +144,16 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
         if (sc.situations_score != null) setSituationsScore(sc.situations_score);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+        // Восстанавливаем итоговый балл, чтобы вкладка «4. Итог» открывалась
+        // при возврате на страницу собеседования после прохождения всех этапов.
+        const { data: scFull } = await (supabase as any)
+          .from("candidate_scores")
+          .select("overall_score")
+          .eq("candidate_id", candidateId)
+          .maybeSingle();
+        if (scFull?.overall_score != null) {
+          setFinalScore(Math.round(Number(scFull.overall_score)));
+        }
         // Auto-jump to first incomplete stage
         if (sc.situations_score == null && sc.checklist_score != null) setStage("situations");
         else if (sc.checklist_score == null && sc.resume_score != null) setStage("checklist");

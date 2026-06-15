@@ -1209,7 +1209,22 @@ export default function EmployerPanel() {
             currentStage: c.current_stage,
             // Canonical stage: derived from real data unless employer
             // manually moved the card in CRM (crm_stage_manual = true).
-            crmStage: (c.crm_stage_manual && c.crm_stage) ? c.crm_stage : (c.derived_stage || "registration"),
+            crmStage: (c.crm_stage_manual && c.crm_stage)
+              ? c.crm_stage
+              : (() => {
+                  // RPC даёт derived_stage in {registration, screening, checklist,
+                  // situations, final, certified}, но канбан использует расширенный
+                  // набор колонок (professional/product/systems после интервью).
+                  // Маппим «final» в самый дальний пройденный этап обучения,
+                  // иначе кандидаты после интервью теряются и канбан показывает
+                  // меньше карточек, чем счётчик CRM.
+                  if (c.certified) return "certified";
+                  const tp: string[] = Array.isArray(c.training_passed) ? c.training_passed : [];
+                  const order = ["systems", "product", "professional"];
+                  for (const s of order) if (tp.includes(s)) return s;
+                  if (c.derived_stage === "final") return "situations";
+                  return c.derived_stage || "registration";
+                })(),
             derivedStage: c.derived_stage,
             hasResume: !!c.has_resume,
             hasChecklist: !!c.has_checklist,
