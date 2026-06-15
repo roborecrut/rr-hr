@@ -3,6 +3,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -58,6 +59,19 @@ ${combined.slice(0, 12000)}
 
 Верни СТРОГО ${SCHEMA}`;
 
+  const idem = `stage_test:${body.project_id}:${body.stage}`;
+  const job = await createOrReuseAiJob({
+    userId: user?.id || null,
+    jobType: "stage_test",
+    idempotencyKey: idem,
+    requestSnapshot: {
+      message: msg, project_id: body.project_id, stage: body.stage, timeout_ms: 180_000,
+    },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({
       messages: [{ role: "system", content: "Ты — методист, создаёшь чёткие проверочные тесты по учебному материалу. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
@@ -102,11 +116,18 @@ ${combined.slice(0, 12000)}
     await logToDb({ user_message: msg, bot_reply: r.text, channel_id: chatId, user_social_id: socialId,
       channel_name: `ai-stage-test:${body.stage}`, server_name: "ai-generate-stage-test",
       function_call_params: JSON.stringify({ project_id: body.project_id, stage: body.stage }) });
-    return jsonResponse({ ok: true, count: questions.length, total_score: total });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_stage_tests:${body.project_id}:${body.stage}` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, count: questions.length, total_score: total, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
     await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId,
       channel_name: `ai-stage-test:${body.stage}`, server_name: "ai-generate-stage-test", function_error: err });
-    return jsonResponse({ error: err }, 500);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });
