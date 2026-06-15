@@ -2,6 +2,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -44,6 +45,18 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
 Ситуации должны быть реалистичными и типовыми для этой должности.
 Верни СТРОГО ${SCHEMA}`;
 
+  // Register job for RR Pro Max fallback (no RR is charged here).
+  const idem = `interview_situations:${body.project_id}`;
+  const job = await createOrReuseAiJob({
+    userId: user?.id || null,
+    jobType: "interview_situations",
+    idempotencyKey: idem,
+    requestSnapshot: { message: msg, project_id: body.project_id, timeout_ms: 120_000 },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 120_000 });
     const arr = tryParseJson<any[]>(r.text);
@@ -63,10 +76,17 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
       await admin.from("interview_blocks").insert({ project_id: body.project_id, kind: "situations", payload, ai_generated_at: new Date().toISOString() });
     }
     await logToDb({ user_message: msg, bot_reply: r.text, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:situations", server_name: "ai-generate-interview-situations" });
-    return jsonResponse({ ok: true, situations });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `interview_blocks:${body.project_id}:situations` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, situations, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
     await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:situations", server_name: "ai-generate-interview-situations", function_error: err });
-    return jsonResponse({ error: err }, 500);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });
