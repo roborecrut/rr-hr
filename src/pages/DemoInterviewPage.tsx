@@ -115,14 +115,15 @@ export default function DemoInterviewPage() {
 
         // field_templates — публично безопасны; interview_template читаем через
         // SECURITY DEFINER RPC (содержит правильные ответы).
+        const titleStr = titles.find((t) => t.id === state.titleId)?.title || "";
         const [tplRes, itRes] = await Promise.all([
           supabase.from("job_titles").select("field_templates").eq("id", state.titleId).maybeSingle(),
-          supabase.rpc("job_title_get_interview_template" as any, { _title_id: state.titleId }),
+          supabase.rpc("job_title_get_interview_template" as any, { _title: titleStr }),
         ]);
         if (tplRes.error) throw tplRes.error;
         if (!tplRes.data) throw new Error("Шаблон должности не найден");
         const ft = (tplRes.data as any).field_templates || {};
-        const it = (itRes.data as any) || {};
+        const it = ((itRes.data as any)?.interview_template) || (itRes.data as any) || {};
         const vacancyText = String(ft.vacancy_text || "").slice(0, 5000);
 
         const rawSituations = Array.isArray(it?.situations?.situations)
