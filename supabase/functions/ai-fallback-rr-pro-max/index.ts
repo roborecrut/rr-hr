@@ -201,6 +201,156 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, text, fallback_used: true });
   }
 
+  // ── interview_situations: 3 ролевые ситуации для вакансии ───────────────
+  if (job.job_type === "interview_situations") {
+    const arr = tryParseJson<any[]>(run.text);
+    if (!Array.isArray(arr) || arr.length === 0) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const situations = arr.slice(0, 3).map((s: any, i: number) => ({
+      id: String(s.id || `s${i + 1}`),
+      title: String(s.title || "").slice(0, 200),
+      brief: String(s.brief || "").slice(0, 1500),
+      criteria: String(s.criteria || "").slice(0, 1000),
+    }));
+    const projectId = snap.project_id;
+    if (!projectId) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const existing = await admin.from("interview_blocks").select("id").eq("project_id", projectId).eq("kind", "situations").maybeSingle();
+    const payload = { situations };
+    if (existing.data?.id) {
+      await admin.from("interview_blocks").update({ payload, ai_generated_at: new Date().toISOString() }).eq("id", existing.data.id);
+    } else {
+      await admin.from("interview_blocks").insert({ project_id: projectId, kind: "situations", payload, ai_generated_at: new Date().toISOString() });
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `interview_blocks:${projectId}:situations` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${situations.length}s]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, situations, fallback_used: true });
+  }
+
+  // ── training_material: длинный учебный markdown по блоку ────────────────
+  if (job.job_type === "training_material") {
+    const text = String(run.text || "").slice(0, 20000);
+    if (!text.trim()) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_empty_response" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_empty_response" }, 502);
+    }
+    const projectId = snap.project_id;
+    const blockKey = snap.block_key;
+    const blockTitle = snap.block_title || blockKey;
+    if (!projectId || !blockKey) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const existing = await admin.from("training_blocks").select("id").eq("project_id", projectId).eq("block_key", blockKey).maybeSingle();
+    let blockId: string | undefined = existing.data?.id;
+    if (blockId) {
+      await admin.from("training_blocks").update({ materials_md: text, ai_generated_at: new Date().toISOString() }).eq("id", blockId);
+    } else {
+      const ins = await admin.from("training_blocks").insert({
+        project_id: projectId, block_key: blockKey, title: blockTitle,
+        materials_md: text, ai_generated_at: new Date().toISOString(), pass_score: 70,
+      }).select("id").single();
+      blockId = ins.data?.id;
+      if (!blockId) {
+        await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+        await markJobStatus(body.job_id, "fallback_failed", true);
+        return jsonResponse({ error: "fallback_save_failed" }, 500);
+      }
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_blocks:${blockId}:material` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${text.length}b]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, text, block_id: blockId, fallback_used: true });
+  }
+
+  // ── training_quiz: 20 вопросов по учебному материалу ────────────────────
+  if (job.job_type === "training_quiz") {
+    const arr = tryParseJson<any[]>(run.text);
+    if (!Array.isArray(arr) || arr.length === 0) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const blockId = snap.block_id;
+    if (!blockId) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_save_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const rows = arr.slice(0, 30).map((q: any, i: number) => ({
+      block_id: blockId,
+      order_no: i + 1,
+      kind: q.kind === "text" ? "text" : "choice",
+      question: String(q.question || "").slice(0, 1000),
+      options: q.kind === "choice" ? (q.options || []) : null,
+      expected_answer: q.kind === "text" ? String(q.expected_answer || "").slice(0, 2000) : null,
+      points: Number(q.points) > 0 ? Number(q.points) : 5,
+      explanation: q.explanation ? String(q.explanation).slice(0, 500) : null,
+    }));
+    await admin.from("training_questions").delete().eq("block_id", blockId);
+    const ins = await admin.from("training_questions").insert(rows);
+    if (ins.error) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const total = rows.reduce((s, q) => s + (q.points || 0), 0);
+    await admin.from("training_blocks").update({ total_score: total, pass_score: snap.pass_score || 70 }).eq("id", blockId);
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_questions:${blockId}` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${rows.length}q]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, count: rows.length, total_score: total, fallback_used: true });
+  }
+
+  // ── grade_situations: оценка ролевых ответов кандидата ──────────────────
+  if (job.job_type === "grade_situations") {
+    const obj = tryParseJson<any>(run.text) || {};
+    const candId = job.candidate_id || snap.candidate_id;
+    if (!candId) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const contentlessIds = new Set<string>((snap.contentless_ids || []).map(String));
+    const situationIds: string[] = Array.isArray(snap.situation_ids) ? snap.situation_ids.map(String) : [];
+    const aiResults = (Array.isArray(obj.items) ? obj.items : []).map((it: any) => ({
+      id: String(it.id),
+      score: Math.max(0, Math.min(100, Number(it.score) || 0)),
+      feedback: String(it.feedback || "").slice(0, 800),
+    }));
+    const results = situationIds.map((sid: string) => {
+      if (contentlessIds.has(sid)) return { id: sid, score: 0, feedback: "Ответ не предоставлен или не содержит осмысленного текста." };
+      const hit = aiResults.find((x: any) => x.id === sid);
+      return hit || { id: sid, score: 0, feedback: "" };
+    });
+    if (results.length === 0) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const avg = Math.round(results.reduce((s: number, x: any) => s + x.score, 0) / results.length);
+    const advice = String(obj.advice || "").slice(0, 800);
+    const feedback = { items: results, advice, total: avg };
+    await admin.from("candidate_scores").upsert({
+      candidate_id: candId,
+      situations_score: avg,
+      situations_feedback: feedback,
+    }, { onConflict: "candidate_id" });
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `candidate_scores:${candId}:situations` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${results.length}]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, score: avg, items: results, advice, fallback_used: true });
+  }
+
   await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_unknown" });
   await markJobStatus(body.job_id, "fallback_failed", true);
   return jsonResponse({ error: "unsupported_job_type" }, 400);
