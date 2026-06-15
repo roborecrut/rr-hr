@@ -49,15 +49,24 @@ export default function CandidateStageTraining({
   const [pausedOpen, setPausedOpen] = useState(false);
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-      body: JSON.stringify(body),
+    // Кандидат не имеет Supabase Auth — передаём его сессионный токен в теле и в заголовке.
+    let candidateToken: string | null = null;
+    try {
+      const raw = localStorage.getItem("cand_session");
+      if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
+    } catch { /* ignore */ }
+    const { data, error } = await supabase.functions.invoke(fn, {
+      body: { ...body, candidate_token: candidateToken },
+      headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
     });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((json as any)?.error || `http_${res.status}`);
-    return json as T;
+    if (error) {
+      const msg = (data as any)?.error || (error as any)?.message || `fn_${fn}_failed`;
+      throw new Error(msg);
+    }
+    if (data && typeof data === "object" && "error" in (data as any) && (data as any).error) {
+      throw new Error((data as any).error);
+    }
+    return data as T;
   };
 
   // Load progress
