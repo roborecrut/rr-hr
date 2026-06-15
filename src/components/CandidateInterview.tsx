@@ -215,9 +215,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const submitChecklist = async () => {
-    if (Object.keys(answers).length < questions.length) {
-      if (!confirm(`Заполнено ${Object.keys(answers).length}/${questions.length}. Отправить?`)) return;
-    }
+    // Без интрузивных window.confirm: оставляем кандидата в контексте экрана.
+    // Кнопка отправки уже подписана и блокируется через `disabled={busy}` —
+    // повторное подтверждение только мешает и ломает фуллскрин-флоу.
     setBusy(true);
     try {
       const r = await aiWaitRun<any>({
@@ -232,9 +232,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const submitSituations = async () => {
-    if (Object.keys(sitAnswers).length < situations.length) {
-      if (!confirm(`Заполнено ${Object.keys(sitAnswers).length}/${situations.length}. Отправить?`)) return;
-    }
+    // См. комментарий в submitChecklist — отказались от window.confirm.
     setBusy(true);
     try {
       const r = await aiWaitRun<any>({
