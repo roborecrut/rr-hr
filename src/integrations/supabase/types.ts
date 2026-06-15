@@ -14,6 +14,170 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_job_attempts: {
+        Row: {
+          attempt_number: number
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          id: string
+          job_id: string
+          provider: Database["public"]["Enums"]["ai_job_provider"]
+          response_validation_status: string | null
+          safe_error_code: string | null
+          started_at: string
+          status: Database["public"]["Enums"]["ai_job_attempt_status"]
+        }
+        Insert: {
+          attempt_number: number
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          job_id: string
+          provider: Database["public"]["Enums"]["ai_job_provider"]
+          response_validation_status?: string | null
+          safe_error_code?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["ai_job_attempt_status"]
+        }
+        Update: {
+          attempt_number?: number
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          job_id?: string
+          provider?: Database["public"]["Enums"]["ai_job_provider"]
+          response_validation_status?: string | null
+          safe_error_code?: string | null
+          started_at?: string
+          status?: Database["public"]["Enums"]["ai_job_attempt_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_job_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_job_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs_safe_status"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_jobs: {
+        Row: {
+          candidate_id: string | null
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          credits_status: Database["public"]["Enums"]["ai_job_credits_status"]
+          employer_id: string | null
+          expected_schema: string | null
+          expires_at: string | null
+          fallback_allowed: boolean
+          fallback_used: boolean
+          id: string
+          idempotency_key: string
+          job_type: string
+          primary_provider: Database["public"]["Enums"]["ai_job_provider"]
+          project_id: string | null
+          prompt_version: string | null
+          request_hash: string | null
+          request_snapshot: Json | null
+          result_reference: Json | null
+          status: Database["public"]["Enums"]["ai_job_status"]
+          updated_at: string
+          user_id: string | null
+          vacancy_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          credits_status?: Database["public"]["Enums"]["ai_job_credits_status"]
+          employer_id?: string | null
+          expected_schema?: string | null
+          expires_at?: string | null
+          fallback_allowed?: boolean
+          fallback_used?: boolean
+          id?: string
+          idempotency_key: string
+          job_type: string
+          primary_provider?: Database["public"]["Enums"]["ai_job_provider"]
+          project_id?: string | null
+          prompt_version?: string | null
+          request_hash?: string | null
+          request_snapshot?: Json | null
+          result_reference?: Json | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+          user_id?: string | null
+          vacancy_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          credits_status?: Database["public"]["Enums"]["ai_job_credits_status"]
+          employer_id?: string | null
+          expected_schema?: string | null
+          expires_at?: string | null
+          fallback_allowed?: boolean
+          fallback_used?: boolean
+          id?: string
+          idempotency_key?: string
+          job_type?: string
+          primary_provider?: Database["public"]["Enums"]["ai_job_provider"]
+          project_id?: string | null
+          prompt_version?: string | null
+          request_hash?: string | null
+          request_snapshot?: Json | null
+          result_reference?: Json | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+          user_id?: string | null
+          vacancy_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_jobs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_runs: {
         Row: {
           candidate_id: string | null
@@ -2237,6 +2401,82 @@ export type Database = {
       }
     }
     Views: {
+      ai_jobs_safe_status: {
+        Row: {
+          candidate_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          credits_status:
+            | Database["public"]["Enums"]["ai_job_credits_status"]
+            | null
+          employer_id: string | null
+          fallback_allowed: boolean | null
+          fallback_used: boolean | null
+          id: string | null
+          job_type: string | null
+          project_id: string | null
+          status: Database["public"]["Enums"]["ai_job_status"] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          credits_status?:
+            | Database["public"]["Enums"]["ai_job_credits_status"]
+            | null
+          employer_id?: string | null
+          fallback_allowed?: boolean | null
+          fallback_used?: boolean | null
+          id?: string | null
+          job_type?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          credits_status?:
+            | Database["public"]["Enums"]["ai_job_credits_status"]
+            | null
+          employer_id?: string | null
+          fallback_allowed?: boolean | null
+          fallback_used?: boolean | null
+          id?: string | null
+          job_type?: string | null
+          project_id?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_jobs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_employer_id_fkey"
+            columns: ["employer_id"]
+            isOneToOne: false
+            referencedRelation: "employers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_project_questions: {
         Row: {
           category: Database["public"]["Enums"]["question_category"] | null
@@ -2555,6 +2795,33 @@ export type Database = {
       topup_rr: { Args: { _amount_rub: number }; Returns: Json }
     }
     Enums: {
+      ai_job_attempt_status:
+        | "started"
+        | "succeeded"
+        | "failed"
+        | "timed_out"
+        | "cancelled"
+        | "validation_failed"
+      ai_job_credits_status:
+        | "not_charged"
+        | "charged"
+        | "refunded"
+        | "charge_failed"
+      ai_job_provider: "primary" | "rr_pro_max"
+      ai_job_status:
+        | "created"
+        | "primary_running"
+        | "primary_succeeded"
+        | "primary_failed"
+        | "fallback_available"
+        | "fallback_restarting"
+        | "fallback_running"
+        | "fallback_succeeded"
+        | "fallback_failed"
+        | "cancelled"
+        | "timed_out"
+        | "save_failed"
+        | "validation_failed"
       app_role: "admin" | "employer" | "candidate"
       candidate_stage:
         | "terms"
@@ -2711,6 +2978,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_job_attempt_status: [
+        "started",
+        "succeeded",
+        "failed",
+        "timed_out",
+        "cancelled",
+        "validation_failed",
+      ],
+      ai_job_credits_status: [
+        "not_charged",
+        "charged",
+        "refunded",
+        "charge_failed",
+      ],
+      ai_job_provider: ["primary", "rr_pro_max"],
+      ai_job_status: [
+        "created",
+        "primary_running",
+        "primary_succeeded",
+        "primary_failed",
+        "fallback_available",
+        "fallback_restarting",
+        "fallback_running",
+        "fallback_succeeded",
+        "fallback_failed",
+        "cancelled",
+        "timed_out",
+        "save_failed",
+        "validation_failed",
+      ],
       app_role: ["admin", "employer", "candidate"],
       candidate_stage: [
         "terms",
