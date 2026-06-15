@@ -468,16 +468,16 @@ export default function DemoInterviewPage() {
                 ) : null}
                 {state.checkResult.feedback?.items?.length ? (
                   <DisclosureBlock title="Подробный разбор по каждому вопросу">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {state.checkResult.feedback.items.map((it: any) => (
-                        <div key={it.id} className="bg-black/20 border border-white/5 rounded-lg p-2">
-                          <div className="text-xs font-bold text-white">{it.question}</div>
-                          <div className="text-[11px] text-slate-300 mt-1">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
-                          {it.correct ? <div className="text-[11px] text-emerald-300 mt-0.5">Эталон: {it.correct}</div> : null}
-                          <div className={`text-[11px] mt-1 ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
-                            {it.score}/{it.max} · {it.explanation}
+                        <section key={it.id} className="bg-black/20 border border-white/10 rounded-lg p-3 space-y-1.5">
+                          <div className="text-sm font-bold text-white leading-snug">{it.question}</div>
+                          <div className="text-sm text-slate-300">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
+                          {it.correct ? <div className="text-sm text-emerald-300">Эталон: {it.correct}</div> : null}
+                          <div className={`text-sm font-semibold ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
+                            {it.score}/{it.max} · <span className="font-normal">{it.explanation}</span>
                           </div>
-                        </div>
+                        </section>
                       ))}
                     </div>
                   </DisclosureBlock>
