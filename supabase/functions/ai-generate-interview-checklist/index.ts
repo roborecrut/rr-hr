@@ -83,13 +83,13 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
     } else {
       await admin.from("interview_blocks").insert({ project_id: body.project_id, kind: "checklist", payload, ai_generated_at: new Date().toISOString() });
     }
-    await logToDb({ user_message: msg, bot_reply: r.text, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:checklist", server_name: "ai-generate-interview-checklist" });
+    await logToDb({ user_message: `[prompt:${msg.length}b]`, bot_reply: `[reply:${r.text.length}b:${questions.length}q]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:checklist", server_name: "ai-generate-interview-checklist" });
     if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `interview_blocks:${body.project_id}:checklist` });
     if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
     return jsonResponse({ ok: true, count: questions.length, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
-    await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:checklist", server_name: "ai-generate-interview-checklist", function_error: err });
+    await logToDb({ user_message: `[prompt:${msg.length}b]`, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:checklist", server_name: "ai-generate-interview-checklist", function_error: err.slice(0, 200) });
     // Map to a safe error code; do NOT enable fallback for auth/business
     // errors (none of those bubble here — auth was checked at the top).
     if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
