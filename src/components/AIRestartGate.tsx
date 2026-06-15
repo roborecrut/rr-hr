@@ -26,7 +26,7 @@ export const AIRestartGate: React.FC = () => {
     () => PHRASES[Math.floor(Math.random() * PHRASES.length)],
     [visible],
   );
-  const typed = useTypewriter(visible ? phrase : "", 5);
+  const typed = useTypewriter(visible ? phrase : "", 40);
 
   if (!visible) return null;
 

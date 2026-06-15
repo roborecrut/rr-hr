@@ -2802,15 +2802,17 @@ export default function CandidateFlow() {
                 {certUnlocked ? "Сохранить сертификат в PDF" : "Сертификат недоступен"}
               </button>
 
-              <button
-                onClick={() => {
-                  localStorage.clear();
-                  navigate("/main");
-                }}
-                className="cursor-pointer w-full bg-white/5 border border-white/10 text-white font-bold py-2.5 rounded-xl text-center text-xs transition hover:bg-white/10"
-              >
-                Войти под другим профилем
-              </button>
+              {certUnlocked && (
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    navigate("/main");
+                  }}
+                  className="cursor-pointer w-full bg-white/5 border border-white/10 text-white font-bold py-2.5 rounded-xl text-center text-xs transition hover:bg-white/10"
+                >
+                  Войти под другим профилем
+                </button>
+              )}
             </div>
               </>;
             })()}
