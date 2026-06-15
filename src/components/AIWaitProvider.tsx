@@ -412,6 +412,7 @@ interface OverlayProps {
   status: Exclude<Status, "idle" | "fallback">;
   title: string;
   phrase: string;
+  phraseSeq?: number;
   elapsed: number;
   error: string;
   autoCloseOnSuccess: boolean;
@@ -423,14 +424,16 @@ interface OverlayProps {
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, phraseSeq, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
     status === "loading" ? phrase :
     status === "success" ? "Готово! Ответ получен" :
     "Я сломался…";
-  const typed = useTypewriter(bubbleText, 5);
+  // 80–100 симв/сек. После полного появления текст замирает (~1.4 с)
+  // до того, как провайдер пришлёт следующую реплику (новый phraseSeq).
+  const typed = useTypewriter(bubbleText, 90);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
