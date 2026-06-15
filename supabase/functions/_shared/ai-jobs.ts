@@ -60,12 +60,13 @@ export async function finishAttempt(
 ) {
   const admin = getAdminClient();
   if (!admin || !attemptId) return;
-  await admin.from("ai_job_attempts").update({
+  const upd: Record<string, unknown> = {
     status: patch.status,
     safe_error_code: patch.safe_error_code ?? null,
-    result_reference: patch.result_reference ?? null,
-    finished_at: new Date().toISOString(),
-  }).eq("id", attemptId);
+    completed_at: new Date().toISOString(),
+  };
+  const r = await admin.from("ai_job_attempts").update(upd).eq("id", attemptId);
+  if (r.error) console.error("finishAttempt update failed", r.error.message);
 }
 
 export async function markJobStatus(jobId: string, status: string, completed = false) {
