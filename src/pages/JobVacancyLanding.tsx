@@ -69,8 +69,8 @@ export default function JobVacancyLanding() {
       if (projectId) {
         const isUuid = /^[0-9a-f-]{36}$/i.test(projectId);
         q = isUuid
-          ? supabase.from("projects").select("*, companies(*)").eq("id", projectId).limit(1)
-          : supabase.from("projects").select("*, companies(*)").eq("slug", projectId).limit(1);
+          ? supabase.from("projects").select("*, companies(*)").eq("id", projectId).eq("is_published", true).limit(1)
+          : supabase.from("projects").select("*, companies(*)").eq("slug", projectId).eq("is_published", true).limit(1);
       }
       const { data } = await q;
       const row: any = data && data[0];
