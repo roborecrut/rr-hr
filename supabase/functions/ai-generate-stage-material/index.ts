@@ -4,6 +4,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 const STAGE_TITLES: Record<string, string> = {
   professional: "Профессиональное обучение",
@@ -87,6 +88,24 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
 КОНТЕКСТ:
 ${ctx.filter(Boolean).join("\n")}`;
 
+  const idem = `stage_material:${body.project_id}:${body.stage}`;
+  const job = await createOrReuseAiJob({
+    userId: user?.id || null,
+    jobType: "training_material",
+    idempotencyKey: idem,
+    requestSnapshot: {
+      message: msg,
+      project_id: body.project_id,
+      stage: body.stage,
+      block_key: body.stage,
+      block_title: STAGE_TITLES[body.stage],
+      timeout_ms: 180_000,
+    },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({
       messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
@@ -114,11 +133,18 @@ ${ctx.filter(Boolean).join("\n")}`;
     await logToDb({ user_message: msg, bot_reply: text, channel_id: chatId, user_social_id: socialId,
       channel_name: `ai-stage-material:${body.stage}`, server_name: "ai-generate-stage-material",
       function_call_params: JSON.stringify({ project_id: body.project_id, stage: body.stage }) });
-    return jsonResponse({ ok: true, text, block_id: blockId });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_blocks:${blockId}:material` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, text, block_id: blockId, job_id: jobId });
   } catch (e) {
     const err = String((e as Error).message);
     await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId,
       channel_name: `ai-stage-material:${body.stage}`, server_name: "ai-generate-stage-material", function_error: err });
-    return jsonResponse({ error: err }, 500);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });
