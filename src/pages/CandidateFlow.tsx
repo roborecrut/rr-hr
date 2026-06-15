@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import RRImage from "@/components/RRImage";
+import PasswordField from "@/components/PasswordField";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import TrainingCoursePreview from "../components/TrainingCoursePreview";
@@ -1964,39 +1965,9 @@ export default function CandidateFlow() {
                 <div className="pt-2 border-t border-white/10 space-y-3">
                   <div className="text-[10px] font-bold uppercase text-slate-400">Смена пароля (необязательно)</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400">Текущий пароль</label>
-                      <input
-                        type="password"
-                        autoComplete="current-password"
-                        value={profCurrentPw}
-                        onChange={(e) => setProfCurrentPw(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400">Новый пароль</label>
-                      <input
-                        type="password"
-                        autoComplete="new-password"
-                        value={profNewPw}
-                        onChange={(e) => setProfNewPw(e.target.value)}
-                        placeholder="мин. 8 символов"
-                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400">Повторите новый</label>
-                      <input
-                        type="password"
-                        autoComplete="new-password"
-                        value={profNewPw2}
-                        onChange={(e) => setProfNewPw2(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-[#17344F] text-xs text-white p-2 rounded-lg border border-white/10 focus:outline-none focus:border-[#E7C768]"
-                      />
-                    </div>
+                    <PasswordField label="Текущий пароль" value={profCurrentPw} onChange={setProfCurrentPw} placeholder="••••••••" autoComplete="current-password" />
+                    <PasswordField label="Новый пароль" value={profNewPw} onChange={setProfNewPw} placeholder="мин. 8 символов" autoComplete="new-password" />
+                    <PasswordField label="Повторите новый" value={profNewPw2} onChange={setProfNewPw2} placeholder="••••••••" autoComplete="new-password" />
                   </div>
                 </div>
 
@@ -2722,7 +2693,7 @@ export default function CandidateFlow() {
               <div className="space-y-2 relative z-10">
                 <RRImage src="https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png" w={64} alt="RR Logo" className="w-16 h-16 object-contain mx-auto drop-shadow" />
                 <h1 className="text-xs uppercase tracking-[0.2em] font-bold text-[#E7C768] font-serif">
-                  Сертификат Соответствия Квалификации
+                  Подтверждение прохождения программы компании
                 </h1>
                 <div className="text-[10px] text-gray-400 font-serif italic">Выдан платформой автоматического онбординга Робот Рекрутер (RR)</div>
               </div>

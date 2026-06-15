@@ -132,7 +132,7 @@ export default function CandidateDetailsModal({
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-white truncate">{name}</h2>
-                  <span className="text-[10px] font-mono text-slate-400">ID: {c.public_id}</span>
+                  <span className="text-[10px] text-slate-400">№ {c.public_id}</span>
                   {c.crm_stage && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30">
                       {STAGE_LABELS[c.crm_stage] || c.crm_stage}
