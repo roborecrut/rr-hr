@@ -3,6 +3,16 @@
 // authenticated/anon access to the underlying tables — see migration 4a.1.
 import { getAdminClient } from "./protalk.ts";
 
+// Canonical JSON: keys recursively sorted, arrays preserved. Stable across
+// Postgres jsonb round-trip (which reorders object keys) so hash equality
+// holds for the same logical payload.
+export function canonicalJsonStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return "[" + value.map(canonicalJsonStringify).join(",") + "]";
+  const keys = Object.keys(value as Record<string, unknown>).sort();
+  return "{" + keys.map((k) => JSON.stringify(k) + ":" + canonicalJsonStringify((value as any)[k])).join(",") + "}";
+}
+
 export type CreateJobInput = {
   userId: string | null;
   candidateId?: string | null;
@@ -16,7 +26,7 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
   const admin = getAdminClient();
   if (!admin) return { error: "no_admin_client" };
   const snapshot = input.requestSnapshot;
-  const hash = await sha256Hex(JSON.stringify(snapshot));
+  const hash = await sha256Hex(canonicalJsonStringify(snapshot));
   // Try fetch existing by idempotency_key + owner.
   const ownerCol = input.userId ? "user_id" : "candidate_id";
   const ownerVal = input.userId || input.candidateId;

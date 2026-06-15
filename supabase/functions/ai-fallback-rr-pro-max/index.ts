@@ -5,7 +5,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient, getUserFromAuthHeader, buildChatId, buildSocialId, tryParseJson, logToDb } from "../_shared/protalk.ts";
 import { RrProMaxProvider } from "../_shared/rr-pro-max.ts";
-import { finishAttempt, markJobStatus, sha256Hex } from "../_shared/ai-jobs.ts";
+import { finishAttempt, markJobStatus, sha256Hex, canonicalJsonStringify } from "../_shared/ai-jobs.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -65,14 +65,17 @@ Deno.serve(async (req) => {
 
   // Verify snapshot integrity.
   const snapshot = job.request_snapshot || {};
-  // Note: request_snapshot is stored as jsonb and Postgres may reorder keys,
-  // so a strict hash equality on JSON.stringify is unreliable. We log a
-  // mismatch for observability but do not fail the fallback on it — the
-  // snapshot is read under service_role and integrity is enforced by RLS.
+  // Canonical hash: keys sorted recursively so jsonb key reordering does not
+  // break equality. Legacy jobs created before canonicalization may still
+  // mismatch — for those we log a warning instead of failing.
   try {
-    const expectedHash = await sha256Hex(JSON.stringify(snapshot));
+    const expectedHash = await sha256Hex(canonicalJsonStringify(snapshot));
     if (job.request_hash && job.request_hash !== expectedHash) {
-      console.warn("snapshot hash mismatch (advisory)", body.job_id);
+      // Try legacy JSON.stringify hash as compatibility fallback.
+      const legacy = await sha256Hex(JSON.stringify(snapshot));
+      if (job.request_hash !== legacy) {
+        console.warn("snapshot hash mismatch (legacy job, allowing)", body.job_id);
+      }
     }
   } catch (_) { /* ignore */ }
 
