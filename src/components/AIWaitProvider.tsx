@@ -116,9 +116,14 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const cancelledRef = useRef(false);
+  // Защита от двойного запуска: пока активен loading/fallback overlay,
+  // повторные вызовы run() отбрасываются. Это исключает дубль-списания
+  // лимитов и параллельные AI-задачи от одного клика.
+  const busyRef = useRef(false);
 
   const beginTask = useCallback((title: string, task: () => Promise<any>, timeoutMs: number, autoCloseOnSuccess: boolean, resolver: ((v: any) => void) | null, fallback: FallbackConfig | null) => {
     cancelledRef.current = false;
+    busyRef.current = true;
     setState({
       status: "loading",
       title,
@@ -150,6 +155,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           setTimeout(() => {
             if (cancelledRef.current) return;
             setState((s) => ({ ...s, status: "idle", task: null, resolver: null }));
+            busyRef.current = false;
             resolver?.(result);
           }, 800);
         }
@@ -174,6 +180,10 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const run = useCallback(<T,>(opts: RunOptions<T>): Promise<T | undefined> => {
+    if (busyRef.current) {
+      // Не запускаем второй раз, пока текущая задача не завершилась.
+      return Promise.resolve(undefined);
+    }
     const title = opts.title || "Запрос к ИИ";
     const timeoutMs = opts.timeoutMs ?? 120_000;
     const autoCloseOnSuccess = opts.autoCloseOnSuccess ?? true;
@@ -207,6 +217,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleCancel = useCallback(() => {
     cancelledRef.current = true;
+    busyRef.current = false;
     state.resolver?.(undefined);
     setState((s) => ({ ...s, status: "idle", task: null, resolver: null }));
   }, [state.resolver]);
@@ -215,6 +226,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const result = (window as any).__aiwait_lastResult;
     state.resolver?.(result);
     delete (window as any).__aiwait_lastResult;
+    busyRef.current = false;
     setState((s) => ({ ...s, status: "idle", task: null, resolver: null }));
   }, [state.resolver]);
 
@@ -241,11 +253,10 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
       clearTimeout(phaseTimer);
       if (error || (data && (data as any).error)) {
-        const safeCode = (data as any)?.error || error?.message || "fallback_failed";
         setState((s) => ({
           ...s,
           status: "error",
-          error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${safeCode})`,
+          error: "Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку.",
           fallbackPhase: null,
           fallbackBusy: false,
         }));
@@ -256,13 +267,14 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       toast.success("RR Pro Max успешно завершил задачу");
       const resolver = state.resolver;
       setState((s) => ({ ...s, status: "idle", task: null, resolver: null, fallbackPhase: null, fallbackBusy: false }));
+      busyRef.current = false;
       resolver?.(data);
-    } catch (e: any) {
+    } catch {
       clearTimeout(phaseTimer);
       setState((s) => ({
         ...s,
         status: "error",
-        error: `Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку. (Код: ${e?.message || "fallback_failed"})`,
+        error: "Даже резервная модель не смогла завершить задачу. Попробуйте позднее или обратитесь в поддержку.",
         fallbackPhase: null,
         fallbackBusy: false,
       }));
