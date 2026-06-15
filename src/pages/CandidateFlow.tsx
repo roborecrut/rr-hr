@@ -491,6 +491,62 @@ export default function CandidateFlow() {
     void loadFlowState();
   }, [loadFlowState]);
 
+  // Re-fetch candidate scores from the server. RLS guarantees the candidate
+  // can read only their own row (current_candidate_id() via x-candidate-token),
+  // so we never trust the URL/body candidate id here — we filter by the id
+  // resolved from the verified candidate session attached to state.
+  // Called whenever the scoring tab opens, after the interview completes,
+  // and on window focus, so the UI never falls back to dashes after a retake.
+  const reloadScores = React.useCallback(async () => {
+    if (!candidate?.id) return;
+    try {
+      const { data: sc } = await (supabase as any).from("candidate_scores")
+        .select("resume_score, checklist_score, situations_score, interview_score, overall_score, assessment_summary, resume_feedback, checklist_feedback, situations_feedback, updated_at")
+        .eq("candidate_id", candidate.id).maybeSingle();
+      if (!sc) return;
+      setCandidate((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          scores: {
+            resumeScore: sc.resume_score == null ? undefined : Number(sc.resume_score),
+            checklistScore: sc.checklist_score == null ? undefined : Number(sc.checklist_score),
+            situationsScore: sc.situations_score == null ? undefined : Number(sc.situations_score),
+            interviewScore: sc.interview_score == null ? undefined : Number(sc.interview_score),
+            overallScore: sc.overall_score == null ? undefined : Number(sc.overall_score),
+            assessmentSummary: sc.assessment_summary || "",
+            resumeFeedback: sc.resume_feedback || null,
+            checklistFeedback: sc.checklist_feedback || null,
+            situationsFeedback: sc.situations_feedback || null,
+            updatedAt: (sc as any).updated_at || null,
+          } as any,
+        } as any;
+      });
+    } catch {
+      /* RLS-safe: silent on transient errors, UI keeps previously-loaded scores. */
+    }
+  }, [candidate?.id]);
+
+  // Re-fetch every time the user lands on /scoring, including direct URL hits
+  // and browser reloads (the initial load happens before activeTab is parsed,
+  // so we also re-run when activeTab becomes "scoring").
+  useEffect(() => {
+    if (activeTab === "scoring") void reloadScores();
+  }, [activeTab, reloadScores]);
+
+  // Re-fetch when the tab regains focus — covers the "interview done in
+  // another tab / sub-flow, switched back to scoring" case.
+  useEffect(() => {
+    if (!candidate?.id) return;
+    const onFocus = () => { if (activeTab === "scoring") void reloadScores(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [candidate?.id, activeTab, reloadScores]);
+
   // Main navigation tab
   const [activeTab, setActiveTabState] = useState<string>("profile");
   
