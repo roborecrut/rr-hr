@@ -163,3 +163,45 @@ export async function assertCandidateOwner(opts: {
   if (!data?.project_id) return err("candidate_not_found", 404);
   return assertProjectOwner({ userId: opts.userId, projectId: data.project_id as string });
 }
+
+/**
+ * Sugar: проверяет JWT работодателя и ownership проекта одной операцией.
+ * Возвращает { userId } либо Response с корректным статусом (401/403/404).
+ * Использовать ПЕРЕД любым приватным чтением из projects/companies.
+ */
+export async function requireEmployerForProject(
+  req: Request,
+  projectId: string | null | undefined,
+): Promise<{ userId: string } | Response> {
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+  if (!projectId) {
+    return new Response(JSON.stringify({ error: "bad_body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const own = await assertProjectOwner({ userId: auth.userId, projectId });
+  if (own instanceof Response) return own;
+  return { userId: auth.userId };
+}
+
+/**
+ * Sugar: проверяет JWT работодателя и ownership компании одной операцией.
+ */
+export async function requireEmployerForCompany(
+  req: Request,
+  companyId: string | null | undefined,
+): Promise<{ userId: string } | Response> {
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+  if (!companyId) {
+    return new Response(JSON.stringify({ error: "bad_body" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  const own = await assertProjectOwner({ userId: auth.userId, companyId });
+  if (own instanceof Response) return own;
+  return { userId: auth.userId };
+}
