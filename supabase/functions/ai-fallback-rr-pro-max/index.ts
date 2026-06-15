@@ -250,15 +250,21 @@ Deno.serve(async (req) => {
       await markJobStatus(body.job_id, "fallback_failed", true);
       return jsonResponse({ error: "fallback_save_failed" }, 500);
     }
-    const existing = await admin.from("training_blocks").select("id").eq("project_id", projectId).eq("block_key", blockKey).maybeSingle();
+    // If the original call wrote with a "stage" key (TrainingWizard does),
+    // match on it to avoid duplicating rows.
+    let lookup = admin.from("training_blocks").select("id").eq("project_id", projectId).eq("block_key", blockKey);
+    if (snap.stage) lookup = lookup.eq("stage", snap.stage);
+    const existing = await lookup.maybeSingle();
     let blockId: string | undefined = existing.data?.id;
     if (blockId) {
       await admin.from("training_blocks").update({ materials_md: text, ai_generated_at: new Date().toISOString() }).eq("id", blockId);
     } else {
-      const ins = await admin.from("training_blocks").insert({
+      const insertRow: Record<string, unknown> = {
         project_id: projectId, block_key: blockKey, title: blockTitle,
         materials_md: text, ai_generated_at: new Date().toISOString(), pass_score: 70,
-      }).select("id").single();
+      };
+      if (snap.stage) insertRow.stage = snap.stage;
+      const ins = await admin.from("training_blocks").insert(insertRow).select("id").single();
       blockId = ins.data?.id;
       if (!blockId) {
         await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
