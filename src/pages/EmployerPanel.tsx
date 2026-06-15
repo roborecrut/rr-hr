@@ -4209,6 +4209,12 @@ export default function EmployerPanel() {
                     <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
                   </div>
 
+                  {topupError && (
+                    <div className="bg-red-950/40 border border-red-500/35 text-red-200 rounded-xl p-3 text-xs">
+                      ⚠️ {topupError}
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">К оплате (₽)</label>
