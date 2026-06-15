@@ -93,11 +93,11 @@ ${JSON.stringify(fullBatch)}
   };
 
   await admin.from("candidate_scores").upsert({
-    candidate_id: body.candidate_id,
+    candidate_id: candidateId,
     checklist_score: score100,
     checklist_feedback: feedback,
   }, { onConflict: "candidate_id" });
 
-  await logToDb({ user_message: `checklist:${body.candidate_id}`, bot_reply: aiText, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:grade-checklist", server_name: "ai-interview-grade-checklist" });
+  await logToDb({ user_message: `checklist:${candidateId}`, bot_reply: aiText, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:grade-checklist", server_name: "ai-interview-grade-checklist" });
   return jsonResponse({ ok: true, score: score100, feedback });
 });
