@@ -4,6 +4,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerJwt } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // Whitelist of buckets ai-ingest-document is allowed to read from.
 // Anything else (e.g. user-supplied bucket name) is rejected to prevent
@@ -15,6 +16,14 @@ const ALLOWED_BUCKETS = new Set([
   "candidate-resumes",
   "uploads",
 ]);
+
+function clientIp(req: Request): string {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("cf-connecting-ip") ||
+    "unknown"
+  );
+}
 
 type Entity = "company" | "vacancy" | "training" | "resume";
 
@@ -43,19 +52,69 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "bad_entity" }, 400);
   }
 
-  // resume ingestion is invoked by candidate-side flows with their own token;
-  // employer-side entities require employer JWT.
-  if (body.entity !== "resume") {
-    const auth = await requireEmployerJwt(req);
-    if (auth instanceof Response) return auth;
-  }
-
   if (body.bucket && !ALLOWED_BUCKETS.has(body.bucket)) {
     return jsonResponse({ error: "bucket_not_allowed" }, 403);
   }
   // Disallow path traversal / absolute paths in storage key.
   if (body.file_path && (body.file_path.includes("..") || body.file_path.startsWith("/"))) {
     return jsonResponse({ error: "bad_file_path" }, 400);
+  }
+  // External arbitrary file_url is not allowed for any branch — only signed/public
+  // URLs derived from our own storage buckets are acceptable.
+  if (body.file_url && !body.bucket) {
+    return jsonResponse({ error: "external_url_not_allowed" }, 403);
+  }
+
+  // ─── Branch-specific authorization ─────────────────────────────────────
+  const sbUrl = Deno.env.get("SUPABASE_URL");
+  const sbSvc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!sbUrl || !sbSvc) return jsonResponse({ error: "server_misconfigured" }, 500);
+
+  if (body.entity === "resume") {
+    // candidate-resumes is the only valid bucket for resumes.
+    if (body.bucket !== "candidate-resumes") {
+      return jsonResponse({ error: "bucket_not_allowed" }, 403);
+    }
+    const path = body.file_path || "";
+    if (path.startsWith("demo/")) {
+      // Public demo branch: rate-limit by IP, no candidate token required.
+      const adminRl = createClient(sbUrl, sbSvc);
+      try {
+        const { data: rl } = await adminRl.rpc("rl_hit", {
+          _key: `ai-ingest:demo:${clientIp(req)}`,
+          _window_sec: 300,
+          _limit: 5,
+        });
+        if (rl === false) return jsonResponse({ error: "rate_limited" }, 429);
+      } catch { /* tolerate missing rpc */ }
+    } else {
+      // Real candidate flow: require candidate session token AND verify the
+      // file_path lives inside the candidate's own folder.
+      const token = (
+        req.headers.get("x-candidate-token") ||
+        req.headers.get("X-Candidate-Token") ||
+        ""
+      ).trim();
+      if (!token) return jsonResponse({ error: "candidate_token_required" }, 401);
+      const adminAuth = createClient(sbUrl, sbSvc);
+      const { data: sess } = await adminAuth
+        .from("candidate_sessions")
+        .select("candidate_id, expires_at")
+        .eq("token", token)
+        .maybeSingle();
+      if (!sess?.candidate_id) return jsonResponse({ error: "bad_token" }, 401);
+      if (sess.expires_at && new Date(sess.expires_at as string).getTime() < Date.now()) {
+        return jsonResponse({ error: "token_expired" }, 401);
+      }
+      const candidateId = sess.candidate_id as string;
+      if (!path.startsWith(`${candidateId}/`)) {
+        return jsonResponse({ error: "forbidden" }, 403);
+      }
+    }
+  } else {
+    // company / vacancy / training: require employer JWT.
+    const auth = await requireEmployerJwt(req);
+    if (auth instanceof Response) return auth;
   }
 
   const admin = getAdminClient();
