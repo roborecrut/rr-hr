@@ -2,6 +2,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
+import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -23,9 +24,19 @@ Deno.serve(async (req) => {
   const chatId = buildChatId({ userId: candidateId });
   const socialId = buildSocialId({ user_id: candidateId });
 
-  // Rich grading: pass ALL questions to RR (including choice) so it can explain
-  // each one and produce final summary, strengths, gaps.
-  const fullBatch = questions.map((q) => ({
+  // Pre-split contentless / too-short text answers — they get a deterministic
+  // 0 locally and are NOT forwarded to the LLM. Choice questions always go
+  // to the model so it can explain the verdict. If no substantive text
+  // answers remain AND no choice questions exist, skip the LLM entirely.
+  const contentlessIds = new Set<string>();
+  for (const q of questions) {
+    const kind = q.kind || "text";
+    if (kind === "choice") continue;
+    const ans = (body.answers[q.id] || "").toString();
+    if (isContentlessAnswer(ans) || isTooShortForOpenEnded(ans)) contentlessIds.add(String(q.id));
+  }
+  const questionsForAi = questions.filter((q) => !contentlessIds.has(String(q.id)));
+  const fullBatch = questionsForAi.map((q) => ({
     id: q.id,
     kind: q.kind || "text",
     question: q.question,
@@ -47,18 +58,31 @@ ${JSON.stringify(fullBatch)}
 
   let aiObj: any = null;
   let aiText = "";
-  try {
-    const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 180_000 });
-    aiText = r.text;
-    aiObj = tryParseJson<any>(r.text) || null;
-  } catch (e) {
-    // fall through to local scoring
+  if (fullBatch.length > 0) {
+    try {
+      const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 180_000 });
+      aiText = r.text;
+      aiObj = tryParseJson<any>(r.text) || null;
+    } catch (e) {
+      // fall through to local scoring
+    }
   }
 
   // Local fallback / normalization
   const items: any[] = [];
   for (const q of questions) {
     const ans = (body.answers[q.id] || "").toString().trim();
+    if (contentlessIds.has(String(q.id))) {
+      items.push({
+        id: q.id, question: q.question, answer: ans,
+        correct: q.expected_answer || "",
+        score: 0, max: 5, verdict: "wrong",
+        explanation: CONTENTLESS_COMMENT,
+        what_was_right: "",
+        what_was_wrong: CONTENTLESS_COMMENT,
+      });
+      continue;
+    }
     const aiItem = (aiObj?.items || []).find((x: any) => String(x.id) === String(q.id));
     if (aiItem) {
       items.push({

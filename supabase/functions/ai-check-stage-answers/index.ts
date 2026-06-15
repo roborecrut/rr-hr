@@ -4,6 +4,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
+import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
 
 type Answer = { question_id: string; value: string };
 
@@ -41,17 +42,24 @@ Deno.serve(async (req) => {
   for (const q of questions) {
     const ans = body.answers.find(a => a.question_id === q.id);
     const value = (ans?.value || "").toString().trim();
-    if (!value) {
-      perQuestion.push({ id: q.id, score: 0, max: q.points, comment: "Нет ответа" });
-      continue;
-    }
     if (q.kind === "choice") {
+      if (!value) {
+        perQuestion.push({ id: q.id, score: 0, max: q.points, comment: "Нет ответа" });
+        continue;
+      }
       const correct = String(q.correct || "").trim().toLowerCase();
       const ok = value.toLowerCase() === correct;
       const s = ok ? (q.points || 5) : 0;
       total += s;
       perQuestion.push({ id: q.id, score: s, max: q.points, comment: ok ? "Верно" : "Неверно" });
     } else {
+      // Pre-filter empty / contentless / too-short answers BEFORE calling LLM
+      // — saves provider latency + quota. Conservative on minimum length so
+      // short-but-valid answers still reach the model.
+      if (isContentlessAnswer(value) || isTooShortForOpenEnded(value)) {
+        perQuestion.push({ id: q.id, score: 0, max: q.points, comment: CONTENTLESS_COMMENT });
+        continue;
+      }
       // Ask ProTalk to grade against expected_answer
       const prompt = `Оцени ответ кандидата по строгому эталону.
 ВОПРОС: ${q.question}
