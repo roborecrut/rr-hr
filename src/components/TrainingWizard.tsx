@@ -587,14 +587,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                 <p className="text-[10px] text-slate-400 -mt-1">
                   Совет: вставьте отдельной строкой ссылку YouTube / VK Video / Rutube или Google Docs — в превью и у кандидата она автоматически станет встроенным проигрывателем/документом.
                 </p>
-                <textarea
-                ref={materialsRef}
-                rows={14}
-                maxLength={20000}
-                value={materials}
-                onChange={(e) => setMaterials(e.target.value)}
-                placeholder="Markdown учебного материала (до 20 000 символов)…"
-                className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono focus:outline-[#E7C768]"
+                <FullscreenTextarea
+                  label="Учебный материал"
+                  ref={materialsRef}
+                  rows={14}
+                  maxLength={20000}
+                  value={materials}
+                  onChange={(e) => setMaterials(e.target.value)}
+                  placeholder="Markdown учебного материала (до 20 000 символов)…"
+                  className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono focus:outline-[#E7C768]"
                 />
               </>
             )}
