@@ -61,6 +61,19 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [wishes, setWishes] = useState<Record<Kind, string>>({ resume: "", checklist: "", situations: "" });
   const [showExample, setShowExample] = useState<Record<Kind, boolean>>({ resume: false, checklist: false, situations: false });
   const [existingSystems, setExistingSystems] = useState<Set<string>>(new Set());
+  const [employerPublicId, setEmployerPublicId] = useState<string>("");
+
+  // Pilot RR Pro Max: surface the fallback button in the AI error overlay
+  // only for employer #100006. Server still enforces the same gate.
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await (supabase as any)
+        .from("employers").select("public_id").eq("user_id", user.id).maybeSingle();
+      setEmployerPublicId(String((data as any)?.public_id || ""));
+    })();
+  }, []);
 
   const project = useMemo(() => projects.find(p => p.id === projectId) || null, [projects, projectId]);
 
@@ -107,7 +120,12 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       body: JSON.stringify(body),
     });
     const j = await res.json().catch(() => null);
-    if (!res.ok || j?.error) throw new Error(j?.error || `HTTP ${res.status}`);
+    if (!res.ok || j?.error) {
+      const e: any = new Error(j?.error || `HTTP ${res.status}`);
+      e.jobId = j?.job_id || null;
+      e.fallbackAvailable = !!j?.fallback_available;
+      throw e;
+    }
     return j;
   };
 
@@ -158,6 +176,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
         const r = await aiWaitRun({
           title: "Генерация чек-листа интервью",
           task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId, wishes: wishes.checklist || undefined }),
+          fallback: {
+            viewerAllowed: employerPublicId === "100006",
+            onSuccess: async () => {
+              const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
+              setChecklist((data as any)?.payload?.questions || []);
+              addAuditEvent("success", "RR Pro Max", "Чек-лист сгенерирован резервной моделью");
+            },
+          },
         });
         if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
