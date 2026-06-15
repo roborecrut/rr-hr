@@ -84,8 +84,26 @@ export async function requireCandidateToken(
 }
 
 /**
- * Удобный хелпер: проверяет, что project (или company) принадлежит этому работодателю.
- * Возвращает true либо Response(403).
+ * Возвращает employers.id для текущего auth-пользователя, либо Response(403/500).
+ * Работодатели хранятся в таблице employers со связкой user_id -> auth.users.id.
+ */
+export async function getEmployerIdForUser(userId: string): Promise<{ employerId: string } | Response> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !svc) return err("server_misconfigured", 500);
+  const admin = createClient(url, svc);
+  const { data } = await admin
+    .from("employers")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data?.id) return err("forbidden", 403);
+  return { employerId: data.id as string };
+}
+
+/**
+ * Проверяет, что project (или company) принадлежит работодателю текущего пользователя.
+ * Возвращает true либо Response(403/404).
  */
 export async function assertProjectOwner(opts: {
   userId: string;
@@ -97,6 +115,10 @@ export async function assertProjectOwner(opts: {
   if (!url || !svc) return err("server_misconfigured", 500);
   const admin = createClient(url, svc);
 
+  const emp = await getEmployerIdForUser(opts.userId);
+  if (emp instanceof Response) return emp;
+  const employerId = emp.employerId;
+
   if (opts.projectId) {
     const { data } = await admin
       .from("projects")
@@ -104,20 +126,40 @@ export async function assertProjectOwner(opts: {
       .eq("id", opts.projectId)
       .maybeSingle();
     if (!data) return err("project_not_found", 404);
-    if ((data as any).employer_id !== opts.userId) return err("forbidden", 403);
+    if ((data as any).employer_id !== employerId) return err("forbidden", 403);
     return true;
   }
 
   if (opts.companyId) {
     const { data } = await admin
       .from("companies")
-      .select("owner_id")
+      .select("owner_employer_id")
       .eq("id", opts.companyId)
       .maybeSingle();
     if (!data) return err("company_not_found", 404);
-    if ((data as any).owner_id !== opts.userId) return err("forbidden", 403);
+    if ((data as any).owner_employer_id !== employerId) return err("forbidden", 403);
     return true;
   }
 
   return true;
+}
+
+/**
+ * Проверяет, что candidate принадлежит проекту, владельцем которого является пользователь.
+ */
+export async function assertCandidateOwner(opts: {
+  userId: string;
+  candidateId: string;
+}): Promise<true | Response> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !svc) return err("server_misconfigured", 500);
+  const admin = createClient(url, svc);
+  const { data } = await admin
+    .from("candidates")
+    .select("project_id")
+    .eq("id", opts.candidateId)
+    .maybeSingle();
+  if (!data?.project_id) return err("candidate_not_found", 404);
+  return assertProjectOwner({ userId: opts.userId, projectId: data.project_id as string });
 }
