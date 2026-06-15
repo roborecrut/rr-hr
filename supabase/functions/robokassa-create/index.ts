@@ -28,11 +28,11 @@ Deno.serve(async (req) => {
   const outSum = Number((data as any)?.amount_rub).toFixed(2);
   if (!invId) return jsonResponse({ error: "no_invoice" }, 500);
 
-  const login = Deno.env.get("ROBOKASSA_LOGIN") || "";
-  const isTest = (Deno.env.get("ROBOKASSA_IS_TEST") || "1") === "1";
-  const pwd1 = isTest
+  const login = (Deno.env.get("ROBOKASSA_LOGIN") || "").trim();
+  const isTest = ((Deno.env.get("ROBOKASSA_IS_TEST") || "1").trim()) === "1";
+  const pwd1 = (isTest
     ? (Deno.env.get("ROBOKASSA_TEST_PASSWORD1") || Deno.env.get("ROBOKASSA_PASSWORD1") || "")
-    : (Deno.env.get("ROBOKASSA_PASSWORD1") || "");
+    : (Deno.env.get("ROBOKASSA_PASSWORD1") || "")).trim();
 
   if (!login || !pwd1) {
     // Возвращаем счёт без URL — фронт покажет «временно недоступно».
