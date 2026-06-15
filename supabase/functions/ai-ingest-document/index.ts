@@ -153,13 +153,32 @@ Deno.serve(async (req) => {
       if (own instanceof Response) return own;
     } else if (body.entity === "vacancy" || body.entity === "training") {
       // vacancy: entity_id is a project UUID.
-      // training: TrainingWizard passes `${projectId}-${stage}`; extract the
-      // UUID prefix before ownership check.
-      const projectId =
-        body.entity === "training"
-          ? (body.entity_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] || "")
-          : body.entity_id;
-      if (!projectId) return jsonResponse({ error: "bad_entity_id" }, 400);
+      // training: TrainingWizard passes `${projectId}-${stage}` where stage
+      // is from a fixed whitelist. Use strict format: 36-char UUID, then a
+      // single dash, then a known stage slug — no other shapes are accepted.
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const ALLOWED_STAGES = new Set([
+        "intro","company","product","onboarding","interview",
+        "training","probation","final","stage1","stage2","stage3","stage4","stage5",
+      ]);
+      let projectId = "";
+      if (body.entity === "training") {
+        const id = String(body.entity_id);
+        if (id.length < 38 || id[36] !== "-") {
+          return jsonResponse({ error: "bad_entity_id" }, 400);
+        }
+        const uuidPart = id.slice(0, 36);
+        const stagePart = id.slice(37);
+        if (!UUID_RE.test(uuidPart) || !ALLOWED_STAGES.has(stagePart)) {
+          return jsonResponse({ error: "bad_entity_id" }, 400);
+        }
+        projectId = uuidPart;
+      } else {
+        if (!UUID_RE.test(String(body.entity_id))) {
+          return jsonResponse({ error: "bad_entity_id" }, 400);
+        }
+        projectId = body.entity_id;
+      }
       const own = await assertProjectOwner({ userId: auth.userId, projectId });
       if (own instanceof Response) return own;
     }
