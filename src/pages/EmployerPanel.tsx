@@ -13,7 +13,6 @@ import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
 import InterviewList from "../components/InterviewList";
 import InterviewWizard from "../components/InterviewWizard";
-import RrProMaxPilotProbe from "../components/RrProMaxPilotProbe";
 import SpendConfirmDialog, { type SpendKind } from "../components/SpendConfirmDialog";
 import { JobProject, Candidate, BASIC_SPECIALTIES } from "../types";
 import { fetchJobTitles, upsertJobTitle } from "@/lib/jobTitles";
@@ -4397,11 +4396,6 @@ export default function EmployerPanel() {
 
           {activeTab === "profile" && (
             <div className="space-y-6 text-left">
-
-              {/* TEMP RR Pro Max pilot probe — visible only to employer 100006. */}
-              {String(employerId) === "100006" && (
-                <RrProMaxPilotProbe />
-              )}
 
               {/* Header */}
               <div className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
