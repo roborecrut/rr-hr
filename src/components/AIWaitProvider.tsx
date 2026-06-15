@@ -428,7 +428,8 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
               <button
                 type="button"
                 onClick={onFallback}
-                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition"
+                disabled={fallbackBusy}
+                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Запустить RR Pro Max
               </button>
@@ -443,7 +444,8 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition"
+              disabled={fallbackBusy}
+              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Повторить
             </button>
