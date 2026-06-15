@@ -22,10 +22,10 @@ Deno.serve(async (req) => {
   if (!outSum || !invId || !sigIn) return text("bad request", 400);
 
   // Test/prod password 2 — выбираем по флагу + по факту наличия.
-  const isTest = (Deno.env.get("ROBOKASSA_IS_TEST") || "1") === "1";
-  const pwd2 = isTest
+  const isTest = ((Deno.env.get("ROBOKASSA_IS_TEST") || "1").trim()) === "1";
+  const pwd2 = (isTest
     ? (Deno.env.get("ROBOKASSA_TEST_PASSWORD2") || Deno.env.get("ROBOKASSA_PASSWORD2") || "")
-    : (Deno.env.get("ROBOKASSA_PASSWORD2") || "");
+    : (Deno.env.get("ROBOKASSA_PASSWORD2") || "")).trim();
   if (!pwd2) return text("not configured", 500);
 
   const expected = md5(`${outSum}:${invId}:${pwd2}`);
