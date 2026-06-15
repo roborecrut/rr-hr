@@ -206,6 +206,37 @@ Deno.serve(async (req) => {
   const socialId = buildSocialId({ user_id: user?.id });
   const userMsg = `${PROMPTS[body.entity]}${body.prompt_hint ? "\n\nКонтекст: " + body.prompt_hint : ""}\n\nИсточник: ${sourceUrl}${body.filename ? `\nИмя файла: ${body.filename}` : ""}\n\nВерни только готовый Markdown-текст без обёрток.`;
 
+  // Регистрируем ai_jobs только для распознавания РЕЗЮМЕ кандидата —
+  // именно эта операция была заявлена в Релизе H. Для company/vacancy/training
+  // поведение не меняется (резерв опционален и не входил в спецификацию).
+  let jobId: string | null = null;
+  let attemptId: string | null = null;
+  if (body.entity === "resume") {
+    // owner = candidate; снимок содержит подписанный URL и путь к файлу,
+    // чтобы резервная модель смогла повторно распознать файл без новой
+    // загрузки и без потери уже распознанного текста.
+    const token = (req.headers.get("x-candidate-token") || req.headers.get("X-Candidate-Token") || "").trim();
+    if (token) {
+      const sess = await admin.from("candidate_sessions").select("candidate_id").eq("token", token).maybeSingle();
+      const candId = (sess.data as any)?.candidate_id || null;
+      if (candId) {
+        const idem = `ingest_resume:${candId}:${body.file_path || body.file_url || ""}`;
+        const job = await createOrReuseAiJob({
+          userId: null,
+          candidateId: candId,
+          jobType: "ingest_resume",
+          idempotencyKey: idem,
+          requestSnapshot: { message: userMsg, candidate_id: candId, bucket: body.bucket || null, file_path: body.file_path || null, filename: body.filename || null, timeout_ms: 180_000 },
+          fallbackAllowed: true,
+        });
+        if ("id" in job) {
+          jobId = job.id;
+          attemptId = await startPrimaryAttempt(jobId);
+        }
+      }
+    }
+  }
+
   let text = "";
   let err: string | null = null;
   try {
@@ -217,12 +248,17 @@ Deno.serve(async (req) => {
       chatId, socialId, timeoutMs: 180_000,
     });
     text = (r.text || "").slice(0, Math.max(500, Math.min(body.max_chars || 10000, 10000)));
+    if (!text.trim()) { err = "ingest_empty_response"; }
   } catch (e) {
     err = String((e as Error).message);
   }
 
-  // Cleanup: always try to remove the uploaded file (success or fail).
-  if (body.bucket && body.file_path) {
+  // Cleanup: при успехе всегда удаляем исходный файл.
+  // При технической ошибке резюме — ОСТАВЛЯЕМ файл в storage до повторной
+  // попытки через RR Pro Max (резерв читает тот же путь из snapshot). Для
+  // остальных entity (company/vacancy/training) поведение не меняется.
+  const shouldKeepForFallback = body.entity === "resume" && err && jobId;
+  if (body.bucket && body.file_path && !shouldKeepForFallback) {
     await admin.storage.from(body.bucket).remove([body.file_path]).catch(() => {});
   }
 
@@ -234,6 +270,15 @@ Deno.serve(async (req) => {
     function_error: err,
   });
 
-  if (err) return jsonResponse({ error: err }, 500);
+  if (err) {
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
+  }
+  if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: "ingest_resume:text_returned" });
+  if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
   return jsonResponse({ ok: true, text });
 });
