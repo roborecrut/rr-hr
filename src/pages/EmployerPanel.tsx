@@ -1242,6 +1242,22 @@ export default function EmployerPanel() {
     return () => clearInterval(interval);
   }, [employerId]);
 
+  // Refresh CRM / vacancies immediately on window focus or tab visibility
+  // change so that completing a candidate stage in another tab is reflected
+  // without waiting for the 4-second polling cycle.
+  useEffect(() => {
+    if (!employerId) return;
+    const onFocus = () => { fetchData(); };
+    const onVis = () => { if (document.visibilityState === "visible") fetchData(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employerId]);
+
   // Immediate refresh of the companies list whenever the employerId changes
   // (e.g. when the user navigates into /emp{id}/companies). The 4-second
   // polling above eventually loads it too, but UX should be instant.
