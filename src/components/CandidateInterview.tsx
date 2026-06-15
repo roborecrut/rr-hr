@@ -244,14 +244,27 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       if (!r) return;
       setSituationsScore(r.score);
       setSituationsFeedback(r.items || []);
-      const avg = Math.round(((resumeResult?.score || 0) + (checklistScore || 0) + r.score) / 3);
-      setFinalScore(avg);
-      const passed = avg >= passScore;
+      // Записываем только interview_score; общий overall_score пересчитает
+      // серверный триггер candidate_scores_recompute_overall — это гарантирует,
+      // что любая пересдача (резюме / чек-лист / ситуации / интервью) сразу
+      // обновляет итог одинаково и для кандидата, и для работодателя.
+      const interview = r.score;
+      await (supabase as any)
+        .from("candidate_scores")
+        .upsert({ candidate_id: candidateId, interview_score: interview }, { onConflict: "candidate_id" });
+      // Считываем актуальный overall_score из БД, а не из локального state.
+      const { data: fresh } = await (supabase as any)
+        .from("candidate_scores")
+        .select("overall_score")
+        .eq("candidate_id", candidateId)
+        .maybeSingle();
+      const overall = fresh?.overall_score != null ? Math.round(Number(fresh.overall_score)) : interview;
+      setFinalScore(overall);
+      const passed = overall >= passScore;
       if (passed) {
         await (supabase as any).from("candidates").update({ current_stage: "training" }).eq("id", candidateId);
       }
-      await (supabase as any).from("candidate_scores").upsert({ candidate_id: candidateId, interview_score: avg, overall_score: avg }, { onConflict: "candidate_id" });
-      onCompleted?.(passed, avg);
+      onCompleted?.(passed, overall);
       // Не переключаем стадию автоматически — пользователь увидит результат
       // этапа «Ситуации» и сам нажмёт кнопку «Показать итоговую оценку».
     } catch (e: any) { alert(formatUserError(toUserError(e))); }
