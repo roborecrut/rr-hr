@@ -1090,27 +1090,21 @@ export default function CandidateFlow() {
     setTimeout(() => window.location.reload(), 50);
   };
 
-  // Sync stage to backend
-  const updateStageOnBackend = async (newStage: string, additionalPayload: any = {}) => {
+  // Серверная синхронизация этапа: вызываем RPC `candidate_set_stage`,
+  // который сохраняет подсказку строго монотонно (никогда не назад) и
+  // защищён `current_candidate_id()` из x-candidate-token. После
+  // успешного сохранения перечитываем серверное состояние, чтобы UI
+  // и навигация совпадали с реальным прогрессом.
+  const updateStageOnBackend = async (newStage: string, _additionalPayload: any = {}) => {
     if (!candidate) return;
-
     try {
-      const res = await fetch(`/api/candidates/${candidate.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentStage: newStage,
-          ...additionalPayload
-        })
-      });
-
-      if (res.ok) {
-        const updated = await res.json();
-        setCandidate(updated);
-        setCurrentStage(newStage);
-      }
+      const { data, error } = await (supabase as any).rpc("candidate_set_stage", { _stage: newStage });
+      if (error) throw error;
+      const persisted = (typeof data === "string" && data) ? data : newStage;
+      setCurrentStage(persisted);
+      await loadFlowState();
     } catch (err) {
-      console.error("Error syncing candidate stage:", err);
+      console.error("candidate_set_stage failed", err);
     }
   };
 
