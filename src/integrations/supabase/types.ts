@@ -77,6 +77,7 @@ export type Database = {
           company_id: string | null
           completed_at: string | null
           created_at: string
+          credits_idem_key: string | null
           credits_status: Database["public"]["Enums"]["ai_job_credits_status"]
           employer_id: string | null
           expected_schema: string | null
@@ -102,6 +103,7 @@ export type Database = {
           company_id?: string | null
           completed_at?: string | null
           created_at?: string
+          credits_idem_key?: string | null
           credits_status?: Database["public"]["Enums"]["ai_job_credits_status"]
           employer_id?: string | null
           expected_schema?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           company_id?: string | null
           completed_at?: string | null
           created_at?: string
+          credits_idem_key?: string | null
           credits_status?: Database["public"]["Enums"]["ai_job_credits_status"]
           employer_id?: string | null
           expected_schema?: string | null
@@ -2626,6 +2629,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      begin_ai_fallback: {
+        Args: { _actor_user_id?: string; _job_id: string }
+        Returns: Json
+      }
       can_start_interview: { Args: { _candidate: string }; Returns: Json }
       can_view_candidate: { Args: { _candidate: string }; Returns: boolean }
       candidate_email_login: {
@@ -2695,6 +2702,23 @@ export type Database = {
           _stage: Database["public"]["Enums"]["crm_stage"]
         }
         Returns: Json
+      }
+      get_ai_job_safe_status: {
+        Args: { _job_id: string }
+        Returns: {
+          completed_at: string
+          created_at: string
+          credits_status: Database["public"]["Enums"]["ai_job_credits_status"]
+          fallback_allowed: boolean
+          fallback_used: boolean
+          id: string
+          job_type: string
+          last_attempt_provider: Database["public"]["Enums"]["ai_job_provider"]
+          last_attempt_status: Database["public"]["Enums"]["ai_job_attempt_status"]
+          last_safe_error_code: string
+          status: Database["public"]["Enums"]["ai_job_status"]
+          updated_at: string
+        }[]
       }
       get_my_referees: { Args: never; Returns: Json }
       get_my_referrer: { Args: never; Returns: Json }
