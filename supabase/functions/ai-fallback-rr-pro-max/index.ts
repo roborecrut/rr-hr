@@ -36,6 +36,23 @@ Deno.serve(async (req) => {
   if (ownerUserId && job.user_id !== ownerUserId) return jsonResponse({ error: "forbidden" }, 403);
   if (ownerCandidateId && job.candidate_id !== ownerCandidateId) return jsonResponse({ error: "forbidden" }, 403);
 
+  // Pilot gate: only employer with public_id = '100006' may run RR Pro Max
+  // in production. Server-side enforcement — frontend hiding is not enough.
+  if (ownerUserId) {
+    const empRow = await admin
+      .from("employers")
+      .select("public_id")
+      .eq("user_id", ownerUserId)
+      .maybeSingle();
+    const pid = String((empRow.data as any)?.public_id || "");
+    if (pid !== "100006") {
+      return jsonResponse({ error: "fallback_pilot_disabled" }, 403);
+    }
+  } else {
+    // Candidates are not in the pilot scope.
+    return jsonResponse({ error: "fallback_pilot_disabled" }, 403);
+  }
+
   if (!RrProMaxProvider.isConfigured()) {
     return jsonResponse({ error: "fallback_not_configured" }, 503);
   }
