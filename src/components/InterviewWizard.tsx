@@ -3,6 +3,7 @@ import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLef
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import FullscreenTextarea from "@/components/FullscreenTextarea";
 import type { JobProject } from "../types";
 
 type Kind = "resume" | "checklist" | "situations";
@@ -337,7 +338,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                 <FullscreenTextarea
                   label="Критерии оценки резюме"
                   value={resumeMd}
-                  onChange={e => setResumeMd(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResumeMd(e.target.value)}
                   rows={14}
                   maxLength={10000}
                   placeholder="Markdown: важные критерии для оценки резюме..."
