@@ -12,6 +12,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 import { supabase } from "@/integrations/supabase/client";
 import { brandImage } from "@/config";
 import { toast } from "sonner";
+import { toUserError } from "@/lib/userError";
 
 /**
  * Global AI wait overlay.
@@ -167,14 +168,30 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       })
       .catch((err: any) => {
         if (cancelledRef.current) return;
-        const msg = err?.message || String(err) || "Неизвестная ошибка";
+        // ВАЖНО: никогда не показываем raw error.message (там может быть
+        // HTML 504-страницы, внутренний код провайдера, имя функции и т.п.).
+        // Прогоняем всё через toUserError — пользователь видит только
+        // человеко-понятный текст.
+        const raw = String(err?.message || err || "");
+        const ue = toUserError(err);
+        // Специальный текст для таймаутов/недоступности нейросети.
+        const isTimeoutish =
+          ue.kind === "timeout" ||
+          ue.kind === "ai_temporary" ||
+          /504|gateway|timed?\s*out|protalk_5\d\d/i.test(raw);
+        const msg = isTimeoutish
+          ? "Нейросеть не успела завершить проверку. Повторите попытку или запустите резервную модель."
+          : ue.message;
+        // fallback_available может прийти как из брошенной ошибки (job-flow),
+        // так и из тела ответа сервера, прикреплённого к Error.
+        const fbAvail = !!(err?.fallbackAvailable || err?.fallback_available);
         setState((s) => ({
           ...s,
           status: "error",
           error: msg,
           elapsed: Math.round((Date.now() - startedAt) / 1000),
           lastErrorJobId: err?.jobId || null,
-          lastErrorFallbackAvailable: !!err?.fallbackAvailable,
+          lastErrorFallbackAvailable: fbAvail,
         }));
       });
   }, []);
@@ -212,6 +229,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleRetry = useCallback(() => {
     if (!state.task) return;
+    if (state.fallbackBusy) return; // защита от двойного клика
     beginTask(state.title, state.task, state.timeoutMs, state.autoCloseOnSuccess, state.resolver, state.fallback);
   }, [state, beginTask]);
 
