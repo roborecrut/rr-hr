@@ -102,6 +102,51 @@ export default function CandidateDetailsModal({
   });
   const otherAnswers = answers.filter((a: any) => !checklistAnswers.includes(a) && !situationAnswers.includes(a));
 
+  // Новый поток интервью хранит детальные ответы внутри candidate_scores.*_feedback.items,
+  // а не в таблице candidate_answers. Достаём их оттуда, если основная коллекция пуста.
+  const chkFbItems: any[] = Array.isArray((s as any)?.checklist_feedback?.items)
+    ? (s as any).checklist_feedback.items
+    : [];
+  const sitFbItems: any[] = Array.isArray((s as any)?.situations_feedback?.items)
+    ? (s as any).situations_feedback.items
+    : [];
+  const checklistAnswersView = checklistAnswers.length > 0
+    ? checklistAnswers.map((a: any) => ({
+        id: a.id,
+        question_text: a.question_text,
+        answer_text: a.answer_text,
+        feedback: a.feedback,
+        score: a.score,
+        is_correct: a.is_correct,
+        max: undefined,
+      }))
+    : chkFbItems.map((it: any, i: number) => ({
+        id: it.id || `chk_${i}`,
+        question_text: it.question || it.id,
+        answer_text: it.answer || "",
+        feedback: it.explanation || it.what_was_wrong || "",
+        score: it.score,
+        max: it.max,
+        is_correct: it.verdict === "correct",
+      }));
+  const situationAnswersView = situationAnswers.length > 0
+    ? situationAnswers.map((a: any) => ({
+        id: a.id,
+        question_text: a.question_text,
+        answer_text: a.answer_text,
+        feedback: a.feedback,
+        score: a.score,
+        is_correct: a.is_correct,
+      }))
+    : sitFbItems.map((it: any, i: number) => ({
+        id: it.id || `sit_${i}`,
+        question_text: it.title || it.id,
+        answer_text: it.answer || "",
+        feedback: it.feedback || "",
+        score: it.score,
+        is_correct: undefined,
+      }));
+
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
   const initials = (name || "?").split(/\s+/).slice(0, 2).map((x: string) => x[0]).join("").toUpperCase();
@@ -270,16 +315,18 @@ export default function CandidateDetailsModal({
             {/* Answers — Checklist */}
             <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
               <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> Ответы на чек-лист</h3>
-              {checklistAnswers.length === 0 ? (
+              {checklistAnswersView.length === 0 ? (
                 <div className="text-[11px] text-slate-500 italic">Кандидат ещё не отвечал на чек-лист.</div>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {checklistAnswers.map((a: any) => (
+                  {checklistAnswersView.map((a: any) => (
                     <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
                         <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
+                          {a.score !== null && a.score !== undefined
+                            ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
+                            : (a.is_correct ? "✓" : "·")}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-200 mt-1">
@@ -295,16 +342,18 @@ export default function CandidateDetailsModal({
             {/* Answers — Situations */}
             <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
               <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Ответы во время ситуаций</h3>
-              {situationAnswers.length === 0 ? (
+              {situationAnswersView.length === 0 ? (
                 <div className="text-[11px] text-slate-500 italic">Ответы по ситуациям отсутствуют.</div>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {situationAnswers.map((a: any) => (
+                  {situationAnswersView.map((a: any) => (
                     <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
                         <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined ? `${Math.round(Number(a.score))}/10` : (a.is_correct ? "✓" : "·")}
+                          {a.score !== null && a.score !== undefined
+                            ? `${Math.round(Number(a.score))}/100`
+                            : (a.is_correct ? "✓" : "·")}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-200 mt-1">
