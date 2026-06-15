@@ -4,7 +4,7 @@
  * On success stores a candidate session and calls onSuccess(publicId).
  */
 import { useState } from "react";
-import { X, Mail, Lock, Loader, CheckCircle, Phone, User } from "lucide-react";
+import { X, Mail, Lock, Loader, CheckCircle, Phone, User, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { saveCandidateSession } from "@/lib/candidateSession";
 
@@ -35,6 +35,8 @@ export default function CandidateAuthModal({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [ok, setOk] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
 
   if (!isOpen) return null;
 
@@ -161,10 +163,15 @@ export default function CandidateAuthModal({
                 <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">
                   <Lock className="w-4 h-4 text-slate-400" />
                   <input
-                    type="password" autoComplete={tab==="signup"?"new-password":"current-password"} value={pw}
+                    type={showPw ? "text" : "password"} autoComplete={tab==="signup"?"new-password":"current-password"} value={pw}
                     onChange={e => setPw(e.target.value)} placeholder="••••••••"
                     className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
                   />
+                  <button type="button" onClick={() => setShowPw(v => !v)}
+                    aria-label={showPw ? "Скрыть пароль" : "Показать пароль"}
+                    className="p-1 text-slate-400 hover:text-white transition">
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </label>
               {tab === "signup" && (
@@ -173,10 +180,15 @@ export default function CandidateAuthModal({
                   <div className="mt-1 flex items-center gap-2 bg-black/30 border border-white/10 rounded-xl px-3 py-2.5">
                     <Lock className="w-4 h-4 text-slate-400" />
                     <input
-                      type="password" autoComplete="new-password" value={pw2}
+                      type={showPw2 ? "text" : "password"} autoComplete="new-password" value={pw2}
                       onChange={e => setPw2(e.target.value)} placeholder="••••••••"
                       className="bg-transparent outline-none w-full text-sm text-white placeholder:text-slate-500"
                     />
+                    <button type="button" onClick={() => setShowPw2(v => !v)}
+                      aria-label={showPw2 ? "Скрыть пароль" : "Показать пароль"}
+                      className="p-1 text-slate-400 hover:text-white transition">
+                      {showPw2 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </label>
               )}
