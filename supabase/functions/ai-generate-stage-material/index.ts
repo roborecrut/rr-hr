@@ -3,6 +3,7 @@
 // Saves a single training_blocks row per (project_id, stage) with materials_md.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerForProject } from "../_shared/auth.ts";
 
 const STAGE_TITLES: Record<string, string> = {
   professional: "Профессиональное обучение",
@@ -27,6 +28,9 @@ Deno.serve(async (req) => {
   if (!body?.project_id || !body?.stage || !STAGE_TITLES[body.stage]) {
     return jsonResponse({ error: "bad_body" }, 400);
   }
+
+  const guard = await requireEmployerForProject(req, body.project_id);
+  if (guard instanceof Response) return guard;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);

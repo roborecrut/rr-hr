@@ -3,6 +3,18 @@
 // On success deletes the source file from storage to avoid wasting space.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerJwt } from "../_shared/auth.ts";
+
+// Whitelist of buckets ai-ingest-document is allowed to read from.
+// Anything else (e.g. user-supplied bucket name) is rejected to prevent
+// reading unrelated storage spaces via a signed URL.
+const ALLOWED_BUCKETS = new Set([
+  "company-docs",
+  "vacancy-docs",
+  "training-docs",
+  "candidate-resumes",
+  "uploads",
+]);
 
 type Entity = "company" | "vacancy" | "training" | "resume";
 
@@ -29,6 +41,21 @@ Deno.serve(async (req) => {
   }
   if (!["company","vacancy","training","resume"].includes(body.entity)) {
     return jsonResponse({ error: "bad_entity" }, 400);
+  }
+
+  // resume ingestion is invoked by candidate-side flows with their own token;
+  // employer-side entities require employer JWT.
+  if (body.entity !== "resume") {
+    const auth = await requireEmployerJwt(req);
+    if (auth instanceof Response) return auth;
+  }
+
+  if (body.bucket && !ALLOWED_BUCKETS.has(body.bucket)) {
+    return jsonResponse({ error: "bucket_not_allowed" }, 403);
+  }
+  // Disallow path traversal / absolute paths in storage key.
+  if (body.file_path && (body.file_path.includes("..") || body.file_path.startsWith("/"))) {
+    return jsonResponse({ error: "bad_file_path" }, 400);
   }
 
   const admin = getAdminClient();

@@ -3,6 +3,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
 } from "../_shared/protalk.ts";
+import { requireEmployerJwt, assertProjectOwner, assertCandidateOwner } from "../_shared/auth.ts";
 
 type Mode = "resume" | "checklist" | "situations" | "training_block";
 
@@ -28,6 +29,16 @@ Deno.serve(async (req) => {
     payload: unknown;
   };
   if (!body?.mode || !body.payload) return jsonResponse({ error: "bad_body" }, 400);
+
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+  if (body.candidate_id) {
+    const own = await assertCandidateOwner({ userId: auth.userId, candidateId: body.candidate_id });
+    if (own instanceof Response) return own;
+  } else if (body.project_id) {
+    const own = await assertProjectOwner({ userId: auth.userId, projectId: body.project_id });
+    if (own instanceof Response) return own;
+  }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });

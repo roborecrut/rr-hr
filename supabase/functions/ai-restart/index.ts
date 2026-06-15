@@ -1,10 +1,13 @@
 // Sends /restart to ProTalk to reset the dialog for the given employer.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerJwt } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
   const body = await req.json().catch(() => null) as null | { employer_public_id?: string };
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });

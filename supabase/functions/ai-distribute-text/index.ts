@@ -4,6 +4,7 @@
 // training → returns a markdown material chunk (caller decides where to save it)
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerJwt } from "../_shared/auth.ts";
 
 type Entity = "company" | "vacancy" | "training";
 
@@ -28,6 +29,9 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null) as null | { entity: Entity; entity_id?: string; text?: string };
   if (!body || !body.entity || !body.text) return jsonResponse({ error: "bad_body" }, 400);
   if (!SCHEMAS[body.entity]) return jsonResponse({ error: "bad_entity" }, 400);
+
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });

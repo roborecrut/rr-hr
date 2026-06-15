@@ -2,6 +2,7 @@
 // Replaces existing training_questions for the block; updates total_score/pass_score.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -10,11 +11,17 @@ Deno.serve(async (req) => {
   const body = await req.json().catch(() => null) as null | { block_id: string };
   if (!body?.block_id) return jsonResponse({ error: "bad_body" }, 400);
 
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
   const { data: block, error: be } = await admin.from("training_blocks").select("*").eq("id", body.block_id).maybeSingle();
   if (be || !block) return jsonResponse({ error: "no_block" }, 404);
+  // Verify the block's project belongs to the authenticated employer BEFORE running AI.
+  const own = await assertProjectOwner({ userId: auth.userId, projectId: (block as any).project_id });
+  if (own instanceof Response) return own;
   if (!block.materials_md) return jsonResponse({ error: "no_material" }, 400);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));

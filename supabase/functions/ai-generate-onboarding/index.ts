@@ -3,6 +3,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   callProTalk, tryParseJson, getAdminClient, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
 } from "../_shared/protalk.ts";
+import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -16,6 +17,15 @@ Deno.serve(async (req) => {
     save?: boolean;
   };
   if (!body?.role_name) return jsonResponse({ error: "role_name_required" }, 400);
+
+  // Always require employer JWT (AI spend protection)
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
+  // If save is requested with project_id, verify ownership BEFORE AI call
+  if (body.save && body.project_id) {
+    const own = await assertProjectOwner({ userId: auth.userId, projectId: body.project_id });
+    if (own instanceof Response) return own;
+  }
 
   const system =
     "Ты — методолог HR. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь. " +
