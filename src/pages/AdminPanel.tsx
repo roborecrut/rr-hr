@@ -945,6 +945,208 @@ function MailingsSection() {
   );
 }
 
+/* ============== Interviews — кандидат-центричный список (#6) ============== */
+
+function InterviewsSection() {
+  const [scores, setScores] = useState<any[]>([]);
+  const [cands, setCands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [s, c] = await Promise.all([
+      (supabase as any).from("candidate_scores").select("*").order("updated_at", { ascending: false }).limit(500),
+      supabase.rpc("admin_list_candidates" as any),
+    ]);
+    setScores(((s as any).data as any[]) || []);
+    setCands(((c as any).data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const candMap = useMemo(() => {
+    const m: Record<string, any> = {};
+    cands.forEach((c) => { m[c.id] = c; });
+    return m;
+  }, [cands]);
+
+  const enriched = useMemo(() => scores.map((s) => {
+    const c = candMap[s.candidate_id] || {};
+    return { ...s, _name: c.full_name || "", _email: c.email || "", _role: c.role_name || c.project_role || "", _company: c.company_name || "", _public_id: c.public_id || "" };
+  }), [scores, candMap]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return enriched;
+    return enriched.filter((r) =>
+      (r._name || "").toLowerCase().includes(q) ||
+      (r._email || "").toLowerCase().includes(q) ||
+      (r._role || "").toLowerCase().includes(q) ||
+      (r._company || "").toLowerCase().includes(q));
+  }, [enriched, search]);
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+        <h2 className="text-base font-bold text-[#E7C768]">Интервью (оценки кандидатов) — {filtered.length}</h2>
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по ФИО / email / роли / компании…"
+          className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
+      </div>
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка…</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="p-3">Кандидат</th><th className="p-3">Email</th><th className="p-3">Роль</th><th className="p-3">Компания</th>
+                  <th className="p-3 text-center">Резюме</th><th className="p-3 text-center">Чек-лист</th><th className="p-3 text-center">Ситуации</th>
+                  <th className="p-3 text-center">Общий</th><th className="p-3">Обновлено</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r) => (
+                  <tr key={r.candidate_id} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r.candidate_id)}>
+                    <td className="p-3 font-bold text-white">{r._name || "—"}<div className="text-[10px] text-slate-400 font-mono">#{r._public_id}</div></td>
+                    <td className="p-3 text-slate-300">{r._email || "—"}</td>
+                    <td className="p-3">{r._role || "—"}</td>
+                    <td className="p-3">{r._company || "—"}</td>
+                    <td className="p-3 text-center font-mono text-cyan-300">{r.resume_score ?? "—"}</td>
+                    <td className="p-3 text-center font-mono text-violet-300">{r.checklist_score ?? "—"}</td>
+                    <td className="p-3 text-center font-mono text-amber-300">{r.situations_score ?? "—"}</td>
+                    <td className="p-3 text-center font-mono font-bold text-[#E7C768]">{r.overall_score ?? "—"}</td>
+                    <td className="p-3 text-[10px] text-slate-400">{r.updated_at ? new Date(r.updated_at).toLocaleString() : ""}</td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={9} className="p-6 text-center text-slate-400">Ничего не найдено</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <CandidateDetailsModal candidateId={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+/* ============== Trainings — кандидат-центричный список (#6) ============== */
+
+function TrainingsSection() {
+  const [progress, setProgress] = useState<any[]>([]);
+  const [cands, setCands] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [stage, setStage] = useState<string>("all");
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const [p, c] = await Promise.all([
+      (supabase as any).from("candidate_stage_progress").select("*").order("updated_at", { ascending: false }).limit(1000),
+      supabase.rpc("admin_list_candidates" as any),
+    ]);
+    setProgress(((p as any).data as any[]) || []);
+    setCands(((c as any).data as any[]) || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const candMap = useMemo(() => {
+    const m: Record<string, any> = {};
+    cands.forEach((c) => { m[c.id] = c; });
+    return m;
+  }, [cands]);
+
+  const enriched = useMemo(() => progress.map((s) => {
+    const c = candMap[s.candidate_id] || {};
+    return { ...s, _name: c.full_name || "", _email: c.email || "", _role: c.role_name || c.project_role || "", _company: c.company_name || "", _public_id: c.public_id || "" };
+  }), [progress, candMap]);
+
+  const STAGES = Array.from(new Set(progress.map((p) => p.stage).filter(Boolean)));
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return enriched.filter((r) =>
+      (stage === "all" || r.stage === stage) &&
+      (!q ||
+        (r._name || "").toLowerCase().includes(q) ||
+        (r._email || "").toLowerCase().includes(q) ||
+        (r._role || "").toLowerCase().includes(q) ||
+        (r._company || "").toLowerCase().includes(q) ||
+        (r.stage || "").toLowerCase().includes(q)));
+  }, [enriched, search, stage]);
+
+  return (
+    <div className="space-y-3">
+      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+        <h2 className="text-base font-bold text-[#E7C768]">Прогресс обучения — {filtered.length}</h2>
+        <div className="flex items-center gap-2">
+          <select value={stage} onChange={(e) => setStage(e.target.value)}
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10">
+            <option value="all" className="bg-slate-900">Все этапы</option>
+            {STAGES.map((s) => <option key={s} value={s} className="bg-slate-900">{s}</option>)}
+          </select>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по ФИО / email / роли / компании…"
+            className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
+        </div>
+      </div>
+      {loading ? (
+        <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка…</div>
+      ) : (
+        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
+                <tr>
+                  <th className="p-3">Кандидат</th><th className="p-3">Email</th><th className="p-3">Роль</th><th className="p-3">Компания</th>
+                  <th className="p-3">Этап</th><th className="p-3 text-center">Попыток</th><th className="p-3 text-center">Лучший</th>
+                  <th className="p-3 text-center">Последний</th><th className="p-3">Сдан</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {filtered.map((r, i) => (
+                  <tr key={`${r.candidate_id}-${r.stage}-${i}`} className="hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r.candidate_id)}>
+                    <td className="p-3 font-bold text-white">{r._name || "—"}<div className="text-[10px] text-slate-400 font-mono">#{r._public_id}</div></td>
+                    <td className="p-3 text-slate-300">{r._email || "—"}</td>
+                    <td className="p-3">{r._role || "—"}</td>
+                    <td className="p-3">{r._company || "—"}</td>
+                    <td className="p-3"><span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[#E7C768]/15 text-[#E7C768]">{r.stage}</span></td>
+                    <td className="p-3 text-center font-mono">{r.attempts ?? "—"}</td>
+                    <td className="p-3 text-center font-mono text-[#E7C768] font-bold">{r.best_score ?? "—"}</td>
+                    <td className="p-3 text-center font-mono text-slate-200">{r.last_score ?? "—"}</td>
+                    <td className="p-3 text-[10px] text-slate-400">{r.passed_at ? new Date(r.passed_at).toLocaleDateString() : "—"}</td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={9} className="p-6 text-center text-slate-400">Ничего не найдено</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      <CandidateDetailsModal candidateId={selected} onClose={() => setSelected(null)} />
+    </div>
+  );
+}
+
+function _MailingsSection_unused() {
+  return (
+    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-8 text-center space-y-3">
+      <Mail className="w-10 h-10 mx-auto text-[#E7C768]" />
+      <h2 className="text-base font-bold text-[#E7C768]">Рассылки</h2>
+      <p className="text-xs text-slate-300 max-w-md mx-auto">
+        Конструктор массовых рассылок будет здесь. Отправка работает в кабинете работодателя (CRM → Рассылка). В следующих итерациях добавим централизованные шаблоны и кампании.
+      </p>
+    </div>
+  );
+}
+
 function RolesSection({ setToast }: { setToast: (t: any) => void }) {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
