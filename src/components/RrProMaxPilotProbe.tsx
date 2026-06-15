@@ -43,8 +43,15 @@ export default function RrProMaxPilotProbe() {
       const { data, error } = await supabase.functions.invoke("ai-fallback-rr-pro-max", {
         body: { job_id: PILOT_JOB_ID },
       });
-      if (error || (data as any)?.error) {
-        const code = (data as any)?.error || "fallback_failed";
+      let bodyCode: string | null = (data as any)?.error || null;
+      if (!bodyCode && error && (error as any).context?.json) {
+        try {
+          const j = await (error as any).context.json();
+          bodyCode = j?.error || null;
+        } catch (_) { /* ignore */ }
+      }
+      if (error || bodyCode) {
+        const code = bodyCode || error?.message || "fallback_failed";
         const msg = humanize(code);
         setResult(`${msg} · код: ${code}`);
         toast.error(msg);
