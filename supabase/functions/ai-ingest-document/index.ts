@@ -3,7 +3,7 @@
 // On success deletes the source file from storage to avoid wasting space.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
-import { requireEmployerJwt } from "../_shared/auth.ts";
+import { requireEmployerJwt, getEmployerIdForUser, assertProjectOwner } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // Whitelist of buckets ai-ingest-document is allowed to read from.
@@ -15,7 +15,19 @@ const ALLOWED_BUCKETS = new Set([
   "training-docs",
   "candidate-resumes",
   "uploads",
+  "company-uploads",
+  "vacancy-uploads",
+  "training-uploads",
+  "interview-uploads",
 ]);
+
+// Per-entity bucket whitelist for employer uploads. The bucket the client
+// supplies must match the entity (no cross-entity reuse).
+const EMPLOYER_BUCKETS: Record<string, Set<string>> = {
+  company: new Set(["company-docs", "company-uploads", "uploads"]),
+  vacancy: new Set(["vacancy-docs", "vacancy-uploads", "uploads"]),
+  training: new Set(["training-docs", "training-uploads", "interview-uploads", "uploads"]),
+};
 
 function clientIp(req: Request): string {
   return (
@@ -112,9 +124,38 @@ Deno.serve(async (req) => {
       }
     }
   } else {
-    // company / vacancy / training: require employer JWT.
+    // company / vacancy / training: require employer JWT + prove the file
+    // actually belongs to this employer (path prefix == auth user id) and the
+    // entity it claims to attach to is owned by them.
     const auth = await requireEmployerJwt(req);
     if (auth instanceof Response) return auth;
+    if (!body.bucket || !body.file_path) {
+      return jsonResponse({ error: "bad_body" }, 400);
+    }
+    const allowed = EMPLOYER_BUCKETS[body.entity];
+    if (!allowed || !allowed.has(body.bucket)) {
+      return jsonResponse({ error: "bucket_not_allowed" }, 403);
+    }
+    // All employer uploaders (DocumentIngestField, DocumentUploader,
+    // EmployerPanel) prefix every file with `${auth.users.id}/`. We rely on
+    // that prefix as the proof of ownership of the storage object: an
+    // employer cannot ingest a file they did not upload themselves.
+    if (!body.file_path.startsWith(`${auth.userId}/`)) {
+      return jsonResponse({ error: "forbidden" }, 403);
+    }
+    // entity_id is required and must resolve to a resource owned by this
+    // employer (project for vacancy/training, company for company).
+    if (!body.entity_id) return jsonResponse({ error: "entity_id_required" }, 400);
+    const emp = await getEmployerIdForUser(auth.userId);
+    if (emp instanceof Response) return emp;
+    if (body.entity === "company") {
+      const own = await assertProjectOwner({ userId: auth.userId, companyId: body.entity_id });
+      if (own instanceof Response) return own;
+    } else if (body.entity === "vacancy" || body.entity === "training") {
+      // Training docs are bound to a project (training_blocks live under projects).
+      const own = await assertProjectOwner({ userId: auth.userId, projectId: body.entity_id });
+      if (own instanceof Response) return own;
+    }
   }
 
   const admin = getAdminClient();
