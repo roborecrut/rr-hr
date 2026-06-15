@@ -300,8 +300,18 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setState((s) => (s.status === "fallback" ? { ...s, fallbackPhase: "running" } : s));
     }, 1500);
     try {
+      // Кандидаты не используют Supabase Auth — передаём opaque-токен
+      // через заголовок x-candidate-token, иначе серверная авторизация
+      // отклонит запрос с 401, а кнопка «Запустить RR Pro Max» окажется
+      // визуальной заглушкой.
+      let candidateToken: string | null = null;
+      try {
+        const raw = localStorage.getItem("cand_session");
+        if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
+      } catch { /* ignore */ }
       const { data, error } = await supabase.functions.invoke("ai-fallback-rr-pro-max", {
         body: { job_id: jobId },
+        headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
       });
       clearTimeout(phaseTimer);
       if (error || (data && (data as any).error)) {
