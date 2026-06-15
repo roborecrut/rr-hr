@@ -700,37 +700,41 @@ export default function CompanyLanding() {
             </div>
           ) : null}
 
-          {/* List of all vacancies for this company (kept on a vacancy page as a switcher) */}
-          {vacancyId && subTab !== "company" && vacancies.length > 0 && (
-            <div className="space-y-3 pt-5 border-t border-white/10 mt-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">🎯</span>
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                  Все открытые вакансии компании ({vacancies.length}):
-                </h3>
+          {/* Другие активные вакансии этой компании — исключаем текущую. */}
+          {(() => {
+            if (!vacancyId || subTab === "company") return null;
+            const others = vacancies.filter((v) => v.id !== selectedVacancy?.id);
+            if (others.length === 0) return null;
+            return (
+              <div className="space-y-4 pt-6 border-t border-white/10 mt-8">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🎯</span>
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                    Другие открытые вакансии компании ({others.length})
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                  {others.map((v) => (
+                    <VacancyCard
+                      key={v.id}
+                      vacancy={{
+                        id: v.id,
+                        roleName: v.roleName,
+                        companyName: company?.name || null,
+                        companyLogo: company?.logo_url || v.logoUrl || null,
+                        industry: (company as any)?.industry || null,
+                        salaryTerms: v.salaryTerms || null,
+                        scheduleTerms: v.scheduleTerms || null,
+                        vacancyText: v.vacancyText || null,
+                      }}
+                      showCompany={false}
+                      onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {vacancies.map((v) => (
-                  <VacancyCard
-                    key={v.id}
-                    vacancy={{
-                      id: v.id,
-                      roleName: v.roleName,
-                      companyName: company?.name || null,
-                      companyLogo: company?.logo_url || v.logoUrl || null,
-                      industry: (company as any)?.industry || null,
-                      salaryTerms: v.salaryTerms || null,
-                      scheduleTerms: v.scheduleTerms || null,
-                      vacancyText: v.vacancyText || null,
-                    }}
-                    active={selectedVacancy?.id === v.id}
-                    showCompany={false}
-                    onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
         </section>
 
