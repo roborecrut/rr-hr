@@ -357,6 +357,53 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, score: avg, items: results, advice, fallback_used: true });
   }
 
+  // ── stage_test: 20-вопросный тест на этапе обучения ─────────────────────
+  if (job.job_type === "stage_test") {
+    const arr = tryParseJson<any[]>(run.text);
+    if (!Array.isArray(arr) || arr.length === 0) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const projectId = snap.project_id;
+    const stage = snap.stage;
+    if (!projectId || !stage) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const questions = arr.slice(0, 30).map((q: any, i: number) => ({
+      id: String(q.id || `q${i + 1}`),
+      kind: q.kind === "text" ? "text" : "choice",
+      question: String(q.question || "").slice(0, 1000),
+      options: q.kind === "choice" ? (Array.isArray(q.options) ? q.options : []) : null,
+      correct: q.kind === "choice"
+        ? String(q.correct || (Array.isArray(q.options) ? (q.options.find((o: any) => o.is_correct)?.text || "") : "")).slice(0, 500)
+        : null,
+      expected_answer: q.kind === "text" ? String(q.expected_answer || "").slice(0, 2000) : null,
+      points: 5,
+      explanation: q.explanation ? String(q.explanation).slice(0, 500) : "",
+    }));
+    const total = questions.reduce((s, q) => s + (q.points || 0), 0);
+    const existing = await admin.from("training_stage_tests").select("id, pass_score").eq("project_id", projectId).eq("stage", stage).maybeSingle();
+    if (existing.data?.id) {
+      const prev = (existing.data as any).pass_score;
+      const keepPass = typeof prev === "number" && prev > 0 ? Math.min(prev, total) : Math.min(70, total);
+      await admin.from("training_stage_tests").update({
+        questions, total_score: total, pass_score: keepPass, ai_generated_at: new Date().toISOString(),
+      }).eq("id", existing.data.id);
+    } else {
+      await admin.from("training_stage_tests").insert({
+        project_id: projectId, stage, questions, total_score: total,
+        pass_score: Math.min(70, total), ai_generated_at: new Date().toISOString(),
+      });
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `training_stage_tests:${projectId}:${stage}` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${questions.length}q]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, count: questions.length, total_score: total, fallback_used: true });
+  }
+
   await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_unknown" });
   await markJobStatus(body.job_id, "fallback_failed", true);
   return jsonResponse({ error: "unsupported_job_type" }, 400);
