@@ -467,9 +467,8 @@ export default function DemoInterviewPage() {
                   </div>
                 ) : null}
                 {state.checkResult.feedback?.items?.length ? (
-                  <details className="bg-black/30 border border-white/10 rounded-xl">
-                    <summary className="cursor-pointer p-3 text-xs font-bold text-[#E7C768]">Подробный разбор по каждому вопросу</summary>
-                    <div className="p-3 space-y-2">
+                  <DisclosureBlock title="Подробный разбор по каждому вопросу">
+                    <div className="space-y-2">
                       {state.checkResult.feedback.items.map((it: any) => (
                         <div key={it.id} className="bg-black/20 border border-white/5 rounded-lg p-2">
                           <div className="text-xs font-bold text-white">{it.question}</div>
@@ -481,7 +480,7 @@ export default function DemoInterviewPage() {
                         </div>
                       ))}
                     </div>
-                  </details>
+                  </DisclosureBlock>
                 ) : null}
                 <div className="flex flex-wrap gap-2 pt-2">
                   <button onClick={() => setState(s => s ? { ...s, stage: "resume" } : s)} className="btn-brand-gold inline-flex items-center gap-2">
