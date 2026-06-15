@@ -152,8 +152,15 @@ Deno.serve(async (req) => {
       const own = await assertProjectOwner({ userId: auth.userId, companyId: body.entity_id });
       if (own instanceof Response) return own;
     } else if (body.entity === "vacancy" || body.entity === "training") {
-      // Training docs are bound to a project (training_blocks live under projects).
-      const own = await assertProjectOwner({ userId: auth.userId, projectId: body.entity_id });
+      // vacancy: entity_id is a project UUID.
+      // training: TrainingWizard passes `${projectId}-${stage}`; extract the
+      // UUID prefix before ownership check.
+      const projectId =
+        body.entity === "training"
+          ? (body.entity_id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0] || "")
+          : body.entity_id;
+      if (!projectId) return jsonResponse({ error: "bad_entity_id" }, 400);
+      const own = await assertProjectOwner({ userId: auth.userId, projectId });
       if (own instanceof Response) return own;
     }
   }
