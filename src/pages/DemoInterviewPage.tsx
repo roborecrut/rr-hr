@@ -536,39 +536,22 @@ export default function DemoInterviewPage() {
             subtitle="Вставьте текст своего резюме — ИИ оценит соответствие должности."
           >
             {state.template.resume_criteria && (
-              <details className="bg-black/20 border border-white/10 rounded-xl">
-                <summary className="cursor-pointer p-3 text-xs font-bold text-[#E7C768]">Критерии оценки (что ищет ИИ)</summary>
-                <div className="p-3 text-xs text-slate-200 whitespace-pre-wrap">{state.template.resume_criteria}</div>
-              </details>
+              <DisclosureBlock title="Критерии оценки (что ищет ИИ)">
+                <div className="whitespace-pre-wrap">{state.template.resume_criteria}</div>
+              </DisclosureBlock>
             )}
-            {/* File upload — same UX as реальный кандидатский поток. */}
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                disabled={parsing || busy || uploading}
-                onClick={() => fileRef.current?.click()}
-                className="bg-white/10 hover:bg-white/15 text-white text-xs px-3 py-2 rounded-xl flex items-center gap-2 disabled:opacity-60"
-              >
-                {uploading ? <Loader className="w-4 h-4 animate-spin"/> : <Upload className="w-4 h-4"/>}
-                {uploading ? "Загружаем…" : "Загрузить файл резюме (PDF/DOC/TXT)"}
-              </button>
-              <input
-                ref={fileRef} type="file" className="hidden"
-                accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
-                onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; }}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadResume(f); }}
-              />
-            </div>
-            {uploadedResume && !parsing && (
-              <div className="flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white bg-white/5 border border-[#E7C768]/30">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-[#E7C768]"/>Файл загружен: {uploadedResume.filename}</span>
-                <button type="button" disabled={parsing} onClick={sendResumeToRR} className="bg-[#E7C768] text-[#17344F] font-bold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5">
-                  <Send className="w-3.5 h-3.5"/> Распознать в текст
-                </button>
-              </div>
-            )}
-            {uploadError && <div className="text-xs text-[#FF4C4C]">{uploadError}</div>}
-            {parsing && <LoadingPhrase entity="interview" />}
+            {/* Drag & drop резюме — единый компонент для демо и кабинета. */}
+            <ResumeDropzone
+              uploading={uploading}
+              parsing={parsing}
+              uploaded={uploadedResume ? { filename: uploadedResume.filename } : null}
+              error={uploadError}
+              busy={busy}
+              onFile={onUploadResume}
+              onClear={() => setUploadedResume(null)}
+              onSend={sendResumeToRR}
+              sendLabel="Распознать в текст"
+            />
             <textarea
               value={state.resumeText}
               onChange={e => setState(s => s ? { ...s, resumeText: e.target.value } : s)}
