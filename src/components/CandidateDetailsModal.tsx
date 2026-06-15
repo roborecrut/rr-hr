@@ -87,9 +87,19 @@ export default function CandidateDetailsModal({
   const trainingProgress: any[] = data?.training_progress || [];
   const interviews: any[] = data?.interviews || [];
 
-  // Split answers by question category if joined; otherwise show together.
-  const checklistAnswers = answers.filter((a: any) => (a.question_category || "").toLowerCase().includes("checklist") || (a.question_category || "").toLowerCase().includes("чек"));
-  const situationAnswers = answers.filter((a: any) => (a.question_category || "").toLowerCase().includes("situation") || (a.question_category || "").toLowerCase().includes("ситуац"));
+  // Split answers by question category. The DB enum question_category has
+  // values: checklist_prof, checklist_sys, train_prof, train_product,
+  // train_sys, roleplay. Match by prefix so retakes / legacy free-form
+  // categories ("чек-лист", "ситуация") are also captured.
+  const catOf = (a: any) => String(a.question_category || a.category || "").toLowerCase();
+  const checklistAnswers = answers.filter((a: any) => {
+    const k = catOf(a);
+    return k.startsWith("checklist") || k.includes("чек");
+  });
+  const situationAnswers = answers.filter((a: any) => {
+    const k = catOf(a);
+    return k === "roleplay" || k.includes("situation") || k.includes("ситуац") || k.includes("кейс");
+  });
   const otherAnswers = answers.filter((a: any) => !checklistAnswers.includes(a) && !situationAnswers.includes(a));
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;

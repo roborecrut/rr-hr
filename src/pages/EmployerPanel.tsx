@@ -1589,6 +1589,19 @@ export default function EmployerPanel() {
   // wizard flow.
   const openAddVacancyWizard = async () => {
     if (showAddNewVacancy) { await cancelAddVacancyWizard(); return; }
+    // Hard frontend gate: запрещаем мастер вакансии до заполнения компании.
+    // Кнопка может быть случайно нажата из раскрытого/серого раздела или
+    // через клавиатуру — проверяем здесь, дополнительно к серверной защите
+    // в project_create_draft (RAISE EXCEPTION 'company_required').
+    const hasActiveCompany = (companiesList || []).some((c: any) => (c?.status || "") === "active");
+    if (!hasActiveCompany) {
+      addAuditEvent(
+        "warning",
+        "Сначала заполните компанию",
+        "Создание вакансии доступно после того, как минимум одна компания заполнена и сохранена."
+      );
+      return;
+    }
     try {
       const selectedCompanyName = companiesList.some(c => c.name.toLowerCase() === (setupCompanyName || "").toLowerCase())
         ? setupCompanyName
@@ -2439,22 +2452,22 @@ export default function EmployerPanel() {
     );
   }
 
-  // Onboarding (#7): пошаговая активация разделов кабинета.
-  // Каждый шаг разблокирует следующий: 1) профиль → 2) компания → 3) вакансия → 4) обучение → 5) интервью.
-  const hasCompany = (companiesList?.length || 0) > 0;
+  // Onboarding (#7): обязательный шаг — заполненная (active) компания.
+  // После него «Вакансии», «Обучение» и «ИИ-Интервью» становятся
+  // самостоятельными разделами и НЕ зависят друг от друга.
+  const hasCompany = (companiesList || []).some((c: any) => (c?.status || "") === "active");
   const hasVacancy = (projects?.length || 0) > 0;
   const setupStep = !hasCompany ? 2 : !hasVacancy ? 3 : !hasTrainingSetup ? 4 : !hasInterviewSetup ? 5 : 6;
   const setupDone = setupStep === 6;
   const tabDisabled = (key: "vacancies" | "training" | "interviews") => {
+    // Все три раздела одинаково требуют только заполненную компанию.
     if (key === "vacancies")  return !hasCompany;
-    if (key === "training")   return !hasVacancy;
-    if (key === "interviews") return !hasTrainingSetup;
+    if (key === "training")   return !hasCompany;
+    if (key === "interviews") return !hasCompany;
     return false;
   };
   const tabHint = (key: "vacancies" | "training" | "interviews") => {
-    if (key === "vacancies"  && !hasCompany)        return "Сначала добавьте компанию в разделе «Мои Компании»";
-    if (key === "training"   && !hasVacancy)        return "Сначала создайте вакансию в разделе «Вакансии & ИИ»";
-    if (key === "interviews" && !hasTrainingSetup)  return "Сначала настройте систему обучения в разделе «Обучение»";
+    if (!hasCompany) return "Сначала заполните компанию в разделе «Мои Компании»";
     return "";
   };
   const guardedNavigate = (key: "vacancies" | "training" | "interviews", url: string) => {
