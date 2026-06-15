@@ -446,6 +446,7 @@ export default function EmployerPanel() {
   const [isBuying, setIsBuying] = useState<string | null>(null);
   const [isToppingUp, setIsToppingUp] = useState(false);
   const [topupOfferOk, setTopupOfferOk] = useState<boolean>(true);
+  const [topupError, setTopupError] = useState<string>("");
 
   const [tariffLevel, setTariffLevel] = useState<"bronze" | "silver" | "gold">("bronze");
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
@@ -1487,12 +1488,13 @@ export default function EmployerPanel() {
   // Action: Top Up Balance 
   const handleTopupBalance = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTopupError("");
     if (topupAmountRub < 100) {
-      alert("Начальный минимальный платеж 100 рублей.");
+      setTopupError("Минимальная сумма пополнения — 100 ₽.");
       return;
     }
     if (!topupOfferOk) {
-      alert("Для оплаты необходимо согласие с публичной офертой.");
+      setTopupError("Для оплаты необходимо согласие с публичной офертой.");
       return;
     }
     setIsToppingUp(true);
@@ -1500,19 +1502,15 @@ export default function EmployerPanel() {
       const { data, error } = await supabase.functions.invoke("robokassa-create", {
         body: { amount_rub: topupAmountRub, offer_accepted: true },
       });
-      if (error) throw new Error(error.message || "Не удалось создать счёт");
+      if (error) throw new Error("payment_unavailable");
       const resp: any = data;
       if (!resp?.ok || !resp?.payment_url) {
-        throw new Error(
-          resp?.error === "robokassa_not_configured"
-            ? "Платёжная система ещё не подключена администратором. Попробуйте позже."
-            : (resp?.error || "Не удалось получить ссылку на оплату"),
-        );
+        throw new Error("payment_unavailable");
       }
       addAuditEvent("info", "Переход на оплату", `Счёт №${resp.inv_id} на ${topupAmountRub} ₽ (Робокасса)`);
       window.location.href = resp.payment_url as string;
-    } catch (err: any) {
-      alert(translateBillingError(err.message));
+    } catch {
+      setTopupError("Не удалось открыть страницу оплаты. Попробуйте ещё раз через несколько секунд.");
     } finally {
       setIsToppingUp(false);
     }
@@ -4210,6 +4208,12 @@ export default function EmployerPanel() {
                     </h3>
                     <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
                   </div>
+
+                  {topupError && (
+                    <div className="bg-red-950/40 border border-red-500/35 text-red-200 rounded-xl p-3 text-xs">
+                      ⚠️ {topupError}
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">

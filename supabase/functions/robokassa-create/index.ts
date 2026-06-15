@@ -1,12 +1,7 @@
 // Robokassa: создаёт счёт через RPC и формирует подписанный URL платёжной формы.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import md5 from "https://esm.sh/blueimp-md5@2.19.0";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-
-async function md5(s: string): Promise<string> {
-  const buf = new TextEncoder().encode(s);
-  const hash = await crypto.subtle.digest("MD5", buf);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -62,7 +57,7 @@ Deno.serve(async (req) => {
   const receiptEncoded = encodeURIComponent(receiptJson);
 
   // Подпись: MerchantLogin:OutSum:InvId:Receipt(url-encoded):Password1
-  const signature = await md5(`${login}:${outSum}:${invId}:${receiptEncoded}:${pwd1}`);
+  const signature = md5(`${login}:${outSum}:${invId}:${receiptEncoded}:${pwd1}`);
 
   // Собираем query-string вручную, чтобы Receipt был закодирован ровно один раз
   // и совпал с тем, что вошло в подпись.
