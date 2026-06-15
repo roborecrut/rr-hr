@@ -30,18 +30,25 @@ type Props = {
   onCompleted?: (passed: boolean, score: number) => void;
 };
 
-const FN = (n: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${n}`;
-
 async function call(fn: string, body: any) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const res = await fetch(FN(fn), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
-    body: JSON.stringify(body),
+  // Кандидат не использует Supabase Auth — передаём его opaque-токен из localStorage.
+  let candidateToken: string | null = null;
+  try {
+    const raw = localStorage.getItem("cand_session");
+    if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
+  } catch { /* ignore */ }
+  const { data, error } = await supabase.functions.invoke(fn, {
+    body: { ...body, candidate_token: candidateToken },
+    headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
   });
-  const j = await res.json().catch(() => null);
-  if (!res.ok || j?.error) throw new Error(j?.error || `HTTP ${res.status}`);
-  return j;
+  if (error) {
+    const code = (data as any)?.error || (error as any)?.message || `fn_${fn}_failed`;
+    throw new Error(code);
+  }
+  if (data && typeof data === "object" && "error" in (data as any) && (data as any).error) {
+    throw new Error((data as any).error);
+  }
+  return data as any;
 }
 
 export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
