@@ -47,12 +47,17 @@ async function call(fn: string, body: any) {
     body: { ...body, candidate_token: candidateToken },
     headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
   });
-  if (error) {
-    const code = (data as any)?.error || (error as any)?.message || `fn_${fn}_failed`;
-    throw new Error(code);
+  // Сначала проверяем тело ответа: оно может содержать job_id + fallback_available
+  // даже при HTTP-ошибке (Supabase invoke оборачивает 5xx, но data приходит).
+  const errCode = (data as any)?.error || (error as any)?.message || null;
+  if (errCode) {
+    const e: any = new Error(errCode);
+    e.jobId = (data as any)?.job_id || null;
+    e.fallbackAvailable = !!(data as any)?.fallback_available;
+    throw e;
   }
-  if (data && typeof data === "object" && "error" in (data as any) && (data as any).error) {
-    throw new Error((data as any).error);
+  if (error) {
+    throw new Error(`fn_${fn}_failed`);
   }
   return data as any;
 }
@@ -153,6 +158,14 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       const r = await aiWaitRun<any>({
         title: "Оценка резюме",
         task: () => call("ai-interview-screen-resume", { project_id: projectId, candidate_id: candidateId, resume_text: resumeText }),
+        fallback: {
+          viewerAllowed: true,
+          onSuccess: async (data) => {
+            // RR Pro Max возвращает result в том же формате, что и основной
+            // путь, а также уже сохранил оценку в candidate_scores.
+            if (data?.result) setResumeResult(data.result);
+          },
+        },
       });
       if (!r) return;
       setResumeResult(r.result);
@@ -201,6 +214,16 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       const r = await aiWaitRun<any>({
         title: "Распознавание резюме",
         task: () => call("ai-ingest-document", { entity: "resume", entity_id: candidateId, bucket: uploadedResume.bucket, file_path: uploadedResume.path, filename: uploadedResume.filename }),
+        fallback: {
+          viewerAllowed: true,
+          onSuccess: async (data) => {
+            const text = String(data?.text || "").slice(0, 20000);
+            if (text.trim()) {
+              setResumeText(text);
+              setUploadedResume(null);
+            }
+          },
+        },
       });
       if (!r) return;
       const text = String(r?.text || "").slice(0, 20000);

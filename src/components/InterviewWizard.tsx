@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import FullscreenTextarea from "@/components/FullscreenTextarea";
 import type { JobProject } from "../types";
 
 type Kind = "resume" | "checklist" | "situations";
@@ -177,7 +178,9 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
           title: "Генерация чек-листа интервью",
           task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId, wishes: wishes.checklist || undefined }),
           fallback: {
-            viewerAllowed: employerPublicId === "100006",
+            // Пилот резерва завершён — кнопка доступна всем работодателям
+            // при технических сбоях основной нейросети.
+            viewerAllowed: true,
             onSuccess: async () => {
               const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","checklist").maybeSingle();
               setChecklist((data as any)?.payload?.questions || []);
@@ -332,9 +335,15 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "resume" && (
               <div className="space-y-2">
-                <textarea value={resumeMd} onChange={e => setResumeMd(e.target.value)} rows={14} maxLength={10000}
+                <FullscreenTextarea
+                  label="Критерии оценки резюме"
+                  value={resumeMd}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setResumeMd(e.target.value)}
+                  rows={14}
+                  maxLength={10000}
                   placeholder="Markdown: важные критерии для оценки резюме..."
-                  className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono" />
+                  className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+                />
                 <div className="flex justify-end items-center gap-2">
                   {savedFlash === "resume" && saving !== "resume" && (
                     <span className="flex items-center gap-1 text-[11px] text-emerald-300 animate-fade-in">

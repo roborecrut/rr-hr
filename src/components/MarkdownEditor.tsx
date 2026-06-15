@@ -1,7 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Heading1, Heading2, Bold, Italic, Code, List, ListOrdered,
-  Link2, Youtube, Video, FileText, Eye, Pencil, X, Check,
+  Link2, Youtube, Video, FileText, Eye, Pencil, X, Check, Maximize2, Minimize2,
 } from "lucide-react";
 import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 
@@ -24,8 +24,26 @@ export default function MarkdownEditor({
 }: Props) {
   const ref = useRef<HTMLTextAreaElement | null>(null);
   const [preview, setPreview] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   // Inline brand-styled URL prompt (replaces native window.prompt).
   const [embedPrompt, setEmbedPrompt] = useState<null | { kind: string; placeholder: string; value: string }>(null);
+
+  // Esc → выйти из полноэкранного режима. Не теряем текст/курсор: значение
+  // живёт в родителе, ref на textarea сохраняется при перерисовке.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setFullscreen(false); }
+    };
+    document.addEventListener("keydown", onKey);
+    // Блокируем прокрутку body, чтобы оверлей был по-настоящему полноэкранный.
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [fullscreen]);
 
   const clamp = (s: string) => maxLength ? s.slice(0, maxLength) : s;
 
@@ -80,8 +98,14 @@ export default function MarkdownEditor({
   };
 
   return (
-    <div className="space-y-2">
+    <div className={fullscreen ? "fixed inset-0 z-[9990] bg-gradient-to-br from-[#17344F] to-[#265582] p-4 sm:p-6 overflow-auto" : "space-y-2"}>
+      <div className={fullscreen ? "max-w-5xl mx-auto space-y-2 h-full flex flex-col" : "contents"}>
       <div className="flex items-center gap-2">
+        {fullscreen && (
+          <span className="text-[12px] font-bold text-[#E7C768] uppercase tracking-wider mr-auto">
+            Полноэкранный режим · Esc для выхода
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-1 bg-[#0F2A42]/60 border border-white/10 rounded-lg p-1">
           <button type="button" onClick={() => setPreview(false)}
             className={`px-2.5 py-1 rounded-md text-[11px] font-bold inline-flex items-center gap-1 ${!preview ? "bg-[#E7C768] text-[#17344F]" : "text-slate-200 hover:bg-white/10"}`}>
@@ -91,11 +115,17 @@ export default function MarkdownEditor({
             className={`px-2.5 py-1 rounded-md text-[11px] font-bold inline-flex items-center gap-1 ${preview ? "bg-[#E7C768] text-[#17344F]" : "text-slate-200 hover:bg-white/10"}`}>
             <Eye className="w-3 h-3" /> Превью
           </button>
+          <button type="button" onClick={() => setFullscreen(f => !f)}
+            title={fullscreen ? "Закрыть полноэкранный режим (Esc)" : "Развернуть на весь экран"}
+            className="px-2.5 py-1 rounded-md text-[11px] font-bold inline-flex items-center gap-1 text-slate-200 hover:bg-white/10">
+            {fullscreen ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+            {fullscreen ? "Свернуть" : "Развернуть"}
+          </button>
         </div>
       </div>
 
       {preview ? (
-        <div className="min-h-[200px]">
+        <div className={fullscreen ? "flex-1 overflow-auto bg-[#0F2A42]/40 rounded-2xl p-4" : "min-h-[200px]"}>
           <RichTrainingMaterialCard title={previewTitle}>
             {value || "_Пусто_"}
           </RichTrainingMaterialCard>
@@ -168,18 +198,20 @@ export default function MarkdownEditor({
           </p>
           <textarea
             ref={ref}
-            rows={rows}
+            rows={fullscreen ? undefined : rows}
             maxLength={maxLength}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono text-slate-100 focus:outline-[#E7C768]"
+            className={`w-full bg-[#17344F]/60 ${fullscreen ? "flex-1 min-h-[60vh] text-sm leading-relaxed" : "text-xs"} p-3 rounded-xl border border-white/10 font-mono text-slate-100 focus:outline-[#E7C768] break-words whitespace-pre-wrap`}
+            style={fullscreen ? { resize: "none" } : { resize: "vertical" }}
           />
           {maxLength ? (
             <div className="text-[10px] text-slate-400 text-right">{value.length}/{maxLength}</div>
           ) : null}
         </>
       )}
+      </div>
     </div>
   );
 }
