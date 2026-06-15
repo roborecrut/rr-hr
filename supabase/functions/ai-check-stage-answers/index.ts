@@ -3,6 +3,7 @@
 // Updates candidate_stage_progress (attempts++, best_score, passed_at).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireCandidateToken } from "../_shared/auth.ts";
 
 type Answer = { question_id: string; value: string };
 
@@ -11,11 +12,15 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
 
   const body = await req.json().catch(() => null) as null | {
-    candidate_id: string; project_id: string; stage: string; answers: Answer[];
+    candidate_id?: string; project_id: string; stage: string; answers: Answer[]; candidate_token?: string;
   };
-  if (!body?.candidate_id || !body?.project_id || !body?.stage || !Array.isArray(body?.answers)) {
+  if (!body?.project_id || !body?.stage || !Array.isArray(body?.answers)) {
     return jsonResponse({ error: "bad_body" }, 400);
   }
+
+  const authz = await requireCandidateToken(req, body.candidate_token);
+  if (authz instanceof Response) return authz;
+  const candidateId = authz.candidateId;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
@@ -27,9 +32,8 @@ Deno.serve(async (req) => {
   const questions = (test.questions as any[]) || [];
   const passScore = test.pass_score || 70;
 
-  const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id || body.candidate_id });
-  const socialId = buildSocialId({ user_id: user?.id || body.candidate_id });
+  const chatId = buildChatId({ userId: candidateId });
+  const socialId = buildSocialId({ user_id: candidateId });
 
   let total = 0;
   const perQuestion: any[] = [];
@@ -74,7 +78,7 @@ Deno.serve(async (req) => {
 
   // Upsert progress (attempts++, best_score)
   const { data: existing } = await admin.from("candidate_stage_progress")
-    .select("attempts,best_score,passed_at").eq("candidate_id", body.candidate_id).eq("stage", body.stage).maybeSingle();
+    .select("attempts,best_score,passed_at").eq("candidate_id", candidateId).eq("stage", body.stage).maybeSingle();
   const attempts = (existing?.attempts || 0) + 1;
   const bestScore = Math.max(existing?.best_score || 0, total);
   const passedAt = existing?.passed_at || (passed ? new Date().toISOString() : null);
@@ -83,10 +87,10 @@ Deno.serve(async (req) => {
     await admin.from("candidate_stage_progress").update({
       attempts, best_score: bestScore, last_score: total,
       last_answers: body.answers, last_feedback: perQuestion, passed_at: passedAt,
-    }).eq("candidate_id", body.candidate_id).eq("stage", body.stage);
+    }).eq("candidate_id", candidateId).eq("stage", body.stage);
   } else {
     await admin.from("candidate_stage_progress").insert({
-      candidate_id: body.candidate_id, stage: body.stage,
+      candidate_id: candidateId, stage: body.stage,
       attempts, best_score: bestScore, last_score: total,
       last_answers: body.answers, last_feedback: perQuestion, passed_at: passedAt,
     });
@@ -95,7 +99,7 @@ Deno.serve(async (req) => {
   await logToDb({ user_message: `check stage ${body.stage}`, bot_reply: `score ${total}/${test.total_score} passed=${passed}`,
     channel_id: chatId, user_social_id: socialId, channel_name: `ai-check-stage:${body.stage}`,
     server_name: "ai-check-stage-answers",
-    function_call_params: JSON.stringify({ candidate_id: body.candidate_id, project_id: body.project_id, stage: body.stage }) });
+    function_call_params: JSON.stringify({ candidate_id: candidateId, project_id: body.project_id, stage: body.stage }) });
 
   return jsonResponse({ ok: true, score: total, total_score: test.total_score, pass_score: passScore, passed, attempts, per_question: perQuestion });
 });
