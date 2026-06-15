@@ -2696,6 +2696,8 @@ export type Database = {
       company_restore: { Args: { _id: string }; Returns: Json }
       company_soft_delete: { Args: { _id: string }; Returns: Json }
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
+      current_candidate_id: { Args: never; Returns: string }
+      current_candidate_project_id: { Args: never; Returns: string }
       employer_set_candidate_crm_stage: {
         Args: {
           _candidate: string
