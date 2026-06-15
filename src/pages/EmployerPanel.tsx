@@ -1504,11 +1504,23 @@ export default function EmployerPanel() {
       });
       if (error) throw new Error("payment_unavailable");
       const resp: any = data;
-      if (!resp?.ok || !resp?.payment_url) {
+      if (!resp?.ok || !resp?.action || !resp?.fields) {
         throw new Error("payment_unavailable");
       }
       addAuditEvent("info", "Переход на оплату", `Счёт №${resp.inv_id} на ${topupAmountRub} ₽ (Робокасса)`);
-      window.location.href = resp.payment_url as string;
+      const form = document.createElement("form");
+      form.method = (resp.method || "POST") as string;
+      form.action = resp.action as string;
+      form.style.display = "none";
+      for (const [name, value] of Object.entries(resp.fields as Record<string, string>)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = name;
+        input.value = String(value ?? "");
+        form.appendChild(input);
+      }
+      document.body.appendChild(form);
+      form.submit();
     } catch {
       setTopupError("Не удалось открыть страницу оплаты. Попробуйте ещё раз через несколько секунд.");
     } finally {
