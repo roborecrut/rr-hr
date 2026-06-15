@@ -113,13 +113,32 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     })();
   }, [projectId]);
 
-  const callEdge = async (fn: string, body: any) => {
+  const getFreshAccessToken = async (): Promise<string | null> => {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(FN_URL(fn), {
+    const expiresSoon = !session?.expires_at || (session.expires_at * 1000 - Date.now()) < 60_000;
+    if (!expiresSoon && session?.access_token) return session.access_token;
+
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    return refreshed.session?.access_token || session?.access_token || null;
+  };
+
+  const callEdge = async (fn: string, body: any) => {
+    const request = async (accessToken: string | null) => fetch(FN_URL(fn), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify(body),
     });
+
+    let accessToken = await getFreshAccessToken();
+    let res = await request(accessToken);
+    if (res.status === 401) {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      accessToken = refreshed.session?.access_token || null;
+      if (accessToken) res = await request(accessToken);
+    }
     const j = await res.json().catch(() => null);
     if (!res.ok || j?.error) {
       const e: any = new Error(j?.error || `HTTP ${res.status}`);
