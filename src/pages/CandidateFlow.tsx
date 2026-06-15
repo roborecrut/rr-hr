@@ -2505,7 +2505,7 @@ export default function CandidateFlow() {
                   id="btn_accept_terms"
                   onClick={() => {
                     setActiveTab("interview");
-                    if (currentStage === "terms") {
+                    if (effectiveStage === "terms") {
                       handleStartInterview();
                     }
                   }}
@@ -2622,7 +2622,8 @@ export default function CandidateFlow() {
           (() => {
             // Training is only unlocked after a successful interview.
             // Stages progress: terms → interview → scoring → training → certified.
-            const unlocked = ["training", "certified"].includes(currentStage)
+            const unlocked = ["training", "certified"].includes(effectiveStage)
+              || ["training", "certified"].includes(currentStage)
               || (candidate?.scores?.overallScore ?? 0) >= 60;
             if (!unlocked) {
               return (
@@ -2650,7 +2651,7 @@ export default function CandidateFlow() {
         {activeTab === "certified" && (
           <div className="space-y-8 max-w-2xl mx-auto">
             {(() => {
-              const certUnlocked = currentStage === "certified";
+              const certUnlocked = effectiveStage === "certified";
               return <>
             {!certUnlocked && (
               <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-center space-y-1">
