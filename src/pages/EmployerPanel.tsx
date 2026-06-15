@@ -2961,10 +2961,11 @@ export default function EmployerPanel() {
                           </tr>
                         ) : (
                           filteredCandidates.map(cand => {
-                            const rScore = cand.scores?.resumeScore !== undefined ? cand.scores.resumeScore : 70;
-                            const cScore = cand.scores?.checklistScore !== undefined ? cand.scores.checklistScore : 80;
-                            const sScore = cand.scores?.situationsScore !== undefined ? cand.scores.situationsScore : 75;
-                            const avg = Math.round((rScore + cScore + sScore) / 3);
+                            const rScore = cand.scores?.resumeScore;
+                            const cScore = cand.scores?.checklistScore;
+                            const sScore = cand.scores?.situationsScore;
+                            const avg = cand.scores?.overallScore;
+                            const fmt = (v: any) => (v === undefined || v === null ? "—" : `${Math.round(Number(v))}/100`);
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
@@ -2991,11 +2992,11 @@ export default function EmployerPanel() {
                                     <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(rScore)}</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(cScore)}</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(sScore)}</td>
                                 <td className="p-3 text-center">
-                                  <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
+                                  <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg === undefined || avg === null ? "—" : Math.round(Number(avg))}</span>
                                 </td>
                                 <td className="p-3 text-right">
                                   <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
