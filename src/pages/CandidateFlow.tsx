@@ -491,6 +491,18 @@ export default function CandidateFlow() {
     void loadFlowState();
   }, [loadFlowState]);
 
+  // Main navigation tab
+  const [activeTab, setActiveTabState] = useState<string>("profile");
+  
+  // Sub-tabs for "Условия"
+  const [termsSubTab, setTermsSubTabState] = useState<string>("vacancy");
+
+  // Sub-tabs for "ИИ обучение"
+  const [trainingSubTab, setTrainingSubTabState] = useState<string>("professional");
+
+  // Sub-tabs for "Интервью"
+  const [interviewSubTab, setInterviewSubTabState] = useState<string>("resume");
+
   // Re-fetch candidate scores from the server. RLS guarantees the candidate
   // can read only their own row (current_candidate_id() via x-candidate-token),
   // so we never trust the URL/body candidate id here — we filter by the id
@@ -546,18 +558,6 @@ export default function CandidateFlow() {
       document.removeEventListener("visibilitychange", onFocus);
     };
   }, [candidate?.id, activeTab, reloadScores]);
-
-  // Main navigation tab
-  const [activeTab, setActiveTabState] = useState<string>("profile");
-  
-  // Sub-tabs for "Условия"
-  const [termsSubTab, setTermsSubTabState] = useState<string>("vacancy");
-
-  // Sub-tabs for "ИИ обучение"
-  const [trainingSubTab, setTrainingSubTabState] = useState<string>("professional");
-
-  // Sub-tabs for "Интервью"
-  const [interviewSubTab, setInterviewSubTabState] = useState<string>("resume");
 
   // Helper to build cohesive URLs
   const getDynamicPath = (tabId: string, subTabId?: string, forceProject?: any) => {
