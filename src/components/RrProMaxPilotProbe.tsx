@@ -8,7 +8,28 @@ import { toast } from "sonner";
  * server enforces ownership AND the 100006 pilot gate — this component
  * never bypasses either check. Remove after the pilot is confirmed.
  */
-const PILOT_JOB_ID = "5ee1ebdf-4000-4de9-a38b-d761cfb19c68";
+const PILOT_JOB_ID = "dae7bc17-1dd3-4ee5-b913-1e9758cbad55";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  fallback_not_configured: "Резервная модель не настроена (нет ключей RR Pro Max).",
+  fallback_pilot_disabled: "Пилот доступен только работодателю №100006.",
+  fallback_snapshot_corrupt: "Исходный запрос повреждён — нужна новая пилотная задача.",
+  fallback_invalid_json: "Резервная модель вернула некорректный JSON.",
+  fallback_schema_validation_failed: "Ответ резервной модели не соответствует схеме чек-листа.",
+  fallback_empty_response: "Резервная модель вернула пустой ответ.",
+  fallback_provider_unavailable: "Сервис RR Pro Max временно недоступен.",
+  fallback_timeout: "Резервная модель не ответила за отведённое время.",
+  fallback_save_failed: "Не удалось сохранить результат резервной модели.",
+  forbidden: "Нет прав запускать резервную модель.",
+  unauthorized: "Сессия истекла — войдите снова.",
+  not_found: "Пилотная задача не найдена.",
+  illegal_state_for_fallback: "Задача уже завершена — нужна новая пилотная задача.",
+  fallback_not_allowed: "Для этой задачи резерв отключён.",
+};
+
+function humanize(code: string): string {
+  return ERROR_MESSAGES[code] || `Сбой резерва (${code}).`;
+}
 
 export default function RrProMaxPilotProbe() {
   const [busy, setBusy] = useState(false);
@@ -23,9 +44,10 @@ export default function RrProMaxPilotProbe() {
         body: { job_id: PILOT_JOB_ID },
       });
       if (error || (data as any)?.error) {
-        const code = (data as any)?.error || error?.message || "fallback_failed";
-        setResult(`Ошибка: ${code}`);
-        toast.error(`RR Pro Max: ${code}`);
+        const code = (data as any)?.error || "fallback_failed";
+        const msg = humanize(code);
+        setResult(`${msg} · код: ${code}`);
+        toast.error(msg);
       } else {
         const count = (data as any)?.count ?? "?";
         setResult(`OK · вопросов: ${count}`);
