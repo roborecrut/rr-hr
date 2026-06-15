@@ -9,7 +9,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import type { LoadingEntity } from "@/lib/loadingPhrases";
 
-type Entity = Exclude<LoadingEntity, "generic">;
+type Entity = "company" | "vacancy" | "training" | "interview";
 
 const BUCKET: Record<Entity, string> = {
   company: "company-uploads",
