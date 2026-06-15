@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { brandImage } from "@/config";
 import { toast } from "sonner";
 import { toUserError } from "@/lib/userError";
+import { buildPhraseQueue, resolveContext, type MascotContext } from "@/lib/loadingPhrases";
 
 /**
  * Global AI wait overlay.
@@ -28,28 +29,10 @@ const IMG_LOADING = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/
 const IMG_SUCCESS = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR6.png";
 const IMG_ERROR = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR9.png";
 
-const PHRASES = [
-  "Анализирую контекст…",
-  "Сверяю ответы с критериями…",
-  "Проверяю логику и полноту…",
-  "Ищу сильные стороны…",
-  "Подбираю формулировки…",
-  "Сравниваю с требованиями вакансии…",
-  "Перечитываю детали…",
-  "Уточняю важные моменты…",
-  "Сверяюсь с базой знаний…",
-  "Прикидываю варианты ответа…",
-  "Раскладываю по полочкам…",
-  "Формирую рекомендации…",
-  "Готовлю краткий вывод…",
-  "Перепроверяю выводы…",
-  "Подсвечиваю главное…",
-  "Прохожусь по чек-листу ещё раз…",
-  "Доводим до ума…",
-  "Почти готово…",
-  "Собираю итог…",
-  "Финальные штрихи…",
-];
+// Скорость печати маскота и пауза между репликами.
+// 80–100 симв/сек по требованиям релиза I-4, ~1.4 с тишины после реплики.
+const TYPING_CPS = 90;
+const PHRASE_HOLD_MS = 1400;
 
 // Универсальные стадии «живого» ожидания ИИ. Если серверная операция
 // сообщает реальную стадию — она будет иметь приоритет, иначе пользователь
@@ -105,7 +88,8 @@ export function useAIWait(): AIWaitContextValue {
 interface State {
   status: Status;
   title: string;
-  phraseIdx: number;
+  phrase: string;
+  phraseSeq: number; // монотонный счётчик — заставляет useTypewriter перезапуститься
   elapsed: number;
   error: string;
   // Internal control — current task and resolver
@@ -124,7 +108,8 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [state, setState] = useState<State>({
     status: "idle",
     title: "",
-    phraseIdx: 0,
+    phrase: "",
+    phraseSeq: 0,
     elapsed: 0,
     error: "",
     task: null,
@@ -143,15 +128,66 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // повторные вызовы run() отбрасываются. Это исключает дубль-списания
   // лимитов и параллельные AI-задачи от одного клика.
   const busyRef = useRef(false);
+  // Очередь реплик и таймер ротации — стабильно живут вне реактивного цикла.
+  const queueRef = useRef<string[]>([]);
+  const queueIdxRef = useRef(0);
+  const ctxRef = useRef<MascotContext>("universal");
+  const phraseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPhraseTimer = useCallback(() => {
+    if (phraseTimerRef.current) {
+      clearTimeout(phraseTimerRef.current);
+      phraseTimerRef.current = null;
+    }
+  }, []);
+
+  const refillQueue = useCallback((ctx: MascotContext) => {
+    queueRef.current = buildPhraseQueue(ctx);
+    queueIdxRef.current = 0;
+  }, []);
+
+  const scheduleNextPhrase = useCallback((current: string) => {
+    clearPhraseTimer();
+    const typeMs = Math.ceil((current.length * 1000) / TYPING_CPS);
+    phraseTimerRef.current = setTimeout(() => {
+      // Перейти к следующей реплике той же очереди; при исчерпании — пересоздать.
+      let nextIdx = queueIdxRef.current + 1;
+      if (nextIdx >= queueRef.current.length) {
+        refillQueue(ctxRef.current);
+        nextIdx = 0;
+      }
+      queueIdxRef.current = nextIdx;
+      const nextPhrase = queueRef.current[nextIdx] || "";
+      setState((s) => (s.status === "loading"
+        ? { ...s, phrase: nextPhrase, phraseSeq: s.phraseSeq + 1 }
+        : s));
+    }, typeMs + PHRASE_HOLD_MS);
+  }, [clearPhraseTimer, refillQueue]);
+
+  // Каждое обновление текущей фразы перепланирует переход к следующей.
+  useEffect(() => {
+    if (state.status !== "loading") {
+      clearPhraseTimer();
+      return;
+    }
+    scheduleNextPhrase(state.phrase);
+    return clearPhraseTimer;
+    // phraseSeq меняется на каждую новую реплику — этого достаточно
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.status, state.phraseSeq]);
 
   const beginTask = useCallback((title: string, task: () => Promise<any>, timeoutMs: number, autoCloseOnSuccess: boolean, resolver: ((v: any) => void) | null, fallback: FallbackConfig | null) => {
     cancelledRef.current = false;
     busyRef.current = true;
+    const ctx = resolveContext(title);
+    ctxRef.current = ctx;
+    refillQueue(ctx);
+    const firstPhrase = queueRef.current[0] || "";
     setState({
       status: "loading",
       title,
-      // стартуем со случайной фразы, дальше плавно ротируем по кругу
-      phraseIdx: Math.floor(Math.random() * PHRASES.length),
+      phrase: firstPhrase,
+      phraseSeq: 0,
       elapsed: 0,
       error: "",
       task,
@@ -173,6 +209,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     Promise.race([task(), timeoutP])
       .then((result) => {
         if (cancelledRef.current) return;
+        clearPhraseTimer();
         setState((s) => ({ ...s, status: "success", elapsed: Math.round((Date.now() - startedAt) / 1000) }));
         if (autoCloseOnSuccess) {
           setTimeout(() => {
@@ -190,6 +227,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       })
       .catch((err: any) => {
         if (cancelledRef.current) return;
+        clearPhraseTimer();
         // ВАЖНО: никогда не показываем raw error.message (там может быть
         // HTML 504-страницы, внутренний код провайдера, имя функции и т.п.).
         // Прогоняем всё через toUserError — пользователь видит только
@@ -216,7 +254,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           lastErrorFallbackAvailable: fbAvail,
         }));
       });
-  }, []);
+  }, [clearPhraseTimer, refillQueue]);
 
   const run = useCallback(<T,>(opts: RunOptions<T>): Promise<T | undefined> => {
     if (busyRef.current) {
@@ -247,19 +285,8 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => clearInterval(id);
   }, [state.status]);
 
-  // Плавная ротация фраз во время ожидания: ~каждые 3.6с, по кругу.
-  // Не слишком быстро, чтобы пользователь успевал прочитать каждую.
-  useEffect(() => {
-    if (state.status !== "loading") return;
-    const id = setInterval(() => {
-      setState((s) =>
-        s.status === "loading"
-          ? { ...s, phraseIdx: (s.phraseIdx + 1) % PHRASES.length }
-          : s,
-      );
-    }, 3600);
-    return () => clearInterval(id);
-  }, [state.status]);
+  // Очистка таймера фраз при размонтировании провайдера.
+  useEffect(() => () => clearPhraseTimer(), [clearPhraseTimer]);
 
   const handleRetry = useCallback(() => {
     if (!state.task) return;
@@ -270,9 +297,10 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const handleCancel = useCallback(() => {
     cancelledRef.current = true;
     busyRef.current = false;
+    clearPhraseTimer();
     state.resolver?.(undefined);
     setState((s) => ({ ...s, status: "idle", task: null, resolver: null }));
-  }, [state.resolver]);
+  }, [state.resolver, clearPhraseTimer]);
 
   const handleNext = useCallback(() => {
     const result = (window as any).__aiwait_lastResult;
@@ -358,7 +386,8 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         <Overlay
           status={state.status}
           title={state.title}
-          phrase={PHRASES[state.phraseIdx] || PHRASES[0]}
+          phrase={state.phrase}
+          phraseSeq={state.phraseSeq}
           elapsed={state.elapsed}
           error={state.error}
           autoCloseOnSuccess={state.autoCloseOnSuccess}
@@ -383,6 +412,7 @@ interface OverlayProps {
   status: Exclude<Status, "idle" | "fallback">;
   title: string;
   phrase: string;
+  phraseSeq?: number;
   elapsed: number;
   error: string;
   autoCloseOnSuccess: boolean;
@@ -394,14 +424,16 @@ interface OverlayProps {
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, phraseSeq, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
     status === "loading" ? phrase :
     status === "success" ? "Готово! Ответ получен" :
     "Я сломался…";
-  const typed = useTypewriter(bubbleText, 5);
+  // 80–100 симв/сек. После полного появления текст замирает (~1.4 с)
+  // до того, как провайдер пришлёт следующую реплику (новый phraseSeq).
+  const typed = useTypewriter(bubbleText, 90);
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
