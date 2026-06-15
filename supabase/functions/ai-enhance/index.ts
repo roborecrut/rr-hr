@@ -1,5 +1,6 @@
 // Enhance vacancy/company fields via ProTalk.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { requireEmployerJwt } from "../_shared/auth.ts";
 import {
   callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
 } from "../_shared/protalk.ts";
@@ -247,6 +248,9 @@ Deno.serve(async (req) => {
     company_context?: Record<string, any>;
   };
   if (!body?.mode) return jsonResponse({ error: "bad_body" }, 400);
+
+  const auth = await requireEmployerJwt(req);
+  if (auth instanceof Response) return auth;
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const chatId = buildChatId({ userId: user?.id });
