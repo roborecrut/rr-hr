@@ -2582,7 +2582,13 @@ export default function CandidateFlow() {
               <CandidateInterview
                 projectId={candidate.projectId}
                 candidateId={candidate.id}
-                onCompleted={(passed: boolean) => { if (passed) setActiveTab("training"); }}
+                onCompleted={(passed: boolean) => {
+                  // Always pull the latest scores from the server before deciding
+                  // what to show — passes the dashes-after-retake regression fix.
+                  void reloadScores();
+                  void loadFlowState();
+                  if (passed) setActiveTab("training");
+                }}
               />
             ) : (
               <div className="text-slate-300 text-sm">Загрузка...</div>
