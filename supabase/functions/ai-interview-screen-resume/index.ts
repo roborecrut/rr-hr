@@ -1,12 +1,17 @@
 // Score candidate resume against vacancy criteria. Returns {score, summary, strengths[], gaps[]}.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
+import { requireCandidateToken } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string; candidate_id: string; resume_text: string };
-  if (!body?.project_id || !body?.candidate_id || !body?.resume_text) return jsonResponse({ error: "bad_body" }, 400);
+  const body = await req.json().catch(() => null) as null | { project_id: string; candidate_id?: string; resume_text: string; candidate_token?: string };
+  if (!body?.project_id || !body?.resume_text) return jsonResponse({ error: "bad_body" }, 400);
+
+  const authz = await requireCandidateToken(req, body.candidate_token);
+  if (authz instanceof Response) return authz;
+  const candidateId = authz.candidateId;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
@@ -15,7 +20,7 @@ Deno.serve(async (req) => {
   // Only billed candidates can submit a resume for AI grading. Re-attempts are free
   // (spend_pack uses idem_key `pack:interview:{candidate_id}`).
   try {
-    const billed = await admin.rpc("spend_pack", { _candidate: body.candidate_id, _kind: "interview" });
+    const billed = await admin.rpc("spend_pack", { _candidate: candidateId, _kind: "interview" });
     const ok = (billed as any)?.data?.ok;
     if (!ok && !(billed as any)?.data?.already) {
       return jsonResponse({ error: "no_credits", reason: (billed as any)?.error?.message || "insufficient_funds" }, 402);
@@ -30,8 +35,8 @@ Deno.serve(async (req) => {
   ]);
   const criteria = ((blk as any)?.payload?.criteria_md || "").toString();
 
-  const chatId = buildChatId({ userId: body.candidate_id });
-  const socialId = buildSocialId({ user_id: body.candidate_id });
+  const chatId = buildChatId({ userId: candidateId });
+  const socialId = buildSocialId({ user_id: candidateId });
 
   const msg = `Ты HR-эксперт. Оцени резюме кандидата по вакансии "${(proj as any)?.role_name || ""}".
 Критерии:
@@ -58,12 +63,12 @@ ${body.resume_text.slice(0, 10000)}
 
     // Upsert candidate_scores (PK = candidate_id, no separate `id` column)
     await admin.from("candidate_scores").upsert({
-      candidate_id: body.candidate_id,
+      candidate_id: candidateId,
       resume_score: score,
       assessment_summary: result.summary,
       resume_feedback: result,
     }, { onConflict: "candidate_id" });
-    await admin.from("candidates").update({ resume_text: body.resume_text.slice(0, 20000) }).eq("id", body.candidate_id);
+    await admin.from("candidates").update({ resume_text: body.resume_text.slice(0, 20000) }).eq("id", candidateId);
 
     await logToDb({ user_message: msg.slice(0, 5000), bot_reply: r.text.slice(0, 5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:screen-resume", server_name: "ai-interview-screen-resume" });
     return jsonResponse({ ok: true, result });
