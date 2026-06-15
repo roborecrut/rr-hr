@@ -247,7 +247,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`, {
+    const res = await fetch(FN(fn), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

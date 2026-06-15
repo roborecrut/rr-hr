@@ -1944,7 +1944,7 @@ export default function CandidateFlow() {
                           form.append("token", sess.token);
                           form.append("kind", "avatar");
                           form.append("file", f);
-                          const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/candidate-upload-file`, {
+                          const res = await fetch(FN("candidate-upload-file"), {
                             method: "POST",
                             headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
                             body: form,

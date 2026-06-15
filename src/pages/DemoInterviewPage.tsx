@@ -22,7 +22,7 @@ import {
   type DemoState, type DemoTemplate, type DemoStage,
 } from "@/lib/demoSession";
 
-const FN = (n: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${n}`;
+import { FN } from "@/config";
 
 async function call(fn: string, body: any) {
   const res = await fetch(FN(fn), {
