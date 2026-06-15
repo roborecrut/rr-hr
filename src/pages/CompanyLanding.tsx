@@ -438,6 +438,11 @@ export default function CompanyLanding() {
                 alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"
+                fallback={
+                  <div className="w-10 h-10 rounded-xl border border-white/10 p-0.5 bg-gradient-to-br from-[#E7C768]/30 to-[#C9933A]/30 flex items-center justify-center">
+                    <Building className="w-5 h-5 text-[#F5D67A]" />
+                  </div>
+                }
               />
               {company?.name && (
                 <span className="hidden sm:block text-sm font-extrabold text-white truncate max-w-[220px]">{company.name}</span>
