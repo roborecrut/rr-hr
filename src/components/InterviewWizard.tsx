@@ -334,9 +334,15 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "resume" && (
               <div className="space-y-2">
-                <textarea value={resumeMd} onChange={e => setResumeMd(e.target.value)} rows={14} maxLength={10000}
+                <FullscreenTextarea
+                  label="Критерии оценки резюме"
+                  value={resumeMd}
+                  onChange={e => setResumeMd(e.target.value)}
+                  rows={14}
+                  maxLength={10000}
                   placeholder="Markdown: важные критерии для оценки резюме..."
-                  className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono" />
+                  className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+                />
                 <div className="flex justify-end items-center gap-2">
                   {savedFlash === "resume" && saving !== "resume" && (
                     <span className="flex items-center gap-1 text-[11px] text-emerald-300 animate-fade-in">
