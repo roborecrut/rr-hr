@@ -2493,7 +2493,7 @@ export default function EmployerPanel() {
             )}
             <div className="text-right hidden sm:block">
               <span className="text-xs block text-[#E7C768] font-bold">{googleName || profileName}</span>
-              <span className="text-[10px] block text-slate-300 font-mono">ID: {employerId}</span>
+              <span className="text-[10px] block text-slate-300">№ {employerId}</span>
             </div>
             <button onClick={handleLogout} className="cursor-pointer bg-white/10 hover:bg-white/20 text-white rounded-xl px-3 py-2 text-xs font-bold transition flex items-center gap-1 border border-white/10">
               <LogOut className="w-3.5 h-3.5" /> Выйти
@@ -4026,8 +4026,8 @@ export default function EmployerPanel() {
                     </p>
                   </div>
                   <div className="bg-black/25 rounded-2xl p-3 border border-white/5 space-y-1">
-                    <span className="text-[9px] text-slate-400 font-bold block uppercase font-mono">ID работодателя</span>
-                    <span className="font-mono text-xs font-bold text-slate-300">emp{employerId}</span>
+                    <span className="text-[9px] text-slate-400 font-bold block uppercase">Номер кабинета</span>
+                    <span className="text-xs font-bold text-slate-300">emp{employerId}</span>
                   </div>
                 </div>
 
