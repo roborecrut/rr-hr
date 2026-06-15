@@ -268,6 +268,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       toast.success("RR Pro Max успешно завершил задачу");
       const resolver = state.resolver;
       setState((s) => ({ ...s, status: "idle", task: null, resolver: null, fallbackPhase: null, fallbackBusy: false }));
+      busyRef.current = false;
       resolver?.(data);
     } catch (e: any) {
       clearTimeout(phaseTimer);
