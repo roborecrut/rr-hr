@@ -1,12 +1,16 @@
 // Generate "important resume criteria" markdown for a vacancy.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerForProject } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
   const body = await req.json().catch(() => null) as null | { project_id: string; source?: string; wishes?: string };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
+
+  const guard = await requireEmployerForProject(req, body.project_id);
+  if (guard instanceof Response) return guard;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
