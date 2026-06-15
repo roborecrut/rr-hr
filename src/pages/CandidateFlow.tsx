@@ -15,6 +15,7 @@ import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import { FN } from "@/config";
 import { getCandidateSession, saveCandidateSession, type CandidateApplication } from "@/lib/candidateSession";
 import {
   FileText,
@@ -1944,7 +1945,7 @@ export default function CandidateFlow() {
                           form.append("token", sess.token);
                           form.append("kind", "avatar");
                           form.append("file", f);
-                          const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/candidate-upload-file`, {
+                          const res = await fetch(FN("candidate-upload-file"), {
                             method: "POST",
                             headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
                             body: form,

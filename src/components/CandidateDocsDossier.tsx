@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { FileText, Trash2, Upload, ExternalLink, Loader } from "lucide-react";
 import { getCandidateSession } from "@/lib/candidateSession";
 
-const SUPABASE_URL = "https://rjhtauzookkvlipvqpvr.supabase.co";
-const FN = `${SUPABASE_URL}/functions/v1/candidate-upload-file`;
+import { FN as FN_URL } from "@/config";
+const FN = FN_URL("candidate-upload-file");
 
 interface DocItem {
   name: string;

@@ -1,12 +1,17 @@
 // Grade 3 role-play situations (one reply per situation).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
+import { requireCandidateToken } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string; candidate_id: string; answers: Record<string,string> };
-  if (!body?.project_id || !body?.candidate_id || !body?.answers) return jsonResponse({ error: "bad_body" }, 400);
+  const body = await req.json().catch(() => null) as null | { project_id: string; candidate_id?: string; answers: Record<string,string>; candidate_token?: string };
+  if (!body?.project_id || !body?.answers) return jsonResponse({ error: "bad_body" }, 400);
+
+  const authz = await requireCandidateToken(req, body.candidate_token);
+  if (authz instanceof Response) return authz;
+  const candidateId = authz.candidateId;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
@@ -15,8 +20,8 @@ Deno.serve(async (req) => {
   const situations: any[] = (blk as any)?.payload?.situations || [];
   if (!situations.length) return jsonResponse({ error: "no_situations" }, 400);
 
-  const chatId = buildChatId({ userId: body.candidate_id });
-  const socialId = buildSocialId({ user_id: body.candidate_id });
+  const chatId = buildChatId({ userId: candidateId });
+  const socialId = buildSocialId({ user_id: candidateId });
 
   const items = situations.map(s => ({ id: s.id, title: s.title, brief: s.brief, criteria: s.criteria, answer: (body.answers[s.id] || "").toString() }));
   const msg = `Ты — оценщик ролевых ответов. По каждой ситуации оцени ответ кандидата от 0 до 100 баллов с учётом критериев.
@@ -36,7 +41,7 @@ ${JSON.stringify(items)}
 
     const feedback = { items: results, advice: String(obj.advice || "").slice(0, 800), total: avg };
     await admin.from("candidate_scores").upsert({
-      candidate_id: body.candidate_id,
+      candidate_id: candidateId,
       situations_score: avg,
       situations_feedback: feedback,
     }, { onConflict: "candidate_id" });

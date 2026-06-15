@@ -43,7 +43,7 @@ const WISH_EXAMPLE: Record<Kind, string> = {
   situations: "Что писать: 1) тип конфликтных ситуаций, характерных для вашей компании; 2) стиль поведения «контрагента» (агрессивный/мягкий клиент); 3) на какие компетенции делать упор (эмпатия, аргументация, навыки переговоров).",
 };
 
-const FN_URL = (fn: string) => `https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`;
+import { FN as FN_URL } from "@/config";
 
 export default function InterviewWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
   const { run: aiWaitRun } = useAIWait();

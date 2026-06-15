@@ -1,13 +1,17 @@
 // Returns the stage test questions to candidates with correct/expected_answer stripped.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { getAdminClient } from "../_shared/protalk.ts";
+import { requireCandidateToken } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
 
-  const body = await req.json().catch(() => null) as null | { project_id: string; stage: string };
+  const body = await req.json().catch(() => null) as null | { project_id: string; stage: string; candidate_token?: string };
   if (!body?.project_id || !body?.stage) return jsonResponse({ error: "bad_body" }, 400);
+
+  const authz = await requireCandidateToken(req, body.candidate_token);
+  if (authz instanceof Response) return authz;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);

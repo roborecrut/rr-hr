@@ -3,6 +3,7 @@ import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 import { supabase } from "@/integrations/supabase/client";
+import { FN } from "@/config";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { DocumentIngestField } from "@/components/DocumentIngestField";
@@ -247,7 +248,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
     const { data: { session } } = await supabase.auth.getSession();
-    const res = await fetch(`https://rjhtauzookkvlipvqpvr.supabase.co/functions/v1/${fn}`, {
+    const res = await fetch(FN(fn), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

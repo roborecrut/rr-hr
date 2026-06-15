@@ -1,22 +1,23 @@
 /**
  * Single source of truth for the RR mascot illustrations.
- * Images are hosted on Supabase Storage (already optimized PNGs);
+ * Брендовые URL получаем из единого config-модуля.
  * always render with `loading="lazy"`, `decoding="async"` and explicit
  * width/height to avoid layout shift.
  */
-const base = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/";
+import { brandImage } from "@/config";
 
 export const MASCOT = {
-  logo: base + "RR-Logo.png",            // лого RR
-  greeting: base + "RR2.png",            // приветливый RR с планшетом
-  megaphone: base + "RR3.png",           // RR с рупором — оповещения / CTA
-  serious: base + "RR4.png",             // серьёзный, руки скрестил
-  shine: base + "RR5.png",               // веселый/радостный
-  success: base + "RR6.png",             // показывает, что всё получилось
-  clock: base + "RR7.png",               // смотрит на часы
-  question: base + "RR8.png",            // со знаком вопроса (тесты)
-  broken: base + "RR9.png",              // грустный сломанный — ошибки
-  cashier: base + "RR11.png",            // RR-кассир (списания)
+  logo: brandImage("RR-Logo"),
+  greeting: brandImage("RR2"),
+  megaphone: brandImage("RR3"),
+  serious: brandImage("RR4"),
+  shine: brandImage("RR5"),
+  success: brandImage("RR6"),
+  clock: brandImage("RR7"),
+  question: brandImage("RR8"),
+  broken: brandImage("RR9"),
+  empty: brandImage("RR10"),
+  cashier: brandImage("RR11"),
 } as const;
 
 export type MascotKey = keyof typeof MASCOT;
