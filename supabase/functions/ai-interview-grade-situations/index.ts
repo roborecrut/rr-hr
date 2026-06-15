@@ -3,6 +3,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -54,6 +55,26 @@ ${JSON.stringify(items)}
 
 Верни СТРОГО JSON: {"items":[{"id":string,"score":0..100,"feedback":string}],"average":0..100,"advice":string}`;
 
+  // Register job for RR Pro Max fallback (candidate-owned).
+  const idem = `grade_situations:${candidateId}:${body.project_id}`;
+  const job = await createOrReuseAiJob({
+    userId: null,
+    candidateId,
+    jobType: "grade_situations",
+    idempotencyKey: idem,
+    requestSnapshot: {
+      message: msg,
+      project_id: body.project_id,
+      candidate_id: candidateId,
+      contentless_ids: Array.from(contentlessIds),
+      situation_ids: situations.map((s: any) => String(s.id)),
+      timeout_ms: 150_000,
+    },
+    fallbackAllowed: true,
+  });
+  const jobId = "id" in job ? job.id : null;
+  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
+
   try {
     const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 150_000 });
     const obj = tryParseJson<any>(r.text) || {};
@@ -78,8 +99,16 @@ ${JSON.stringify(items)}
       situations_feedback: feedback,
     }, { onConflict: "candidate_id" });
     await logToDb({ user_message: msg.slice(0,5000), bot_reply: r.text.slice(0,5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:grade-situations", server_name: "ai-interview-grade-situations" });
-    return jsonResponse({ ok: true, score: avg, items: results, advice: String(obj.advice || "").slice(0, 800) });
+    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `candidate_scores:${candidateId}:situations` });
+    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+    return jsonResponse({ ok: true, score: avg, items: results, advice: String(obj.advice || "").slice(0, 800), job_id: jobId });
   } catch (e) {
-    return jsonResponse({ error: String((e as Error).message) }, 500);
+    const err = String((e as Error).message);
+    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
+    if (jobId) {
+      await markJobStatus(jobId, "primary_failed");
+      await markJobStatus(jobId, "fallback_available");
+    }
+    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
   }
 });
