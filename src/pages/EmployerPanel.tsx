@@ -3335,10 +3335,13 @@ export default function EmployerPanel() {
                 {projects.map(proj => {
                   const isPaused = pausedProjectIds.includes(proj.id);
                   const assignedCandidates = candidates.filter(c => c.projectId === proj.id);
-                  const columnCountTerms = assignedCandidates.filter(c => c.currentStage === "terms").length;
-                  const columnCountInterview = assignedCandidates.filter(c => c.currentStage === "interview" || c.currentStage === "scoring").length;
-                  const columnCountTraining = assignedCandidates.filter(c => c.currentStage === "training").length;
-                  const columnCountCertified = assignedCandidates.filter(c => c.currentStage === "certified").length;
+                  // Counters reflect REAL progress (not score>0).
+                  // Зарегистрировано — все привязанные кандидаты, включая 0/0/0.
+                  const columnCountTerms = assignedCandidates.length;
+                  // Интервью пройдено — есть итоговый балл или ситуации.
+                  const columnCountInterview = assignedCandidates.filter(c => (c as any).hasOverall || (c as any).hasSituations || (c as any).hasChecklist || (c as any).hasResume).length;
+                  const columnCountTraining = assignedCandidates.filter(c => ((c as any).trainingPassed?.length || 0) > 0).length;
+                  const columnCountCertified = assignedCandidates.filter(c => (c as any).certified || c.currentStage === "certified").length;
 
                   return (
                     <div 
