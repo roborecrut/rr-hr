@@ -1185,38 +1185,47 @@ export default function EmployerPanel() {
       {
         // Supabase fallback: candidates linked to this employer's projects
         let candRows: any[] = [];
-        const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-        if (emp?.id) {
-          const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
-          const ids = (projIds || []).map((p) => p.id);
-          if (ids.length) {
-            const { data } = await supabase
-              .from("candidates")
-              .select("*, projects(role_name, company_id, companies(name, slug))")
-              .in("project_id", ids);
-            candRows = (data as any[]) || [];
-          }
-        }
+        // Unified server source: RPC enforces ownership via auth.uid() and
+        // returns canonical stage + scores + has_* flags + training/cert state.
+        try {
+          const { data, error } = await (supabase as any).rpc("employer_list_candidates");
+          if (!error && Array.isArray(data)) candRows = data;
+        } catch (e) { console.warn("employer_list_candidates rpc failed", e); }
         setCandidates(
           (candRows || []).map((c: any) => ({
             id: `candidate${c.public_id}`,
             uuid: c.id,
             publicId: c.public_id,
-            name: c.full_name || c.resume_name || `Кандидат #${c.public_id}`,
+            name: c.full_name || `Кандидат #${c.public_id}`,
             fullName: c.full_name || "",
             email: c.email || "",
             phone: c.phone || "",
             projectId: c.project_id,
+            projectPublicId: c.project_public_id,
             companyId: c.company_id,
-            companyName: c.projects?.companies?.name,
-            companySlug: c.projects?.companies?.slug,
-            roleName: c.role_name || c.projects?.role_name || "",
+            companyName: c.company_name || "",
+            companySlug: c.company_slug || undefined,
+            roleName: c.role_name || "",
             currentStage: c.current_stage,
-            crmStage: c.crm_stage,
+            // Canonical stage: derived from real data unless employer
+            // manually moved the card in CRM (crm_stage_manual = true).
+            crmStage: (c.crm_stage_manual && c.crm_stage) ? c.crm_stage : (c.derived_stage || "registration"),
+            derivedStage: c.derived_stage,
+            hasResume: !!c.has_resume,
+            hasChecklist: !!c.has_checklist,
+            hasSituations: !!c.has_situations,
+            hasOverall: !!c.has_overall,
+            trainingPassed: c.training_passed || [],
+            certified: !!c.certified,
             createdAt: c.created_at,
             registeredVia: c.registered_via,
-            resumeText: c.resume_text,
-            resumeName: c.resume_name,
+            scores: {
+              resumeScore: c.resume_score != null ? Number(c.resume_score) : undefined,
+              checklistScore: c.checklist_score != null ? Number(c.checklist_score) : undefined,
+              situationsScore: c.situations_score != null ? Number(c.situations_score) : undefined,
+              interviewScore: c.interview_score != null ? Number(c.interview_score) : undefined,
+              overallScore: c.overall_score != null ? Number(c.overall_score) : undefined,
+            },
           })) as any,
         );
       }
@@ -1233,6 +1242,22 @@ export default function EmployerPanel() {
     fetchData();
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
+  }, [employerId]);
+
+  // Refresh CRM / vacancies immediately on window focus or tab visibility
+  // change so that completing a candidate stage in another tab is reflected
+  // without waiting for the 4-second polling cycle.
+  useEffect(() => {
+    if (!employerId) return;
+    const onFocus = () => { fetchData(); };
+    const onVis = () => { if (document.visibilityState === "visible") fetchData(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employerId]);
 
   // Immediate refresh of the companies list whenever the employerId changes
@@ -2954,10 +2979,11 @@ export default function EmployerPanel() {
                           </tr>
                         ) : (
                           filteredCandidates.map(cand => {
-                            const rScore = cand.scores?.resumeScore !== undefined ? cand.scores.resumeScore : 70;
-                            const cScore = cand.scores?.checklistScore !== undefined ? cand.scores.checklistScore : 80;
-                            const sScore = cand.scores?.situationsScore !== undefined ? cand.scores.situationsScore : 75;
-                            const avg = Math.round((rScore + cScore + sScore) / 3);
+                            const rScore = cand.scores?.resumeScore;
+                            const cScore = cand.scores?.checklistScore;
+                            const sScore = cand.scores?.situationsScore;
+                            const avg = cand.scores?.overallScore;
+                            const fmt = (v: any) => (v === undefined || v === null ? "—" : `${Math.round(Number(v))}/100`);
 
                             return (
                               <tr key={cand.id} className="hover:bg-white/5 transition">
@@ -2984,11 +3010,11 @@ export default function EmployerPanel() {
                                     <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
                                   </select>
                                 </td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{rScore}/100</td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{cScore}/100</td>
-                                <td className="p-3 text-center font-mono font-bold text-sky-300">{sScore}/100</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(rScore)}</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(cScore)}</td>
+                                <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(sScore)}</td>
                                 <td className="p-3 text-center">
-                                  <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg}</span>
+                                  <span className="bg-[#E7C768]/15 text-[#E7C768] font-bold font-mono px-2 py-1 rounded border border-[#E7C768]/20">{avg === undefined || avg === null ? "—" : Math.round(Number(avg))}</span>
                                 </td>
                                 <td className="p-3 text-right">
                                   <button onClick={() => setSelectedCandidateId((cand as any).uuid || null)} className="cursor-pointer text-sky-300 hover:underline font-bold text-[11px]">Карточка ИИ</button>
@@ -3328,10 +3354,13 @@ export default function EmployerPanel() {
                 {projects.map(proj => {
                   const isPaused = pausedProjectIds.includes(proj.id);
                   const assignedCandidates = candidates.filter(c => c.projectId === proj.id);
-                  const columnCountTerms = assignedCandidates.filter(c => c.currentStage === "terms").length;
-                  const columnCountInterview = assignedCandidates.filter(c => c.currentStage === "interview" || c.currentStage === "scoring").length;
-                  const columnCountTraining = assignedCandidates.filter(c => c.currentStage === "training").length;
-                  const columnCountCertified = assignedCandidates.filter(c => c.currentStage === "certified").length;
+                  // Counters reflect REAL progress (not score>0).
+                  // Зарегистрировано — все привязанные кандидаты, включая 0/0/0.
+                  const columnCountTerms = assignedCandidates.length;
+                  // Интервью пройдено — есть итоговый балл или ситуации.
+                  const columnCountInterview = assignedCandidates.filter(c => (c as any).hasOverall || (c as any).hasSituations || (c as any).hasChecklist || (c as any).hasResume).length;
+                  const columnCountTraining = assignedCandidates.filter(c => ((c as any).trainingPassed?.length || 0) > 0).length;
+                  const columnCountCertified = assignedCandidates.filter(c => (c as any).certified || c.currentStage === "certified").length;
 
                   return (
                     <div 

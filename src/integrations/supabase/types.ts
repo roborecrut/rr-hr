@@ -2700,6 +2700,41 @@ export type Database = {
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
       current_candidate_id: { Args: never; Returns: string }
       current_candidate_project_id: { Args: never; Returns: string }
+      employer_list_candidates: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          certified: boolean
+          checklist_score: number
+          company_id: string
+          company_name: string
+          company_slug: string
+          created_at: string
+          crm_stage: string
+          crm_stage_manual: boolean
+          current_stage: string
+          derived_stage: string
+          email: string
+          full_name: string
+          has_checklist: boolean
+          has_overall: boolean
+          has_resume: boolean
+          has_situations: boolean
+          id: string
+          interview_score: number
+          last_login_at: string
+          overall_score: number
+          phone: string
+          project_id: string
+          project_public_id: string
+          public_id: string
+          registered_via: string
+          resume_score: number
+          role_name: string
+          situations_score: number
+          training_passed: string[]
+        }[]
+      }
       employer_set_candidate_crm_stage: {
         Args: {
           _candidate: string
