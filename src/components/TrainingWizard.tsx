@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil, Plus, Trash2, ArrowLeft, Bold, Italic, Heading1, Heading2, List, ListOrdered, Link2, Code, Youtube, FileText, Save, CheckCircle2, ChevronDown, ChevronUp, Video } from "lucide-react";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FN } from "@/config";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
+import FullscreenTextarea from "@/components/FullscreenTextarea";
 import { DocumentIngestField } from "@/components/DocumentIngestField";
 import type { JobProject } from "../types";
 
@@ -593,7 +594,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                   rows={14}
                   maxLength={20000}
                   value={materials}
-                  onChange={(e) => setMaterials(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMaterials(e.target.value)}
                   placeholder="Markdown учебного материала (до 20 000 символов)…"
                   className="w-full bg-[#17344F]/60 text-xs p-3 rounded-xl border border-white/10 font-mono focus:outline-[#E7C768]"
                 />
