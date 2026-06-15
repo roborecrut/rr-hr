@@ -15,6 +15,8 @@ import { fetchJobTitles, type JobTitle } from "@/lib/jobTitles";
 import { aiRestart } from "@/lib/aiClient";
 import { MASCOT } from "@/lib/mascotImages";
 import { useAIWait } from "@/components/AIWaitProvider";
+import ResumeDropzone from "@/components/ResumeDropzone";
+import DisclosureBlock from "@/components/DisclosureBlock";
 import { supabase } from "@/integrations/supabase/client";
 import {
   loadDemoState, saveDemoState, clearDemoState,
