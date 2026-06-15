@@ -322,3 +322,21 @@ body {
   .reveal { opacity: 1 !important; transform: none !important; filter: none !important; }
 }
 
+/* ============================================================
+   AI wait overlay — мягкая «плавающая» анимация робота и
+   мерцающая полоса прогресса. Используются в AIWaitProvider.
+============================================================ */
+@keyframes aiwait-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes aiwait-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Отключаем декоративную анимацию для пользователей с reduced-motion. */
+  [style*="aiwait-float"], .animate-\[aiwait-shimmer_2\.4s_linear_infinite\] {
+    animation: none !important;
+  }
+}

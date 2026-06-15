@@ -593,10 +593,7 @@ export default function CompanyLanding() {
                 </div>
                 <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
                   <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
-                    Идет ИИ-набор!
-                  </span>
-                  <span className="bg-[#112335] text-amber-300 border border-amber-500/25 text-[10px] font-mono font-bold px-2.5 py-1 rounded-lg">
-                    ID вакансии: {selectedVacancy.id}
+                    Идёт ИИ-набор!
                   </span>
                 </div>
               </div>
@@ -638,9 +635,8 @@ export default function CompanyLanding() {
                       }
                     })()}
                   </span>
-                  <span className="text-[10px] bg-white/5 text-slate-300 font-bold px-2 py-0.5 rounded-md uppercase font-mono tracking-wider border border-white/15">
-                    {subTab}
-                  </span>
+                  {/* Технический служебный код раздела убран —
+                      он не предназначен для кандидата. */}
                 </div>
 
                 <div className="bg-black/20 p-4 sm:p-5 rounded-2xl border border-white/5 shadow-inner">
@@ -704,37 +700,41 @@ export default function CompanyLanding() {
             </div>
           ) : null}
 
-          {/* List of all vacancies for this company (kept on a vacancy page as a switcher) */}
-          {vacancyId && subTab !== "company" && vacancies.length > 0 && (
-            <div className="space-y-3 pt-5 border-t border-white/10 mt-6">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">🎯</span>
-                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
-                  Все открытые вакансии компании ({vacancies.length}):
-                </h3>
+          {/* Другие активные вакансии этой компании — исключаем текущую. */}
+          {(() => {
+            if (!vacancyId || subTab === "company") return null;
+            const others = vacancies.filter((v) => v.id !== selectedVacancy?.id);
+            if (others.length === 0) return null;
+            return (
+              <div className="space-y-4 pt-6 border-t border-white/10 mt-8">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🎯</span>
+                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                    Другие открытые вакансии компании ({others.length})
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                  {others.map((v) => (
+                    <VacancyCard
+                      key={v.id}
+                      vacancy={{
+                        id: v.id,
+                        roleName: v.roleName,
+                        companyName: company?.name || null,
+                        companyLogo: company?.logo_url || v.logoUrl || null,
+                        industry: (company as any)?.industry || null,
+                        salaryTerms: v.salaryTerms || null,
+                        scheduleTerms: v.scheduleTerms || null,
+                        vacancyText: v.vacancyText || null,
+                      }}
+                      showCompany={false}
+                      onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-                {vacancies.map((v) => (
-                  <VacancyCard
-                    key={v.id}
-                    vacancy={{
-                      id: v.id,
-                      roleName: v.roleName,
-                      companyName: company?.name || null,
-                      companyLogo: company?.logo_url || v.logoUrl || null,
-                      industry: (company as any)?.industry || null,
-                      salaryTerms: v.salaryTerms || null,
-                      scheduleTerms: v.scheduleTerms || null,
-                      vacancyText: v.vacancyText || null,
-                    }}
-                    active={selectedVacancy?.id === v.id}
-                    showCompany={false}
-                    onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
         </section>
 
