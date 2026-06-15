@@ -30,10 +30,8 @@ type Props = {
   onCompleted?: (passed: boolean, score: number) => void;
 };
 
-// Используется только для multipart-загрузок (FormData), где supabase.functions.invoke неудобен.
-const SUPABASE_FN_BASE =
-  (import.meta.env.VITE_SUPABASE_URL || "https://rjhtauzookkvlipvqpvr.supabase.co") + "/functions/v1";
-const FN = (n: string) => `${SUPABASE_FN_BASE}/${n}`;
+// FN импортируется из единого конфига — используется только для multipart/FormData запросов.
+import { FN } from "@/config";
 
 async function call(fn: string, body: any) {
   // Кандидат не использует Supabase Auth — передаём его opaque-токен из localStorage.

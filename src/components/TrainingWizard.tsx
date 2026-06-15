@@ -3,6 +3,7 @@ import { GraduationCap, RefreshCw, Sparkles, BookOpen, FileQuestion, Eye, Pencil
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
 import { supabase } from "@/integrations/supabase/client";
+import { FN } from "@/config";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { DocumentIngestField } from "@/components/DocumentIngestField";

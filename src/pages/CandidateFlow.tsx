@@ -15,6 +15,7 @@ import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
+import { FN } from "@/config";
 import { getCandidateSession, saveCandidateSession, type CandidateApplication } from "@/lib/candidateSession";
 import {
   FileText,
