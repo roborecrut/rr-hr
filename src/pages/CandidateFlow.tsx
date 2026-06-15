@@ -461,42 +461,35 @@ export default function CandidateFlow() {
   // а не устаревшее значение `candidates.current_stage`.
   const [effectiveStage, setEffectiveStage] = useState<string>("terms");
 
-  // Считаем фактический этап прохождения по реальным данным:
-  // terms → есть привязка к вакансии; interview → есть оценка резюме/чек-листа;
-  // scoring → есть overall_score; training → пройдены все 3 stage_progress;
-  // certified → выдан сертификат.
+  // Единая серверная машина состояний: RPC `candidate_flow_state()` —
+  // единственный источник правды о текущем этапе кандидата. Считается из
+  // реальных данных (оценки, прогресс обучения, сертификат) и защищена
+  // токеном кандидата (x-candidate-token). Это исключает «перескок»
+  // этапов и корректно восстанавливает шаг после перезагрузки страницы.
+  const loadFlowState = React.useCallback(async () => {
+    if (!candidate?.id) { setEffectiveStage("terms"); return null; }
+    try {
+      const { data, error } = await (supabase as any).rpc("candidate_flow_state");
+      if (error) throw error;
+      const stage = (data?.stage as string) || "terms";
+      setEffectiveStage(stage);
+      // Подтягиваем серверную «подсказку» этапа (монотонно растущую),
+      // чтобы UI после reload показывал актуальный шаг, а не устаревший.
+      const saved = (data?.saved_stage as string) || stage;
+      const order = ["terms","interview","scoring","training","certified"];
+      const best = order[Math.max(order.indexOf(stage), order.indexOf(saved))] || stage;
+      setCurrentStage(best);
+      return data;
+    } catch {
+      setEffectiveStage(currentStage || "terms");
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidate?.id]);
+
   useEffect(() => {
-    const candId = candidate?.id;
-    const projId = project?.id;
-    if (!candId) { setEffectiveStage("terms"); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        const [{ data: sc }, { data: prog }, { data: cert }] = await Promise.all([
-          (supabase as any).from("candidate_scores")
-            .select("resume_score,checklist_score,situations_score,interview_score,overall_score")
-            .eq("candidate_id", candId).maybeSingle(),
-          (supabase as any).from("candidate_stage_progress")
-            .select("stage,passed_at").eq("candidate_id", candId),
-          (supabase as any).from("certifications")
-            .select("id").eq("candidate_id", candId).limit(1),
-        ]);
-        if (cancelled) return;
-        const passedStages = new Set<string>((prog || []).filter((r: any) => !!r.passed_at).map((r: any) => r.stage));
-        const trainingDone = ["professional","product","system"].every((s) => passedStages.has(s));
-        let stage: string = "terms";
-        if (projId) stage = "terms";
-        if (sc?.resume_score != null || sc?.checklist_score != null || sc?.situations_score != null) stage = "interview";
-        if (sc?.interview_score != null || sc?.overall_score != null) stage = "scoring";
-        if (trainingDone) stage = "training";
-        if ((cert || []).length > 0) stage = "certified";
-        setEffectiveStage(stage);
-      } catch {
-        if (!cancelled) setEffectiveStage(currentStage || "terms");
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [candidate?.id, project?.id, currentStage]);
+    void loadFlowState();
+  }, [loadFlowState]);
 
   // Main navigation tab
   const [activeTab, setActiveTabState] = useState<string>("profile");

@@ -2670,6 +2670,7 @@ export type Database = {
             }
             Returns: Json
           }
+      candidate_flow_state: { Args: never; Returns: Json }
       candidate_full_details: { Args: { _candidate: string }; Returns: Json }
       candidate_list_applications: {
         Args: { _email: string; _password: string }
@@ -2680,6 +2681,7 @@ export type Database = {
         Args: { _id: string }
         Returns: Database["public"]["Enums"]["crm_stage"]
       }
+      candidate_set_stage: { Args: { _stage: string }; Returns: string }
       candidate_update_profile: {
         Args: {
           _current_password?: string
