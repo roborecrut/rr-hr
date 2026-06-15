@@ -25,6 +25,45 @@ const ALLOWED_MODES = new Set(["employer", "candidate", "vacancy_consultant"]);
 const MAX_MSG_LEN = 2000;
 const MAX_HISTORY = 20;
 const MAX_CONTEXT_LEN = 4000;
+const MAX_PUBLIC_CONTEXT_LEN = 6000;
+
+// Whitelist of fields ai-chat is allowed to expose to the public
+// vacancy_consultant branch. Anything not in this list is NEVER read or sent
+// to the LLM, no matter what the client provided.
+const PUBLIC_PROJECT_FIELDS = [
+  "id", "role_name", "salary_terms", "schedule_terms",
+  "vacancy_text", "tasks_activity_text", "schedule_text", "payouts_text",
+  "motivation_text", "motivation_text_detail", "onboarding_text",
+  "team_text", "system_text", "custom_wiki",
+  "is_published", "status", "archived_at", "deleted_at",
+  "company_id",
+] as const;
+const PUBLIC_COMPANY_FIELDS = [
+  "id", "name", "description_text", "mission_text", "products_text",
+  "is_published", "status",
+] as const;
+
+function buildPublicContext(project: Record<string, any>, company: Record<string, any> | null): string {
+  const parts: string[] = [];
+  if (project.role_name) parts.push(`Вакансия: ${project.role_name}`);
+  if (company?.name) parts.push(`Компания: ${company.name}`);
+  if (project.salary_terms) parts.push(`Оплата: ${project.salary_terms}`);
+  if (project.schedule_terms) parts.push(`График: ${project.schedule_terms}`);
+  if (project.vacancy_text) parts.push(`Задачи/требования/условия:\n${project.vacancy_text}`);
+  if (project.tasks_activity_text) parts.push(`Ежедневный процесс:\n${project.tasks_activity_text}`);
+  if (project.schedule_text) parts.push(`График подробно:\n${project.schedule_text}`);
+  if (project.payouts_text) parts.push(`Выплаты:\n${project.payouts_text}`);
+  const motiv = project.motivation_text_detail || project.motivation_text;
+  if (motiv) parts.push(`Мотивация:\n${motiv}`);
+  if (project.onboarding_text) parts.push(`Оформление:\n${project.onboarding_text}`);
+  if (project.team_text) parts.push(`Команда:\n${project.team_text}`);
+  if (project.system_text) parts.push(`Система работы:\n${project.system_text}`);
+  if (project.custom_wiki) parts.push(`Wiki:\n${project.custom_wiki}`);
+  if (company?.description_text) parts.push(`О компании:\n${company.description_text}`);
+  if (company?.mission_text) parts.push(`Миссия:\n${company.mission_text}`);
+  if (company?.products_text) parts.push(`Продукты:\n${company.products_text}`);
+  return parts.join("\n\n").slice(0, MAX_PUBLIC_CONTEXT_LEN);
+}
 
 function clientIp(req: Request): string {
   return (
@@ -65,7 +104,7 @@ Deno.serve(async (req) => {
     }))
     .filter((m) => m.content.length > 0);
   if (trimmedMessages.length === 0) return jsonResponse({ error: "empty_messages" }, 400);
-  const safeContext = body.context ? String(body.context).slice(0, MAX_CONTEXT_LEN) : "";
+  let safeContext = body.context ? String(body.context).slice(0, MAX_CONTEXT_LEN) : "";
 
   // ─── Per-mode authorization ──────────────────────────────────────────────
   const url = Deno.env.get("SUPABASE_URL");
@@ -103,15 +142,32 @@ Deno.serve(async (req) => {
   } else if (body.kind === "vacancy_consultant") {
     // Public consultant: project_id is REQUIRED and must be a published vacancy.
     if (!body.project_id) return jsonResponse({ error: "project_required" }, 400);
+    // Server-built whitelist context only. Any client-supplied `body.context`
+    // is dropped; the LLM sees ONLY DB fields from PUBLIC_PROJECT_FIELDS /
+    // PUBLIC_COMPANY_FIELDS for the requested published vacancy.
     const { data: proj } = await admin
       .from("projects")
-      .select("id, is_published, status")
+      .select(PUBLIC_PROJECT_FIELDS.join(", "))
       .eq("id", body.project_id)
       .maybeSingle();
     if (!proj) return jsonResponse({ error: "project_not_found" }, 404);
-    if (!(proj as any).is_published || (proj as any).status !== "active") {
+    const p = proj as any;
+    if (!p.is_published || p.status !== "active" || p.archived_at || p.deleted_at) {
       return jsonResponse({ error: "vacancy_not_public" }, 403);
     }
+    let company: any = null;
+    if (p.company_id) {
+      const { data: c } = await admin
+        .from("companies")
+        .select(PUBLIC_COMPANY_FIELDS.join(", "))
+        .eq("id", p.company_id)
+        .maybeSingle();
+      const cc = c as any;
+      if (cc && cc.is_published && cc.status !== "archived" && cc.status !== "deleted") {
+        company = cc;
+      }
+    }
+    safeContext = buildPublicContext(p, company);
     // Per-IP+project rate limit: 20 messages / 5 min.
     const ip = clientIp(req);
     try {
@@ -125,6 +181,7 @@ Deno.serve(async (req) => {
     // Drop any private hints accidentally sent from client.
     (body as any).candidate_id = undefined;
     (body as any).employer_id = undefined;
+    (body as any).employer_public_id = undefined;
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
