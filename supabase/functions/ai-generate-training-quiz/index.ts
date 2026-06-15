@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
 
   try {
     const r = await callProTalk({
-      messages: [{ role: "system", content: "Ты — методист, создаёшь чёткие тесты по учебному материалу." }, { role: "user", content: msg }],
+      messages: [{ role: "system", content: "Ты — методист, создаёшь чёткие тесты по учебному материалу. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
       chatId, socialId, timeoutMs: 180_000,
     });
     const arr = tryParseJson<any[]>(r.text);

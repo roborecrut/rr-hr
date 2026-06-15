@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
 
   try {
     const r = await callProTalk({
-      messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения." }, { role: "user", content: msg }],
+      messages: [{ role: "system", content: "Ты — опытный методист корпоративного обучения. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь." }, { role: "user", content: msg }],
       chatId, socialId, timeoutMs: 180_000,
     });
     const text = (r.text || "").slice(0, 20000);
