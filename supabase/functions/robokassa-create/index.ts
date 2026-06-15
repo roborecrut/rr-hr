@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   const receiptEncoded = encodeURIComponent(receiptJson);
 
   // Подпись: MerchantLogin:OutSum:InvId:Receipt(url-encoded):Password1
-  const signature = await md5(`${login}:${outSum}:${invId}:${receiptEncoded}:${pwd1}`);
+  const signature = md5(`${login}:${outSum}:${invId}:${receiptEncoded}:${pwd1}`);
 
   // Собираем query-string вручную, чтобы Receipt был закодирован ровно один раз
   // и совпал с тем, что вошло в подпись.
