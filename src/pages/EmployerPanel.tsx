@@ -1207,7 +1207,9 @@ export default function EmployerPanel() {
             companySlug: c.company_slug || undefined,
             roleName: c.role_name || "",
             currentStage: c.current_stage,
-            crmStage: (c.crm_stage_manual ? c.crm_stage : (c.crm_stage || c.derived_stage)) || c.derived_stage || "registration",
+            // Canonical stage: derived from real data unless employer
+            // manually moved the card in CRM (crm_stage_manual = true).
+            crmStage: (c.crm_stage_manual && c.crm_stage) ? c.crm_stage : (c.derived_stage || "registration"),
             derivedStage: c.derived_stage,
             hasResume: !!c.has_resume,
             hasChecklist: !!c.has_checklist,
