@@ -91,7 +91,8 @@ export default function CandidateAuthModal({
         });
       }, 700);
     } catch (e: any) {
-      setErr(e?.message || "Ошибка сервера");
+      // Не показываем сырое серверное сообщение пользователю.
+      setErr("Не удалось войти. Проверьте e-mail и пароль или попробуйте позже.");
       setBusy(false);
     }
   };
