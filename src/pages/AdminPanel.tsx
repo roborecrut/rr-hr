@@ -1135,17 +1135,6 @@ function TrainingsSection() {
   );
 }
 
-function _MailingsSection_unused() {
-  return (
-    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-8 text-center space-y-3">
-      <Mail className="w-10 h-10 mx-auto text-[#E7C768]" />
-      <h2 className="text-base font-bold text-[#E7C768]">Рассылки</h2>
-      <p className="text-xs text-slate-300 max-w-md mx-auto">
-        Конструктор массовых рассылок будет здесь. Отправка работает в кабинете работодателя (CRM → Рассылка). В следующих итерациях добавим централизованные шаблоны и кампании.
-      </p>
-    </div>
-  );
-}
 
 function RolesSection({ setToast }: { setToast: (t: any) => void }) {
   const [users, setUsers] = useState<any[]>([]);
