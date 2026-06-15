@@ -359,12 +359,10 @@ export default function EmployerPanel() {
       const hasUserContent = (Object.keys(current) as VacancyFieldKey[]).some(
         (k) => k !== "role_name" && (current[k] || "").trim().length > 0,
       );
-      if (hasUserContent) {
-        const ok = window.confirm(
-          `Подставить шаблоны для должности «${setupRoleName}» во все 15 полей? Текущие значения будут заменены.`,
-        );
-        if (!ok) return;
-      }
+      // No system popup. If the user already started filling fields, we never
+      // silently overwrite — they must explicitly press the
+      // «Предложить заполнение вакансии» button to apply templates.
+      if (hasUserContent) return;
       setSetupVacancyText(valueFor("vacancy_text"));
       setSetupTasksActivityText(valueFor("tasks_activity_text"));
       setSetupScheduleText(valueFor("schedule_text"));
