@@ -113,17 +113,16 @@ export default function DemoInterviewPage() {
           return;
         }
 
-        // Read the prebuilt template + vacancy text from job_titles.
-        const { data, error } = await supabase
-          .from("job_titles")
-          .select("field_templates, interview_template")
-          .eq("id", state.titleId)
-          .maybeSingle();
-        if (error) throw error;
-        if (!data) throw new Error("Шаблон должности не найден");
-
-        const ft = (data as any).field_templates || {};
-        const it = (data as any).interview_template || {};
+        // field_templates — публично безопасны; interview_template читаем через
+        // SECURITY DEFINER RPC (содержит правильные ответы).
+        const [tplRes, itRes] = await Promise.all([
+          supabase.from("job_titles").select("field_templates").eq("id", state.titleId).maybeSingle(),
+          supabase.rpc("job_title_get_interview_template" as any, { _title_id: state.titleId }),
+        ]);
+        if (tplRes.error) throw tplRes.error;
+        if (!tplRes.data) throw new Error("Шаблон должности не найден");
+        const ft = (tplRes.data as any).field_templates || {};
+        const it = (itRes.data as any) || {};
         const vacancyText = String(ft.vacancy_text || "").slice(0, 5000);
 
         const rawSituations = Array.isArray(it?.situations?.situations)
