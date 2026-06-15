@@ -5,6 +5,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
 import { requireEmployerJwt, getEmployerIdForUser, assertProjectOwner } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
 // Whitelist of buckets ai-ingest-document is allowed to read from.
 // Anything else (e.g. user-supplied bucket name) is rejected to prevent
