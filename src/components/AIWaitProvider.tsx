@@ -502,3 +502,59 @@ const FallbackOverlay: React.FC<{ phase: "connecting" | "running"; elapsed: numb
 };
 
 export default AIWaitProvider;
+
+/**
+ * Живой индикатор стадий ожидания ИИ.
+ * — Меняет подпись стадии каждые ~4 секунды;
+ * — Показывает аккуратную полосу прогресса, плавно стремящуюся к 90%
+ *   (без выдуманного точного процента);
+ * — Таймер вторичен.
+ * — Не сбрасывает данные пользователя (живёт только внутри оверлея).
+ */
+const StageProgress: React.FC<{ elapsed: number }> = ({ elapsed }) => {
+  // Индекс стадии увеличивается каждые ~4 секунды, но не выходит за пределы.
+  const stageIdx = Math.min(STAGES.length - 1, Math.floor(elapsed / 4));
+  // Плавная асимптотическая полоса 0 → 90%. Никакого процента в подписи.
+  const widthPct = Math.min(90, Math.round(90 * (1 - Math.exp(-elapsed / 18))));
+  return (
+    <div className="mt-4 space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[12px] font-semibold text-white/90 truncate" aria-live="polite">
+          {STAGES[stageIdx]}…
+        </div>
+        <div className="text-[11px] font-mono text-slate-300/80 tabular-nums shrink-0">{elapsed}s</div>
+      </div>
+      <div
+        className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label="Идёт обработка"
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-[#E7C768] via-[#F4D679] to-[#E7C768] transition-[width] duration-700 ease-out"
+          style={{ width: `${widthPct}%` }}
+        />
+        <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[aiwait-shimmer_2.4s_linear_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+      </div>
+      <div className="flex items-center justify-between gap-1.5">
+        {STAGES.map((_, i) => (
+          <span
+            key={i}
+            aria-hidden
+            className={`h-1 flex-1 rounded-full transition-colors ${
+              i < stageIdx
+                ? "bg-emerald-400/70"
+                : i === stageIdx
+                  ? "bg-[#E7C768]"
+                  : "bg-white/15"
+            }`}
+          />
+        ))}
+      </div>
+      <div className="text-[10px] text-slate-300/70 text-center">
+        Не закрывайте окно — идёт обработка
+      </div>
+    </div>
+  );
+};
