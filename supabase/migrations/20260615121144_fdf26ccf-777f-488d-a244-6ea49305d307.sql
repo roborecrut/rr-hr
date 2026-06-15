@@ -1,0 +1,1 @@
+ALTER VIEW public.ai_jobs_safe_status SET (security_invoker = on);
