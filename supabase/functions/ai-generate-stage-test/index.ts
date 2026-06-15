@@ -2,6 +2,7 @@
 // Stores in training_stage_tests with correct/expected_answer kept server-side.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { requireEmployerForProject } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -11,6 +12,9 @@ Deno.serve(async (req) => {
     project_id: string; stage: string; wishes?: string; context_keys?: string[];
   };
   if (!body?.project_id || !body?.stage) return jsonResponse({ error: "bad_body" }, 400);
+
+  const guard = await requireEmployerForProject(req, body.project_id);
+  if (guard instanceof Response) return guard;
   if (!["professional","product","system"].includes(body.stage)) return jsonResponse({ error: "bad_stage" }, 400);
 
   const admin = getAdminClient();
