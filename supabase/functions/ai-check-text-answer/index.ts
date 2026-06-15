@@ -1,13 +1,18 @@
 // Score a candidate's free-form text answer against the expected reference via ProTalk.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
+import { requireCandidateToken } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
 
-  const body = await req.json().catch(() => null) as null | { question_id: string; answer: string };
+  const body = await req.json().catch(() => null) as null | { question_id: string; answer: string; candidate_token?: string };
   if (!body?.question_id || typeof body.answer !== "string") return jsonResponse({ error: "bad_body" }, 400);
+
+  const authz = await requireCandidateToken(req, body.candidate_token);
+  if (authz instanceof Response) return authz;
+  const candidateId = authz.candidateId;
 
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
@@ -16,9 +21,8 @@ Deno.serve(async (req) => {
   if (qe || !q) return jsonResponse({ error: "no_question" }, 404);
   if (q.kind !== "text") return jsonResponse({ error: "not_text_question" }, 400);
 
-  const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const chatId = buildChatId({ userId: candidateId });
+  const socialId = buildSocialId({ user_id: candidateId });
   const maxPts = Number(q.points) || 5;
   const msg = `Оцени ответ кандидата от 0 до ${maxPts}. Верни СТРОГО JSON без markdown: {"score": number, "feedback": string}.\n\nВОПРОС: ${q.question}\nЭТАЛОН: ${q.expected_answer || ""}\nОТВЕТ КАНДИДАТА: ${String(body.answer).slice(0, 4000)}`;
 
