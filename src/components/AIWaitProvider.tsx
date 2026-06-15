@@ -12,6 +12,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 import { supabase } from "@/integrations/supabase/client";
 import { brandImage } from "@/config";
 import { toast } from "sonner";
+import { toUserError } from "@/lib/userError";
 
 /**
  * Global AI wait overlay.
@@ -167,14 +168,30 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       })
       .catch((err: any) => {
         if (cancelledRef.current) return;
-        const msg = err?.message || String(err) || "Неизвестная ошибка";
+        // ВАЖНО: никогда не показываем raw error.message (там может быть
+        // HTML 504-страницы, внутренний код провайдера, имя функции и т.п.).
+        // Прогоняем всё через toUserError — пользователь видит только
+        // человеко-понятный текст.
+        const raw = String(err?.message || err || "");
+        const ue = toUserError(err);
+        // Специальный текст для таймаутов/недоступности нейросети.
+        const isTimeoutish =
+          ue.kind === "timeout" ||
+          ue.kind === "ai_temporary" ||
+          /504|gateway|timed?\s*out|protalk_5\d\d/i.test(raw);
+        const msg = isTimeoutish
+          ? "Нейросеть не успела завершить проверку. Повторите попытку или запустите резервную модель."
+          : ue.message;
+        // fallback_available может прийти как из брошенной ошибки (job-flow),
+        // так и из тела ответа сервера, прикреплённого к Error.
+        const fbAvail = !!(err?.fallbackAvailable || err?.fallback_available);
         setState((s) => ({
           ...s,
           status: "error",
           error: msg,
           elapsed: Math.round((Date.now() - startedAt) / 1000),
           lastErrorJobId: err?.jobId || null,
-          lastErrorFallbackAvailable: !!err?.fallbackAvailable,
+          lastErrorFallbackAvailable: fbAvail,
         }));
       });
   }, []);
@@ -212,6 +229,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const handleRetry = useCallback(() => {
     if (!state.task) return;
+    if (state.fallbackBusy) return; // защита от двойного клика
     beginTask(state.title, state.task, state.timeoutMs, state.autoCloseOnSuccess, state.resolver, state.fallback);
   }, [state, beginTask]);
 
@@ -306,6 +324,7 @@ export const AIWaitProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             state.lastErrorFallbackAvailable &&
             !!state.lastErrorJobId
           }
+          fallbackBusy={state.fallbackBusy}
           onFallback={handleFallback}
           onRetry={handleRetry}
           onCancel={handleCancel}
@@ -324,13 +343,14 @@ interface OverlayProps {
   error: string;
   autoCloseOnSuccess: boolean;
   showFallback: boolean;
+  fallbackBusy: boolean;
   onFallback: () => void;
   onRetry: () => void;
   onCancel: () => void;
   onNext: () => void;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, onFallback, onRetry, onCancel, onNext }) => {
+const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error, autoCloseOnSuccess, showFallback, fallbackBusy, onFallback, onRetry, onCancel, onNext }) => {
   const img = status === "loading" ? IMG_LOADING : status === "success" ? IMG_SUCCESS : IMG_ERROR;
 
   const bubbleText =
@@ -410,7 +430,8 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
               <button
                 type="button"
                 onClick={onFallback}
-                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition"
+                disabled={fallbackBusy}
+                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Запустить RR Pro Max
               </button>
@@ -425,7 +446,8 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, elapsed, error
             <button
               type="button"
               onClick={onRetry}
-              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition"
+              disabled={fallbackBusy}
+              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Повторить
             </button>

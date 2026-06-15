@@ -31,7 +31,21 @@ async function call(fn: string, body: any) {
     body: JSON.stringify(body),
   });
   const j = await res.json().catch(() => null);
-  if (!res.ok || j?.error) throw new Error(j?.error || `HTTP ${res.status}`);
+  if (!res.ok || j?.error) {
+    // Никогда не пробрасываем raw HTML/HTTP/имя провайдера в UI.
+    // Передаём короткий код, AIWaitProvider превратит его в человеко-понятный текст.
+    const raw = String(j?.error || "");
+    const code =
+      res.status === 504 || /504|gateway|timed?\s*out|protalk_5\d\d/i.test(raw)
+        ? "ai_timeout"
+        : res.status === 402 ? "no_credits"
+        : res.status === 429 ? "ai_temporary"
+        : "ai_temporary";
+    const err: any = new Error(code);
+    err.fallbackAvailable = !!j?.fallback_available;
+    err.jobId = j?.job_id || null;
+    throw err;
+  }
   return j;
 }
 
