@@ -438,6 +438,11 @@ export default function CompanyLanding() {
                 alt={company?.name || "Logo"}
                 className="w-10 h-10 object-contain rounded-xl border border-white/10 p-0.5 bg-black/10"
                 referrerPolicy="no-referrer"
+                fallback={
+                  <div className="w-10 h-10 rounded-xl border border-white/10 p-0.5 bg-gradient-to-br from-[#E7C768]/30 to-[#C9933A]/30 flex items-center justify-center">
+                    <Building className="w-5 h-5 text-[#F5D67A]" />
+                  </div>
+                }
               />
               {company?.name && (
                 <span className="hidden sm:block text-sm font-extrabold text-white truncate max-w-[220px]">{company.name}</span>
@@ -551,7 +556,7 @@ export default function CompanyLanding() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-4xl mx-auto py-8 px-4 md:px-8 w-full flex-1 space-y-8 text-left">
+      <main className="max-w-5xl mx-auto py-8 md:py-12 px-4 md:px-8 w-full flex-1 space-y-10 text-left overflow-x-hidden">
         
         {/* Centered Content Area */}
         <section className="space-y-6 text-left">
@@ -582,43 +587,71 @@ export default function CompanyLanding() {
           {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL
               AND we are NOT on the /company sub-tab (company view is handled above). */}
           {vacancyId && subTab !== "company" && selectedVacancy && (selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active") ? (
-            <div className="bg-gradient-to-r from-[#204569] to-[#1D3E5E] border border-white/10 rounded-3xl p-6 md:p-8 shadow-lg space-y-5">
-              {displayCompany?.website && (
-                <SitePreview url={displayCompany.website} variant="banner" />
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#E7C768] uppercase tracking-widest block">Подробно о вакансии</span>
-                  <h2 className="text-2xl font-black text-white">{selectedVacancy.roleName}</h2>
-                </div>
-                <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full whitespace-nowrap">
-                    Идёт ИИ-набор!
-                  </span>
-                </div>
-              </div>
-
-              {/* Terms boxes */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
-                <div className="flex items-center gap-2.5 bg-black/20 p-3 rounded-xl border border-white/5">
-                  <DollarSign className="w-4 h-4 text-emerald-400" />
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-bold block leading-none">Оплата трека</span>
-                    <span className="text-xs font-bold text-emerald-300 block mt-1">{selectedVacancy.salaryTerms}</span>
+            <div className="rounded-3xl overflow-hidden border border-white/10 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] bg-gradient-to-br from-[#1B3A58] via-[#204569] to-[#17344F]">
+              {/* Hero — фирменный, без внешних скриншотов */}
+              <div className="relative px-6 md:px-10 pt-8 md:pt-10 pb-6 md:pb-8 overflow-hidden">
+                <div aria-hidden className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#E7C768]/15 blur-3xl pointer-events-none" />
+                <div aria-hidden className="absolute -bottom-32 -left-20 w-80 h-80 rounded-full bg-[#265582]/40 blur-3xl pointer-events-none" />
+                <div className="relative flex items-start gap-4 md:gap-6">
+                  <RRImage
+                    src={company?.logo_url || selectedVacancy.logoUrl || ""}
+                    w={96}
+                    alt={company?.name || selectedVacancy.companyName || "Логотип"}
+                    className="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-contain bg-white/10 border border-white/15 p-2 shrink-0"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse" />
+                        Идёт ИИ-набор
+                      </span>
+                      {company?.name && (
+                        <span className="text-xs text-white/70 font-semibold truncate max-w-[260px]">{company.name}</span>
+                      )}
+                    </div>
+                    <h2 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight break-words">
+                      {selectedVacancy.roleName}
+                    </h2>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2.5 bg-black/20 p-3 rounded-xl border border-white/5">
-                  <Clock className="w-4 h-4 text-sky-400" />
-                  <div>
-                    <span className="text-[9px] text-slate-400 font-bold block leading-none">Формат & График</span>
-                    <span className="text-xs font-bold text-sky-300 block mt-1">{selectedVacancy.scheduleTerms}</span>
-                  </div>
+                {/* Terms */}
+                <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6">
+                  {selectedVacancy.salaryTerms && (
+                    <div className="flex items-center gap-3 bg-black/25 p-3.5 rounded-2xl border border-white/10 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+                        <DollarSign className="w-4 h-4 text-emerald-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Оплата</div>
+                        <div className="text-sm font-bold text-emerald-200 break-words">{selectedVacancy.salaryTerms}</div>
+                      </div>
+                    </div>
+                  )}
+                  {selectedVacancy.scheduleTerms && (
+                    <div className="flex items-center gap-3 bg-black/25 p-3.5 rounded-2xl border border-white/10 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-sky-500/15 flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4 text-sky-300" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">График</div>
+                        <div className="text-sm font-bold text-sky-200 break-words">{selectedVacancy.scheduleTerms}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
+                {displayCompany?.website && (
+                  <div className="relative mt-4">
+                    <SitePreview url={displayCompany.website} variant="compact" />
+                  </div>
+                )}
               </div>
+
+              <div className="px-6 md:px-10 py-6 md:py-8 bg-black/15 border-t border-white/10 space-y-5">
 
               {/* Tab render details */}
-              <div className="space-y-3.5 text-left pt-2 border-t border-white/5">
+              <div className="space-y-3.5 text-left">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-[#E7C768] uppercase tracking-wider flex items-center gap-1.5 font-mono">
                     {(() => {
@@ -639,7 +672,7 @@ export default function CompanyLanding() {
                       он не предназначен для кандидата. */}
                 </div>
 
-                <div className="bg-black/20 p-4 sm:p-5 rounded-2xl border border-white/5 shadow-inner">
+                <div className="bg-black/25 p-4 sm:p-6 rounded-2xl border border-white/10 shadow-inner">
                   {(() => {
                     switch (subTab) {
                       case "motivation":
@@ -668,10 +701,11 @@ export default function CompanyLanding() {
                 onClick={() => {
                   setShowApplyModal(true);
                 }}
-                className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3.5 rounded-2xl hover:bg-[#F4EE8E] transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-gradient-to-r from-[#E7C768] to-[#F4D685] text-[#112335] font-extrabold text-sm md:text-base py-4 rounded-2xl hover:from-[#F4EE8E] hover:to-[#F8E89A] transition shadow-xl flex items-center justify-center gap-2 cursor-pointer"
               >
                 Начать отбор в компанию <ChevronRight className="w-4 h-4" />
               </button>
+              </div>
 
             </div>
           ) : vacancyId && subTab !== "company" && selectedRaw ? (
@@ -706,14 +740,14 @@ export default function CompanyLanding() {
             const others = vacancies.filter((v) => v.id !== selectedVacancy?.id);
             if (others.length === 0) return null;
             return (
-              <div className="space-y-4 pt-6 border-t border-white/10 mt-8">
-                <div className="flex items-center gap-2">
+              <div className="space-y-5 pt-8 border-t border-white/10 mt-10">
+                <div className="flex items-center gap-2 mb-1">
                   <span className="text-sm">🎯</span>
-                  <h3 className="text-xs font-bold text-slate-300 uppercase tracking-widest">
+                  <h3 className="text-sm font-bold text-white/90 uppercase tracking-widest">
                     Другие открытые вакансии компании ({others.length})
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 items-stretch">
                   {others.map((v) => (
                     <VacancyCard
                       key={v.id}
@@ -728,6 +762,7 @@ export default function CompanyLanding() {
                         vacancyText: v.vacancyText || null,
                       }}
                       showCompany={false}
+                      className="h-full"
                       onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
                     />
                   ))}
