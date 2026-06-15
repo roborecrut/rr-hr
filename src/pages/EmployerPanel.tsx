@@ -1185,38 +1185,45 @@ export default function EmployerPanel() {
       {
         // Supabase fallback: candidates linked to this employer's projects
         let candRows: any[] = [];
-        const { data: emp } = await supabase.from("employers").select("id").eq("public_id", employerId).maybeSingle();
-        if (emp?.id) {
-          const { data: projIds } = await supabase.from("projects").select("id").eq("employer_id", emp.id);
-          const ids = (projIds || []).map((p) => p.id);
-          if (ids.length) {
-            const { data } = await supabase
-              .from("candidates")
-              .select("*, projects(role_name, company_id, companies(name, slug))")
-              .in("project_id", ids);
-            candRows = (data as any[]) || [];
-          }
-        }
+        // Unified server source: RPC enforces ownership via auth.uid() and
+        // returns canonical stage + scores + has_* flags + training/cert state.
+        try {
+          const { data, error } = await (supabase as any).rpc("employer_list_candidates");
+          if (!error && Array.isArray(data)) candRows = data;
+        } catch (e) { console.warn("employer_list_candidates rpc failed", e); }
         setCandidates(
           (candRows || []).map((c: any) => ({
             id: `candidate${c.public_id}`,
             uuid: c.id,
             publicId: c.public_id,
-            name: c.full_name || c.resume_name || `Кандидат #${c.public_id}`,
+            name: c.full_name || `Кандидат #${c.public_id}`,
             fullName: c.full_name || "",
             email: c.email || "",
             phone: c.phone || "",
             projectId: c.project_id,
+            projectPublicId: c.project_public_id,
             companyId: c.company_id,
-            companyName: c.projects?.companies?.name,
-            companySlug: c.projects?.companies?.slug,
-            roleName: c.role_name || c.projects?.role_name || "",
+            companyName: c.company_name || "",
+            companySlug: c.company_slug || undefined,
+            roleName: c.role_name || "",
             currentStage: c.current_stage,
-            crmStage: c.crm_stage,
+            crmStage: (c.crm_stage_manual ? c.crm_stage : (c.crm_stage || c.derived_stage)) || c.derived_stage || "registration",
+            derivedStage: c.derived_stage,
+            hasResume: !!c.has_resume,
+            hasChecklist: !!c.has_checklist,
+            hasSituations: !!c.has_situations,
+            hasOverall: !!c.has_overall,
+            trainingPassed: c.training_passed || [],
+            certified: !!c.certified,
             createdAt: c.created_at,
             registeredVia: c.registered_via,
-            resumeText: c.resume_text,
-            resumeName: c.resume_name,
+            scores: {
+              resumeScore: c.resume_score != null ? Number(c.resume_score) : undefined,
+              checklistScore: c.checklist_score != null ? Number(c.checklist_score) : undefined,
+              situationsScore: c.situations_score != null ? Number(c.situations_score) : undefined,
+              interviewScore: c.interview_score != null ? Number(c.interview_score) : undefined,
+              overallScore: c.overall_score != null ? Number(c.overall_score) : undefined,
+            },
           })) as any,
         );
       }
