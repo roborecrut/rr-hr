@@ -236,7 +236,7 @@ export default function OnboardingHost({ autoStart = true, buttonOnly = false }:
       smoothScroll: true,
       allowClose: true,
       overlayOpacity: 0.72,
-      stagePadding: 10,
+      stagePadding: 4,
       stageRadius: 16,
       popoverClass: "rr-tour-popover",
       nextBtnText: "Дальше →",
