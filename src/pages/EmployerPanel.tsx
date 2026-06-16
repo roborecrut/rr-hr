@@ -9,7 +9,6 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import OnboardingHost from "../components/OnboardingHost";
-import type { OnboardingSection } from "@/lib/onboarding";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
