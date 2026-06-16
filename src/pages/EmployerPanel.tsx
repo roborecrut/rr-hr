@@ -4128,8 +4128,25 @@ export default function EmployerPanel() {
           {activeTab === "tariff" && (
             <div className="space-y-6 text-left">
 
-              {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
-              <HiringCalculator />
+              <Tabs defaultValue="balance" className="space-y-6">
+                <TabsList className="bg-[#1D3E5E]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                  <TabsTrigger value="balance" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💰 Баланс
+                  </TabsTrigger>
+                  <TabsTrigger value="buy" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    🛒 Покупка и оплата
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    📋 История списаний
+                  </TabsTrigger>
+                  <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    🎁 Реферальная программа
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="balance" className="space-y-6 mt-0">
+                  {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
+                  <HiringCalculator />
 
               {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -4174,9 +4191,11 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
+                </TabsContent>
 
-              {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TabsContent value="buy" className="space-y-6 mt-0">
+                  {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Фикс-услуги */}
                 <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
