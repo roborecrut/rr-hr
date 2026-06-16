@@ -840,6 +840,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3 text-[11px] text-amber-100 leading-relaxed">
             ℹ️ Кандидат увидит этап «{STAGES.find(s => s.key === stage)?.title}» в кабинете. Тест можно перепроходить неограниченно — пока не наберёт {test.pass_score} баллов. Следующий этап откроется только после сдачи текущего.
           </div>
+          </>)}
         </>
       )}
     </div>
