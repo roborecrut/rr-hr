@@ -4,7 +4,7 @@
  * Использование: <FieldHelp section="profile" fieldKey="email" />
  */
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 import Markdown from "react-markdown";
 import { getFieldHelp, type OnboardingItem, type OnboardingSection } from "@/lib/onboarding";
 
