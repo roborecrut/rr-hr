@@ -175,12 +175,14 @@ import {
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
 import HHTemplatesSection from "../components/HHTemplatesSection";
+import { useConfirm } from "../components/ConfirmDialog";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
+  const confirm = useConfirm();
   const [authReady, setAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
