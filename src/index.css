@@ -202,23 +202,28 @@ body {
 .crm-sticky-wrap {
   position: relative;
   overflow-x: auto;
-  overflow-y: auto;
-  /* высота канбана = вьюпорт минус шапка/фильтры (~280px) */
-  max-height: calc(100vh - 300px);
+  overflow-y: visible;
   min-height: 460px;
   width: 100%;
   max-width: 100%;
-  padding-bottom: 14px;
+  padding-bottom: 4px;
 }
 /* Колонки канбана внутри обёртки — каждая своим вертикальным скроллом,
    чтобы при большом количестве кандидатов список листался внутри колонки,
    а горизонтальный бегунок оставался зафиксированным внизу области. */
 .crm-kanban-col {
-  height: calc(100vh - 340px);
-  min-height: 390px;
-  max-height: 620px;
+  min-height: 420px;
+  max-height: calc(100vh - 260px);
   overflow-y: auto;
   overflow-x: hidden;
+}
+/* Закреплённый внизу экрана горизонтальный скроллбар для CRM-таблицы и канбана.
+   Заставляем scrollbar быть всегда видимым внизу вьюпорта при длинном контенте. */
+.crm-bottom-scroll {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, transparent, rgba(23,52,79,0.85) 30%);
 }
 .crm-sticky-wrap::-webkit-scrollbar { height: 14px; }
 .crm-sticky-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
