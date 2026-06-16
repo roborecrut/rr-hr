@@ -41,17 +41,27 @@ Deno.serve(async (req) => {
   const chatId = buildChatId({ userId: candidateId });
   const socialId = buildSocialId({ user_id: candidateId });
 
-  const msg = `Ты HR-эксперт. Оцени резюме кандидата по вакансии "${(proj as any)?.role_name || ""}".
-Критерии:
-${criteria || "(нет критериев — оцени по соответствию должности)"}
+  const msg = `Ты — старший HR-эксперт и рекрутер. Твоя задача — провести экспертный анализ соответствия резюме кандидата вакансии "${(proj as any)?.role_name || ""}" и дать развёрнутую оценку.
 
-Описание вакансии:
-${(proj as any)?.vacancy_text || ""}
+КРИТЕРИИ ОЦЕНКИ ОТ РАБОТОДАТЕЛЯ:
+${criteria || "(критерии не заданы — оцени по соответствию должности и описанию вакансии)"}
 
-РЕЗЮМЕ КАНДИДАТА:
+ОПИСАНИЕ ВАКАНСИИ И ОЖИДАНИЯ РАБОТОДАТЕЛЯ:
+${(proj as any)?.vacancy_text || "(не указано)"}
+
+РЕЗЮМЕ КАНДИДАТА (распознанный текст):
 ${body.resume_text.slice(0, 10000)}
 
-Верни СТРОГО JSON: {"score":0..100,"summary":string (2-4 предложения для кандидата),"strengths":string[],"gaps":string[]}`;
+ИНСТРУКЦИИ ПО АНАЛИЗУ:
+1. Внимательно сопоставь каждый ключевой запрос/ожидание работодателя с тем, что реально подтверждено в резюме.
+2. Не додумывай факты. Если по какому-то критерию в резюме нет данных — отметь это как пробел.
+3. Учитывай не только формальный опыт, но и релевантность задач, индустрию, уровень ответственности, цифры результатов.
+4. Поле "summary" — экспертный разбор на 6–10 предложений, обращённый к работодателю (не к кандидату). Сначала общий вердикт о соответствии, затем по пунктам: какие требования закрыты и чем именно из резюме, какие — нет, насколько критичны пробелы, и итоговая рекомендация (приглашать на интервью / точечно уточнить / отказать).
+5. "strengths" — 3–7 конкретных доказанных в резюме сильных сторон под эту вакансию (с указанием цифр/проектов где есть).
+6. "gaps" — 2–6 конкретных пробелов/рисков относительно требований работодателя, с пояснением, почему это важно для роли.
+
+Верни СТРОГО валидный JSON без markdown:
+{"score":0..100,"summary":string,"strengths":string[],"gaps":string[]}`;
 
   // 2. Регистрируем ai_jobs ДО вызова ProTalk — чтобы при техническом сбое
   //    клиент получил job_id и кнопку «Запустить RR Pro Max».
@@ -78,9 +88,9 @@ ${body.resume_text.slice(0, 10000)}
     const score = Math.max(0, Math.min(100, Number(obj.score) || 0));
     const result = {
       score,
-      summary: String(obj.summary || "").slice(0, 1500),
-      strengths: Array.isArray(obj.strengths) ? obj.strengths.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
-      gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
+      summary: String(obj.summary || "").slice(0, 4000),
+      strengths: Array.isArray(obj.strengths) ? obj.strengths.slice(0, 10).map((s: any) => String(s).slice(0, 500)) : [],
+      gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 500)) : [],
     };
 
     // Upsert candidate_scores (PK = candidate_id, no separate `id` column)

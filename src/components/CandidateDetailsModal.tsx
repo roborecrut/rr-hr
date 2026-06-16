@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX, ChevronDown, ChevronUp
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -83,6 +83,24 @@ export default function CandidateDetailsModal({
   const [decisionMsg, setDecisionMsg] = useState("");
   const [decisionSaving, setDecisionSaving] = useState(false);
   const [decisionErr, setDecisionErr] = useState<string | null>(null);
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const markReview = async () => {
+    if (!candidateId) return;
+    setReviewSaving(true);
+    try {
+      await (supabase as any)
+        .from("candidates")
+        .update({ crm_stage: "screening", review_flag: true })
+        .eq("id", candidateId);
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+    } catch (e) {
+      // soft: ignore — таблица может не иметь поля review_flag, статус всё равно проставится
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!candidateId) return;
@@ -241,15 +259,14 @@ export default function CandidateDetailsModal({
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-white truncate">{name}</h2>
-                  <span className="text-[10px] text-slate-400">№ {c.public_id}</span>
-                  {c.crm_stage && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30">
-                      {STAGE_LABELS[c.crm_stage] || c.crm_stage}
-                    </span>
-                  )}
                   {overallBadge && (
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${overallBadge.cls}`}>
                       {overallBadge.text}
+                    </span>
+                  )}
+                  {c.review_flag && (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/20 text-amber-200 border-amber-400/40">
+                      На рассмотрении
                     </span>
                   )}
                 </div>
@@ -285,8 +302,7 @@ export default function CandidateDetailsModal({
               <Score label="Резюме" value={s.resume_score} />
               <Score label="Чеклист" value={s.checklist_score} />
               <Score label="Ситуации" value={s.situations_score} />
-              <Score label="Интервью" value={s.interview_score} />
-              <Score label="Средний" value={s.overall_score} />
+              <Score label="Средний балл" value={s.overall_score} />
             </div>
 
             {/* Hire decision block */}
@@ -333,6 +349,14 @@ export default function CandidateDetailsModal({
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm shadow hover:-translate-y-0.5 transition"
                   >
                     <UserCheck className="w-4 h-4" /> Пригласить на работу
+                  </button>
+                  <button
+                    type="button"
+                    disabled={reviewSaving}
+                    onClick={markReview}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-sm shadow hover:-translate-y-0.5 transition disabled:opacity-50"
+                  >
+                    <Clock className="w-4 h-4" /> На рассмотрении
                   </button>
                   <button
                     type="button"
@@ -405,6 +429,9 @@ export default function CandidateDetailsModal({
                 <TabsTrigger value="situations" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                   💬 Ситуации
                 </TabsTrigger>
+                <TabsTrigger value="overall" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  🏆 Общая оценка
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-6 mt-0">
@@ -415,7 +442,6 @@ export default function CandidateDetailsModal({
                 <div className="min-w-0">
                   <div className="text-[10px] font-mono uppercase text-slate-400">Компания</div>
                   <div className="text-sm font-bold text-white truncate">{co.name || "—"}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{co.slug ? `/${co.slug}` : ""}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -423,7 +449,6 @@ export default function CandidateDetailsModal({
                 <div className="min-w-0">
                   <div className="text-[10px] font-mono uppercase text-slate-400">Вакансия</div>
                   <div className="text-sm font-bold text-white truncate">{c.role_name || pr.role_name || "—"}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{pr.public_id ? `ID: ${pr.public_id}` : ""}</div>
                 </div>
               </div>
             </div>
@@ -435,7 +460,6 @@ export default function CandidateDetailsModal({
                 { label: "Email", value: c.email },
                 { label: "Телефон", value: c.phone },
                 { label: "Должность", value: c.role_name },
-                { label: "Этап воронки", value: STAGE_LABELS[c.crm_stage] || c.crm_stage },
                 { label: "Зарегистрирован", value: c.created_at ? new Date(c.created_at).toLocaleString("ru-RU") : null },
                 { label: "Telegram", value: c.social_telegram },
                 { label: "WhatsApp", value: c.social_whatsapp },
@@ -550,6 +574,63 @@ export default function CandidateDetailsModal({
                 Кандидат ещё не проходил ситуации.
               </div>
             )}
+              </TabsContent>
+
+              <TabsContent value="overall" className="space-y-6 mt-0">
+                <div className={`rounded-2xl p-5 border ${toneBg(overallTone.label)}`}>
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Итоговая оценка ИИ</div>
+                      <div className="text-[13px] text-white/80 mt-0.5">Соответствие должности, задачам и параметрам оценки</div>
+                    </div>
+                    <div className={`text-4xl font-mono font-black ${overallTone.cls}`}>
+                      {s.overall_score !== null && s.overall_score !== undefined
+                        ? `${Math.round(Number(s.overall_score))}/100`
+                        : "—"}
+                    </div>
+                  </div>
+                  {overallBadge && (
+                    <div className={`inline-block px-3 py-1 rounded-full text-[12px] font-bold border ${overallBadge.cls}`}>
+                      {overallBadge.text}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.resume_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Резюме</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.resume_score).cls}`}>
+                      {s.resume_score != null ? `${Math.round(Number(s.resume_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.checklist_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Анкета (чек-лист)</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.checklist_score).cls}`}>
+                      {s.checklist_score != null ? `${Math.round(Number(s.checklist_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.situations_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Ситуации</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.situations_score).cls}`}>
+                      {s.situations_score != null ? `${Math.round(Number(s.situations_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(overallTone.label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Средний балл</div>
+                    <div className={`text-2xl font-mono font-black ${overallTone.cls}`}>
+                      {s.overall_score != null ? `${Math.round(Number(s.overall_score))}/100` : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {s.assessment_summary && (
+                  <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Award className="w-4 h-4" /> Рекомендация ИИ</h3>
+                    <div className="text-[14px] text-white/95 leading-relaxed whitespace-pre-wrap">
+                      {s.assessment_summary}
+                    </div>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
 

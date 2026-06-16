@@ -4025,7 +4025,7 @@ export default function EmployerPanel() {
                   const compVacancies = projects.filter(p => p.companyName?.toLowerCase() === comp.name?.toLowerCase());
 
                   return (
-                    <div key={idx} className="bg-[#1D3E5E]/60 border border-white/10 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768]/40 transition" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
+                    <div key={idx} className="bg-[#1D3E5E]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           {comp.logoUrl ? (
@@ -4142,13 +4142,13 @@ export default function EmployerPanel() {
                   <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🎁 Реферальная программа
                   </TabsTrigger>
+                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💲 Тарифы и цены
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="balance" className="space-y-6 mt-0">
-                  {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
-                  <HiringCalculator />
-
-              {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
+                  {/* 1. БАЛАНС + ЛИМИТЫ КАРТОЧКИ — на первом месте */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div data-tour="section.tariff.balance">
@@ -4191,10 +4191,74 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
+                  {/* 2. КАЛЬКУЛЯТОР ВЫГОДЫ — после баланса */}
+                  <HiringCalculator />
                 </TabsContent>
 
                 <TabsContent value="buy" className="space-y-6 mt-0">
-                  {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
+                  {/* 1. ПОПОЛНЕНИЕ RR ЗА РУБЛИ — на первом месте */}
+                  <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
+                    <form onSubmit={handleTopupBalance} className="space-y-4">
+                      <div>
+                        <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                          💵 Пополнение баланса RR за рубли
+                        </h3>
+                        <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
+                      </div>
+                      {topupError && (
+                        <div className="bg-red-950/40 border border-red-500/35 text-red-200 rounded-xl p-3 text-xs">
+                          ⚠️ {topupError}
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">К оплате (₽)</label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={100}
+                              value={topupAmountRub}
+                              onChange={(e) => setTopupAmountRub(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="bg-black/35 w-full rounded-2xl border border-white/10 px-4 py-3 font-mono font-extrabold text-white text-sm focus:outline-none focus:border-[#E7C768]"
+                            />
+                            <span className="absolute right-4 top-3 text-xs font-bold text-[#E7C768] font-mono">₽</span>
+                          </div>
+                          <div className="flex gap-2 text-[10px] font-mono font-bold">
+                            {[100, 500, 1000, 5000].map(v => (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => setTopupAmountRub(v)}
+                                className={`px-3 py-2 rounded-xl border transition-all ${topupAmountRub === v ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15"}`}
+                              >
+                                {v.toLocaleString("ru-RU")} ₽
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block uppercase">Будет зачислено</span>
+                            <span className="text-2xl font-extrabold text-[#E7C768] block font-mono">{topupAmountRub.toLocaleString("ru-RU")} RR</span>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={isToppingUp || topupAmountRub < 100 || !topupOfferOk}
+                            className="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 text-white font-bold text-xs uppercase tracking-wider py-3 rounded-2xl mt-3 transition"
+                          >
+                            {isToppingUp ? "Перенаправляем на оплату..." : "🚀 Оплатить через Робокассу"}
+                          </button>
+                        </div>
+                      </div>
+                      <OfferConsent checked={topupOfferOk} onChange={setTopupOfferOk} context="pay" />
+                      <p className="text-[10px] text-slate-400 leading-relaxed">
+                        Оплата проводится через систему «Робокасса». Принимаем карты МИР, Visa, Mastercard и другие способы.
+                        После успешной оплаты RR начисляются автоматически (обычно в течение минуты).
+                      </p>
+                    </form>
+                  </div>
+
+                  {/* 2. ФИКС-УСЛУГИ + 3. ПАКЕТЫ */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Фикс-услуги */}
@@ -4256,9 +4320,9 @@ export default function EmployerPanel() {
                               type="button"
                               onClick={() => handleBuyFixed(row.item, fixedQty[row.item])}
                               disabled={fixedBusy !== null}
-                              className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
                             >
-                              {fixedBusy === row.item ? "..." : `Приобрести +${fixedQty[row.item]}`}
+                              {fixedBusy === row.item ? "..." : `Списать за RR (${row.price * fixedQty[row.item]})`}
                             </button>
                           </div>
                         </div>
@@ -4329,81 +4393,15 @@ export default function EmployerPanel() {
                             type="button"
                             onClick={handleBuyMixedPack}
                             disabled={packBusy || total_qty < 1}
-                            className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
+                            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
                           >
-                            {packBusy ? "..." : "Купить пакет"}
+                            {packBusy ? "..." : `Списать за RR (${total_rr.toLocaleString("ru-RU")})`}
                           </button>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
-              </div>
-
-              {/* 4. ПОПОЛНЕНИЕ RR ЗА РУБЛИ */}
-              <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
-                <form onSubmit={handleTopupBalance} className="space-y-4">
-                  <div>
-                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
-                      💵 Пополнение баланса RR за рубли
-                    </h3>
-                    <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
-                  </div>
-
-                  {topupError && (
-                    <div className="bg-red-950/40 border border-red-500/35 text-red-200 rounded-xl p-3 text-xs">
-                      ⚠️ {topupError}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-[11px] font-bold text-slate-300 uppercase tracking-wider">К оплате (₽)</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min={100}
-                          value={topupAmountRub}
-                          onChange={(e) => setTopupAmountRub(Math.max(0, parseInt(e.target.value) || 0))}
-                          className="bg-black/35 w-full rounded-2xl border border-white/10 px-4 py-3 font-mono font-extrabold text-white text-sm focus:outline-none focus:border-[#E7C768]"
-                        />
-                        <span className="absolute right-4 top-3 text-xs font-bold text-[#E7C768] font-mono">₽</span>
-                      </div>
-                      <div className="flex gap-2 text-[10px] font-mono font-bold">
-                        {[100, 500, 1000, 5000].map(v => (
-                          <button
-                            key={v}
-                            type="button"
-                            onClick={() => setTopupAmountRub(v)}
-                            className={`px-3 py-2 rounded-xl border transition-all ${topupAmountRub === v ? "bg-[#1E4468] text-[#E7C768] border-[#E7C768]/60" : "bg-black/20 text-slate-400 border-white/5 hover:border-white/15"}`}
-                          >
-                            {v.toLocaleString("ru-RU")} ₽
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="bg-emerald-950/20 p-4 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
-                      <div>
-                        <span className="text-[10px] text-slate-400 block uppercase">Будет зачислено</span>
-                        <span className="text-2xl font-extrabold text-[#E7C768] block font-mono">{topupAmountRub.toLocaleString("ru-RU")} RR</span>
-                      </div>
-                      <button
-                        type="submit"
-                        disabled={isToppingUp || topupAmountRub < 100 || !topupOfferOk}
-                        className="cursor-pointer bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-40 text-[#17344F] font-bold text-xs uppercase tracking-wider py-3 rounded-2xl mt-3 transition"
-                      >
-                        {isToppingUp ? "Перенаправляем на оплату..." : "🚀 Оплатить через Робокассу"}
-                      </button>
-                    </div>
-                  </div>
-
-                  <OfferConsent checked={topupOfferOk} onChange={setTopupOfferOk} context="pay" />
-                  <p className="text-[10px] text-slate-400 leading-relaxed">
-                    Оплата проводится через систему «Робокасса». Принимаем карты МИР, Visa, Mastercard и другие способы.
-                    После успешной оплаты RR начисляются автоматически (обычно в течение минуты).
-                  </p>
-                </form>
               </div>
                 </TabsContent>
 
@@ -4540,6 +4538,74 @@ export default function EmployerPanel() {
                   </div>
                 )}
               </div>
+                </TabsContent>
+
+                <TabsContent value="prices" className="space-y-6 mt-0">
+                  <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl space-y-2">
+                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                      💲 Прейскурант RR
+                    </h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Все списания происходят в RR (1 RR = 1 ₽). Ниже — полный прейскурант: что стоит и сколько.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 1. Разовые услуги при создании вакансии */}
+                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                      <div className="border-b border-white/10 pb-2">
+                        <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                          🛍️ Разовые услуги при создании вакансии
+                        </h4>
+                        <p className="text-[11px] text-slate-300 mt-1">
+                          Списываем один раз — за первичное создание. Дальше редактировать бесплатно.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                          { icon: "🌐", title: "ИИ-Лендинг вакансии", price: FIXED_PRICES.landing },
+                          { icon: "⚙️", title: "ИИ-Система интервью", price: FIXED_PRICES.interview_setup },
+                          { icon: "🎓", title: "ИИ-Система обучения", price: FIXED_PRICES.training_setup },
+                        ].map(row => (
+                          <div key={row.title} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-2xl p-3">
+                            <span className="text-[13px] font-bold text-white flex items-center gap-2">
+                              <span className="text-base">{row.icon}</span> {row.title}
+                            </span>
+                            <span className="text-sm font-mono font-black text-[#E7C768] whitespace-nowrap">{row.price} RR</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Стоимость интервью и обучения */}
+                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                      <div className="border-b border-white/10 pb-2">
+                        <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                          📦 Стоимость интервью и обучения
+                        </h4>
+                        <p className="text-[11px] text-slate-300 mt-1">
+                          Чем больше пакет — тем дешевле каждая единица. Считается по сумме интервью + обучения.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        {[
+                          { r: "1–9 шт",    p: 200 },
+                          { r: "10–49 шт",  p: 150 },
+                          { r: "50–199 шт", p: 100 },
+                          { r: "200+ шт",   p: 50  },
+                        ].map(t => (
+                          <div key={t.r} className="bg-black/25 border border-white/10 rounded-2xl p-3">
+                            <div className="text-[10px] uppercase text-slate-400 font-mono">{t.r}</div>
+                            <div className="text-base font-mono font-black text-[#E7C768] mt-1">{t.p} RR</div>
+                            <div className="text-[9px] text-slate-500 font-mono">за шт</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed pt-1">
+                        Списание срабатывает, когда кандидат впервые начинает диалог с ИИ — отдельно за интервью и отдельно за обучение. Повторное прохождение тем же кандидатом — бесплатно.
+                      </p>
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
