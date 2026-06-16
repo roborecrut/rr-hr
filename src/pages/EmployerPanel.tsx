@@ -1444,7 +1444,11 @@ export default function EmployerPanel() {
       if (!emp) return;
       if (isEmployerPublicIdCandidate((emp as any).public_id)) {
         cacheEmployerPublicId((emp as any).public_id, user.id);
-        if ((emp as any).public_id !== employerId) {
+        // Не переадресуем, если пользователь сознательно открыл другой кабинет
+        // по прямому URL (/empXXXXX/...) — например, админ просматривает чужой кабинет.
+        // Редирект делаем только когда URL вообще не содержит /emp{id}.
+        const urlEmp = parseEmployerPublicIdFromPath(window.location.pathname);
+        if (!urlEmp && (emp as any).public_id !== employerId) {
           setEmployerId((emp as any).public_id);
           navigate(`/emp${(emp as any).public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
         }
