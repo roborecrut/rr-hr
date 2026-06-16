@@ -37,11 +37,16 @@ export default function FieldActionsMenu({ actions, ariaLabel = "Действи�
         aria-label={ariaLabel}
         title={ariaLabel}
         className={
-          "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 bg-white/5 text-slate-200 transition hover:bg-white/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C768]/60 " +
+          "inline-flex h-9 w-9 items-center justify-center rounded-lg " +
+          "border border-[#E7C768]/60 bg-[#E7C768]/15 text-[#E7C768] " +
+          "shadow-[0_0_0_1px_rgba(231,199,104,0.15)] " +
+          "transition hover:bg-[#E7C768]/30 hover:border-[#E7C768] hover:text-white " +
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C768]/70 " +
+          "active:scale-95 " +
           (className || "")
         }
       >
-        <MoreVertical className="h-4 w-4" />
+        <MoreVertical className="h-5 w-5" strokeWidth={2.5} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
