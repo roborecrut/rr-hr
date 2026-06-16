@@ -429,6 +429,9 @@ export default function CandidateDetailsModal({
                 <TabsTrigger value="situations" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                   💬 Ситуации
                 </TabsTrigger>
+                <TabsTrigger value="overall" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  🏆 Общая оценка
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-6 mt-0">
@@ -439,7 +442,6 @@ export default function CandidateDetailsModal({
                 <div className="min-w-0">
                   <div className="text-[10px] font-mono uppercase text-slate-400">Компания</div>
                   <div className="text-sm font-bold text-white truncate">{co.name || "—"}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{co.slug ? `/${co.slug}` : ""}</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -447,7 +449,6 @@ export default function CandidateDetailsModal({
                 <div className="min-w-0">
                   <div className="text-[10px] font-mono uppercase text-slate-400">Вакансия</div>
                   <div className="text-sm font-bold text-white truncate">{c.role_name || pr.role_name || "—"}</div>
-                  <div className="text-[11px] text-slate-400 truncate">{pr.public_id ? `ID: ${pr.public_id}` : ""}</div>
                 </div>
               </div>
             </div>
@@ -459,7 +460,6 @@ export default function CandidateDetailsModal({
                 { label: "Email", value: c.email },
                 { label: "Телефон", value: c.phone },
                 { label: "Должность", value: c.role_name },
-                { label: "Этап воронки", value: STAGE_LABELS[c.crm_stage] || c.crm_stage },
                 { label: "Зарегистрирован", value: c.created_at ? new Date(c.created_at).toLocaleString("ru-RU") : null },
                 { label: "Telegram", value: c.social_telegram },
                 { label: "WhatsApp", value: c.social_whatsapp },
