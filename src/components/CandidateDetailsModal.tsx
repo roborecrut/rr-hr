@@ -302,8 +302,7 @@ export default function CandidateDetailsModal({
               <Score label="Резюме" value={s.resume_score} />
               <Score label="Чеклист" value={s.checklist_score} />
               <Score label="Ситуации" value={s.situations_score} />
-              <Score label="Интервью" value={s.interview_score} />
-              <Score label="Средний" value={s.overall_score} />
+              <Score label="Средний балл" value={s.overall_score} />
             </div>
 
             {/* Hire decision block */}
