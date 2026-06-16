@@ -12,7 +12,7 @@ import RichMarkdown from "@/components/RichMarkdown";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -26,12 +26,29 @@ const STAGE_LABELS: Record<string, string> = {
   certified: "Сертификат",
 };
 
+/** Цветовая разметка ИИ-оценок: green ≥70, yellow 40-69, red <40. */
+function scoreTone(value: any, max = 100): { cls: string; label: "good" | "mid" | "bad" | "none" } {
+  const n = value === null || value === undefined ? NaN : Number(value);
+  if (!Number.isFinite(n)) return { cls: "text-slate-400", label: "none" };
+  const pct = max === 100 ? n : (n / max) * 100;
+  if (pct >= 70) return { cls: "text-emerald-300", label: "good" };
+  if (pct >= 40) return { cls: "text-amber-300", label: "mid" };
+  return { cls: "text-rose-300", label: "bad" };
+}
+function toneBg(label: ReturnType<typeof scoreTone>["label"]): string {
+  if (label === "good") return "bg-emerald-500/15 border-emerald-400/40";
+  if (label === "mid") return "bg-amber-500/15 border-amber-400/40";
+  if (label === "bad") return "bg-rose-500/15 border-rose-400/40";
+  return "bg-black/30 border-white/10";
+}
+
 function Score({ label, value }: { label: string; value: any }) {
   const n = value === null || value === undefined ? null : Number(value);
+  const tone = scoreTone(value);
   return (
-    <div className="bg-black/30 rounded-xl border border-white/10 px-3 py-2 flex items-center justify-between">
-      <span className="text-[11px] text-slate-300">{label}</span>
-      <span className="text-sm font-mono font-bold text-[#E7C768]">
+    <div className={`rounded-xl border px-3 py-2.5 flex items-center justify-between ${toneBg(tone.label)}`}>
+      <span className="text-[12px] text-slate-200 font-semibold">{label}</span>
+      <span className={`text-base font-mono font-black ${tone.cls}`}>
         {n === null || Number.isNaN(n) ? "—" : `${Math.round(n)}/100`}
       </span>
     </div>
@@ -40,11 +57,12 @@ function Score({ label, value }: { label: string; value: any }) {
 
 function Field({ label, value }: { label: string; value: any }) {
   const empty = value === null || value === undefined || value === "";
+  if (empty) return null;
   return (
-    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
-      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{label}</div>
-      <div className={`text-[12px] mt-0.5 break-words ${empty ? "text-slate-500 italic" : "text-white font-semibold"}`}>
-        {empty ? "—" : String(value)}
+    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2.5">
+      <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="text-[14px] mt-1 break-words text-white font-semibold">
+        {String(value)}
       </div>
     </div>
   );
@@ -180,6 +198,15 @@ export default function CandidateDetailsModal({
     ? `/${co.slug}/${pr.public_id}/cand${c.public_id}/profile`
     : null;
 
+  // Итоговый бейдж ИИ-вердикта на основе среднего балла.
+  const overallTone = scoreTone(s.overall_score);
+  const overallBadge = (() => {
+    if (overallTone.label === "good") return { text: "✓ Одобрен ИИ", cls: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" };
+    if (overallTone.label === "mid") return { text: "Подходит частично", cls: "bg-amber-500/20 text-amber-200 border-amber-400/40" };
+    if (overallTone.label === "bad") return { text: "Не подходит", cls: "bg-rose-500/20 text-rose-200 border-rose-400/40" };
+    return null;
+  })();
+
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
       <div
@@ -217,6 +244,11 @@ export default function CandidateDetailsModal({
                   {c.crm_stage && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30">
                       {STAGE_LABELS[c.crm_stage] || c.crm_stage}
+                    </span>
+                  )}
+                  {overallBadge && (
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${overallBadge.cls}`}>
+                      {overallBadge.text}
                     </span>
                   )}
                 </div>
@@ -378,50 +410,52 @@ export default function CandidateDetailsModal({
               </div>
             </div>
 
-            {/* Full candidate profile — all fields, even empty */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><UserIcon className="w-3.5 h-3.5" /> Профиль кандидата</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <Field label="ФИО" value={c.full_name} />
-                <Field label="ФИО из резюме" value={c.resume_name} />
-                <Field label="Public ID" value={c.public_id} />
-                <Field label="Email" value={c.email} />
-                <Field label="Телефон" value={c.phone} />
-                <Field label="Должность (роль)" value={c.role_name} />
-                <Field label="Этап CRM" value={STAGE_LABELS[c.crm_stage] || c.crm_stage} />
-                <Field label="Текущий этап" value={c.current_stage} />
-                <Field label="Зарегистрирован через" value={c.registered_via} />
-                <Field label="Способ входа" value={c.auth_kind} />
-                <Field label="Источник перехода" value={c.ref_source} />
-                <Field label="Лендинг" value={c.landing_slug} />
-                <Field label="Создан" value={c.created_at ? new Date(c.created_at).toLocaleString() : null} />
-                <Field label="Последний вход" value={c.last_login_at ? new Date(c.last_login_at).toLocaleString() : null} />
-                <Field label="Резюме (URL)" value={c.resume_url} />
-                <Field label="Аватар (URL)" value={c.avatar_url || p.avatar_url} />
-                <Field label="Telegram" value={c.social_telegram} />
-                <Field label="WhatsApp" value={c.social_whatsapp} />
-                <Field label="Instagram" value={c.social_instagram} />
-                <Field label="VK" value={c.social_vk} />
-                <Field label="MAX" value={c.social_max} />
-                <Field label="Setka" value={c.social_setka} />
-                <Field label="GitHub" value={c.social_github} />
-              </div>
-            </div>
-
-            {/* Resume */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Распознанный текст резюме</h3>
-              {s.assessment_summary && (
-                <div className="text-[11px] text-amber-200 bg-amber-900/20 border border-amber-700/30 rounded-lg p-2">
-                  {s.assessment_summary}
+            {/* Профиль кандидата — только заполненные поля, без техн. данных */}
+            {(() => {
+              const fields: { label: string; value: any }[] = [
+                { label: "ФИО", value: c.full_name || c.resume_name },
+                { label: "Email", value: c.email },
+                { label: "Телефон", value: c.phone },
+                { label: "Должность", value: c.role_name },
+                { label: "Этап воронки", value: STAGE_LABELS[c.crm_stage] || c.crm_stage },
+                { label: "Зарегистрирован", value: c.created_at ? new Date(c.created_at).toLocaleString("ru-RU") : null },
+                { label: "Telegram", value: c.social_telegram },
+                { label: "WhatsApp", value: c.social_whatsapp },
+                { label: "Instagram", value: c.social_instagram },
+                { label: "VK", value: c.social_vk },
+                { label: "MAX", value: c.social_max },
+                { label: "Setka", value: c.social_setka },
+                { label: "GitHub", value: c.social_github },
+              ];
+              const nonEmpty = fields.filter(f => f.value !== null && f.value !== undefined && f.value !== "");
+              if (nonEmpty.length === 0) return null;
+              return (
+                <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><UserIcon className="w-4 h-4" /> Профиль кандидата</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {nonEmpty.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                  </div>
                 </div>
-              )}
-              <div className="text-[11px] text-slate-200 leading-relaxed max-h-64 overflow-y-auto">
-                {c.resume_text
-                  ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
-                  : <span className="italic text-slate-500">Резюме не загружено</span>}
+              );
+            })()}
+
+            {/* Resume — крупнее, без моноширинного, со скроллом */}
+            {(c.resume_text || s.assessment_summary) && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-4 h-4" /> Распознанный текст резюме</h3>
+                {s.assessment_summary && (
+                  <div className={`text-[13px] rounded-lg p-3 border ${toneBg(scoreTone(s.resume_score).label)} text-white`}>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300 mb-1">Резюме оценил ИИ</div>
+                    {s.assessment_summary}
+                  </div>
+                )}
+                <div className="text-[14.5px] text-slate-100 leading-relaxed max-h-96 overflow-y-auto pr-1">
+                  {c.resume_text
+                    ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
+                    : <span className="italic text-slate-500">Резюме не загружено</span>}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Interview transcripts */}
             {interviews.length > 0 && (
@@ -440,59 +474,61 @@ export default function CandidateDetailsModal({
               </div>
             )}
 
-            {/* Answers — Checklist */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> Ответы на чек-лист</h3>
-              {checklistAnswersView.length === 0 ? (
-                <div className="text-[11px] text-slate-500 italic">Кандидат ещё не отвечал на чек-лист.</div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {checklistAnswersView.map((a: any) => (
-                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined
-                            ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
-                            : (a.is_correct ? "✓" : "·")}
-                        </span>
+            {/* Answers — Checklist (скрыто, если кандидат ещё не отвечал) */}
+            {checklistAnswersView.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на чек-лист</h3>
+                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                  {checklistAnswersView.map((a: any) => {
+                    const tone = scoreTone(a.score, a.max ?? 10);
+                    return (
+                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                            {a.score !== null && a.score !== undefined
+                              ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
+                              : (a.is_correct ? "✓" : "·")}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
+                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                        </div>
+                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
                       </div>
-                      <div className="text-[11px] text-slate-200 mt-1">
-                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
-                      </div>
-                      {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Answers — Situations */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Ответы во время ситуаций</h3>
-              {situationAnswersView.length === 0 ? (
-                <div className="text-[11px] text-slate-500 italic">Ответы по ситуациям отсутствуют.</div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {situationAnswersView.map((a: any) => (
-                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined
-                            ? `${Math.round(Number(a.score))}/100`
-                            : (a.is_correct ? "✓" : "·")}
-                        </span>
+            {/* Answers — Situations (скрыто, если нет) */}
+            {situationAnswersView.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Ответы по ситуациям</h3>
+                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                  {situationAnswersView.map((a: any) => {
+                    const tone = scoreTone(a.score);
+                    return (
+                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                            {a.score !== null && a.score !== undefined
+                              ? `${Math.round(Number(a.score))}/100`
+                              : (a.is_correct ? "✓" : "·")}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
+                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                        </div>
+                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
                       </div>
-                      <div className="text-[11px] text-slate-200 mt-1">
-                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
-                      </div>
-                      {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {otherAnswers.length > 0 && (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
