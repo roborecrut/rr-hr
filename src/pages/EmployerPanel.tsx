@@ -2679,6 +2679,11 @@ export default function EmployerPanel() {
                 </>
               )}
             </div>
+
+            {/* Кнопка перезапуска велком-тура */}
+            <div className="pt-2">
+              <OnboardingHost buttonOnly />
+            </div>
           </div>
 
           {isAdmin && (
