@@ -2921,8 +2921,8 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-scroll overflow-x-auto pb-3">
-                  <div className="flex gap-3 min-w-max">
+                <div className="crm-sticky-wrap crm-scroll">
+                  <div className="flex gap-3 min-w-max h-full">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2939,7 +2939,7 @@ export default function EmployerPanel() {
                       <div
                         key={column.stage}
                         className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
-                        style={{ width: 260, minWidth: 220, resize: "horizontal", overflow: "auto" }}
+                        style={{ width: 220, minWidth: 200, resize: "horizontal", overflow: "auto" }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
