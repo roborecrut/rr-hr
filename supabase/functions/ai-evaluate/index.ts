@@ -5,7 +5,7 @@ import {
 } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner, assertCandidateOwner } from "../_shared/auth.ts";
 
-type Mode = "resume" | "checklist" | "situations" | "training_block";
+type Mode = "resume" | "checklist" | "situations" | "training_block" | "overall_candidate";
 
 const PROMPTS: Record<Mode, string> = {
   resume:
@@ -16,6 +16,8 @@ const PROMPTS: Record<Mode, string> = {
     "Ты — оценщик ролевых сценариев. Верни ТОЛЬКО JSON: {items:[{question_id,score:0..100,feedback}], total:0..100, advice:string}. Без markdown.",
   training_block:
     "Ты — оценщик учебного блока. Верни ТОЛЬКО JSON: {lessons:[{lesson_id,score:0..100,feedback}], block_score:0..100, summary:string}. Без markdown.",
+  overall_candidate:
+    "Ты — senior HRD и эксперт по оценке кандидатов. Оцени кандидата комплексно: резюме, ответы анкеты, ролевые ситуации, числовые оценки, требования вакансии, задачи, мотивацию, критерии работодателя и риски найма. Не пересказывай только резюме. Дай деловую экспертную рекомендацию: подходит/частично/не подходит, почему, сильные стороны, риски, что уточнить на финальном интервью. Верни ТОЛЬКО JSON: {score:0..100, verdict:string, summary:string, strengths:string[], risks:string[], interview_focus:string[]}. summary — 8-12 содержательных предложений на русском языке. Без markdown.",
 };
 
 Deno.serve(async (req) => {
