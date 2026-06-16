@@ -2825,7 +2825,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
               
               {/* Layout controls */}
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Users className="w-5 h-5 text-amber-400" /> ИИ-Воронка и CRM-Кандидаты
@@ -3068,7 +3068,7 @@ export default function EmployerPanel() {
           {/* PAGE 2: VACANCIES & AI CREATOR */}
           {activeTab === "vacancies" && (
             <div className="space-y-6 text-left">
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.vacancies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Briefcase className="w-5 h-5 text-amber-500" /> Вакансии & ИИ Онбординги
@@ -3078,6 +3078,7 @@ export default function EmployerPanel() {
 
                 <button 
                   onClick={openAddVacancyWizard}
+                  data-tour="section.vacancies.add"
                   className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] hover:scale-102 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1 shadow transition-all"
                 >
                   <Plus className="w-4 h-4" /> Добавить вакансию
@@ -3489,7 +3490,7 @@ export default function EmployerPanel() {
           {/* PAGE 3: MY COMPANIES */}
           {activeTab === "companies" && (
             <div className="space-y-6 text-left">
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.companies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Building2 className="w-5 h-5 text-amber-400" /> Зарегистрированные компании
@@ -3500,6 +3501,7 @@ export default function EmployerPanel() {
 
                 <button 
                   onClick={openAddCompanyWizard}
+                  data-tour="section.companies.add"
                   className="cursor-pointer bg-gradient-to-r from-green-650 to-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow transition"
                 >
                   + Добавить Компанию
@@ -4098,7 +4100,7 @@ export default function EmployerPanel() {
               {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
-                  <div>
+                  <div data-tour="section.tariff.balance">
                     <span className="text-[10px] font-bold text-[#E7C768] tracking-widest uppercase font-mono block">Лицевой счёт</span>
                     <h2 className="text-3xl font-extrabold text-white mt-1.5 font-mono select-none">
                       {balance.toLocaleString("ru-RU")} <span className="text-lg font-bold text-[#E7C768]">RR</span>
@@ -4488,7 +4490,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
 
               {/* Header */}
-              <div className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
                   <h2 className="text-lg font-black text-white flex items-center gap-2">
                     <User className="w-5 h-5 text-amber-400" />
@@ -4503,7 +4505,9 @@ export default function EmployerPanel() {
               </div>
 
               {/* Реферальная ссылка (только Google) */}
-              <ReferralLinkBlock employerPublicId={employerId} />
+              <div data-tour="section.profile.referral">
+                <ReferralLinkBlock employerPublicId={employerId} />
+              </div>
 
               {/* GOOGLE PROFILE — read-only из аккаунта Google */}
               <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
