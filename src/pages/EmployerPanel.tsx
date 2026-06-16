@@ -2588,10 +2588,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`max-w-[1400px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 w-full flex-1`}>
+      <div className={`w-full max-w-[1920px] mx-auto py-6 px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 flex-1 min-w-0`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className="sidebar-readable space-y-6 lg:sticky lg:top-4 lg:self-start">
+        <aside className="sidebar-readable crm-sidebar space-y-6 lg:sticky lg:top-[88px] lg:self-start lg:max-h-[calc(100dvh-104px)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2844,10 +2844,10 @@ export default function EmployerPanel() {
 
           {/* PAGE 1: CRM & FUNNEL */}
           {activeTab === "crm" && (
-            <div className="space-y-6 text-left">
+            <div className="crm-page text-left">
               
               {/* Layout controls */}
-              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
+              <div data-tour="section.crm.header" className="crm-controls bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Users className="w-5 h-5 text-amber-400" /> ИИ-Воронка и CRM-Кандидаты
@@ -2935,8 +2935,9 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-sticky-wrap crm-scroll rounded-3xl border border-white/10 bg-[#17344F]/35 p-3 shadow-xl">
-                  <div className="grid grid-flow-col auto-cols-[minmax(190px,210px)] gap-3 h-full">
+                <div className="crm-workspace rounded-3xl border border-white/10 bg-[#17344F]/35 shadow-xl">
+                  <div className="crm-kanban-viewport crm-scroll-area">
+                    <div className="crm-kanban-track">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2952,7 +2953,7 @@ export default function EmployerPanel() {
                     return (
                       <div
                         key={column.stage}
-                        className="crm-kanban-col bg-[#1D3E5E]/55 border border-white/10 rounded-2xl p-2.5 space-y-2.5 shadow"
+                        className="crm-kanban-column bg-[#1D3E5E]/55 border border-white/10 rounded-2xl shadow"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -2963,12 +2964,12 @@ export default function EmployerPanel() {
                           }
                         }}
                       >
-                        <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
+                        <div className="crm-kanban-column-header flex items-center justify-between border-b border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 bg-[#1D3E5E]/95 rounded-t-2xl">
                           <span className="whitespace-nowrap">{column.title}</span>
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
-                        <div className="space-y-2.5">
+                        <div className="crm-kanban-cards crm-scroll-area space-y-2.5 px-2.5 py-2.5">
                           {colCandidates.length === 0 ? (
                             <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
                           ) : (
@@ -2993,15 +2994,16 @@ export default function EmployerPanel() {
                       </div>
                     );
                   })}
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                  <div className="crm-scroll overflow-x-auto overflow-y-visible min-h-[420px]">
-                    <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
+                <div className="crm-workspace crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                  <div className="crm-table-viewport crm-scroll-area">
+                    <table className="text-left text-xs w-full" style={{ minWidth: "1300px" }}>
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
@@ -3014,15 +3016,23 @@ export default function EmployerPanel() {
                             { label: "Ситуации", w: 90, align: "center" },
                             { label: "Средний", w: 90, align: "center" },
                             { label: "Действия", w: 140, align: "right" },
-                          ].map((h, i) => (
-                            <th
-                              key={i}
-                              className={`p-3 text-${h.align} whitespace-nowrap`}
-                              style={{ minWidth: h.w, width: h.w }}
-                            >
-                              {h.label}
-                            </th>
-                          ))}
+                          ].map((h, i) => {
+                            const alignClass =
+                              h.align === "center"
+                                ? "text-center"
+                                : h.align === "right"
+                                  ? "text-right"
+                                  : "text-left";
+                            return (
+                              <th
+                                key={i}
+                                className={`p-3 ${alignClass} whitespace-nowrap bg-[#17344F]`}
+                                style={{ minWidth: h.w, width: h.w }}
+                              >
+                                {h.label}
+                              </th>
+                            );
+                          })}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
@@ -3049,7 +3059,7 @@ export default function EmployerPanel() {
                                 <td className="p-3 text-slate-200">{cand.roleName || "—"}</td>
                                 <td className="p-3">
                                   <select 
-                                    className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768]"
+                                    className="bg-black/40 text-xs rounded border border-white/10 px-2 py-1 text-[#E7C768] max-w-full"
                                     value={(cand as any).crmStage || "registration"}
                                     onChange={(e) => handleUpdateCrmStage(cand.id, e.target.value as any)}
                                   >

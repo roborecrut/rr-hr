@@ -195,44 +195,110 @@ body {
 .sidebar-readable h3 { font-size: 16px !important; }
 
 /* ============================================================
-   .crm-sticky-scrollbar — прокрутка канбана с закреплённым
-   внизу экрана горизонтальным бегунком. Контейнер должен иметь
-   max-height: ~ оставшейся высоты и overflow:auto.
+   CRM LAYOUT — реальная геометрия канбана и таблицы.
+   .crm-page — flex-колонка с фильтрами сверху и рабочей областью снизу.
+   .crm-workspace — рабочая область фиксированной адаптивной высоты.
+   .crm-kanban-viewport — единственный горизонтальный scroll канбана.
+   .crm-kanban-cards — вертикальный scroll списка карточек внутри колонки.
+   .crm-table-viewport — viewport таблицы с собственным scroll и sticky-шапкой.
    ============================================================ */
-.crm-sticky-wrap {
-  position: relative;
-  overflow-x: auto;
-  overflow-y: visible;
-  min-height: 460px;
-  width: 100%;
+.crm-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
   max-width: 100%;
-  padding-bottom: 4px;
 }
-/* Колонки канбана внутри обёртки — каждая своим вертикальным скроллом,
-   чтобы при большом количестве кандидатов список листался внутри колонки,
-   а горизонтальный бегунок оставался зафиксированным внизу области. */
-.crm-kanban-col {
-  min-height: 420px;
-  max-height: calc(100vh - 260px);
+.crm-controls {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.crm-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  height: clamp(420px, calc(100dvh - 320px), 680px);
+}
+.crm-kanban-viewport {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.crm-kanban-track {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  min-width: 100%;
+  height: 100%;
+  padding: 12px;
+}
+.crm-kanban-column {
+  width: 220px;
+  min-width: 220px;
+  flex: 0 0 220px;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.crm-kanban-column-header {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.crm-kanban-cards {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding-right: 3px;
 }
-/* Закреплённый внизу экрана горизонтальный скроллбар для CRM-таблицы и канбана.
-   Заставляем scrollbar быть всегда видимым внизу вьюпорта при длинном контенте. */
-.crm-bottom-scroll {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  background: linear-gradient(180deg, transparent, rgba(23,52,79,0.85) 30%);
+.crm-table-shell { display: flex; flex-direction: column; }
+.crm-table-viewport {
+  width: 100%;
+  height: clamp(420px, calc(100dvh - 320px), 680px);
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
-.crm-sticky-wrap::-webkit-scrollbar { height: 14px; }
-.crm-sticky-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
-.crm-sticky-wrap::-webkit-scrollbar-thumb {
+.crm-table-viewport thead th { background-color: #17344F; }
+
+/* Единый scrollbar для всех CRM scroll-областей. */
+.crm-scroll-area { scrollbar-color: #E7C768 rgba(255,255,255,0.08); scrollbar-width: thin; }
+.crm-scroll-area::-webkit-scrollbar { height: 12px; width: 10px; }
+.crm-scroll-area::-webkit-scrollbar-track {
+  background: rgba(23,52,79,0.6);
+  border-radius: 999px;
+}
+.crm-scroll-area::-webkit-scrollbar-thumb {
   background: linear-gradient(90deg, #F4EE8E, #D99E41);
   border-radius: 999px;
   border: 2px solid #17344F;
 }
-.crm-sticky-wrap { scrollbar-color: #E7C768 rgba(255,255,255,0.06); scrollbar-width: thin; }
+.crm-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #D99E41, #F4EE8E);
+}
+
+/* Скромный scrollbar для закреплённого левого меню работодателя. */
+.crm-sidebar { scrollbar-color: rgba(231,199,104,0.5) transparent; scrollbar-width: thin; }
+.crm-sidebar::-webkit-scrollbar { width: 6px; }
+.crm-sidebar::-webkit-scrollbar-track { background: transparent; }
+.crm-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(231,199,104,0.35);
+  border-radius: 999px;
+}
+.crm-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(231,199,104,0.6); }
 /* Внутри .brand-editor правила .brand-editor (более специфичные сами по себе
    за счёт двойного класса) выигрывают — это ожидаемо. */
 .brand-editor input[type="text"],
