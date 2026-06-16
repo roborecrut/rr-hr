@@ -5016,6 +5016,20 @@ export default function EmployerPanel() {
                 }}
               />
 
+              {/* HH publish templates — only available after the vacancy exists (i.e. in edit mode). */}
+              <HHTemplatesSection
+                projectId={editingProject.id}
+                roleName={editingProject.roleName}
+                companyName={editingProject.companyName}
+                values={{
+                  hhPostText: (editingProject as any).hhPostText || "",
+                  hhInviteText: (editingProject as any).hhInviteText || "",
+                  hhAutoresumeText: (editingProject as any).hhAutoresumeText || "",
+                }}
+                onChange={(patch) => setEditingProject({ ...editingProject, ...patch } as any)}
+                onAudit={addAuditEvent}
+              />
+
               {/* Bottom control buttons */}
               <div className="pt-4 border-t border-white/10 flex gap-3 sticky bottom-0 bg-gradient-to-r from-[#17344F]/95 to-[#265582]/95 backdrop-blur-sm -mx-6 sm:-mx-8 px-6 sm:px-8 py-4">
                 <button
