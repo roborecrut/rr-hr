@@ -4539,6 +4539,74 @@ export default function EmployerPanel() {
                 )}
               </div>
                 </TabsContent>
+
+                <TabsContent value="prices" className="space-y-6 mt-0">
+                  <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl space-y-2">
+                    <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                      💲 Прейскурант RR
+                    </h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Все списания происходят в RR (1 RR = 1 ₽). Ниже — полный прейскурант: что стоит и сколько.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* 1. Разовые услуги при создании вакансии */}
+                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                      <div className="border-b border-white/10 pb-2">
+                        <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                          🛍️ Разовые услуги при создании вакансии
+                        </h4>
+                        <p className="text-[11px] text-slate-300 mt-1">
+                          Списываем один раз — за первичное создание. Дальше редактировать бесплатно.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {[
+                          { icon: "🌐", title: "ИИ-Лендинг вакансии", price: FIXED_PRICES.landing },
+                          { icon: "⚙️", title: "ИИ-Система интервью", price: FIXED_PRICES.interview_setup },
+                          { icon: "🎓", title: "ИИ-Система обучения", price: FIXED_PRICES.training_setup },
+                        ].map(row => (
+                          <div key={row.title} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-2xl p-3">
+                            <span className="text-[13px] font-bold text-white flex items-center gap-2">
+                              <span className="text-base">{row.icon}</span> {row.title}
+                            </span>
+                            <span className="text-sm font-mono font-black text-[#E7C768] whitespace-nowrap">{row.price} RR</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Стоимость интервью и обучения */}
+                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                      <div className="border-b border-white/10 pb-2">
+                        <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                          📦 Стоимость интервью и обучения
+                        </h4>
+                        <p className="text-[11px] text-slate-300 mt-1">
+                          Чем больше пакет — тем дешевле каждая единица. Считается по сумме интервью + обучения.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+                        {[
+                          { r: "1–9 шт",    p: 200 },
+                          { r: "10–49 шт",  p: 150 },
+                          { r: "50–199 шт", p: 100 },
+                          { r: "200+ шт",   p: 50  },
+                        ].map(t => (
+                          <div key={t.r} className="bg-black/25 border border-white/10 rounded-2xl p-3">
+                            <div className="text-[10px] uppercase text-slate-400 font-mono">{t.r}</div>
+                            <div className="text-base font-mono font-black text-[#E7C768] mt-1">{t.p} RR</div>
+                            <div className="text-[9px] text-slate-500 font-mono">за шт</div>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-relaxed pt-1">
+                        Списание срабатывает, когда кандидат впервые начинает диалог с ИИ — отдельно за интервью и отдельно за обучение. Повторное прохождение тем же кандидатом — бесплатно.
+                      </p>
+                    </div>
+                  </div>
+                </TabsContent>
               </Tabs>
             </div>
           )}
