@@ -2584,7 +2584,7 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`max-w-[1400px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`max-w-[1260px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[240px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
         <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
@@ -2843,7 +2843,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
               
               {/* Layout controls */}
-              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Users className="w-5 h-5 text-amber-400" /> ИИ-Воронка и CRM-Кандидаты
@@ -2851,9 +2851,9 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-stretch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch">
                   {/* View selectors */}
-                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1">
+                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1">
                     <button
                       onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
@@ -2869,11 +2869,11 @@ export default function EmployerPanel() {
                   </div>
 
                   {/* Search filter input */}
-                  <div className="relative flex items-center bg-[#17344F]/50 border border-white/15 px-2.5 py-1 rounded-xl focus-within:border-[#E7C768]">
+                  <div className="relative flex items-center bg-[#17344F]/50 border border-white/15 px-2.5 py-1 rounded-xl focus-within:border-[#E7C768] min-h-10">
                     <Search className="w-3.5 h-3.5 text-slate-400 mr-2" />
                     <input
                       type="text"
-                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-44"
+                      className="bg-transparent text-xs text-white focus:outline-none w-full"
                       placeholder="Поиск ФИО / email / телефон..."
                       value={crmSearch}
                       onChange={(e) => setCrmSearch(e.target.value)}
