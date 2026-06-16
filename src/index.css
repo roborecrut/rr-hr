@@ -145,6 +145,15 @@ body {
   border-color: rgba(255,255,255,0.12) !important;
   box-shadow: 0 20px 60px -20px rgba(10,25,45,0.55);
 }
+/* Density bump: больше воздуха и крупнее базовый текст в редакторах.
+   Заменяет точечный text-xs/text-[10px]/text-[11px] на 13–14px,
+   увеличивает поля ввода. Применяется только внутри .brand-editor. */
+.brand-editor { font-size: 14px; line-height: 1.55; }
+.brand-editor .text-xs { font-size: 13px !important; line-height: 1.55 !important; }
+.brand-editor .text-\[10px\] { font-size: 11px !important; }
+.brand-editor .text-\[11px\] { font-size: 12px !important; }
+.brand-editor .text-\[12px\] { font-size: 13px !important; }
+.brand-editor .font-mono { font-family: inherit !important; }
 .brand-editor input[type="text"],
 .brand-editor input[type="email"],
 .brand-editor input[type="url"],
@@ -161,7 +170,11 @@ body {
   border-radius: 0.75rem;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  font-size: 14px !important;
+  padding: 0.7rem 0.85rem !important;
+  line-height: 1.5 !important;
 }
+.brand-editor textarea { padding: 0.85rem 1rem !important; line-height: 1.6 !important; }
 .brand-editor input::placeholder,
 .brand-editor textarea::placeholder { color: rgba(255,255,255,0.55) !important; }
 .brand-editor select option,
