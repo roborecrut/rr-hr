@@ -342,7 +342,7 @@ export default function CandidateDetailsModal({
                       {overallBadge.text}
                     </span>
                   )}
-                  {c.review_flag && (
+                  {c.hire_decision === "review" && (
                     <span className="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/20 text-amber-200 border-amber-400/40">
                       На рассмотрении
                     </span>
@@ -393,11 +393,15 @@ export default function CandidateDetailsModal({
                   <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
                     c.hire_decision === "invited"
                       ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
-                      : "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                      : c.hire_decision === "review"
+                        ? "bg-amber-500/20 text-amber-200 border border-amber-400/40"
+                        : "bg-rose-500/20 text-rose-200 border border-rose-400/40"
                   }`}>
                     {c.hire_decision === "invited"
                       ? <><UserCheck className="w-3.5 h-3.5" /> Приглашён на работу</>
-                      : <><UserX className="w-3.5 h-3.5" /> Отказано</>}
+                      : c.hire_decision === "review"
+                        ? <><Clock className="w-3.5 h-3.5" /> На рассмотрении</>
+                        : <><UserX className="w-3.5 h-3.5" /> Отказано</>}
                   </div>
                   {c.hire_decided_at && (
                     <div className="text-[10px] text-slate-400 font-mono">
@@ -417,6 +421,16 @@ export default function CandidateDetailsModal({
                     >
                       Изменить решение
                     </button>
+                    {c.hire_decision !== "review" && (
+                      <button
+                        type="button"
+                        disabled={reviewSaving}
+                        onClick={markReview}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-100 disabled:opacity-50"
+                      >
+                        На рассмотрении
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
