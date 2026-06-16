@@ -670,7 +670,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               </div>
             </div>
           </div>
+          </>)}
 
+          {subTab === "test" && (<>
           {/* Test */}
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center justify-between">
