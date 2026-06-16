@@ -3,13 +3,24 @@
  * Аккордеон вопросов из таблицы faq_items + поиск по тексту.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Search, Sparkles, BookOpen } from "lucide-react";
+import { ChevronDown, Search, Sparkles, BookOpen, Layers } from "lucide-react";
 import Markdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
 import EmployerAIAssistant from "@/components/EmployerAIAssistant";
 import { useSeo, SITE_URL } from "@/lib/seo";
 import SiteHeader from "@/components/SiteHeader";
+import { loadOnboarding, type OnboardingItem, type OnboardingSection } from "@/lib/onboarding";
+
+const SECTION_LABELS: Record<OnboardingSection, string> = {
+  profile: "Профиль",
+  companies: "Компании",
+  vacancies: "Вакансии",
+  interviews: "Интервью",
+  training: "Обучения",
+  crm: "CRM",
+  billing: "Счета",
+};
 
 type FaqItem = {
   id: string;
@@ -35,6 +46,8 @@ export default function FaqPage() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [onb, setOnb] = useState<OnboardingItem[]>([]);
+  const [openOnbId, setOpenOnbId] = useState<string | null>(null);
 
   useSeo({
     title: "База знаний — Робот Рекрутер",
@@ -68,6 +81,7 @@ export default function FaqPage() {
       if (!error && data) setItems(data as FaqItem[]);
       setLoading(false);
     })();
+    loadOnboarding().then((list) => { if (!cancelled) setOnb(list); });
     return () => { cancelled = true; };
   }, []);
 
@@ -88,6 +102,30 @@ export default function FaqPage() {
     }
     return Array.from(map.entries());
   }, [filtered]);
+
+  const onbFiltered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return onb;
+    return onb.filter((x) => x.title.toLowerCase().includes(q) || x.body_md.toLowerCase().includes(q));
+  }, [onb, query]);
+
+  const onbGrouped = useMemo(() => {
+    const map = new Map<OnboardingSection, OnboardingItem[]>();
+    for (const it of onbFiltered) {
+      const arr = map.get(it.section) || [];
+      arr.push(it);
+      map.set(it.section, arr);
+    }
+    // welcome первым, остальное по order_idx
+    for (const [k, arr] of map) {
+      arr.sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === "section_welcome" ? -1 : 1;
+        return a.order_idx - b.order_idx;
+      });
+      map.set(k, arr);
+    }
+    return Array.from(map.entries());
+  }, [onbFiltered]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white">
