@@ -4148,10 +4148,7 @@ export default function EmployerPanel() {
                 </TabsList>
 
                 <TabsContent value="balance" className="space-y-6 mt-0">
-                  {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
-                  <HiringCalculator />
-
-              {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
+                  {/* 1. БАЛАНС + ЛИМИТЫ КАРТОЧКИ — на первом месте */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div data-tour="section.tariff.balance">
