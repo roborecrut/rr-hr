@@ -10,6 +10,7 @@ import AuthModal from "@/components/AuthModal";
 import { useRouter } from "@/components/RouterContext";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProfilePathForUser } from "@/lib/links";
+import NotificationsBell from "@/components/NotificationsBell";
 import {
   Chrome,
   Sparkles,
@@ -122,6 +123,7 @@ export default function SiteHeader({ active }: Props) {
 
           {isAuthed ? (
             <div className="hidden md:flex items-center gap-2">
+              <NotificationsBell />
               <button onClick={() => navigate(profilePath)} aria-label="Кабинет" className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-3 lg:px-4 py-2 rounded-xl shadow-lg hover:-translate-y-0.5 transition">
                 <LayoutDashboard className="w-4 h-4" /> <span className="hidden lg:inline">Кабинет</span>
               </button>

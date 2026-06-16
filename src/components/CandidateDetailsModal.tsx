@@ -12,7 +12,7 @@ import RichMarkdown from "@/components/RichMarkdown";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2
+  Building2, UserCheck, UserX
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -60,6 +60,10 @@ export default function CandidateDetailsModal({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [decisionOpen, setDecisionOpen] = useState<null | "invited" | "rejected">(null);
+  const [decisionMsg, setDecisionMsg] = useState("");
+  const [decisionSaving, setDecisionSaving] = useState(false);
+  const [decisionErr, setDecisionErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!candidateId) return;
@@ -76,6 +80,28 @@ export default function CandidateDetailsModal({
   }, [candidateId]);
 
   if (!candidateId) return null;
+
+  const submitDecision = async () => {
+    if (!candidateId || !decisionOpen) return;
+    setDecisionSaving(true); setDecisionErr(null);
+    try {
+      const { error } = await (supabase as any).rpc("candidate_invite_decision", {
+        _candidate: candidateId,
+        _decision: decisionOpen,
+        _message: decisionMsg.trim() || null,
+      });
+      if (error) throw error;
+      // refresh
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+      setDecisionOpen(null);
+      setDecisionMsg("");
+    } catch (e: any) {
+      setDecisionErr(e?.message || "Не удалось сохранить решение");
+    } finally {
+      setDecisionSaving(false);
+    }
+  };
 
   const c = data?.candidate || {};
   const p = data?.profile || {};
@@ -229,6 +255,108 @@ export default function CandidateDetailsModal({
               <Score label="Интервью" value={s.interview_score} />
               <Score label="Средний" value={s.overall_score} />
             </div>
+
+            {/* Hire decision block */}
+            <div className="bg-black/25 border border-[#E7C768]/30 rounded-2xl p-4">
+              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2 mb-3">
+                <UserCheck className="w-3.5 h-3.5" /> Решение по кандидату
+              </h3>
+              {c.hire_decision ? (
+                <div className="space-y-2">
+                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
+                    c.hire_decision === "invited"
+                      ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
+                      : "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                  }`}>
+                    {c.hire_decision === "invited"
+                      ? <><UserCheck className="w-3.5 h-3.5" /> Приглашён на работу</>
+                      : <><UserX className="w-3.5 h-3.5" /> Отказано</>}
+                  </div>
+                  {c.hire_decided_at && (
+                    <div className="text-[10px] text-slate-400 font-mono">
+                      {new Date(c.hire_decided_at).toLocaleString("ru-RU")}
+                    </div>
+                  )}
+                  {c.hire_message && (
+                    <div className="bg-black/30 rounded-xl border border-white/10 p-3 text-[12px] text-white/90 whitespace-pre-wrap">
+                      {c.hire_message}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setDecisionOpen(c.hire_decision === "invited" ? "rejected" : "invited"); setDecisionMsg(c.hire_message || ""); }}
+                      className="text-[11px] px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 text-white"
+                    >
+                      Изменить решение
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setDecisionOpen("invited"); setDecisionMsg(""); }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-bold text-sm shadow hover:-translate-y-0.5 transition"
+                  >
+                    <UserCheck className="w-4 h-4" /> Пригласить на работу
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setDecisionOpen("rejected"); setDecisionMsg(""); }}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-sm transition"
+                  >
+                    <UserX className="w-4 h-4" /> Отказать
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {decisionOpen && (
+              <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !decisionSaving && setDecisionOpen(null)}>
+                <div className="bg-gradient-to-b from-[#1D3E5E] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                  <h4 className="text-lg font-bold text-white mb-3">
+                    {decisionOpen === "invited" ? "Пригласить на работу" : "Отказать кандидату"}
+                  </h4>
+                  <p className="text-xs text-slate-300 mb-3">
+                    Кандидат увидит ваше сообщение в личном кабинете и получит уведомление.
+                  </p>
+                  <textarea
+                    value={decisionMsg}
+                    onChange={e => setDecisionMsg(e.target.value)}
+                    placeholder={decisionOpen === "invited"
+                      ? "Напишите кандидату: когда выйти, как связаться, какие шаги дальше…"
+                      : "Кратко объясните причину отказа (по желанию)…"}
+                    rows={5}
+                    className="w-full bg-black/30 border border-white/15 rounded-xl p-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#E7C768]"
+                  />
+                  {decisionErr && <div className="text-rose-300 text-xs mt-2">{decisionErr}</div>}
+                  <div className="flex gap-2 justify-end mt-4">
+                    <button
+                      type="button"
+                      disabled={decisionSaving}
+                      onClick={() => setDecisionOpen(null)}
+                      className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-sm font-semibold"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      disabled={decisionSaving}
+                      onClick={submitDecision}
+                      className={`px-4 py-2 rounded-xl text-white text-sm font-bold inline-flex items-center gap-2 ${
+                        decisionOpen === "invited"
+                          ? "bg-gradient-to-r from-emerald-500 to-emerald-600"
+                          : "bg-gradient-to-r from-rose-500 to-rose-600"
+                      }`}
+                    >
+                      {decisionSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {decisionOpen === "invited" ? "Пригласить" : "Отправить отказ"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Company + vacancy block (names, not only links) */}
             <div className="bg-black/20 border border-white/10 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">

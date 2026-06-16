@@ -14,6 +14,8 @@ import CandidateInterview from "../components/CandidateInterview";
 import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
 import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
+import NotificationsBell from "@/components/NotificationsBell";
+import HireDecisionBanner from "@/components/HireDecisionBanner";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FN } from "@/config";
@@ -1803,6 +1805,7 @@ export default function CandidateFlow() {
                 <strong className="text-[#E7C768] font-bold block mt-0.5">{candidate.name || "Соискатель"}</strong>
               </div>
             )}
+            <NotificationsBell />
             <button
               type="button"
               onClick={() => {
@@ -1901,7 +1904,8 @@ export default function CandidateFlow() {
 
       {/* Main interactive Stepper panel */}
       <main className="flex-1 py-8 px-4 md:px-8 max-w-5xl mx-auto w-full">
-        
+        <HireDecisionBanner candidateId={candidate?.id} />
+
         {/* Tab 1: Profile tab */}
         {activeTab === "profile" && (
           <div className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl p-6 md:p-8 space-y-6">
