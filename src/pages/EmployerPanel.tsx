@@ -2750,7 +2750,7 @@ export default function EmployerPanel() {
         </aside>
 
         {/* Right Side Main Workspaces */}
-        <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
+        <main className={`panel-readable ${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
           {/* Авто-старт сквозного welcome-тура (рендерит null) */}
           <OnboardingHost />
@@ -3076,6 +3076,7 @@ export default function EmployerPanel() {
           {/* PAGE 2: VACANCIES & AI CREATOR */}
           {activeTab === "vacancies" && (
             <div className="space-y-6 text-left">
+              {!showAddNewVacancy && !editingProject && (
               <div data-tour="section.vacancies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
@@ -3092,6 +3093,7 @@ export default function EmployerPanel() {
                   <Plus className="w-4 h-4" /> Добавить вакансию
                 </button>
               </div>
+              )}
 
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
@@ -3391,6 +3393,7 @@ export default function EmployerPanel() {
               )}
 
               {/* LIST OF CURRENT PLACED VACANCIES */}
+              {!showAddNewVacancy && !editingProject && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {projects.map(proj => {
                   const isPaused = pausedProjectIds.includes(proj.id);
@@ -3492,12 +3495,14 @@ export default function EmployerPanel() {
                   );
                 })}
               </div>
+              )}
             </div>
           )}
 
           {/* PAGE 3: MY COMPANIES */}
           {activeTab === "companies" && (
             <div className="space-y-6 text-left">
+              {!showAddCompany && (
               <div data-tour="section.companies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
@@ -3515,6 +3520,7 @@ export default function EmployerPanel() {
                   + Добавить Компанию
                 </button>
               </div>
+              )}
 
               {/* BRAND CREATOR */}
               {showAddCompany && (
@@ -3992,6 +3998,7 @@ export default function EmployerPanel() {
               )}
 
               {/* LIST VIEW */}
+              {!showAddCompany && (
               <div className="space-y-4">
                 {companiesList.length === 0 && (
                   <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center text-slate-400 text-xs">
@@ -4079,8 +4086,10 @@ export default function EmployerPanel() {
                   );
                 })}
               </div>
+              )}
 
               {/* Onboarding Step 2 Next CTA */}
+              {!showAddCompany && (
               <div className="bg-[#1E4468]/60 border border-[#E7C768]/30 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
                 <div className="text-left space-y-1">
                   <h4 className="text-[#E7C768] font-bold text-sm">Компания добавлена и бренд-лендинг готов?</h4>
@@ -4094,6 +4103,7 @@ export default function EmployerPanel() {
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
+              )}
 
             </div>
           )}

@@ -154,6 +154,35 @@ body {
 .brand-editor .text-\[11px\] { font-size: 12px !important; }
 .brand-editor .text-\[12px\] { font-size: 13px !important; }
 .brand-editor .font-mono { font-family: inherit !important; }
+
+/* ============================================================
+   .panel-readable — мягкий апскейл типографики для всех разделов
+   личного кабинета (профиль, обучение, интервью, CRM, тариф и т.д.).
+   В отличие от .brand-editor НЕ меняет фон/цвет — только размеры
+   шрифтов и плотность полей ввода, чтобы интерфейс читался крупнее
+   и единообразно во всех вкладках.
+   ============================================================ */
+.panel-readable { font-size: 14px; line-height: 1.55; }
+.panel-readable .text-xs { font-size: 13px !important; line-height: 1.55 !important; }
+.panel-readable .text-\[9px\] { font-size: 11px !important; }
+.panel-readable .text-\[9\.5px\] { font-size: 11.5px !important; }
+.panel-readable .text-\[10px\] { font-size: 12px !important; }
+.panel-readable .text-\[10\.5px\] { font-size: 12.5px !important; }
+.panel-readable .text-\[11px\] { font-size: 13px !important; }
+.panel-readable .text-\[12px\] { font-size: 13.5px !important; }
+.panel-readable .text-sm { font-size: 14.5px !important; }
+.panel-readable .text-base { font-size: 16px !important; }
+.panel-readable .text-lg { font-size: 19px !important; }
+.panel-readable input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.panel-readable textarea,
+.panel-readable select {
+  font-size: 14px !important;
+  padding: 0.65rem 0.85rem !important;
+  line-height: 1.5 !important;
+}
+.panel-readable textarea { padding: 0.8rem 0.95rem !important; line-height: 1.6 !important; }
+/* Внутри .brand-editor правила .brand-editor (более специфичные сами по себе
+   за счёт двойного класса) выигрывают — это ожидаемо. */
 .brand-editor input[type="text"],
 .brand-editor input[type="email"],
 .brand-editor input[type="url"],

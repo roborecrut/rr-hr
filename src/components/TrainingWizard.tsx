@@ -64,6 +64,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   // spend-confirm dialog chose it in create mode).
   const lockedProject = !!initialProjectId;
   const [stage, setStage] = useState<Stage>("professional");
+  // Под-вкладка в рамках выбранного этапа: материал обучения vs аттестация (тест).
+  // Делит длинную простыню на 2 экрана, как просит работодатель.
+  const [subTab, setSubTab] = useState<"material" | "test">("material");
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
   const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100, shuffle: true });
@@ -453,6 +456,33 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             ))}
           </div>
 
+          {/* Sub-tabs: материал обучения vs аттестация (тест) */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setSubTab("material")}
+              className={`px-4 py-2.5 rounded-2xl text-sm font-bold border transition ${
+                subTab === "material"
+                  ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
+                  : "bg-[#1D3E5E]/40 border-white/10 text-white hover:border-[#E7C768]/40"
+              }`}
+            >
+              📚 Обучение — материал
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubTab("test")}
+              className={`px-4 py-2.5 rounded-2xl text-sm font-bold border transition ${
+                subTab === "test"
+                  ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
+                  : "bg-[#1D3E5E]/40 border-white/10 text-white hover:border-[#E7C768]/40"
+              }`}
+            >
+              ✅ Аттестация — тест
+            </button>
+          </div>
+
+          {subTab === "material" && (<>
           {/* Context sources — placed under the stage selector. Each row = textarea + checkbox on right. */}
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -640,7 +670,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               </div>
             </div>
           </div>
+          </>)}
 
+          {subTab === "test" && (<>
           {/* Test */}
           <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center justify-between">
@@ -808,6 +840,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           <div className="bg-amber-950/30 border border-amber-500/30 rounded-2xl p-3 text-[11px] text-amber-100 leading-relaxed">
             ℹ️ Кандидат увидит этап «{STAGES.find(s => s.key === stage)?.title}» в кабинете. Тест можно перепроходить неограниченно — пока не наберёт {test.pass_score} баллов. Следующий этап откроется только после сдачи текущего.
           </div>
+          </>)}
         </>
       )}
     </div>
