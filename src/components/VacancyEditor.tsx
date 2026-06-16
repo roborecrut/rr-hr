@@ -15,6 +15,7 @@ import {
   Eraser,
 } from "lucide-react";
 import { useAIReady } from "../lib/aiReady";
+import FieldHelp from "./FieldHelp";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
@@ -277,9 +278,9 @@ const FieldRow: React.FC<FieldRowProps> = ({
             {field.label}
             <FieldHelp
               section="vacancies"
-              fieldKey={field.id}
+              fieldKey={field.key}
               fallbackTitle={field.label}
-              fallbackBody={`${field.hint || ""}${field.example ? `\n\n**Пример:** ${field.example}` : ""}`}
+              fallbackBody={`${field.hint || ""}${field.example ? `\n\n**Пример:**\n\n${field.example}` : ""}`}
             />
           </label>
           <p className="mt-0.5 text-[11px] text-slate-400">{field.hint}</p>
