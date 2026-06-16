@@ -4089,6 +4089,7 @@ export default function EmployerPanel() {
               )}
 
               {/* Onboarding Step 2 Next CTA */}
+              {!showAddCompany && (
               <div className="bg-[#1E4468]/60 border border-[#E7C768]/30 rounded-3xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
                 <div className="text-left space-y-1">
                   <h4 className="text-[#E7C768] font-bold text-sm">Компания добавлена и бренд-лендинг готов?</h4>
