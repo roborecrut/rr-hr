@@ -2584,7 +2584,7 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-[1560px]"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[280px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`max-w-[1400px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
         <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
@@ -4558,9 +4558,6 @@ export default function EmployerPanel() {
                     <span className="bg-emerald-950/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
                       № {employerId}
-                    </span>
-                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      Google OAuth2 Verified
                     </span>
                   </div>
                 </div>
