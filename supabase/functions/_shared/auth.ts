@@ -179,6 +179,7 @@ export async function assertCandidateOwner(opts: {
   const url = Deno.env.get("SUPABASE_URL");
   const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !svc) return err("server_misconfigured", 500);
+  if (await isAdminUser(opts.userId)) return true;
   const admin = createClient(url, svc);
   const { data } = await admin
     .from("candidates")
