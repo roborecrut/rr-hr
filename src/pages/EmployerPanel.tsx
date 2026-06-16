@@ -2750,7 +2750,7 @@ export default function EmployerPanel() {
         </aside>
 
         {/* Right Side Main Workspaces */}
-        <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
+        <main className={`panel-readable ${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
           {/* Авто-старт сквозного welcome-тура (рендерит null) */}
           <OnboardingHost />
