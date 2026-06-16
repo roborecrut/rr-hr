@@ -391,6 +391,23 @@ export default function CandidateDetailsModal({
               </div>
             )}
 
+            <Tabs defaultValue="general" className="space-y-4">
+              <TabsList className="bg-[#1D3E5E]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                <TabsTrigger value="general" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  👤 Общая
+                </TabsTrigger>
+                <TabsTrigger value="resume" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  📄 Резюме
+                </TabsTrigger>
+                <TabsTrigger value="checklist" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  ✅ Анкета
+                </TabsTrigger>
+                <TabsTrigger value="situations" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  💬 Ситуации
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="general" className="space-y-6 mt-0">
             {/* Company + vacancy block (names, not only links) */}
             <div className="bg-black/20 border border-white/10 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="flex items-start gap-3">
@@ -440,6 +457,9 @@ export default function CandidateDetailsModal({
               );
             })()}
 
+              </TabsContent>
+
+              <TabsContent value="resume" className="space-y-6 mt-0">
             {/* Resume — крупнее, без моноширинного, со скроллом */}
             {(c.resume_text || s.assessment_summary) && (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
@@ -457,29 +477,19 @@ export default function CandidateDetailsModal({
                 </div>
               </div>
             )}
-
-            {/* Interview transcripts */}
-            {interviews.length > 0 && (
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-                <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Интервью</h3>
-                {interviews.map((i) => (
-                  <div key={i.id} className="text-[11px] text-slate-300">
-                    <div className="text-slate-400 font-mono text-[10px]">#{i.public_id} · {i.status} · {i.started_at ? new Date(i.started_at).toLocaleString() : "—"}</div>
-                    {i.transcript_text && (
-                      <div className="mt-1 max-h-40 overflow-y-auto bg-black/20 p-2 rounded">
-                        <RichMarkdown tone="chat">{i.transcript_text}</RichMarkdown>
-                      </div>
-                    )}
-                  </div>
-                ))}
+            {!(c.resume_text || s.assessment_summary) && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+                Резюме ещё не загружено и не оценено ИИ.
               </div>
             )}
+              </TabsContent>
 
-            {/* Answers — Checklist (скрыто, если кандидат ещё не отвечал) */}
-            {checklistAnswersView.length > 0 && (
+              <TabsContent value="checklist" className="space-y-6 mt-0">
+            {/* Answers — Checklist (анкета) */}
+            {checklistAnswersView.length > 0 ? (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
-                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на чек-лист</h3>
-                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на анкету (чек-лист)</h3>
+                <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">
                   {checklistAnswersView.map((a: any) => {
                     const tone = scoreTone(a.score, a.max ?? 10);
                     return (
@@ -501,13 +511,19 @@ export default function CandidateDetailsModal({
                   })}
                 </div>
               </div>
+            ) : (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+                Кандидат ещё не отвечал на анкету.
+              </div>
             )}
+              </TabsContent>
 
-            {/* Answers — Situations (скрыто, если нет) */}
-            {situationAnswersView.length > 0 && (
+              <TabsContent value="situations" className="space-y-6 mt-0">
+            {/* Answers — Situations */}
+            {situationAnswersView.length > 0 ? (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Ответы по ситуациям</h3>
-                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">
                   {situationAnswersView.map((a: any) => {
                     const tone = scoreTone(a.score);
                     return (
@@ -528,6 +544,30 @@ export default function CandidateDetailsModal({
                     );
                   })}
                 </div>
+              </div>
+            ) : (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+                Кандидат ещё не проходил ситуации.
+              </div>
+            )}
+              </TabsContent>
+            </Tabs>
+
+            {/* === Дополнительные блоки (вне табов) === */}
+            {/* Interview transcripts */}
+            {interviews.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+                <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Интервью</h3>
+                {interviews.map((i) => (
+                  <div key={i.id} className="text-[11px] text-slate-300">
+                    <div className="text-slate-400 font-mono text-[10px]">#{i.public_id} · {i.status} · {i.started_at ? new Date(i.started_at).toLocaleString() : "—"}</div>
+                    {i.transcript_text && (
+                      <div className="mt-1 max-h-40 overflow-y-auto bg-black/20 p-2 rounded">
+                        <RichMarkdown tone="chat">{i.transcript_text}</RichMarkdown>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
