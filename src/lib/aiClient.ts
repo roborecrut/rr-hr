@@ -107,7 +107,7 @@ export async function aiEnhanceAll(opts: {
 }
 
 export async function aiEvaluate<T = any>(opts: {
-  mode: "resume" | "checklist" | "situations" | "training_block";
+  mode: "resume" | "checklist" | "situations" | "training_block" | "overall_candidate";
   payload: any;
   candidate_id?: string;
   project_id?: string;
