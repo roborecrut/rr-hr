@@ -3489,7 +3489,7 @@ export default function EmployerPanel() {
           {/* PAGE 3: MY COMPANIES */}
           {activeTab === "companies" && (
             <div className="space-y-6 text-left">
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.companies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Building2 className="w-5 h-5 text-amber-400" /> Зарегистрированные компании
@@ -3500,6 +3500,7 @@ export default function EmployerPanel() {
 
                 <button 
                   onClick={openAddCompanyWizard}
+                  data-tour="section.companies.add"
                   className="cursor-pointer bg-gradient-to-r from-green-650 to-emerald-700 text-white font-bold text-xs py-2 px-3 rounded-xl shadow transition"
                 >
                   + Добавить Компанию
