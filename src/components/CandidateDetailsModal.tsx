@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock, RefreshCw
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -84,19 +84,24 @@ export default function CandidateDetailsModal({
   const [decisionSaving, setDecisionSaving] = useState(false);
   const [decisionErr, setDecisionErr] = useState<string | null>(null);
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [overallSaving, setOverallSaving] = useState(false);
+  const [overallErr, setOverallErr] = useState<string | null>(null);
 
   const markReview = async () => {
     if (!candidateId) return;
     setReviewSaving(true);
+    setDecisionErr(null);
     try {
-      await (supabase as any)
-        .from("candidates")
-        .update({ crm_stage: "screening", review_flag: true })
-        .eq("id", candidateId);
+      const { error } = await (supabase as any).rpc("candidate_invite_decision", {
+        _candidate: candidateId,
+        _decision: "review",
+        _message: "Кандидат взят на дополнительное рассмотрение.",
+      });
+      if (error) throw error;
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
       setData(fresh);
-    } catch (e) {
-      // soft: ignore — таблица может не иметь поля review_flag, статус всё равно проставится
+    } catch (e: any) {
+      setDecisionErr(e?.message || "Не удалось поставить статус «На рассмотрении»");
     } finally {
       setReviewSaving(false);
     }
@@ -149,6 +154,7 @@ export default function CandidateDetailsModal({
   const stageProgress: any[] = data?.stage_progress || [];
   const trainingProgress: any[] = data?.training_progress || [];
   const interviews: any[] = data?.interviews || [];
+  const interviewBlocks: any[] = data?.interview_blocks || [];
 
   // Split answers by question category. The DB enum question_category has
   // values: checklist_prof, checklist_sys, train_prof, train_product,
