@@ -14,6 +14,7 @@ import CandidateInterview from "../components/CandidateInterview";
 import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
 import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
+import NotificationsBell from "@/components/NotificationsBell";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FN } from "@/config";
