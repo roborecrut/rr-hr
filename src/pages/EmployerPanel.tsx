@@ -4191,6 +4191,8 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
+                  {/* 2. КАЛЬКУЛЯТОР ВЫГОДЫ — после баланса */}
+                  <HiringCalculator />
                 </TabsContent>
 
                 <TabsContent value="buy" className="space-y-6 mt-0">
