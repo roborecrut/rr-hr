@@ -109,6 +109,21 @@ export async function getEmployerIdForUser(userId: string): Promise<{ employerId
   return { employerId: data.id as string };
 }
 
+/** Возвращает true, если пользователь имеет роль 'admin' в user_roles. */
+export async function isAdminUser(userId: string): Promise<boolean> {
+  const url = Deno.env.get("SUPABASE_URL");
+  const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !svc) return false;
+  const admin = createClient(url, svc);
+  const { data } = await admin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+}
+
 /**
  * Проверяет, что project (или company) принадлежит работодателю текущего пользователя.
  * Возвращает true либо Response(403/404).
@@ -122,6 +137,8 @@ export async function assertProjectOwner(opts: {
   const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !svc) return err("server_misconfigured", 500);
   const admin = createClient(url, svc);
+
+  if (await isAdminUser(opts.userId)) return true;
 
   const emp = await getEmployerIdForUser(opts.userId);
   if (emp instanceof Response) return emp;
@@ -162,6 +179,7 @@ export async function assertCandidateOwner(opts: {
   const url = Deno.env.get("SUPABASE_URL");
   const svc = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !svc) return err("server_misconfigured", 500);
+  if (await isAdminUser(opts.userId)) return true;
   const admin = createClient(url, svc);
   const { data } = await admin
     .from("candidates")
