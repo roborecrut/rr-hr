@@ -3379,7 +3379,13 @@ export default function EmployerPanel() {
                       <button
                         type="button"
                         onClick={async () => {
-                          if (!window.confirm("Отменить создание вакансии? Черновик будет удалён.")) return;
+                          const ok = await confirm({
+                            title: "Отменить создание вакансии?",
+                            description: "Черновик будет удалён без возможности восстановления.",
+                            confirmLabel: "Удалить черновик",
+                            destructive: true,
+                          });
+                          if (!ok) return;
                           // Force-delete the draft (not just empty ones).
                           try {
                             if (draftProjectId) {
