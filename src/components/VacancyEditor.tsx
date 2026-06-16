@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   CheckCircle2,
   Sparkles,
@@ -13,9 +13,13 @@ import {
   RotateCcw,
   Wand2,
   Eraser,
+  ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAIReady } from "../lib/aiReady";
 import FieldHelp from "./FieldHelp";
+import FieldActionsMenu from "./FieldActionsMenu";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
@@ -67,7 +71,7 @@ const parseTagged = (raw: string): { title: string; desc: string }[] =>
 
 const PreviewShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="mt-3 rounded-2xl border border-dashed border-[#E7C768]/35 bg-white/5 p-4">
-    <div className="mb-2 flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-[#E7C768]/80">
+    <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#E7C768]/80">
       <Sparkles className="h-3 w-3" /> Превью на лендинге
     </div>
     {children}
@@ -201,45 +205,69 @@ export const VacancyEditor: React.FC<VacancyEditorProps> = ({
 
   const clearField = (key: VacancyFieldKey) => set(key, "");
 
+  // По умолчанию открыта первая группа; остальные свёрнуты — меньше шума.
+  const [openGroup, setOpenGroup] = useState<string>(groups[0]?.id || "");
+
   return (
     <div className="brand-editor space-y-6 rounded-3xl bg-gradient-to-br from-[#17344F] to-[#265582]">
       {mode === "create" && (
-        <div className="rounded-2xl border border-[#E7C768]/30 bg-[#E7C768]/5 p-4 text-xs text-slate-200">
-          <strong className="text-[#E7C768]">15 полей вакансии.</strong> Заполните
-          каждое поле — под ним сразу видно, как блок будет смотреться на лендинге
-          {companyName ? ` компании "${companyName}"` : ""}. Пустые поля просто
-          не появятся.
+        <div className="rounded-2xl border border-[#E7C768]/30 bg-[#E7C768]/5 px-4 py-3 text-sm text-slate-200">
+          <strong className="text-[#E7C768]">15 полей</strong> — заполните то,
+          что важно. Пустые блоки на лендинге{companyName ? ` «${companyName}»` : ""} не появятся.
         </div>
       )}
 
-      {groups.map((g) => (
-        <section key={g.id} className="space-y-3">
-          <header className="flex items-center gap-2 border-b border-white/10 pb-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E7C768]/10 text-[#E7C768]">
-              {GROUP_ICON[g.id]}
-            </span>
-            <h3 className="text-sm font-bold uppercase tracking-wider text-[#E7C768]">
-              {g.label}
-            </h3>
-          </header>
-
-          <div className="space-y-4">
-            {g.fields.map((f) => (
-              <FieldRow
-                key={f.key}
-                field={f}
-                value={values[f.key] ?? ""}
-                onChange={(v) => set(f.key, v)}
-                onAIEnhance={onAIEnhance ? () => onAIEnhance(f.key) : undefined}
-                aiLoading={aiLoadingKey === f.key}
-                onApplyTemplate={() => applyTemplate(f.key)}
-                onClear={() => clearField(f.key)}
-                hasRoleTemplate={Boolean((roleTemplates?.[f.key] || "").trim())}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="space-y-3">
+        {groups.map((g) => {
+          const filled = g.fields.filter((f) => (values[f.key] || "").trim().length > 0).length;
+          const total = g.fields.length;
+          const isOpen = openGroup === g.id;
+          return (
+            <section
+              key={g.id}
+              className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
+            >
+              <button
+                type="button"
+                onClick={() => setOpenGroup(isOpen ? "" : g.id)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.05]"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#E7C768]/10 text-[#E7C768]">
+                  {GROUP_ICON[g.id]}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold tracking-wide text-[#E7C768]">
+                    {g.label}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Заполнено {filled} из {total}
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`h-5 w-5 text-slate-300 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+              {isOpen && (
+                <div className="space-y-4 border-t border-white/10 p-4">
+                  {g.fields.map((f) => (
+                    <FieldRow
+                      key={f.key}
+                      field={f}
+                      value={values[f.key] ?? ""}
+                      onChange={(v) => set(f.key, v)}
+                      onAIEnhance={onAIEnhance ? () => onAIEnhance(f.key) : undefined}
+                      aiLoading={aiLoadingKey === f.key}
+                      onApplyTemplate={() => applyTemplate(f.key)}
+                      onClear={() => clearField(f.key)}
+                      hasRoleTemplate={Boolean((roleTemplates?.[f.key] || "").trim())}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
+      </div>
     </div>
   );
 };
@@ -270,11 +298,12 @@ const FieldRow: React.FC<FieldRowProps> = ({
   hasRoleTemplate,
 }) => {
   const aiReady = useAIReady();
+  const [showPreview, setShowPreview] = useState(false);
   return (
     <div className="rounded-2xl border border-white/15 bg-white/5 p-4">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <label className="block text-xs font-bold text-slate-100 inline-flex items-center">
+        <div className="min-w-0 flex-1">
+          <label className="block text-sm font-bold text-slate-100 inline-flex items-center">
             {field.label}
             <FieldHelp
               section="vacancies"
@@ -283,7 +312,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
               fallbackBody={`${field.hint || ""}${field.example ? `\n\n**Пример:**\n\n${field.example}` : ""}`}
             />
           </label>
-          <p className="mt-0.5 text-[11px] text-slate-400">{field.hint}</p>
+          <p className="mt-1 text-xs text-slate-400">{field.hint}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {onAIEnhance && aiReady && (value || "").trim().length >= 7 && (
@@ -291,43 +320,43 @@ const FieldRow: React.FC<FieldRowProps> = ({
               type="button"
               onClick={onAIEnhance}
               disabled={aiLoading}
-              className="flex items-center gap-1 rounded-lg border border-[#E7C768]/30 bg-[#E7C768]/10 px-2 py-1 text-[10px] font-bold text-[#E7C768] transition hover:bg-[#E7C768]/20 disabled:opacity-50"
+              className="flex items-center gap-1 rounded-lg border border-[#E7C768]/30 bg-[#E7C768]/10 px-2.5 py-1.5 text-xs font-bold text-[#E7C768] transition hover:bg-[#E7C768]/20 disabled:opacity-50"
               title="ИИ-улучшение этого поля в каноническом формате (доступно от 7 символов)"
             >
-              <Wand2 className="h-3 w-3" />
+              <Wand2 className="h-3.5 w-3.5" />
               {aiLoading ? "..." : "AI"}
             </button>
           )}
-          <button
-            type="button"
-            onClick={onApplyTemplate}
-            className="flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300 transition hover:bg-white/10"
-            title={
-              hasRoleTemplate
-                ? "Подставить шаблон для выбранной должности"
-                : "Подставить общий шаблон-пример"
-            }
-          >
-            <RotateCcw className="h-3 w-3" />
-            {hasRoleTemplate ? "Шаблон должности" : "Шаблон"}
-          </button>
-          <button
-            type="button"
-            onClick={onClear}
-            disabled={!value}
-            className="flex items-center gap-1 rounded-lg border border-red-400/30 bg-red-400/10 px-2 py-1 text-[10px] font-bold text-red-300 transition hover:bg-red-400/20 disabled:opacity-40"
-            title="Очистить поле"
-          >
-            <Eraser className="h-3 w-3" />
-            Сброс
-          </button>
+          <FieldActionsMenu
+            ariaLabel="Действия с полем"
+            actions={[
+              {
+                icon: <RotateCcw className="h-4 w-4" />,
+                label: hasRoleTemplate ? "Шаблон должности" : "Подставить шаблон",
+                onClick: onApplyTemplate,
+              },
+              {
+                icon: showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />,
+                label: showPreview ? "Скрыть превью" : "Показать превью",
+                onClick: () => setShowPreview((v) => !v),
+              },
+              {
+                icon: <Eraser className="h-4 w-4" />,
+                label: "Очистить поле",
+                onClick: onClear,
+                disabled: !value,
+                danger: true,
+                separatorAbove: true,
+              },
+            ]}
+          />
         </div>
       </div>
 
       <div className="mt-3">
         {field.multiline ? (
           <textarea
-            className="w-full rounded-xl border border-white/15 bg-white/10 p-3 font-mono text-xs text-white focus:outline-[#E7C768]"
+            className="w-full rounded-xl border border-white/15 bg-white/10 p-3 text-sm leading-relaxed text-white focus:outline-[#E7C768]"
             rows={field.rows ?? 4}
             maxLength={field.max}
             value={value}
@@ -337,7 +366,7 @@ const FieldRow: React.FC<FieldRowProps> = ({
         ) : (
           <input
             type="text"
-            className="w-full rounded-xl border border-white/15 bg-white/10 p-2.5 text-xs text-white focus:outline-[#E7C768]"
+            className="w-full rounded-xl border border-white/15 bg-white/10 p-3 text-sm text-white focus:outline-[#E7C768]"
             maxLength={field.max}
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -345,13 +374,13 @@ const FieldRow: React.FC<FieldRowProps> = ({
           />
         )}
         {field.max && (
-          <div className="mt-1 text-right text-[10px] text-slate-500">
+          <div className="mt-1 text-right text-[11px] text-slate-500">
             {value.length}/{field.max}
           </div>
         )}
       </div>
 
-      <PreviewShell>{renderFieldPreview(field, value)}</PreviewShell>
+      {showPreview && <PreviewShell>{renderFieldPreview(field, value)}</PreviewShell>}
     </div>
   );
 };
