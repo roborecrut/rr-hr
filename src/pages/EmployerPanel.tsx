@@ -4507,35 +4507,21 @@ export default function EmployerPanel() {
           {activeTab === "profile" && (
             <div className="space-y-6 text-left">
 
-              {/* Header */}
-              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-black text-white flex items-center gap-2">
-                    <User className="w-5 h-5 text-amber-400" />
-                    Профиль работодателя
-                  </h2>
-                  <p className="text-xs text-slate-300">Данные авторизации Google и контакты, которые увидят кандидаты.</p>
-                </div>
-                <div className="bg-emerald-950/40 text-emerald-400 text-xs font-bold border border-emerald-500/30 px-3 py-1 rounded-full font-mono flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>Номер кабинета: {employerId}</span>
-                </div>
-              </div>
-
-              {/* Реферальная ссылка (только Google) */}
-              <div data-tour="section.profile.referral">
-                <ReferralLinkBlock employerPublicId={employerId} />
-              </div>
-
-              {/* GOOGLE PROFILE — read-only из аккаунта Google */}
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+              {/* GOOGLE PROFILE — read-only из аккаунта Google (теперь первый блок) */}
+              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                     <Chrome className="w-4 h-4 text-sky-400" /> Аккаунт Google
                   </h3>
-                  <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                    Google OAuth2 Verified
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-emerald-950/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      № {employerId}
+                    </span>
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                      Google OAuth2 Verified
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
@@ -4563,6 +4549,11 @@ export default function EmployerPanel() {
                   Имя, email и фото подтягиваются автоматически из вашего аккаунта Google и не редактируются здесь.
                   Чтобы их изменить — обновите данные в аккаунте Google.
                 </p>
+              </div>
+
+              {/* Реферальная ссылка (только Google) — теперь после Google */}
+              <div data-tour="section.profile.referral">
+                <ReferralLinkBlock employerPublicId={employerId} />
               </div>
 
               {/* КОНТАКТЫ ДЛЯ КАНДИДАТОВ */}
