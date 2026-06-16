@@ -575,6 +575,63 @@ export default function CandidateDetailsModal({
               </div>
             )}
               </TabsContent>
+
+              <TabsContent value="overall" className="space-y-6 mt-0">
+                <div className={`rounded-2xl p-5 border ${toneBg(overallTone.label)}`}>
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div>
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Итоговая оценка ИИ</div>
+                      <div className="text-[13px] text-white/80 mt-0.5">Соответствие должности, задачам и параметрам оценки</div>
+                    </div>
+                    <div className={`text-4xl font-mono font-black ${overallTone.cls}`}>
+                      {s.overall_score !== null && s.overall_score !== undefined
+                        ? `${Math.round(Number(s.overall_score))}/100`
+                        : "—"}
+                    </div>
+                  </div>
+                  {overallBadge && (
+                    <div className={`inline-block px-3 py-1 rounded-full text-[12px] font-bold border ${overallBadge.cls}`}>
+                      {overallBadge.text}
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.resume_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Резюме</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.resume_score).cls}`}>
+                      {s.resume_score != null ? `${Math.round(Number(s.resume_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.checklist_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Анкета (чек-лист)</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.checklist_score).cls}`}>
+                      {s.checklist_score != null ? `${Math.round(Number(s.checklist_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.situations_score).label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Ситуации</div>
+                    <div className={`text-2xl font-mono font-black ${scoreTone(s.situations_score).cls}`}>
+                      {s.situations_score != null ? `${Math.round(Number(s.situations_score))}/100` : "—"}
+                    </div>
+                  </div>
+                  <div className={`rounded-xl p-3 border ${toneBg(overallTone.label)}`}>
+                    <div className="text-[10px] font-mono uppercase text-slate-300">Средний балл</div>
+                    <div className={`text-2xl font-mono font-black ${overallTone.cls}`}>
+                      {s.overall_score != null ? `${Math.round(Number(s.overall_score))}/100` : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {s.assessment_summary && (
+                  <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Award className="w-4 h-4" /> Рекомендация ИИ</h3>
+                    <div className="text-[14px] text-white/95 leading-relaxed whitespace-pre-wrap">
+                      {s.assessment_summary}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
             </Tabs>
 
             {/* === Дополнительные блоки (вне табов) === */}
