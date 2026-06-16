@@ -756,6 +756,104 @@ export default function CandidateDetailsModal({
                   </button>
                 </div>
               </TabsContent>
+
+              <TabsContent value="training" className="space-y-4 mt-0">
+                {(() => {
+                  const STAGE_DEFS: { key: string; aliases: string[]; title: string; icon: string }[] = [
+                    { key: "professional", aliases: ["professional", "prof", "профессия"], title: "Профессия", icon: "💼" },
+                    { key: "product", aliases: ["product", "продукт"], title: "Продукт", icon: "🎁" },
+                    { key: "system", aliases: ["system", "systems", "система", "системное"], title: "Система", icon: "⚙️" },
+                  ];
+                  const findFor = (key: string) => {
+                    const def = STAGE_DEFS.find(d => d.key === key)!;
+                    return stageProgress.find((sp: any) =>
+                      def.aliases.some(a => String(sp.stage || "").toLowerCase().includes(a)),
+                    );
+                  };
+                  const total = stageProgress.length;
+                  if (total === 0) {
+                    return (
+                      <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+                        Кандидат ещё не проходил этапы обучения (Профессия / Продукт / Система).
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="space-y-3">
+                      {STAGE_DEFS.map((def) => {
+                        const sp: any = findFor(def.key);
+                        const passed = !!sp?.passed_at;
+                        const score = sp?.last_score ?? sp?.best_score ?? null;
+                        const tone = scoreTone(score);
+                        return (
+                          <div key={def.key} className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{def.icon}</span>
+                                <h3 className="text-sm font-bold text-white">{def.title}</h3>
+                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                                  passed ? "bg-emerald-500/20 text-emerald-300"
+                                    : sp ? "bg-amber-500/20 text-amber-300"
+                                    : "bg-white/10 text-slate-300"
+                                }`}>
+                                  {passed ? "Сдан" : sp ? "В процессе" : "Не начат"}
+                                </span>
+                              </div>
+                              <div className={`text-base font-mono font-black ${tone.cls}`}>
+                                {score != null ? `${Math.round(Number(score))}/100` : "—"}
+                              </div>
+                            </div>
+                            {sp ? (
+                              <>
+                                <div className="text-[11px] text-slate-300 mb-2">
+                                  Попыток: {sp.attempts || 0} · Лучший: {sp.best_score ?? "—"} · Последний: {sp.last_score ?? "—"}
+                                </div>
+                                {Array.isArray(sp.last_feedback) && sp.last_feedback.length > 0 ? (
+                                  <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                                    {sp.last_feedback.map((pq: any, idx: number) => {
+                                      const ans = Array.isArray(sp.last_answers)
+                                        ? sp.last_answers.find((a: any) => a.question_id === pq.id) : null;
+                                      const qTone = scoreTone(pq.score, pq.max ?? 10);
+                                      return (
+                                        <div key={pq.id || idx} className={`rounded-xl p-3 border-l-4 ${toneBg(qTone.label)}`}>
+                                          <div className="flex items-start justify-between gap-2">
+                                            <div className="text-[12px] font-semibold text-white">
+                                              Вопрос {idx + 1}
+                                              {pq.question && <span className="text-slate-300 font-normal"> — {pq.question}</span>}
+                                            </div>
+                                            <span className={`text-[12px] font-mono font-black shrink-0 ${qTone.cls}`}>
+                                              {pq.score}/{pq.max}
+                                            </span>
+                                          </div>
+                                          {ans?.value && (
+                                            <div className="mt-2 text-[12px] text-slate-100">
+                                              <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Ответ кандидата</div>
+                                              {ans.value}
+                                            </div>
+                                          )}
+                                          {pq.comment && (
+                                            <div className={`text-[11px] mt-1.5 italic ${qTone.cls}`}>
+                                              <span className="font-bold">Оценка ИИ:</span> {pq.comment}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                ) : (
+                                  <div className="text-[12px] text-slate-400 italic">Детальной обратной связи по вопросам пока нет.</div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="text-[12px] text-slate-400 italic">Кандидат ещё не приступал к этому этапу.</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </TabsContent>
             </Tabs>
 
             {/* === Дополнительные блоки (вне табов) === */}
@@ -786,44 +884,6 @@ export default function CandidateDetailsModal({
                       <div className="text-[11px] text-slate-200 mt-1">
                         {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stage progress (training pre-checks) */}
-            {stageProgress.length > 0 && (
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-                <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Briefcase className="w-3.5 h-3.5" /> Этапы (Профессия/Продукт/Система)</h3>
-                <div className="flex flex-col gap-2 w-full">
-                  {stageProgress.map((sp) => (
-                    <div key={sp.id || sp.stage} className="bg-black/30 rounded-lg p-3 border border-white/5 w-full">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-bold text-white capitalize">{sp.stage}</span>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${sp.passed_at ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
-                          {sp.passed_at ? "Сдан" : "В процессе"}
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-slate-400 mt-1">Попыток: {sp.attempts || 0} · Лучший: {sp.best_score ?? "—"} · Последний: {sp.last_score ?? "—"}</div>
-                      {Array.isArray(sp.last_feedback) && sp.last_feedback.length > 0 && (
-                        <div className="mt-2 space-y-1 max-h-48 overflow-y-auto">
-                          {sp.last_feedback.map((pq: any, idx: number) => {
-                            const ans = Array.isArray(sp.last_answers) ? sp.last_answers.find((a: any) => a.question_id === pq.id) : null;
-                            const ok = pq.score === pq.max;
-                            return (
-                              <div key={pq.id || idx} className="bg-black/40 border border-white/5 rounded p-1.5">
-                                <div className="flex justify-between text-[10px]">
-                                  <span className="text-slate-400">Вопрос {idx + 1}</span>
-                                  <span className={ok ? "text-emerald-300" : pq.score > 0 ? "text-amber-300" : "text-rose-300"}>{pq.score}/{pq.max}</span>
-                                </div>
-                                {ans?.value && <div className="text-[10px] text-slate-200 mt-0.5"><b>Ответ:</b> {ans.value}</div>}
-                                {pq.comment && <div className="text-[10px] text-slate-400 italic mt-0.5">{pq.comment}</div>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
