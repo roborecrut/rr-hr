@@ -652,10 +652,22 @@ export default function CandidateDetailsModal({
                               : (a.is_correct ? "✓" : "·")}
                           </span>
                         </div>
+                        {a.case_text && a.case_text !== a.question_text && (
+                          <div className="mt-2 rounded-lg bg-black/25 border border-white/10 p-3 text-[12px] text-slate-200 leading-relaxed">
+                            <div className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] mb-1">Кейс работодателя</div>
+                            <RichMarkdown tone="chat">{a.case_text}</RichMarkdown>
+                          </div>
+                        )}
+                        {a.criteria && (
+                          <div className="mt-2 text-[11px] text-slate-300 leading-relaxed">
+                            <span className="text-[#E7C768] font-bold">Критерии оценки:</span> {a.criteria}
+                          </div>
+                        )}
+                        <div className="mt-2 text-[10px] font-mono uppercase tracking-wider text-slate-400">Ответ кандидата</div>
                         <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
                           {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
                         </div>
-                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
+                        {a.feedback && <div className={`text-[12px] mt-2 italic ${tone.cls}`}><span className="font-bold">Оценка ИИ:</span> {a.feedback}</div>}
                       </div>
                     );
                   })}
@@ -723,6 +735,22 @@ export default function CandidateDetailsModal({
                     </div>
                   </div>
                 )}
+                <div className="bg-black/20 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Экспертная совокупная оценка</h3>
+                    <p className="text-[12px] text-slate-300 mt-1">ИИ учтёт резюме, анкету, ситуации, оценки и требования вакансии.</p>
+                    {overallErr && <div className="text-rose-300 text-xs mt-2">{overallErr}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={overallSaving}
+                    onClick={generateOverallAssessment}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
+                  >
+                    {overallSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Пересчитать ИИ-оценку
+                  </button>
+                </div>
               </TabsContent>
             </Tabs>
 
