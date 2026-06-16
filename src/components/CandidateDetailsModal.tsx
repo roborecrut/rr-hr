@@ -525,6 +525,9 @@ export default function CandidateDetailsModal({
                 <TabsTrigger value="overall" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                   🏆 Общая оценка
                 </TabsTrigger>
+                <TabsTrigger value="training" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                  🎓 Обучение
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="general" className="space-y-6 mt-0">
