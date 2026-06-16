@@ -198,10 +198,14 @@ export default function CandidateDetailsModal({
         max: it.max,
         is_correct: it.verdict === "correct",
       }));
+  const situationBlock = interviewBlocks.find((b: any) => String(b?.kind || "") === "situations");
+  const situationCases: any[] = Array.isArray(situationBlock?.payload?.situations) ? situationBlock.payload.situations : [];
+  const caseById = new Map(situationCases.map((x: any, i: number) => [String(x.id || `s${i + 1}`), x]));
   const situationAnswersView = situationAnswers.length > 0
     ? situationAnswers.map((a: any) => ({
         id: a.id,
         question_text: a.question_text,
+        case_text: a.question_text,
         answer_text: a.answer_text,
         feedback: a.feedback,
         score: a.score,
@@ -209,12 +213,80 @@ export default function CandidateDetailsModal({
       }))
     : sitFbItems.map((it: any, i: number) => ({
         id: it.id || `sit_${i}`,
-        question_text: it.title || it.id,
+        question_text: caseById.get(String(it.id))?.title || it.title || it.id,
+        case_text: caseById.get(String(it.id))?.brief || it.brief || it.question || "",
+        criteria: caseById.get(String(it.id))?.criteria || it.criteria || "",
         answer_text: it.answer || "",
         feedback: it.feedback || "",
         score: it.score,
         is_correct: undefined,
       }));
+
+  const generateOverallAssessment = async () => {
+    if (!candidateId) return;
+    setOverallSaving(true);
+    setOverallErr(null);
+    try {
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "overall_candidate" as any,
+        candidate_id: candidateId,
+        project_id: c.project_id || pr.id,
+        payload: {
+          candidate: {
+            name,
+            role: c.role_name || pr.role_name,
+            resume_text: c.resume_text || "",
+          },
+          vacancy: {
+            role_name: pr.role_name || c.role_name || "",
+            vacancy_text: pr.vacancy_text || "",
+            tasks_activity_text: pr.tasks_activity_text || "",
+            motivation_text: pr.motivation_text || "",
+            payouts_text: pr.payouts_text || "",
+            schedule_text: pr.schedule_text || "",
+            team_text: pr.team_text || "",
+            system_text: pr.system_text || "",
+          },
+          scores: {
+            resume_score: s.resume_score,
+            checklist_score: s.checklist_score,
+            situations_score: s.situations_score,
+            overall_score: s.overall_score,
+          },
+          resume_ai: s.resume_feedback || s.assessment_summary || "",
+          checklist: checklistAnswersView.map((x: any) => ({
+            question: x.question_text,
+            answer: x.answer_text,
+            score: x.score,
+            feedback: x.feedback,
+          })),
+          situations: situationAnswersView.map((x: any) => ({
+            case: x.case_text || x.question_text,
+            criteria: x.criteria,
+            answer: x.answer_text,
+            score: x.score,
+            feedback: x.feedback,
+          })),
+        },
+      });
+      const summary = String(result?.summary || result?.recommendation || "").trim();
+      const score = Number.isFinite(Number(result?.score)) ? Math.round(Number(result.score)) : s.overall_score;
+      if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
+      const { error } = await (supabase as any).from("candidate_scores").upsert({
+        candidate_id: candidateId,
+        assessment_summary: summary,
+        overall_score: score,
+      }, { onConflict: "candidate_id" });
+      if (error) throw error;
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+    } catch (e: any) {
+      setOverallErr(e?.message || "Не удалось сформировать итоговую оценку");
+    } finally {
+      setOverallSaving(false);
+    }
+  };
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
