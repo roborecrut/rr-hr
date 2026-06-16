@@ -4142,6 +4142,9 @@ export default function EmployerPanel() {
                   <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🎁 Реферальная программа
                   </TabsTrigger>
+                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💲 Тарифы и цены
+                  </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="balance" className="space-y-6 mt-0">
