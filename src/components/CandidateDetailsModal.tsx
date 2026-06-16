@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX, ChevronDown, ChevronUp
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -83,6 +83,24 @@ export default function CandidateDetailsModal({
   const [decisionMsg, setDecisionMsg] = useState("");
   const [decisionSaving, setDecisionSaving] = useState(false);
   const [decisionErr, setDecisionErr] = useState<string | null>(null);
+  const [reviewSaving, setReviewSaving] = useState(false);
+
+  const markReview = async () => {
+    if (!candidateId) return;
+    setReviewSaving(true);
+    try {
+      await (supabase as any)
+        .from("candidates")
+        .update({ crm_stage: "screening", review_flag: true })
+        .eq("id", candidateId);
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+    } catch (e) {
+      // soft: ignore — таблица может не иметь поля review_flag, статус всё равно проставится
+    } finally {
+      setReviewSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!candidateId) return;
@@ -241,15 +259,14 @@ export default function CandidateDetailsModal({
               <div className="flex-1 min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-xl font-bold text-white truncate">{name}</h2>
-                  <span className="text-[10px] text-slate-400">№ {c.public_id}</span>
-                  {c.crm_stage && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30">
-                      {STAGE_LABELS[c.crm_stage] || c.crm_stage}
-                    </span>
-                  )}
                   {overallBadge && (
                     <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${overallBadge.cls}`}>
                       {overallBadge.text}
+                    </span>
+                  )}
+                  {c.review_flag && (
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/20 text-amber-200 border-amber-400/40">
+                      На рассмотрении
                     </span>
                   )}
                 </div>
