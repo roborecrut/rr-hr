@@ -1908,6 +1908,9 @@ export default function EmployerPanel() {
         training_systems_text: ep.trainingSystemsText ?? null,
         training_wiki_text: ep.trainingWikiText ?? null,
         training_regulations_text: ep.trainingRegulationsText ?? null,
+        hh_post_text: ep.hhPostText ?? null,
+        hh_invite_text: ep.hhInviteText ?? null,
+        hh_autoresume_text: ep.hhAutoresumeText ?? null,
       };
       const upd = await supabase.from("projects").update(patch).eq("id", ep.id);
       if (upd.error) throw new Error(upd.error.message || "Не удалось сохранить изменения вакансии.");
