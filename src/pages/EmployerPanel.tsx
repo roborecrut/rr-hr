@@ -4320,9 +4320,9 @@ export default function EmployerPanel() {
                               type="button"
                               onClick={() => handleBuyFixed(row.item, fixedQty[row.item])}
                               disabled={fixedBusy !== null}
-                              className="bg-emerald-600/80 hover:bg-emerald-600 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
+                              className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer whitespace-nowrap"
                             >
-                              {fixedBusy === row.item ? "..." : `Приобрести +${fixedQty[row.item]}`}
+                              {fixedBusy === row.item ? "..." : `Списать за RR (${row.price * fixedQty[row.item]})`}
                             </button>
                           </div>
                         </div>
