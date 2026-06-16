@@ -3068,7 +3068,7 @@ export default function EmployerPanel() {
           {/* PAGE 2: VACANCIES & AI CREATOR */}
           {activeTab === "vacancies" && (
             <div className="space-y-6 text-left">
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.vacancies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Briefcase className="w-5 h-5 text-amber-500" /> Вакансии & ИИ Онбординги
@@ -3078,6 +3078,7 @@ export default function EmployerPanel() {
 
                 <button 
                   onClick={openAddVacancyWizard}
+                  data-tour="section.vacancies.add"
                   className="cursor-pointer bg-gradient-to-r from-[#FF1A1A] to-[#E54C00] hover:scale-102 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-1 shadow transition-all"
                 >
                   <Plus className="w-4 h-4" /> Добавить вакансию
