@@ -198,6 +198,15 @@ export default function CandidateDetailsModal({
     ? `/${co.slug}/${pr.public_id}/cand${c.public_id}/profile`
     : null;
 
+  // Итоговый бейдж ИИ-вердикта на основе среднего балла.
+  const overallTone = scoreTone(s.overall_score);
+  const overallBadge = (() => {
+    if (overallTone.label === "good") return { text: "✓ Одобрен ИИ", cls: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" };
+    if (overallTone.label === "mid") return { text: "Подходит частично", cls: "bg-amber-500/20 text-amber-200 border-amber-400/40" };
+    if (overallTone.label === "bad") return { text: "Не подходит", cls: "bg-rose-500/20 text-rose-200 border-rose-400/40" };
+    return null;
+  })();
+
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
       <div
@@ -235,6 +244,11 @@ export default function CandidateDetailsModal({
                   {c.crm_stage && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/30">
                       {STAGE_LABELS[c.crm_stage] || c.crm_stage}
+                    </span>
+                  )}
+                  {overallBadge && (
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${overallBadge.cls}`}>
+                      {overallBadge.text}
                     </span>
                   )}
                 </div>
