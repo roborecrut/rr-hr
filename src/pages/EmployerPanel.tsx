@@ -4100,7 +4100,7 @@ export default function EmployerPanel() {
               {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
-                  <div>
+                  <div data-tour="section.tariff.balance">
                     <span className="text-[10px] font-bold text-[#E7C768] tracking-widest uppercase font-mono block">Лицевой счёт</span>
                     <h2 className="text-3xl font-extrabold text-white mt-1.5 font-mono select-none">
                       {balance.toLocaleString("ru-RU")} <span className="text-lg font-bold text-[#E7C768]">RR</span>
