@@ -18,7 +18,7 @@ interface Props {
   companyName?: string;
   values: HHTemplateValues;
   onChange: (patch: HHTemplateValues) => void;
-  onAudit?: (kind: "success" | "warning" | "info", title: string, detail?: string) => void;
+  onAudit?: (kind: "success" | "warning" | "info", title: string, detail: string) => void;
 }
 
 type FieldKey = "hh_post_text" | "hh_invite_text" | "hh_autoresume_text";
