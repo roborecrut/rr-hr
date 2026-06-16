@@ -13,7 +13,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock, RefreshCw
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -84,19 +84,24 @@ export default function CandidateDetailsModal({
   const [decisionSaving, setDecisionSaving] = useState(false);
   const [decisionErr, setDecisionErr] = useState<string | null>(null);
   const [reviewSaving, setReviewSaving] = useState(false);
+  const [overallSaving, setOverallSaving] = useState(false);
+  const [overallErr, setOverallErr] = useState<string | null>(null);
 
   const markReview = async () => {
     if (!candidateId) return;
     setReviewSaving(true);
+    setDecisionErr(null);
     try {
-      await (supabase as any)
-        .from("candidates")
-        .update({ crm_stage: "screening", review_flag: true })
-        .eq("id", candidateId);
+      const { error } = await (supabase as any).rpc("candidate_invite_decision", {
+        _candidate: candidateId,
+        _decision: "review",
+        _message: "Кандидат взят на дополнительное рассмотрение.",
+      });
+      if (error) throw error;
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
       setData(fresh);
-    } catch (e) {
-      // soft: ignore — таблица может не иметь поля review_flag, статус всё равно проставится
+    } catch (e: any) {
+      setDecisionErr(e?.message || "Не удалось поставить статус «На рассмотрении»");
     } finally {
       setReviewSaving(false);
     }
@@ -149,6 +154,7 @@ export default function CandidateDetailsModal({
   const stageProgress: any[] = data?.stage_progress || [];
   const trainingProgress: any[] = data?.training_progress || [];
   const interviews: any[] = data?.interviews || [];
+  const interviewBlocks: any[] = data?.interview_blocks || [];
 
   // Split answers by question category. The DB enum question_category has
   // values: checklist_prof, checklist_sys, train_prof, train_product,
@@ -192,10 +198,14 @@ export default function CandidateDetailsModal({
         max: it.max,
         is_correct: it.verdict === "correct",
       }));
+  const situationBlock = interviewBlocks.find((b: any) => String(b?.kind || "") === "situations");
+  const situationCases: any[] = Array.isArray(situationBlock?.payload?.situations) ? situationBlock.payload.situations : [];
+  const caseById = new Map(situationCases.map((x: any, i: number) => [String(x.id || `s${i + 1}`), x]));
   const situationAnswersView = situationAnswers.length > 0
     ? situationAnswers.map((a: any) => ({
         id: a.id,
         question_text: a.question_text,
+        case_text: a.question_text,
         answer_text: a.answer_text,
         feedback: a.feedback,
         score: a.score,
@@ -203,12 +213,80 @@ export default function CandidateDetailsModal({
       }))
     : sitFbItems.map((it: any, i: number) => ({
         id: it.id || `sit_${i}`,
-        question_text: it.title || it.id,
+        question_text: caseById.get(String(it.id))?.title || it.title || it.id,
+        case_text: caseById.get(String(it.id))?.brief || it.brief || it.question || "",
+        criteria: caseById.get(String(it.id))?.criteria || it.criteria || "",
         answer_text: it.answer || "",
         feedback: it.feedback || "",
         score: it.score,
         is_correct: undefined,
       }));
+
+  const generateOverallAssessment = async () => {
+    if (!candidateId) return;
+    setOverallSaving(true);
+    setOverallErr(null);
+    try {
+      const { aiEvaluate } = await import("@/lib/aiClient");
+      const result: any = await aiEvaluate({
+        mode: "overall_candidate" as any,
+        candidate_id: candidateId,
+        project_id: c.project_id || pr.id,
+        payload: {
+          candidate: {
+            name,
+            role: c.role_name || pr.role_name,
+            resume_text: c.resume_text || "",
+          },
+          vacancy: {
+            role_name: pr.role_name || c.role_name || "",
+            vacancy_text: pr.vacancy_text || "",
+            tasks_activity_text: pr.tasks_activity_text || "",
+            motivation_text: pr.motivation_text || "",
+            payouts_text: pr.payouts_text || "",
+            schedule_text: pr.schedule_text || "",
+            team_text: pr.team_text || "",
+            system_text: pr.system_text || "",
+          },
+          scores: {
+            resume_score: s.resume_score,
+            checklist_score: s.checklist_score,
+            situations_score: s.situations_score,
+            overall_score: s.overall_score,
+          },
+          resume_ai: s.resume_feedback || s.assessment_summary || "",
+          checklist: checklistAnswersView.map((x: any) => ({
+            question: x.question_text,
+            answer: x.answer_text,
+            score: x.score,
+            feedback: x.feedback,
+          })),
+          situations: situationAnswersView.map((x: any) => ({
+            case: x.case_text || x.question_text,
+            criteria: x.criteria,
+            answer: x.answer_text,
+            score: x.score,
+            feedback: x.feedback,
+          })),
+        },
+      });
+      const summary = String(result?.summary || result?.recommendation || "").trim();
+      const score = Number.isFinite(Number(result?.score)) ? Math.round(Number(result.score)) : s.overall_score;
+      if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
+      const { error } = await (supabase as any).from("candidate_scores").upsert({
+        candidate_id: candidateId,
+        assessment_summary: summary,
+        overall_score: score,
+      }, { onConflict: "candidate_id" });
+      if (error) throw error;
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+    } catch (e: any) {
+      setOverallErr(e?.message || "Не удалось сформировать итоговую оценку");
+    } finally {
+      setOverallSaving(false);
+    }
+  };
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
@@ -264,7 +342,7 @@ export default function CandidateDetailsModal({
                       {overallBadge.text}
                     </span>
                   )}
-                  {c.review_flag && (
+                  {c.hire_decision === "review" && (
                     <span className="px-2.5 py-1 rounded-full text-[11px] font-bold border bg-amber-500/20 text-amber-200 border-amber-400/40">
                       На рассмотрении
                     </span>
@@ -315,11 +393,15 @@ export default function CandidateDetailsModal({
                   <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold ${
                     c.hire_decision === "invited"
                       ? "bg-emerald-500/20 text-emerald-200 border border-emerald-400/40"
-                      : "bg-rose-500/20 text-rose-200 border border-rose-400/40"
+                      : c.hire_decision === "review"
+                        ? "bg-amber-500/20 text-amber-200 border border-amber-400/40"
+                        : "bg-rose-500/20 text-rose-200 border border-rose-400/40"
                   }`}>
                     {c.hire_decision === "invited"
                       ? <><UserCheck className="w-3.5 h-3.5" /> Приглашён на работу</>
-                      : <><UserX className="w-3.5 h-3.5" /> Отказано</>}
+                      : c.hire_decision === "review"
+                        ? <><Clock className="w-3.5 h-3.5" /> На рассмотрении</>
+                        : <><UserX className="w-3.5 h-3.5" /> Отказано</>}
                   </div>
                   {c.hire_decided_at && (
                     <div className="text-[10px] text-slate-400 font-mono">
@@ -339,6 +421,16 @@ export default function CandidateDetailsModal({
                     >
                       Изменить решение
                     </button>
+                    {c.hire_decision !== "review" && (
+                      <button
+                        type="button"
+                        disabled={reviewSaving}
+                        onClick={markReview}
+                        className="text-[11px] px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/30 text-amber-100 disabled:opacity-50"
+                      >
+                        На рассмотрении
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -560,10 +652,22 @@ export default function CandidateDetailsModal({
                               : (a.is_correct ? "✓" : "·")}
                           </span>
                         </div>
+                        {a.case_text && a.case_text !== a.question_text && (
+                          <div className="mt-2 rounded-lg bg-black/25 border border-white/10 p-3 text-[12px] text-slate-200 leading-relaxed">
+                            <div className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] mb-1">Кейс работодателя</div>
+                            <RichMarkdown tone="chat">{a.case_text}</RichMarkdown>
+                          </div>
+                        )}
+                        {a.criteria && (
+                          <div className="mt-2 text-[11px] text-slate-300 leading-relaxed">
+                            <span className="text-[#E7C768] font-bold">Критерии оценки:</span> {a.criteria}
+                          </div>
+                        )}
+                        <div className="mt-2 text-[10px] font-mono uppercase tracking-wider text-slate-400">Ответ кандидата</div>
                         <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
                           {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
                         </div>
-                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
+                        {a.feedback && <div className={`text-[12px] mt-2 italic ${tone.cls}`}><span className="font-bold">Оценка ИИ:</span> {a.feedback}</div>}
                       </div>
                     );
                   })}
@@ -631,6 +735,22 @@ export default function CandidateDetailsModal({
                     </div>
                   </div>
                 )}
+                <div className="bg-black/20 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Экспертная совокупная оценка</h3>
+                    <p className="text-[12px] text-slate-300 mt-1">ИИ учтёт резюме, анкету, ситуации, оценки и требования вакансии.</p>
+                    {overallErr && <div className="text-rose-300 text-xs mt-2">{overallErr}</div>}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={overallSaving}
+                    onClick={generateOverallAssessment}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
+                  >
+                    {overallSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    Пересчитать ИИ-оценку
+                  </button>
+                </div>
               </TabsContent>
             </Tabs>
 

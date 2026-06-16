@@ -2584,7 +2584,7 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`max-w-[1400px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`max-w-[1260px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[240px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
         <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
@@ -2843,7 +2843,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
               
               {/* Layout controls */}
-              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+              <div data-tour="section.crm.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Users className="w-5 h-5 text-amber-400" /> ИИ-Воронка и CRM-Кандидаты
@@ -2851,9 +2851,9 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-2 flex-wrap items-stretch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch">
                   {/* View selectors */}
-                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1">
+                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1">
                     <button
                       onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
@@ -2869,11 +2869,11 @@ export default function EmployerPanel() {
                   </div>
 
                   {/* Search filter input */}
-                  <div className="relative flex items-center bg-[#17344F]/50 border border-white/15 px-2.5 py-1 rounded-xl focus-within:border-[#E7C768]">
+                  <div className="relative flex items-center bg-[#17344F]/50 border border-white/15 px-2.5 py-1 rounded-xl focus-within:border-[#E7C768] min-h-10">
                     <Search className="w-3.5 h-3.5 text-slate-400 mr-2" />
                     <input
                       type="text"
-                      className="bg-transparent text-xs text-white focus:outline-none w-full sm:w-44"
+                      className="bg-transparent text-xs text-white focus:outline-none w-full"
                       placeholder="Поиск ФИО / email / телефон..."
                       value={crmSearch}
                       onChange={(e) => setCrmSearch(e.target.value)}
@@ -2931,8 +2931,8 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-sticky-wrap crm-scroll">
-                  <div className="flex gap-3 min-w-max h-full">
+                <div className="crm-sticky-wrap crm-scroll rounded-3xl border border-white/10 bg-[#17344F]/35 p-3 shadow-xl">
+                  <div className="grid grid-flow-col auto-cols-[minmax(190px,210px)] gap-3 h-full">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2948,8 +2948,7 @@ export default function EmployerPanel() {
                     return (
                       <div
                         key={column.stage}
-                        className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
-                        style={{ width: 220, minWidth: 200, resize: "horizontal", overflow: "auto" }}
+                        className="crm-kanban-col bg-[#1D3E5E]/55 border border-white/10 rounded-2xl p-2.5 space-y-2.5 shadow"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -2967,7 +2966,7 @@ export default function EmployerPanel() {
 
                         <div className="space-y-2.5">
                           {colCandidates.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500 text-[11px] font-medium font-semibold">Пусто</div>
+                            <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
                           ) : (
                             colCandidates.map(cand => (
                               <div
@@ -2996,10 +2995,10 @@ export default function EmployerPanel() {
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl shadow-xl">
-                  <div className="crm-scroll overflow-x-auto">
-                    <table className="text-left text-xs" style={{ minWidth: "1100px" }}>
-                      <thead>
+                <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                  <div className="crm-scroll overflow-auto max-h-[calc(100vh-290px)] min-h-[420px]">
+                    <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
+                      <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
                             { label: "ФИО Кандидата", w: 240, align: "left" },
@@ -3015,7 +3014,7 @@ export default function EmployerPanel() {
                             <th
                               key={i}
                               className={`p-3 text-${h.align} whitespace-nowrap`}
-                              style={{ minWidth: h.w, width: h.w, resize: "horizontal", overflow: "auto" }}
+                              style={{ minWidth: h.w, width: h.w }}
                             >
                               {h.label}
                             </th>
@@ -4133,6 +4132,9 @@ export default function EmployerPanel() {
                   <TabsTrigger value="balance" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     💰 Баланс
                   </TabsTrigger>
+                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💲 Тарифы и цены
+                  </TabsTrigger>
                   <TabsTrigger value="buy" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🛒 Покупка и оплата
                   </TabsTrigger>
@@ -4141,9 +4143,6 @@ export default function EmployerPanel() {
                   </TabsTrigger>
                   <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🎁 Реферальная программа
-                  </TabsTrigger>
-                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
-                    💲 Тарифы и цены
                   </TabsTrigger>
                 </TabsList>
 
