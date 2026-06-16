@@ -19,11 +19,6 @@ import { useEffect, useCallback } from "react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { Play } from "lucide-react";
-import {
-  type OnboardingSection,
-  getSectionWelcome,
-  loadOnboarding,
-} from "@/lib/onboarding";
 import { supabase } from "@/integrations/supabase/client";
 
 /* ------------------------------------------------------------------ */
@@ -59,88 +54,113 @@ async function setGlobalTourStatus(status: "completed" | "dismissed") {
 }
 
 /* ------------------------------------------------------------------ */
-/* Шаги тура — порядок навигации RR                                   */
+/* Шаги тура — короткие, точные, по подразделам                       */
 /* ------------------------------------------------------------------ */
 
 type Step = {
   selector?: string;
-  section?: OnboardingSection;
+  /** Куда увести пользователя перед показом шага (относительный путь после /emp{id}/). */
+  route?: "profile" | "companies" | "vacancies" | "training" | "interviews" | "crm" | "tariff";
   title: string;
-  fallback: string;
+  body: string;
+  /** Где разместить поповер относительно элемента. */
+  side?: "top" | "right" | "bottom" | "left" | "over";
 };
 
 const STEPS: Step[] = [
   {
-    title: "Добро пожаловать в RR — ваш ИИ-рекрутер 👋",
-    fallback:
-      "Это **Пульт Управления Рекрутом**. Здесь живёт ваш ИИ-рекрутер, который сам ищет, прозванивает, обучает и оценивает кандидатов 24/7.\n\nЧтобы получить результат — наняли подходящего человека — нужно пройти 5 простых шагов: заполнить **Профиль HR**, добавить **Компанию**, описать **Вакансию**, настроить **Обучение** и **Интервью**, а затем смотреть кандидатов в **CRM-воронке**.\n\nЯ проведу вас по всем разделам и расскажу что и зачем делать. Нажмите «Дальше →».",
+    title: "Привет! Я — ваш виртуальный помощник 👋",
+    body: "Я научу пользоваться <b>Робо Рекрутёром</b> за 2 минуты. Покажу разделы и ключевые кнопки. Жмите «Дальше →».",
   },
-  {
-    selector: '[data-tour="nav.profile"]',
-    section: "profile",
-    title: "Шаг 1 — Профиль HR",
-    fallback: "Базовые данные ответственного HR-менеджера: имя, телефон, email. Эти данные подставляются в письма кандидатам и в счета на оплату.",
+
+  /* ───── Профиль ───── */
+  { selector: '[data-tour="nav.profile"]', route: "profile", side: "right",
+    title: "Раздел «Профиль HR»",
+    body: "Здесь — ваши контакты как ответственного HR. Их видят кандидаты и бухгалтерия.",
   },
-  {
-    selector: '[data-tour="nav.companies"]',
-    section: "companies",
-    title: "Шаг 2 — Мои Компании",
-    fallback: "Карточка вашей компании: название, ИНН, сайт, описание, ценности. На её основе ИИ создаст лендинг и будет рассказывать кандидатам о вас.",
+  { selector: '[data-tour="section.profile.referral"]', side: "top",
+    title: "Реферальная ссылка",
+    body: "Делитесь — приглашённые работодатели приносят вам бонусные RR на баланс.",
   },
-  {
-    selector: '[data-tour="nav.vacancies"]',
-    section: "vacancies",
-    title: "Шаг 3 — Вакансии & ИИ",
-    fallback: "Создайте вакансию — ИИ сам сгенерирует описание, требования, оффер и публичный лендинг для приёма откликов.",
+
+  /* ───── Компании ───── */
+  { selector: '[data-tour="nav.companies"]', route: "companies", side: "right",
+    title: "Раздел «Мои Компании»",
+    body: "Карточки ваших юрлиц или брендов. ИИ опирается на них при создании вакансий и лендингов.",
   },
-  {
-    selector: '[data-tour="nav.training"]',
-    section: "training",
-    title: "Шаг 4 — Обучение (ИИ)",
-    fallback: "Курс адаптации для новичков: ИИ делает учебные модули и тесты по вашей вакансии. Кандидат проходит обучение ещё до собеседования.",
+  { selector: '[data-tour="section.companies.add"]', side: "left",
+    title: "Кнопка «Добавить Компанию»",
+    body: "Откроет мастер: название, сайт, ИНН, описание. Добавление и редактирование — бесплатно.",
   },
-  {
-    selector: '[data-tour="nav.interviews"]',
-    section: "interviews",
-    title: "Шаг 5 — Интервью (ИИ)",
-    fallback: "ИИ-интервьюер задаёт кандидатам вопросы голосом, оценивает ответы и ставит баллы. Вы получаете готовый отчёт.",
+
+  /* ───── Вакансии ───── */
+  { selector: '[data-tour="nav.vacancies"]', route: "vacancies", side: "right",
+    title: "Раздел «Вакансии & ИИ»",
+    body: "Список открытых позиций. У каждой — свой публичный лендинг, обучение и интервью.",
   },
-  {
-    selector: '[data-tour="nav.crm"]',
-    section: "crm",
-    title: "CRM & Воронка",
-    fallback: "Все кандидаты в виде канбана: новый → обучение → интервью → нанят/отказ. Здесь вы принимаете финальные решения.",
+  { selector: '[data-tour="section.vacancies.add"]', side: "left",
+    title: "Кнопка «Добавить вакансию»",
+    body: "Запустит мастер: ИИ сам предложит описание, требования и оффер на основе названия должности.",
   },
-  {
-    selector: '[data-tour="nav.billing"]',
-    section: "billing",
-    title: "Тариф & Счета",
-    fallback: "Баланс RR-кредитов, пополнение через Robokassa, история транзакций и счета для бухгалтерии.",
+
+  /* ───── Обучение ───── */
+  { selector: '[data-tour="nav.training"]', route: "training", side: "right",
+    title: "Раздел «Обучение (ИИ)»",
+    body: "Учебные модули и тесты по каждой вакансии. Кандидат проходит их до интервью — это отсеивает слабых.",
   },
+
+  /* ───── Интервью ───── */
+  { selector: '[data-tour="nav.interviews"]', route: "interviews", side: "right",
+    title: "Раздел «Интервью (ИИ)»",
+    body: "Чек-листы, кейсы и критерии оценки. ИИ-интервьюер общается с кандидатом текстом и формирует отчёт с баллами.",
+  },
+
+  /* ───── CRM ───── */
+  { selector: '[data-tour="nav.crm"]', route: "crm", side: "right",
+    title: "Раздел «CRM & Воронка»",
+    body: "Все кандидаты на одной канбан-доске: новый → обучение → интервью → решение.",
+  },
+  { selector: '[data-tour="section.crm.header"]', side: "bottom",
+    title: "Переключатели вида",
+    body: "Канбан удобен для управления, таблица — для массовой выгрузки и фильтров.",
+  },
+
+  /* ───── Тариф ───── */
+  { selector: '[data-tour="nav.billing"]', route: "tariff", side: "right",
+    title: "Раздел «Тариф & Счета»",
+    body: "Баланс RR-кредитов, пополнение и история операций. 1 RR = 1 ₽.",
+  },
+  { selector: '[data-tour="section.tariff.balance"]', side: "right",
+    title: "Лицевой счёт",
+    body: "Кредиты списываются при генерации лендинга, обучения, интервью и при прохождении этапов кандидатами.",
+  },
+
+  /* ───── Финал ───── */
   {
     title: "Готово! 🚀",
-    fallback:
-      "Теперь вы знаете весь маршрут. Рекомендую начать с **Профиля HR**, затем **Компания → Вакансия → Обучение → Интервью**.\n\nРядом с каждым важным полем будет значок «?» — он откроет подробную подсказку. А если захотите пройти тур заново — нажмите кнопку «Запустить вводный тур» в левом сайдбаре.",
+    body: "Рекомендую путь: <b>Профиль → Компания → Вакансия → Обучение → Интервью</b>. У каждого важного поля есть «?» — нажмите, чтобы получить подсказку. Перезапустить тур можно кнопкой в сайдбаре.",
   },
 ];
 
 /* ------------------------------------------------------------------ */
-/* Markdown → HTML (минимальный inline-рендер для popover driver.js)  */
-/* ------------------------------------------------------------------ */
+/* Ждём появления элемента в DOM (после смены маршрута React успевает отрендерить). */
+function waitForElement(selector: string, timeoutMs = 1500): Promise<Element | null> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    const tick = () => {
+      const el = document.querySelector(selector);
+      if (el) return resolve(el);
+      if (Date.now() - start > timeoutMs) return resolve(null);
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
 
-function mdToHtml(md: string) {
-  const esc = md
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return esc
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`([^`]+)`/g, "<code>$1</code>")
-    .replace(/\n\n/g, "</p><p>")
-    .replace(/\n/g, "<br/>")
-    .replace(/^/, "<p>")
-    .concat("</p>");
+/** Текущий публичный id работодателя из URL вида /emp{id}/... */
+function currentEmployerId(): string | null {
+  const m = window.location.pathname.match(/\/emp([^/]+)\b/);
+  return m ? m[1] : null;
 }
 
 interface Props {
@@ -156,31 +176,45 @@ interface Props {
 
 export default function OnboardingHost({ autoStart = true, buttonOnly = false }: Props) {
   const runTour = useCallback(async () => {
-    // Подтягиваем подробные welcome-тексты разделов из БД (1000+ симв.)
-    await loadOnboarding();
-    const welcomes = await Promise.all(
-      STEPS.map((s) => (s.section ? getSectionWelcome(s.section) : Promise.resolve(null))),
-    );
-
-    const driverSteps = STEPS.map((s, idx) => {
-      const dbText = welcomes[idx]?.body_md;
-      const dbTitle = welcomes[idx]?.title;
-      const description = mdToHtml(dbText || s.fallback);
-      const title = dbTitle || s.title;
-      const hasEl = s.selector && document.querySelector(s.selector);
-      return {
-        ...(hasEl ? { element: s.selector } : {}),
-        popover: { title, description },
-      };
-    });
+    const driverSteps = STEPS.map((s) => ({
+      ...(s.selector ? { element: s.selector } : {}),
+      popover: {
+        title: s.title,
+        description: s.body,
+        side: s.side ?? "bottom",
+        align: "center" as const,
+      },
+      // Перед каждым шагом: уводим на нужный маршрут и ждём появления элемента.
+      onHighlightStarted: async (_el: any, _step: any, opts: any) => {
+        if (s.route) {
+          const empId = currentEmployerId();
+          if (empId) {
+            const target = `/emp${empId}/${s.route}`;
+            if (!window.location.pathname.startsWith(target)) {
+              window.history.pushState({}, "", target);
+              window.dispatchEvent(new PopStateEvent("popstate"));
+            }
+          }
+        }
+        if (s.selector) {
+          const el = await waitForElement(s.selector);
+          if (el && opts?.driver) {
+            // Подменяем элемент: если React перерисовал — driver увидит новый node.
+            opts.driver.refresh?.();
+          }
+        }
+      },
+    }));
 
     const d = driver({
       showProgress: true,
       animate: true,
+      smoothScroll: true,
       allowClose: true,
       overlayOpacity: 0.72,
-      stagePadding: 8,
-      stageRadius: 14,
+      stagePadding: 10,
+      stageRadius: 16,
+      popoverClass: "rr-tour-popover",
       nextBtnText: "Дальше →",
       prevBtnText: "← Назад",
       doneBtnText: "Поехали 🚀",
