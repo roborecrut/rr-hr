@@ -262,8 +262,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             <p className="text-xs text-slate-300">3 этапа: Резюме → Чек-лист → Ситуации. ИИ генерирует, вы редактируете.</p>
           </div>
           <div className="w-full md:w-auto">
-            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">
+            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1 inline-flex items-center">
               Вакансия{createMode ? " (обязательно)" : ""}
+              <FieldHelp
+                section="interviews"
+                fieldKey="project_select"
+                fallbackTitle="Выбор вакансии"
+                fallbackBody="Сценарий интервью всегда привязан к вакансии. ИИ берёт описание вакансии и компании как контекст для блоков «Резюме», «Чек-лист» и «Ситуации»."
+              />
             </label>
             <select value={projectId} disabled={lockedProject} onChange={e => setProjectId(e.target.value)}
               className="bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm disabled:opacity-70 min-w-[260px]">
@@ -288,7 +294,15 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
         <>
           <div className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-4 flex flex-wrap items-center gap-3">
             <div>
-              <div className="text-[10px] uppercase text-slate-400 font-bold">Проходной средний балл (по 3 этапам)</div>
+              <div className="text-[10px] uppercase text-slate-400 font-bold inline-flex items-center">
+                Проходной средний балл (по 3 этапам)
+                <FieldHelp
+                  section="interviews"
+                  fieldKey="pass_score"
+                  fallbackTitle="Проходной средний балл"
+                  fallbackBody="ИИ ставит балл по каждому из 3 блоков (Резюме, Чек-лист, Ситуации). Если средний ≥ этого порога — кандидат успешно прошёл интервью и попадает в финальную колонку CRM. Рекомендуем 70–80."
+                />
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <input type="number" min={1} max={100} value={passScore} onChange={e => setPassScore(Math.max(1, Math.min(100, Number(e.target.value) || 75)))} className="bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm w-24" />
                 <button onClick={savePassScore} disabled={saving === "pass"} className="bg-[#E7C768]/20 hover:bg-[#E7C768]/30 border border-[#E7C768]/40 text-[#E7C768] font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1 disabled:opacity-60">
@@ -329,8 +343,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             {/* Wishes textarea + example tip — same for every block, content varies */}
             <div className="bg-[#0F2A42]/60 border border-white/10 rounded-xl p-3 space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] text-slate-200 font-bold">
+                <label className="text-[11px] text-slate-200 font-bold inline-flex items-center">
                   Пожелания к блоку «{KINDS.find(k => k.key === kind)?.title.replace(/^\d+\.\s*/, "")}» (передаются ИИ)
+                  <FieldHelp
+                    section="interviews"
+                    fieldKey={`wishes_${kind}`}
+                    fallbackTitle="Пожелания к блоку"
+                    fallbackBody="Свободный текст для ИИ: на что обратить внимание, какие компетенции проверить, какой тон выдержать. Чем подробнее — тем точнее ИИ сформирует вопросы и кейсы."
+                  />
                 </label>
                 <button type="button" onClick={() => setShowExample(s => ({ ...s, [kind]: !s[kind] }))}
                   className="text-[10px] text-[#E7C768] hover:underline flex items-center gap-1">

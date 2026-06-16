@@ -8,6 +8,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
 import { DocumentIngestField } from "@/components/DocumentIngestField";
+import FieldHelp from "@/components/FieldHelp";
 import type { JobProject } from "../types";
 
 type AuditFn = (level: "success" | "warning" | "info", title: string, msg: string) => void;
