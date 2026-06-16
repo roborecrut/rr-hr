@@ -352,6 +352,14 @@ export default function CandidateDetailsModal({
                   </button>
                   <button
                     type="button"
+                    disabled={reviewSaving}
+                    onClick={markReview}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-bold text-sm shadow hover:-translate-y-0.5 transition disabled:opacity-50"
+                  >
+                    <Clock className="w-4 h-4" /> На рассмотрении
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => { setDecisionOpen("rejected"); setDecisionMsg(""); }}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-sm transition"
                   >
