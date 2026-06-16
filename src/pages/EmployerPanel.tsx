@@ -8,6 +8,8 @@ import RRImage from "@/components/RRImage";
 import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
+import OnboardingHost from "../components/OnboardingHost";
+import type { OnboardingSection } from "@/lib/onboarding";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
@@ -2580,6 +2582,7 @@ export default function EmployerPanel() {
             <div className="space-y-1.5 pt-2 text-left">
               <button
                 onClick={() => navigate(`/emp${employerId}/profile`)}
+                data-tour="nav.profile"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "profile" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -2590,6 +2593,7 @@ export default function EmployerPanel() {
 
               <button
                 onClick={() => navigate(`/emp${employerId}/companies`)}
+                data-tour="nav.companies"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "companies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -2602,6 +2606,7 @@ export default function EmployerPanel() {
                 onClick={() => guardedNavigate("vacancies", `/emp${employerId}/vacancies`)}
                 disabled={tabDisabled("vacancies")}
                 title={tabHint("vacancies")}
+                data-tour="nav.vacancies"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "vacancies" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("vacancies") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
@@ -2614,6 +2619,7 @@ export default function EmployerPanel() {
                 onClick={() => guardedNavigate("training", `/emp${employerId}/training`)}
                 disabled={tabDisabled("training")}
                 title={tabHint("training")}
+                data-tour="nav.training"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "training" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("training") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
@@ -2626,6 +2632,7 @@ export default function EmployerPanel() {
                 onClick={() => guardedNavigate("interviews", `/emp${employerId}/interviews`)}
                 disabled={tabDisabled("interviews")}
                 title={tabHint("interviews")}
+                data-tour="nav.interviews"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "interviews" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"} ${tabDisabled("interviews") ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <span className="flex items-center gap-2">
@@ -2638,6 +2645,7 @@ export default function EmployerPanel() {
 
               <button
                 onClick={() => { navigate(`/emp${employerId}/crm`); setCrmViewMode("kanban"); }}
+                data-tour="nav.crm"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "crm" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -2648,6 +2656,7 @@ export default function EmployerPanel() {
 
               <button
                 onClick={() => navigate(`/emp${employerId}/tariff`)}
+                data-tour="nav.billing"
                 className={`w-full text-left font-bold text-xs px-4 py-2.5 rounded-xl flex items-center justify-between transition-all ${activeTab === "tariff" ? "bg-[#1E4468] text-[#E7C768] border border-[#E7C768]/60 shadow" : "bg-white/5 text-slate-300 hover:bg-white/10"}`}
               >
                 <span className="flex items-center gap-2">
@@ -2730,6 +2739,11 @@ export default function EmployerPanel() {
 
         {/* Right Side Main Workspaces */}
         <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
+
+          {/* Велком-онбординг и справочник раздела */}
+          {(["profile","companies","vacancies","interviews","training","crm","tariff"] as const).includes(activeTab as any) && (
+            <OnboardingHost section={(activeTab === "tariff" ? "billing" : activeTab) as OnboardingSection} />
+          )}
 
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (

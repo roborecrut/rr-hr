@@ -3,13 +3,24 @@
  * Аккордеон вопросов из таблицы faq_items + поиск по тексту.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Search, Sparkles, BookOpen } from "lucide-react";
+import { ChevronDown, Search, Sparkles, BookOpen, Layers } from "lucide-react";
 import Markdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
 import EmployerAIAssistant from "@/components/EmployerAIAssistant";
 import { useSeo, SITE_URL } from "@/lib/seo";
 import SiteHeader from "@/components/SiteHeader";
+import { loadOnboarding, type OnboardingItem, type OnboardingSection } from "@/lib/onboarding";
+
+const SECTION_LABELS: Record<OnboardingSection, string> = {
+  profile: "Профиль",
+  companies: "Компании",
+  vacancies: "Вакансии",
+  interviews: "Интервью",
+  training: "Обучения",
+  crm: "CRM",
+  billing: "Счета",
+};
 
 type FaqItem = {
   id: string;
@@ -35,6 +46,8 @@ export default function FaqPage() {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [onb, setOnb] = useState<OnboardingItem[]>([]);
+  const [openOnbId, setOpenOnbId] = useState<string | null>(null);
 
   useSeo({
     title: "База знаний — Робот Рекрутер",
@@ -68,6 +81,7 @@ export default function FaqPage() {
       if (!error && data) setItems(data as FaqItem[]);
       setLoading(false);
     })();
+    loadOnboarding().then((list) => { if (!cancelled) setOnb(list); });
     return () => { cancelled = true; };
   }, []);
 
@@ -88,6 +102,30 @@ export default function FaqPage() {
     }
     return Array.from(map.entries());
   }, [filtered]);
+
+  const onbFiltered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return onb;
+    return onb.filter((x) => x.title.toLowerCase().includes(q) || x.body_md.toLowerCase().includes(q));
+  }, [onb, query]);
+
+  const onbGrouped = useMemo(() => {
+    const map = new Map<OnboardingSection, OnboardingItem[]>();
+    for (const it of onbFiltered) {
+      const arr = map.get(it.section) || [];
+      arr.push(it);
+      map.set(it.section, arr);
+    }
+    // welcome первым, остальное по order_idx
+    for (const [k, arr] of map) {
+      arr.sort((a, b) => {
+        if (a.kind !== b.kind) return a.kind === "section_welcome" ? -1 : 1;
+        return a.order_idx - b.order_idx;
+      });
+      map.set(k, arr);
+    }
+    return Array.from(map.entries());
+  }, [onbFiltered]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white">
@@ -196,6 +234,63 @@ export default function FaqPage() {
                 </div>
               </div>
             ))}
+
+          {/* === База знаний кабинета (онбординг работодателя) === */}
+          {!loading && onbGrouped.length > 0 && (
+            <div className="pt-6 mt-6 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-4">
+                <Layers className="w-5 h-5 text-[#E7C768]" />
+                <h2 className="text-lg font-bold text-white">
+                  База знаний <span className="text-[#E7C768]">личного кабинета</span>
+                </h2>
+              </div>
+              <p className="text-slate-300 text-sm mb-6 max-w-3xl">
+                Подробные описания каждого раздела и поля кабинета работодателя:
+                Профиль, Компании, Вакансии, Интервью, Обучения, CRM, Счета. Те же тексты
+                показываются как велком-тур при первом входе в раздел и по «?» рядом с полями.
+              </p>
+              {onbGrouped.map(([sec, list]) => (
+                <div key={sec} id={`section-${sec}`} className="mb-6">
+                  <h3 className="text-xs font-bold uppercase tracking-[0.18em] text-[#E7C768] mb-3 flex items-center gap-2">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    {SECTION_LABELS[sec]}
+                    <span className="text-slate-400 font-mono">({list.length})</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {list.map((it) => {
+                      const open = openOnbId === it.id;
+                      const isWelcome = it.kind === "section_welcome";
+                      return (
+                        <div
+                          key={it.id}
+                          id={it.field_key ? `${sec}-${it.field_key}` : `${sec}-welcome`}
+                          className={`bg-white/5 border rounded-2xl overflow-hidden transition ${
+                            open ? "border-[#E7C768]/60 bg-white/10" : isWelcome ? "border-[#E7C768]/30" : "border-white/10 hover:border-white/20"
+                          }`}
+                        >
+                          <button
+                            onClick={() => setOpenOnbId(open ? null : it.id)}
+                            className="w-full flex items-center justify-between gap-4 text-left px-5 py-4"
+                          >
+                            <span className="font-semibold text-white text-[15px] leading-snug flex items-center gap-2">
+                              {isWelcome && <span className="text-[9px] uppercase font-mono bg-[#E7C768]/20 text-[#E7C768] px-1.5 py-0.5 rounded">обзор</span>}
+                              {it.title}
+                            </span>
+                            <ChevronDown className={`w-5 h-5 shrink-0 text-[#E7C768] transition-transform ${open ? "rotate-180" : ""}`} />
+                          </button>
+                          {open && (
+                            <div className="px-5 pb-5 -mt-1 text-slate-200 leading-relaxed text-sm border-t border-white/10 pt-4 markdown-body">
+                              <Markdown>{it.body_md}</Markdown>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
