@@ -24,11 +24,13 @@ import CacheResetGuard from "./components/CacheResetGuard";
 import AppVersionGuard from "./components/AppVersionGuard";
 import { AIWaitProvider } from "./components/AIWaitProvider";
 import { AIRestartGate } from "./components/AIRestartGate";
+import { ConfirmProvider } from "./components/ConfirmDialog";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AIWaitProvider>
+        <ConfirmProvider>
         <SessionBootstrap />
         <CacheResetGuard />
         <AppVersionGuard />
@@ -59,6 +61,7 @@ export default function App() {
         <Route path="/:firstSeg/*" element={<SegmentDispatcher />} />
         <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </ConfirmProvider>
       </AIWaitProvider>
     </BrowserRouter>
   );

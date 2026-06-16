@@ -175,12 +175,14 @@ import {
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
 import HHTemplatesSection from "../components/HHTemplatesSection";
+import { useConfirm } from "../components/ConfirmDialog";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
+  const confirm = useConfirm();
   const [authReady, setAuthReady] = useState(false);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
 
@@ -919,12 +921,15 @@ export default function EmployerPanel() {
   // Archive the currently edited vacancy (soft, reversible).
   const handleArchiveEditedProject = async () => {
     if (!editingProject) return;
-    if (!window.confirm(
-      `Архивировать вакансию «${editingProject.roleName}»?\n\n` +
-      `Лендинг и личные кабинеты по ней станут недоступны кандидатам. ` +
-      `Все кандидаты, статистика CRM, переписка и платежи сохранятся. ` +
-      `Восстановить можно в любой момент.`,
-    )) return;
+    const ok = await confirm({
+      title: `Архивировать вакансию «${editingProject.roleName}»?`,
+      description:
+        "Лендинг и личные кабинеты по ней станут недоступны кандидатам. " +
+        "Все кандидаты, статистика CRM, переписка и платежи сохранятся. Восстановить можно в любой момент.",
+      confirmLabel: "Архивировать",
+      destructive: true,
+    });
+    if (!ok) return;
     setIsDeletingProject(true);
     try {
       const { error } = await (supabase as any).rpc("project_archive", { _id: editingProject.id });
@@ -943,12 +948,16 @@ export default function EmployerPanel() {
   // Soft-delete (hide from public, keep CRM data, keep public_id reserved).
   const handleDeleteEditedProject = async () => {
     if (!editingProject) return;
-    if (!window.confirm(
-      `Удалить вакансию «${editingProject.roleName}»?\n\n` +
-      `Лендинг закроется, кандидаты больше не смогут войти в личный кабинет по этой вакансии. ` +
-      `Данные кандидатов, CRM, переписка и платежи остаются в системе. ` +
-      `Номер вакансии (${(editingProject as any).publicId || editingProject.id}) не будет переиспользован.`,
-    )) return;
+    const ok = await confirm({
+      title: `Удалить вакансию «${editingProject.roleName}»?`,
+      description:
+        "Лендинг закроется, кандидаты больше не смогут войти в личный кабинет по этой вакансии. " +
+        "Данные кандидатов, CRM, переписка и платежи остаются в системе. " +
+        `Номер вакансии (${(editingProject as any).publicId || editingProject.id}) не будет переиспользован.`,
+      confirmLabel: "Удалить",
+      destructive: true,
+    });
+    if (!ok) return;
     setIsDeletingProject(true);
     try {
       const { error } = await (supabase as any).rpc("project_soft_delete", { _id: editingProject.id });
@@ -3370,7 +3379,13 @@ export default function EmployerPanel() {
                       <button
                         type="button"
                         onClick={async () => {
-                          if (!window.confirm("Отменить создание вакансии? Черновик будет удалён.")) return;
+                          const ok = await confirm({
+                            title: "Отменить создание вакансии?",
+                            description: "Черновик будет удалён без возможности восстановления.",
+                            confirmLabel: "Удалить черновик",
+                            destructive: true,
+                          });
+                          if (!ok) return;
                           // Force-delete the draft (not just empty ones).
                           try {
                             if (draftProjectId) {
