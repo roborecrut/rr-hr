@@ -4132,6 +4132,9 @@ export default function EmployerPanel() {
                   <TabsTrigger value="balance" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     💰 Баланс
                   </TabsTrigger>
+                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💲 Тарифы и цены
+                  </TabsTrigger>
                   <TabsTrigger value="buy" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🛒 Покупка и оплата
                   </TabsTrigger>
@@ -4140,9 +4143,6 @@ export default function EmployerPanel() {
                   </TabsTrigger>
                   <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     🎁 Реферальная программа
-                  </TabsTrigger>
-                  <TabsTrigger value="prices" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
-                    💲 Тарифы и цены
                   </TabsTrigger>
                 </TabsList>
 
