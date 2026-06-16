@@ -1,107 +1,56 @@
 ## Что строим
 
-Единый in-app центр уведомлений (колокольчик в шапке) для работодателей и кандидатов + ручная кнопка «Пригласить на работу» + фоновые напоминания о бездействии через pg_cron.
+Система велком-онбординга для работодателя с пошаговыми всплывающими окнами (driver.js), подсветкой целевого поля и затемнением остального экрана; для каждого поля — иконка «?» с подробным описанием; вся база контента доступна на странице «Вики» и через AI-ассистента.
 
-Каналы внешние (email/Telegram/web push) не подключаем — только in-app, как договорились.
+## База данных
 
-## 1. БД (одна миграция)
+**Таблица `onboarding_content`** — единый реестр контента (источник правды):
+- `id` (uuid), `section` (`profile|companies|vacancies|interviews|training|crm|billing`), `field_key` (text, null = welcome раздела), `kind` (`section_welcome|field_help`), `title`, `body_md` (markdown), `selector` (CSS/data-attr, опц.), `order_idx`.
+- RLS: SELECT — anon+authenticated (контент публичный, читается Вики/AI/UI). INSERT/UPDATE/DELETE — только service_role.
 
-Новая таблица `public.notifications`:
+**Таблица `employer_tour_state`** — кто какой тур прошёл/закрыл:
+- `user_id`, `section`, `status` (`pending|completed|dismissed`), `completed_at`.
+- RLS: пользователь видит/правит только свои строки.
 
-| Поле | Тип | Назначение |
-|---|---|---|
-| `id` | uuid PK | |
-| `recipient_kind` | text `'employer' \| 'candidate'` | |
-| `employer_user_id` | uuid null | для работодателя = auth user_id |
-| `candidate_id` | uuid null | для кандидата |
-| `kind` | text | тип события (см. список ниже) |
-| `title` | text | заголовок в ленте |
-| `body` | text | короткий текст |
-| `link` | text null | куда вести по клику |
-| `meta` | jsonb | candidate_id / project_id / score |
-| `read_at` | timestamptz null | |
-| `created_at` | timestamptz default now() | |
+**Сидинг**: 7 разделов × welcome (1000+ симв.) + 8–12 ключевых полей на раздел (200–400 симв.). Тексты — в фирменном тоне, с примерами и регламентами.
 
-Уникальный частичный индекс `(recipient_kind, employer_user_id, candidate_id, kind, meta->>'candidate_id')` для дедупликации событий и напоминаний (нельзя слать одно и то же дважды).
+## Frontend
 
-GRANT: `authenticated` — SELECT/UPDATE по своим строкам (RLS), `service_role` — ALL. RLS:
-- employer видит свои (`employer_user_id = auth.uid()`)
-- кандидат видит свои через `candidate_id = current_candidate_id()`
+**Зависимость**: `driver.js`.
 
-Новые поля в `candidates`:
-- `hire_decision` text null (`'invited' | 'rejected'`)
-- `hire_decided_at` timestamptz null
-- `hire_message` text null
+**Новые файлы**:
+- `src/lib/tour/registry.ts` — карта `section → шаги тура` (id, селектор `[data-tour="<section>.<key>"]`, заголовок, описание, позиция).
+- `src/hooks/useEmployerTour.ts` — на смену раздела: грузит шаги + статус из БД; если `pending` — запускает driver.js; кнопки «Дальше / Пропустить / Готово» апдейтят `employer_tour_state`.
+- `src/components/FieldHelp.tsx` — компактная кнопка «?» рядом с полем; по клику открывает popover с `title + body_md` из `onboarding_content` (кэш через React Query / простой in-memory map).
+- `src/components/OnboardingHost.tsx` — провайдер: загрузка контента при входе в `/employer`, подписка на активный раздел, кнопка «Запустить тур заново» в шапке.
 
-Новые поля в `projects`:
-- `notify_score_threshold` int default 70 — порог «подходящего кандидата»
+**Интеграция в `EmployerPanel.tsx`**:
+- Добавить `data-tour="<section>.<key>"` на ключевые элементы каждого раздела (карточки профиля, поля компании, кнопки «Создать вакансию», табы CRM-канбан, поле «Тариф/Пополнить» и т.д.).
+- Расставить `<FieldHelp id="<section>.<key>" />` рядом с метками полей.
+- Подключить `<OnboardingHost />` один раз в шапке.
 
-RPC:
-- `notifications_list(_limit int)` → лента + unread_count для текущего viewer-а (employer ИЛИ candidate по токену)
-- `notifications_mark_read(_ids uuid[])` — пометить прочитанным
-- `notifications_mark_all_read()` 
-- `candidate_invite_decision(_candidate uuid, _decision text, _message text)` — работодатель ставит invited/rejected, кладёт notification кандидату
+**Стилизация driver.js**: переопределяем CSS под бренд (синий градиент `#17344F → #265582`, золотая рамка `#E7C768`, glow) — добавляем в `index.css`.
 
-Триггер на `candidate_scores` AFTER INSERT/UPDATE: если `overall_score >= projects.notify_score_threshold` И раньше уведомления этого типа не было → INSERT в `notifications` для владельца проекта (kind `'candidate_passed'`).
+## Вики и AI
 
-Триггер на `certifications` AFTER INSERT: → уведомление работодателю kind `'candidate_certified'`.
+**Страница `/faq` (Вики)**:
+- Дополнительная секция «База знаний кабинета» — список из `onboarding_content` сгруппированный по разделам, с поиском и якорями (`#profile-company_name` и т.п.). FAQ-таблица не дублируется — просто дополнительный блок на той же странице.
 
-## 2. Cron-напоминания
+**`ai-faq-assist` edge-функция**:
+- При запросе подтягивает `onboarding_content` (короткие тайтлы + первые 400 симв. body) и подмешивает в system-prompt как «База знаний по кабинету RR». Полные тексты — по запросу через тот же RPC.
 
-Включаем `pg_cron` (если ещё не). Один SQL-job каждые 30 минут вызывает RPC `notifications_run_reminders()`:
+**`EmployerAIAssistant`** уже использует `ai-faq-assist` → получит знания автоматически.
 
-- **employer_company_empty_24h** — employer создан > 24 ч назад, у него нет ни одной companies со status='active' и непустым name. Один раз.
-- **employer_no_vacancy_48h** — есть companies active, но нет projects со status='active'. Через 48 ч после создания компании. Один раз.
-- **candidate_interview_abandoned_24h** — есть `interview_messages` или `candidate_answers` за последние 7 дней, но нет `candidate_scores.overall_score`, последняя активность > 24 ч. Один раз на кандидата.
-- **candidate_training_abandoned_48h** — есть `candidate_training_progress` записи, но нет `certifications`, последняя активность > 48 ч. Один раз.
+## Порядок
 
-Дедуп через уникальный индекс по `(recipient, kind, meta->>'scope_id')`.
+1. Migration: 2 таблицы + RLS + seed контента (отдельным `INSERT` блоком в той же миграции).
+2. `bun add driver.js`.
+3. `src/lib/tour/registry.ts`, `useEmployerTour`, `FieldHelp`, `OnboardingHost` + бренд-CSS.
+4. Расставить `data-tour` и `<FieldHelp/>` по 7 разделам `EmployerPanel.tsx`.
+5. Обновить `FaqPage` (блок «База знаний кабинета»).
+6. Обновить `ai-faq-assist` (подмешивание контента).
+7. Сборка/проверка.
 
-## 3. Frontend
+## Чего НЕ трогаю
 
-Новый компонент `src/components/NotificationsBell.tsx`:
-- иконка-колокольчик с бэйджем непрочитанных
-- popover со списком (последние 20)
-- realtime-подписка на `notifications` (insert по своему recipient)
-- клик по элементу → `mark_read` + переход по `link`
-- «Прочитать все»
-
-Вставляем в `SiteHeader` (работодатель) и в шапку `CandidateFlow` (кандидат).
-
-В `CandidateDetailsModal` (карточка кандидата у работодателя) добавляем блок «Решение по кандидату»:
-- кнопки «Пригласить на работу» / «Отказать»
-- модалка с textarea для сообщения
-- вызывает `candidate_invite_decision` → создаёт notification кандидату с link на его кабинет
-- показывает текущий статус если уже принято
-
-В кабинете кандидата (`CandidateFlow`) — баннер с решением, если `candidates.hire_decision='invited'`: «Вас пригласили на работу в {company}» + текст сообщения работодателя.
-
-## 4. Тексты уведомлений
-
-Все по-русски, единый тон с маскотом.
-
-| kind | Кому | Заголовок | Body |
-|---|---|---|---|
-| `candidate_passed` | employer | Новый подходящий кандидат | {name} прошёл интервью с баллом {score}/100 |
-| `candidate_certified` | employer | Кандидат сертифицирован | {name} завершил обучение и готов к найму |
-| `candidate_invited` | candidate | Вас пригласили на работу | Работодатель {company} ждёт вас. Откройте сообщение. |
-| `candidate_rejected` | candidate | Решение по вашей кандидатуре | Работодатель {company} принял решение. Подробности внутри. |
-| `employer_company_empty_24h` | employer | Допишите компанию | Без описания компании кандидаты не пойдут. Это 5 минут. |
-| `employer_no_vacancy_48h` | employer | Опубликуйте первую вакансию | Компания готова — добавьте вакансию, чтобы начать получать отклики. |
-| `candidate_interview_abandoned_24h` | candidate | Завершите интервью | Вы остановились на интервью. Вернитесь и закончите — это 10 минут. |
-| `candidate_training_abandoned_48h` | candidate | Закончите обучение | Без сертификата работодатель не увидит вас как готового. Допройдите обучение. |
-
-## 5. Что НЕ трогаем (по правилам релиза)
-
-Robokassa, RR-баланс, RR Pro Max, CRM (`crm_stage`), расчёт оценок, кандидатская машина состояний. Решение работодателя — отдельные поля `hire_decision`, не вмешивается в `current_stage`.
-
-## Порядок работ
-
-1. Миграция: notifications + поля + RPC + триггеры + GRANT/RLS.
-2. pg_cron job + RPC `notifications_run_reminders`.
-3. `NotificationsBell` + интеграция в SiteHeader / CandidateFlow.
-4. Блок «Решение» в CandidateDetailsModal + баннер в CandidateFlow.
-5. Realtime подписка.
-6. Build + проверка.
-
-Подтверди — и стартую.
+Сам бизнес-функционал кабинета, расчёты RR, Robokassa, CRM-логику, нотификации.
