@@ -273,11 +273,16 @@ export default function CandidateDetailsModal({
       });
       const summary = String(result?.summary || result?.recommendation || "").trim();
       if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
-      // Не перезаписываем overall_score — он считается триггером как среднее из sub-scores.
-      // Сохраняем только текстовую рекомендацию ИИ.
+      // overall_score = среднее из под-оценок (резюме / анкета / ситуации / интервью).
+      // ИИ-вердикт сохраняем только в текст (assessment_summary), чтобы не обнулять средний балл.
+      const parts = [s.resume_score, s.checklist_score, s.situations_score, (s as any).interview_score]
+        .filter((v: any) => v !== null && v !== undefined && Number.isFinite(Number(v)))
+        .map(Number);
+      const avg = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
       const { error } = await (supabase as any).from("candidate_scores").upsert({
         candidate_id: candidateId,
         assessment_summary: summary,
+        ...(avg !== null ? { overall_score: avg } : {}),
       }, { onConflict: "candidate_id" });
       if (error) throw error;
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
