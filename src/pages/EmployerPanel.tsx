@@ -2574,7 +2574,7 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-7xl"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-[1560px]"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[280px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
         <aside className={`${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
