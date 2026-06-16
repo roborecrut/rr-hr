@@ -360,41 +360,6 @@ Deno.serve(async (req) => {
   // ── stage_test: 20-вопросный тест на этапе обучения ─────────────────────
   if (job.job_type === "stage_test") {
     const arr = tryParseJson<any[]>(run.text);
-
-  }
-  // ── hh_templates: 3 шаблона для публикации/откликов на hh.ru ───────────
-  if (job.job_type === "hh_templates") {
-    const obj = tryParseJson<Record<string, string>>(run.text);
-    if (!obj || !obj.hh_post_text || !obj.hh_invite_text || !obj.hh_autoresume_text) {
-      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
-      await markJobStatus(body.job_id, "fallback_failed", true);
-      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
-    }
-    const projectId = snap.project_id;
-    if (!projectId) {
-      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
-      await markJobStatus(body.job_id, "fallback_failed", true);
-      return jsonResponse({ error: "fallback_save_failed" }, 500);
-    }
-    const fields = {
-      hh_post_text: String(obj.hh_post_text).slice(0, 6000),
-      hh_invite_text: String(obj.hh_invite_text).slice(0, 3000),
-      hh_autoresume_text: String(obj.hh_autoresume_text).slice(0, 5000),
-    };
-    const upd = await admin.from("projects").update(fields).eq("id", projectId);
-    if (upd.error) {
-      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
-      await markJobStatus(body.job_id, "fallback_failed", true);
-      return jsonResponse({ error: "fallback_save_failed" }, 500);
-    }
-    await finishAttempt(attemptId, { status: "succeeded", result_reference: `projects:${projectId}:hh_templates` });
-    await markJobStatus(body.job_id, "fallback_succeeded", true);
-    await logToDb({ user_message: "[fallback]", bot_reply: "[ok]", channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
-    return jsonResponse({ ok: true, fields, fallback_used: true });
-  }
-  // ── stage_test continuation (legacy block kept below) ──────────────────
-  if (false) {
-    const arr = tryParseJson<any[]>(run.text);
     if (!Array.isArray(arr) || arr.length === 0) {
       await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
       await markJobStatus(body.job_id, "fallback_failed", true);
@@ -437,6 +402,37 @@ Deno.serve(async (req) => {
     await markJobStatus(body.job_id, "fallback_succeeded", true);
     await logToDb({ user_message: "[fallback]", bot_reply: `[ok:${questions.length}q]`, channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
     return jsonResponse({ ok: true, count: questions.length, total_score: total, fallback_used: true });
+  }
+
+  // ── hh_templates: 3 шаблона для публикации/откликов на hh.ru ───────────
+  if (job.job_type === "hh_templates") {
+    const obj = tryParseJson<Record<string, string>>(run.text);
+    if (!obj || !obj.hh_post_text || !obj.hh_invite_text || !obj.hh_autoresume_text) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_schema_validation_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_schema_validation_failed" }, 502);
+    }
+    const projectId = snap.project_id;
+    if (!projectId) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    const fields = {
+      hh_post_text: String(obj.hh_post_text).slice(0, 6000),
+      hh_invite_text: String(obj.hh_invite_text).slice(0, 3000),
+      hh_autoresume_text: String(obj.hh_autoresume_text).slice(0, 5000),
+    };
+    const upd = await admin.from("projects").update(fields).eq("id", projectId);
+    if (upd.error) {
+      await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_save_failed" });
+      await markJobStatus(body.job_id, "fallback_failed", true);
+      return jsonResponse({ error: "fallback_save_failed" }, 500);
+    }
+    await finishAttempt(attemptId, { status: "succeeded", result_reference: `projects:${projectId}:hh_templates` });
+    await markJobStatus(body.job_id, "fallback_succeeded", true);
+    await logToDb({ user_message: "[fallback]", bot_reply: "[ok]", channel_id: chatId, user_social_id: socialId, channel_name: "ai-fallback:rr_pro_max", server_name: "ai-fallback-rr-pro-max" });
+    return jsonResponse({ ok: true, fields, fallback_used: true });
   }
 
   await finishAttempt(attemptId, { status: "failed", safe_error_code: "fallback_unknown" });
