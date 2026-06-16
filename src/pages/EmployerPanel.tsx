@@ -2577,7 +2577,7 @@ export default function EmployerPanel() {
       <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-[1560px]"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[280px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className={`${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
+        <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
