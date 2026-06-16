@@ -88,9 +88,9 @@ ${body.resume_text.slice(0, 10000)}
     const score = Math.max(0, Math.min(100, Number(obj.score) || 0));
     const result = {
       score,
-      summary: String(obj.summary || "").slice(0, 1500),
-      strengths: Array.isArray(obj.strengths) ? obj.strengths.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
-      gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 300)) : [],
+      summary: String(obj.summary || "").slice(0, 4000),
+      strengths: Array.isArray(obj.strengths) ? obj.strengths.slice(0, 10).map((s: any) => String(s).slice(0, 500)) : [],
+      gaps: Array.isArray(obj.gaps) ? obj.gaps.slice(0, 10).map((s: any) => String(s).slice(0, 500)) : [],
     };
 
     // Upsert candidate_scores (PK = candidate_id, no separate `id` column)
