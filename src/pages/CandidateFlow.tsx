@@ -1804,6 +1804,7 @@ export default function CandidateFlow() {
                 <strong className="text-[#E7C768] font-bold block mt-0.5">{candidate.name || "Соискатель"}</strong>
               </div>
             )}
+            <NotificationsBell />
             <button
               type="button"
               onClick={() => {
