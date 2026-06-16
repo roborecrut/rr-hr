@@ -4393,9 +4393,9 @@ export default function EmployerPanel() {
                             type="button"
                             onClick={handleBuyMixedPack}
                             disabled={packBusy || total_qty < 1}
-                            className="bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-[#17344F] font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
+                            className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-1.5 rounded-xl transition cursor-pointer"
                           >
-                            {packBusy ? "..." : "Купить пакет"}
+                            {packBusy ? "..." : `Списать за RR (${total_rr.toLocaleString("ru-RU")})`}
                           </button>
                         </div>
                       </div>
