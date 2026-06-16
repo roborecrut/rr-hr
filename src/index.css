@@ -204,16 +204,21 @@ body {
   overflow-x: auto;
   overflow-y: auto;
   /* высота канбана = вьюпорт минус шапка/фильтры (~280px) */
-  max-height: calc(100vh - 240px);
-  min-height: 420px;
+  max-height: calc(100vh - 300px);
+  min-height: 460px;
+  width: 100%;
+  max-width: 100%;
   padding-bottom: 14px;
 }
 /* Колонки канбана внутри обёртки — каждая своим вертикальным скроллом,
    чтобы при большом количестве кандидатов список листался внутри колонки,
    а горизонтальный бегунок оставался зафиксированным внизу области. */
 .crm-kanban-col {
-  max-height: calc(100vh - 280px);
+  height: calc(100vh - 340px);
+  min-height: 390px;
+  max-height: 620px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .crm-sticky-wrap::-webkit-scrollbar { height: 14px; }
 .crm-sticky-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
