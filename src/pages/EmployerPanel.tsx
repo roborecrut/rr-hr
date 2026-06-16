@@ -1176,6 +1176,10 @@ export default function EmployerPanel() {
             trainingSystemsText: p.training_systems_text || undefined,
             trainingWikiText: p.training_wiki_text || undefined,
             trainingRegulationsText: p.training_regulations_text || undefined,
+            // HH publish templates (generated after vacancy creation)
+            hhPostText: p.hh_post_text || undefined,
+            hhInviteText: p.hh_invite_text || undefined,
+            hhAutoresumeText: p.hh_autoresume_text || undefined,
             // legacy aliases kept for older code paths
             trainingProfText: p.training_prof_text || p.training_professional_text || undefined,
             trainingSystemText: p.training_system_text || p.training_systems_text || undefined,
