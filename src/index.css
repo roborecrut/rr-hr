@@ -181,6 +181,40 @@ body {
   line-height: 1.5 !important;
 }
 .panel-readable textarea { padding: 0.8rem 0.95rem !important; line-height: 1.6 !important; }
+
+/* ============================================================
+   .sidebar-readable — апскейл шрифтов левого меню/баланса в ЛК.
+   Применяется к <aside> в EmployerPanel: пункты меню и блок
+   «Баланс и лимиты» становятся заметно крупнее и читабельнее.
+   ============================================================ */
+.sidebar-readable .text-xs { font-size: 14px !important; line-height: 1.45 !important; }
+.sidebar-readable .text-\[9px\] { font-size: 11.5px !important; letter-spacing: 0.06em; }
+.sidebar-readable .text-\[10px\] { font-size: 12.5px !important; }
+.sidebar-readable .text-\[11px\] { font-size: 13.5px !important; }
+.sidebar-readable h3.text-sm,
+.sidebar-readable h3 { font-size: 16px !important; }
+
+/* ============================================================
+   .crm-sticky-scrollbar — прокрутка канбана с закреплённым
+   внизу экрана горизонтальным бегунком. Контейнер должен иметь
+   max-height: ~ оставшейся высоты и overflow:auto.
+   ============================================================ */
+.crm-sticky-wrap {
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* высота канбана = вьюпорт минус шапка/фильтры (~280px) */
+  max-height: calc(100vh - 280px);
+  padding-bottom: 14px;
+}
+.crm-sticky-wrap::-webkit-scrollbar { height: 14px; }
+.crm-sticky-wrap::-webkit-scrollbar-track { background: rgba(255,255,255,0.06); border-radius: 999px; }
+.crm-sticky-wrap::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #F4EE8E, #D99E41);
+  border-radius: 999px;
+  border: 2px solid #17344F;
+}
+.crm-sticky-wrap { scrollbar-color: #E7C768 rgba(255,255,255,0.06); scrollbar-width: thin; }
 /* Внутри .brand-editor правила .brand-editor (более специфичные сами по себе
    за счёт двойного класса) выигрывают — это ожидаемо. */
 .brand-editor input[type="text"],
