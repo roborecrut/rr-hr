@@ -2733,6 +2733,11 @@ export default function EmployerPanel() {
         {/* Right Side Main Workspaces */}
         <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
+          {/* Велком-онбординг и справочник раздела */}
+          {(["profile","companies","vacancies","interviews","training","crm","tariff"] as const).includes(activeTab as any) && (
+            <OnboardingHost section={(activeTab === "tariff" ? "billing" : activeTab) as OnboardingSection} />
+          )}
+
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (
             <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-5 shadow-xl text-left space-y-4">
