@@ -209,6 +209,11 @@ export default function OnboardingHost({ autoStart = true, buttonOnly = false }:
     return () => { cancelled = true; };
   }, [autoStart, buttonOnly, runTour]);
 
+  if (!buttonOnly) {
+    // Невидимый авто-стартер
+    return null;
+  }
+
   return (
     <button
       type="button"
