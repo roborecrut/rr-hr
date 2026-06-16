@@ -174,6 +174,7 @@ import {
 } from "../components/VacancySections";
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
+import HHTemplatesSection from "../components/HHTemplatesSection";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
