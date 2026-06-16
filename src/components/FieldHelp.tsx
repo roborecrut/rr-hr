@@ -4,7 +4,7 @@
  * Использование: <FieldHelp section="profile" fieldKey="email" />
  */
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 import Markdown from "react-markdown";
 import { getFieldHelp, type OnboardingItem, type OnboardingSection } from "@/lib/onboarding";
 
@@ -56,9 +56,10 @@ export default function FieldHelp({
         aria-label="Подсказка"
         title="Показать подсказку"
         onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen((v) => !v); }}
-        className="w-5 h-5 inline-flex items-center justify-center rounded-full border border-[#E7C768]/50 text-[#E7C768] hover:text-white hover:bg-[#E7C768]/40 hover:border-[#E7C768] transition cursor-pointer ml-1.5 align-middle shrink-0"
+        className="w-6 h-6 inline-flex items-center justify-center rounded-full bg-[#E7C768] text-[#17344F] hover:bg-white hover:text-[#17344F] border border-[#E7C768] shadow-[0_2px_8px_rgba(231,199,104,0.5)] transition cursor-pointer ml-1.5 align-middle shrink-0 font-bold text-[13px] leading-none"
+        style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
       >
-        <HelpCircle className="w-3.5 h-3.5" strokeWidth={2.5} />
+        ?
       </button>
       {open && (
         <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)}>
