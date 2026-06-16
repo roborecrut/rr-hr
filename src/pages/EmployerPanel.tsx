@@ -1444,7 +1444,11 @@ export default function EmployerPanel() {
       if (!emp) return;
       if (isEmployerPublicIdCandidate((emp as any).public_id)) {
         cacheEmployerPublicId((emp as any).public_id, user.id);
-        if ((emp as any).public_id !== employerId) {
+        // Не переадресуем, если пользователь сознательно открыл другой кабинет
+        // по прямому URL (/empXXXXX/...) — например, админ просматривает чужой кабинет.
+        // Редирект делаем только когда URL вообще не содержит /emp{id}.
+        const urlEmp = parseEmployerPublicIdFromPath(window.location.pathname);
+        if (!urlEmp && (emp as any).public_id !== employerId) {
           setEmployerId((emp as any).public_id);
           navigate(`/emp${(emp as any).public_id}/${activeTab === "crm" ? "profile" : activeTab}`);
         }
@@ -2584,10 +2588,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`max-w-[1260px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[240px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`max-w-[1400px] mx-auto py-8 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
+        <aside className="sidebar-readable space-y-6 lg:sticky lg:top-4 lg:self-start">
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2760,7 +2764,7 @@ export default function EmployerPanel() {
         </aside>
 
         {/* Right Side Main Workspaces */}
-        <main className={`panel-readable ${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
+        <main className="panel-readable min-w-0 space-y-6">
 
           {/* Авто-старт сквозного welcome-тура (рендерит null) */}
           <OnboardingHost />
@@ -2996,7 +3000,7 @@ export default function EmployerPanel() {
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
                 <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                  <div className="crm-scroll overflow-auto max-h-[calc(100vh-290px)] min-h-[420px]">
+                  <div className="crm-scroll overflow-x-auto overflow-y-visible min-h-[420px]">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">

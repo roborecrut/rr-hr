@@ -272,12 +272,17 @@ export default function CandidateDetailsModal({
         },
       });
       const summary = String(result?.summary || result?.recommendation || "").trim();
-      const score = Number.isFinite(Number(result?.score)) ? Math.round(Number(result.score)) : s.overall_score;
       if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
+      // overall_score = среднее из под-оценок (резюме / анкета / ситуации / интервью).
+      // ИИ-вердикт сохраняем только в текст (assessment_summary), чтобы не обнулять средний балл.
+      const parts = [s.resume_score, s.checklist_score, s.situations_score, (s as any).interview_score]
+        .filter((v: any) => v !== null && v !== undefined && Number.isFinite(Number(v)))
+        .map(Number);
+      const avg = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
       const { error } = await (supabase as any).from("candidate_scores").upsert({
         candidate_id: candidateId,
         assessment_summary: summary,
-        overall_score: score,
+        ...(avg !== null ? { overall_score: avg } : {}),
       }, { onConflict: "candidate_id" });
       if (error) throw error;
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
@@ -778,15 +783,13 @@ export default function CandidateDetailsModal({
                       </div>
                     );
                   }
-                  return (
-                    <div className="space-y-3">
-                      {STAGE_DEFS.map((def) => {
+                  const renderStage = (def: { key: string; title: string; icon: string }) => {
                         const sp: any = findFor(def.key);
                         const passed = !!sp?.passed_at;
                         const score = sp?.last_score ?? sp?.best_score ?? null;
                         const tone = scoreTone(score);
                         return (
-                          <div key={def.key} className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
+                          <div className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
                             <div className="flex items-center justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{def.icon}</span>
@@ -849,8 +852,26 @@ export default function CandidateDetailsModal({
                             )}
                           </div>
                         );
-                      })}
-                    </div>
+                  };
+                  return (
+                    <Tabs defaultValue="professional" className="space-y-3">
+                      <TabsList className="bg-[#17344F]/70 border border-white/10 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                        {STAGE_DEFS.map(d => (
+                          <TabsTrigger
+                            key={d.key}
+                            value={d.key}
+                            className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl"
+                          >
+                            {d.icon} {d.title}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {STAGE_DEFS.map(d => (
+                        <TabsContent key={d.key} value={d.key} className="mt-0">
+                          {renderStage(d)}
+                        </TabsContent>
+                      ))}
+                    </Tabs>
                   );
                 })()}
               </TabsContent>
