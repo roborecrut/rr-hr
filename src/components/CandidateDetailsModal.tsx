@@ -783,15 +783,13 @@ export default function CandidateDetailsModal({
                       </div>
                     );
                   }
-                  return (
-                    <div className="space-y-3">
-                      {STAGE_DEFS.map((def) => {
+                  const renderStage = (def: { key: string; title: string; icon: string }) => {
                         const sp: any = findFor(def.key);
                         const passed = !!sp?.passed_at;
                         const score = sp?.last_score ?? sp?.best_score ?? null;
                         const tone = scoreTone(score);
                         return (
-                          <div key={def.key} className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
+                          <div className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
                             <div className="flex items-center justify-between gap-3 mb-3">
                               <div className="flex items-center gap-2">
                                 <span className="text-lg">{def.icon}</span>
@@ -854,8 +852,26 @@ export default function CandidateDetailsModal({
                             )}
                           </div>
                         );
-                      })}
-                    </div>
+                  };
+                  return (
+                    <Tabs defaultValue="professional" className="space-y-3">
+                      <TabsList className="bg-[#17344F]/70 border border-white/10 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                        {STAGE_DEFS.map(d => (
+                          <TabsTrigger
+                            key={d.key}
+                            value={d.key}
+                            className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl"
+                          >
+                            {d.icon} {d.title}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {STAGE_DEFS.map(d => (
+                        <TabsContent key={d.key} value={d.key} className="mt-0">
+                          {renderStage(d)}
+                        </TabsContent>
+                      ))}
+                    </Tabs>
                   );
                 })()}
               </TabsContent>
