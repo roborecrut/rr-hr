@@ -272,12 +272,12 @@ export default function CandidateDetailsModal({
         },
       });
       const summary = String(result?.summary || result?.recommendation || "").trim();
-      const score = Number.isFinite(Number(result?.score)) ? Math.round(Number(result.score)) : s.overall_score;
       if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
+      // Не перезаписываем overall_score — он считается триггером как среднее из sub-scores.
+      // Сохраняем только текстовую рекомендацию ИИ.
       const { error } = await (supabase as any).from("candidate_scores").upsert({
         candidate_id: candidateId,
         assessment_summary: summary,
-        overall_score: score,
       }, { onConflict: "candidate_id" });
       if (error) throw error;
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
