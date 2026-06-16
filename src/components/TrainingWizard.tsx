@@ -8,6 +8,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
 import { DocumentIngestField } from "@/components/DocumentIngestField";
+import FieldHelp from "@/components/FieldHelp";
 import type { JobProject } from "../types";
 
 type AuditFn = (level: "success" | "warning" | "info", title: string, msg: string) => void;
@@ -406,8 +407,14 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           </div>
         </div>
         <div>
-          <label className="text-xs font-bold text-slate-200 block mb-1">
+          <label className="text-xs font-bold text-slate-200 mb-1 inline-flex items-center">
             Вакансия{createMode ? " (обязательно)" : ""}:
+            <FieldHelp
+              section="training"
+              fieldKey="project_select"
+              fallbackTitle="Выбор вакансии"
+              fallbackBody="Обучение всегда привязано к конкретной вакансии. ИИ берёт описание этой вакансии и компании как контекст для генерации материалов и тестов."
+            />
           </label>
           <select
             value={projectId}
@@ -539,7 +546,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             />
 
             <div>
-              <label className="text-[11px] text-slate-300 font-bold">Пожелания к материалу (необязательно)</label>
+              <label className="text-[11px] text-slate-300 font-bold inline-flex items-center">
+                Пожелания к материалу (необязательно)
+                <FieldHelp
+                  section="training"
+                  fieldKey="wishes_material"
+                  fallbackTitle="Пожелания к учебному материалу"
+                  fallbackBody="Свободный текст для ИИ: чего добавить, на чём сделать акцент, какой тон выдержать. Например: «Больше практических кейсов», «Разобрать частые возражения клиентов»."
+                />
+              </label>
               <textarea rows={2} maxLength={1000} value={wishesMaterial}
                 onChange={(e) => setWishesMaterial(e.target.value)}
                 placeholder="Например: «Сделай больше практических кейсов», «Добавь раздел про работу с возражениями»…"
@@ -640,7 +655,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             </div>
             {/* Editable pass score */}
             <div className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5">
-              <label className="text-[11px] text-slate-300 font-bold">Минимальный проходной балл:</label>
+              <label className="text-[11px] text-slate-300 font-bold inline-flex items-center">
+                Минимальный проходной балл:
+                <FieldHelp
+                  section="training"
+                  fieldKey="pass_score"
+                  fallbackTitle="Проходной балл этапа"
+                  fallbackBody="Минимальный % правильных ответов в тесте. Если кандидат не дотянул — может перепройти тест неограниченно. Рекомендуем 70–80%."
+                />
+              </label>
               <input
                 type="number" min={1} max={Math.max(test.total_score || 100, 1)} step={1}
                 value={test.pass_score}
@@ -666,7 +689,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               <span className="text-[10px] text-slate-500 ml-auto">При повторной сдаче кандидат увидит вопросы и варианты в другом порядке.</span>
             </label>
             <div>
-              <label className="text-[11px] text-slate-300 font-bold">Пожелания к тесту (необязательно)</label>
+              <label className="text-[11px] text-slate-300 font-bold inline-flex items-center">
+                Пожелания к тесту (необязательно)
+                <FieldHelp
+                  section="training"
+                  fieldKey="wishes_quiz"
+                  fallbackTitle="Пожелания к тесту"
+                  fallbackBody="Подсказки для ИИ: какие темы обязательно проверить, сколько вопросов, нужны ли ситуационные кейсы. Например: «10 вопросов, 2 кейса, без вопросов про продукт»."
+                />
+              </label>
               <textarea rows={2} maxLength={1000} value={wishesTest}
                 onChange={(e) => setWishesTest(e.target.value)}
                 placeholder="Например: «Больше вопросов про CRM», «Включи 3 каверзных вопроса с НЕ»…"
