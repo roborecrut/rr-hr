@@ -32,21 +32,22 @@ interface Props {
 export default function FieldActionsMenu({ actions, ariaLabel = "Действия", className }: Props) {
   if (!actions || actions.length === 0) return null;
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={ariaLabel}
         title={ariaLabel}
+        style={{ color: "#E7C768" }}
         className={
           "inline-flex h-9 w-9 items-center justify-center rounded-lg " +
-          "border border-[#E7C768]/60 bg-[#E7C768]/15 text-[#E7C768] " +
+          "border border-[#E7C768]/70 bg-[#E7C768]/20 " +
           "shadow-[0_0_0_1px_rgba(231,199,104,0.15)] " +
-          "transition hover:bg-[#E7C768]/30 hover:border-[#E7C768] hover:text-white " +
+          "transition hover:bg-[#E7C768]/35 hover:border-[#E7C768] " +
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C768]/70 " +
           "active:scale-95 " +
           (className || "")
         }
       >
-        <MoreVertical className="h-5 w-5" strokeWidth={2.5} />
+        <MoreVertical className="h-5 w-5" strokeWidth={2.75} style={{ color: "#E7C768" }} />
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"

@@ -907,13 +907,13 @@ export default function EmployerPanel() {
     const mapped = roleTplToFields(tpl as any);
     const valueFor = (key: VacancyFieldKey) =>
       (mapped[key] && mapped[key]!.trim()) || VACANCY_FIELDS_BY_KEY[key].example;
-    if (!window.confirm(`Заменить все 15 полей шаблоном для должности «${editingProject.roleName}»?`)) return;
     const patch: Partial<Record<VacancyFieldKey, string>> = {};
     (Object.keys(CAMEL_BY_KEY) as VacancyFieldKey[]).forEach((k) => {
       if (k === "role_name") return;
       patch[k] = valueFor(k);
     });
     setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) } as any);
+    addAuditEvent("success", "Шаблон применён", `Поля заполнены шаблоном для «${editingProject.roleName}».`);
   };
 
   // Archive the currently edited vacancy (soft, reversible).
@@ -2574,10 +2574,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-7xl"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[260px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
+      <div className={`${activeTab === "crm" ? "max-w-none" : "max-w-[1560px]"} mx-auto py-8 px-4 md:px-8 grid grid-cols-1 ${activeTab === "crm" ? "lg:grid-cols-[280px_1fr]" : "lg:grid-cols-12"} gap-6 w-full flex-1`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className={`${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
+        <aside className={`sidebar-readable ${activeTab === "crm" ? "" : "lg:col-span-3"} space-y-6`}>
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2921,8 +2921,8 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-scroll overflow-x-auto pb-3">
-                  <div className="flex gap-3 min-w-max">
+                <div className="crm-sticky-wrap crm-scroll">
+                  <div className="flex gap-3 min-w-max h-full">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2939,7 +2939,7 @@ export default function EmployerPanel() {
                       <div
                         key={column.stage}
                         className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
-                        style={{ width: 260, minWidth: 220, resize: "horizontal", overflow: "auto" }}
+                        style={{ width: 220, minWidth: 200, resize: "horizontal", overflow: "auto" }}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -4507,35 +4507,21 @@ export default function EmployerPanel() {
           {activeTab === "profile" && (
             <div className="space-y-6 text-left">
 
-              {/* Header */}
-              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div className="space-y-1">
-                  <h2 className="text-lg font-black text-white flex items-center gap-2">
-                    <User className="w-5 h-5 text-amber-400" />
-                    Профиль работодателя
-                  </h2>
-                  <p className="text-xs text-slate-300">Данные авторизации Google и контакты, которые увидят кандидаты.</p>
-                </div>
-                <div className="bg-emerald-950/40 text-emerald-400 text-xs font-bold border border-emerald-500/30 px-3 py-1 rounded-full font-mono flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                  <span>Номер кабинета: {employerId}</span>
-                </div>
-              </div>
-
-              {/* Реферальная ссылка (только Google) */}
-              <div data-tour="section.profile.referral">
-                <ReferralLinkBlock employerPublicId={employerId} />
-              </div>
-
-              {/* GOOGLE PROFILE — read-only из аккаунта Google */}
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+              {/* GOOGLE PROFILE — read-only из аккаунта Google (теперь первый блок) */}
+              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                     <Chrome className="w-4 h-4 text-sky-400" /> Аккаунт Google
                   </h3>
-                  <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                    Google OAuth2 Verified
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-emerald-950/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      № {employerId}
+                    </span>
+                    <span className="bg-sky-500/10 text-sky-400 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                      Google OAuth2 Verified
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">
@@ -4563,6 +4549,11 @@ export default function EmployerPanel() {
                   Имя, email и фото подтягиваются автоматически из вашего аккаунта Google и не редактируются здесь.
                   Чтобы их изменить — обновите данные в аккаунте Google.
                 </p>
+              </div>
+
+              {/* Реферальная ссылка (только Google) — теперь после Google */}
+              <div data-tour="section.profile.referral">
+                <ReferralLinkBlock employerPublicId={employerId} />
               </div>
 
               {/* КОНТАКТЫ ДЛЯ КАНДИДАТОВ */}

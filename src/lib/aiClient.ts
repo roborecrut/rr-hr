@@ -4,11 +4,29 @@ import { beginAIRestart, endAIRestart } from "./aiReady";
 // Lightweight wrapper around supabase.functions.invoke for our AI edge functions.
 // Throws on transport/server errors. Returns the parsed JSON body.
 async function invoke<T = any>(fn: "ai-chat" | "ai-enhance" | "ai-evaluate" | "ai-generate-onboarding" | "ai-restart" | "ai-company-analyze", body: any): Promise<T> {
-  const { data, error } = await supabase.functions.invoke(fn, { body });
   const friendly = (code: string): string => {
     if (code === "ai_empty_response") return "ИИ не вернул ответ. Попробуйте ещё раз.";
+    if (code === "no_session" || /auth|jwt|unauthor/i.test(code)) {
+      return "Не удалось подтвердить вход. Перезагрузите страницу.";
+    }
+    if (code === "no_credits" || code === "insufficient_funds") return "Недостаточно RR на балансе. Пополните в разделе «Тариф & Счета».";
+    if (code === "rate_limited" || /429/.test(code)) return "Слишком много запросов к ИИ. Подождите 30 секунд и повторите.";
     return code;
   };
+  // Ensure a fresh session before invoking — устраняет race при первом вызове
+  // edge function сразу после загрузки страницы, который раньше падал как
+  // «Не удалось подтвердить вход».
+  try { await supabase.auth.getSession(); } catch { /* ignore */ }
+  let { data, error } = await supabase.functions.invoke(fn, { body });
+  // Один авто-ретрай при сетевой/auth ошибке
+  if (error) {
+    const msg = (error as any)?.message || "";
+    if (/Failed to fetch|NetworkError|Invalid JWT|401|auth/i.test(msg)) {
+      try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
+      const r2 = await supabase.functions.invoke(fn, { body });
+      data = r2.data; error = r2.error;
+    }
+  }
   if (error) {
     // supabase-js wraps non-2xx as FunctionsHttpError; body may be on `context`
     let serverCode = "";
