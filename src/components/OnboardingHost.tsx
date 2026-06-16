@@ -26,8 +26,15 @@ import { supabase } from "@/integrations/supabase/client";
 /* ------------------------------------------------------------------ */
 
 const GLOBAL_KEY = "global";
+const LS_KEY = "rr_welcome_tour_v1";
 
 async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismissed"> {
+  // LocalStorage fallback: гарантированно не показываем тур повторно,
+  // даже если запись в БД не дошла (RLS, оффлайн, гонка вкладок).
+  try {
+    const v = window.localStorage.getItem(LS_KEY);
+    if (v === "completed" || v === "dismissed") return v;
+  } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return "completed";
   const { data } = await supabase
@@ -36,10 +43,15 @@ async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismiss
     .eq("user_id", u.user.id)
     .eq("section", GLOBAL_KEY)
     .maybeSingle();
-  return ((data as any)?.status as any) || "pending";
+  const status = ((data as any)?.status as any) || "pending";
+  if (status === "completed" || status === "dismissed") {
+    try { window.localStorage.setItem(LS_KEY, status); } catch { /* ignore */ }
+  }
+  return status;
 }
 
 async function setGlobalTourStatus(status: "completed" | "dismissed") {
+  try { window.localStorage.setItem(LS_KEY, status); } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return;
   await supabase.from("employer_tour_state" as any).upsert(
