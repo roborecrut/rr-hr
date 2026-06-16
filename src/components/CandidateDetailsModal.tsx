@@ -474,59 +474,61 @@ export default function CandidateDetailsModal({
               </div>
             )}
 
-            {/* Answers — Checklist */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-3.5 h-3.5" /> Ответы на чек-лист</h3>
-              {checklistAnswersView.length === 0 ? (
-                <div className="text-[11px] text-slate-500 italic">Кандидат ещё не отвечал на чек-лист.</div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {checklistAnswersView.map((a: any) => (
-                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined
-                            ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
-                            : (a.is_correct ? "✓" : "·")}
-                        </span>
+            {/* Answers — Checklist (скрыто, если кандидат ещё не отвечал) */}
+            {checklistAnswersView.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на чек-лист</h3>
+                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                  {checklistAnswersView.map((a: any) => {
+                    const tone = scoreTone(a.score, a.max ?? 10);
+                    return (
+                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                            {a.score !== null && a.score !== undefined
+                              ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
+                              : (a.is_correct ? "✓" : "·")}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
+                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                        </div>
+                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
                       </div>
-                      <div className="text-[11px] text-slate-200 mt-1">
-                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
-                      </div>
-                      {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Answers — Situations */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-3.5 h-3.5" /> Ответы во время ситуаций</h3>
-              {situationAnswersView.length === 0 ? (
-                <div className="text-[11px] text-slate-500 italic">Ответы по ситуациям отсутствуют.</div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {situationAnswersView.map((a: any) => (
-                    <div key={a.id} className="bg-black/30 rounded-lg p-2 border border-white/5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="text-[11px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                        <span className="text-[10px] font-mono text-[#E7C768] shrink-0">
-                          {a.score !== null && a.score !== undefined
-                            ? `${Math.round(Number(a.score))}/100`
-                            : (a.is_correct ? "✓" : "·")}
-                        </span>
+            {/* Answers — Situations (скрыто, если нет) */}
+            {situationAnswersView.length > 0 && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Ответы по ситуациям</h3>
+                <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                  {situationAnswersView.map((a: any) => {
+                    const tone = scoreTone(a.score);
+                    return (
+                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
+                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                            {a.score !== null && a.score !== undefined
+                              ? `${Math.round(Number(a.score))}/100`
+                              : (a.is_correct ? "✓" : "·")}
+                          </span>
+                        </div>
+                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
+                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                        </div>
+                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
                       </div>
-                      <div className="text-[11px] text-slate-200 mt-1">
-                        {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
-                      </div>
-                      {a.feedback && <div className="text-[10.5px] text-amber-200 mt-1">{a.feedback}</div>}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {otherAnswers.length > 0 && (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
