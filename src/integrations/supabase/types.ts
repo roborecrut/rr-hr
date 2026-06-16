@@ -978,6 +978,36 @@ export type Database = {
           },
         ]
       }
+      employer_tour_state: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          section: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          section: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          section?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employers: {
         Row: {
           bonus_granted: boolean
@@ -1396,6 +1426,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onboarding_content: {
+        Row: {
+          body_md: string
+          created_at: string
+          field_key: string | null
+          id: string
+          kind: string
+          order_idx: number
+          section: string
+          selector: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body_md: string
+          created_at?: string
+          field_key?: string | null
+          id?: string
+          kind: string
+          order_idx?: number
+          section: string
+          selector?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body_md?: string
+          created_at?: string
+          field_key?: string | null
+          id?: string
+          kind?: string
+          order_idx?: number
+          section?: string
+          selector?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       payments: {
         Row: {
