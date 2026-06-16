@@ -4405,9 +4405,11 @@ export default function EmployerPanel() {
                   </p>
                 </form>
               </div>
+                </TabsContent>
 
-              {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
-              <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+                <TabsContent value="referral" className="space-y-6 mt-0">
+                  {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
+                  <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🎁</span>
                   <div>
@@ -4481,9 +4483,11 @@ export default function EmployerPanel() {
                   )}
                 </div>
               </div>
+                </TabsContent>
 
-              {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
-              <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
+                <TabsContent value="history" className="space-y-6 mt-0">
+                  {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
+                  <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
                 <div className="p-4 bg-gradient-to-r from-[#17344F] to-[#265582] text-xs font-bold font-mono tracking-wider text-slate-300">
                   История всех операций по балансу
                 </div>
@@ -4536,6 +4540,8 @@ export default function EmployerPanel() {
                   </div>
                 )}
               </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
