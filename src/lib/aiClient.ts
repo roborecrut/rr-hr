@@ -16,14 +16,28 @@ async function invoke<T = any>(fn: "ai-chat" | "ai-enhance" | "ai-evaluate" | "a
   // Ensure a fresh session before invoking — устраняет race при первом вызове
   // edge function сразу после загрузки страницы, который раньше падал как
   // «Не удалось подтвердить вход».
-  try { await supabase.auth.getSession(); } catch { /* ignore */ }
-  let { data, error } = await supabase.functions.invoke(fn, { body });
+  let accessToken = "";
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    accessToken = session?.access_token || "";
+  } catch { /* ignore */ }
+  let { data, error } = await supabase.functions.invoke(fn, {
+    body,
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  });
   // Один авто-ретрай при сетевой/auth ошибке
   if (error) {
     const msg = (error as any)?.message || "";
     if (/Failed to fetch|NetworkError|Invalid JWT|401|auth/i.test(msg)) {
       try { await supabase.auth.refreshSession(); } catch { /* ignore */ }
-      const r2 = await supabase.functions.invoke(fn, { body });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token || "";
+      } catch { /* ignore */ }
+      const r2 = await supabase.functions.invoke(fn, {
+        body,
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
       data = r2.data; error = r2.error;
     }
   }
