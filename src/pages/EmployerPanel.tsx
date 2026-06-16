@@ -4025,7 +4025,7 @@ export default function EmployerPanel() {
                   const compVacancies = projects.filter(p => p.companyName?.toLowerCase() === comp.name?.toLowerCase());
 
                   return (
-                    <div key={idx} className="bg-[#1D3E5E]/60 border border-white/10 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768]/40 transition" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
+                    <div key={idx} className="bg-[#1D3E5E]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           {comp.logoUrl ? (
