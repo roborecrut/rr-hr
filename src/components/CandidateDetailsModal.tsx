@@ -410,50 +410,52 @@ export default function CandidateDetailsModal({
               </div>
             </div>
 
-            {/* Full candidate profile — all fields, even empty */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><UserIcon className="w-3.5 h-3.5" /> Профиль кандидата</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                <Field label="ФИО" value={c.full_name} />
-                <Field label="ФИО из резюме" value={c.resume_name} />
-                <Field label="Public ID" value={c.public_id} />
-                <Field label="Email" value={c.email} />
-                <Field label="Телефон" value={c.phone} />
-                <Field label="Должность (роль)" value={c.role_name} />
-                <Field label="Этап CRM" value={STAGE_LABELS[c.crm_stage] || c.crm_stage} />
-                <Field label="Текущий этап" value={c.current_stage} />
-                <Field label="Зарегистрирован через" value={c.registered_via} />
-                <Field label="Способ входа" value={c.auth_kind} />
-                <Field label="Источник перехода" value={c.ref_source} />
-                <Field label="Лендинг" value={c.landing_slug} />
-                <Field label="Создан" value={c.created_at ? new Date(c.created_at).toLocaleString() : null} />
-                <Field label="Последний вход" value={c.last_login_at ? new Date(c.last_login_at).toLocaleString() : null} />
-                <Field label="Резюме (URL)" value={c.resume_url} />
-                <Field label="Аватар (URL)" value={c.avatar_url || p.avatar_url} />
-                <Field label="Telegram" value={c.social_telegram} />
-                <Field label="WhatsApp" value={c.social_whatsapp} />
-                <Field label="Instagram" value={c.social_instagram} />
-                <Field label="VK" value={c.social_vk} />
-                <Field label="MAX" value={c.social_max} />
-                <Field label="Setka" value={c.social_setka} />
-                <Field label="GitHub" value={c.social_github} />
-              </div>
-            </div>
-
-            {/* Resume */}
-            <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-              <h3 className="text-xs font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-3.5 h-3.5" /> Распознанный текст резюме</h3>
-              {s.assessment_summary && (
-                <div className="text-[11px] text-amber-200 bg-amber-900/20 border border-amber-700/30 rounded-lg p-2">
-                  {s.assessment_summary}
+            {/* Профиль кандидата — только заполненные поля, без техн. данных */}
+            {(() => {
+              const fields: { label: string; value: any }[] = [
+                { label: "ФИО", value: c.full_name || c.resume_name },
+                { label: "Email", value: c.email },
+                { label: "Телефон", value: c.phone },
+                { label: "Должность", value: c.role_name },
+                { label: "Этап воронки", value: STAGE_LABELS[c.crm_stage] || c.crm_stage },
+                { label: "Зарегистрирован", value: c.created_at ? new Date(c.created_at).toLocaleString("ru-RU") : null },
+                { label: "Telegram", value: c.social_telegram },
+                { label: "WhatsApp", value: c.social_whatsapp },
+                { label: "Instagram", value: c.social_instagram },
+                { label: "VK", value: c.social_vk },
+                { label: "MAX", value: c.social_max },
+                { label: "Setka", value: c.social_setka },
+                { label: "GitHub", value: c.social_github },
+              ];
+              const nonEmpty = fields.filter(f => f.value !== null && f.value !== undefined && f.value !== "");
+              if (nonEmpty.length === 0) return null;
+              return (
+                <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                  <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><UserIcon className="w-4 h-4" /> Профиль кандидата</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                    {nonEmpty.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                  </div>
                 </div>
-              )}
-              <div className="text-[11px] text-slate-200 leading-relaxed max-h-64 overflow-y-auto">
-                {c.resume_text
-                  ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
-                  : <span className="italic text-slate-500">Резюме не загружено</span>}
+              );
+            })()}
+
+            {/* Resume — крупнее, без моноширинного, со скроллом */}
+            {(c.resume_text || s.assessment_summary) && (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
+                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-4 h-4" /> Распознанный текст резюме</h3>
+                {s.assessment_summary && (
+                  <div className={`text-[13px] rounded-lg p-3 border ${toneBg(scoreTone(s.resume_score).label)} text-white`}>
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300 mb-1">Резюме оценил ИИ</div>
+                    {s.assessment_summary}
+                  </div>
+                )}
+                <div className="text-[14.5px] text-slate-100 leading-relaxed max-h-96 overflow-y-auto pr-1">
+                  {c.resume_text
+                    ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
+                    : <span className="italic text-slate-500">Резюме не загружено</span>}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Interview transcripts */}
             {interviews.length > 0 && (
