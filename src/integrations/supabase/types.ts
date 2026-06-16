@@ -610,6 +610,9 @@ export type Database = {
           current_stage: Database["public"]["Enums"]["candidate_stage"]
           email: string | null
           full_name: string | null
+          hire_decided_at: string | null
+          hire_decision: string | null
+          hire_message: string | null
           id: string
           landing_slug: string | null
           last_login_at: string | null
@@ -647,6 +650,9 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
           full_name?: string | null
+          hire_decided_at?: string | null
+          hire_decision?: string | null
+          hire_message?: string | null
           id?: string
           landing_slug?: string | null
           last_login_at?: string | null
@@ -684,6 +690,9 @@ export type Database = {
           current_stage?: Database["public"]["Enums"]["candidate_stage"]
           email?: string | null
           full_name?: string | null
+          hire_decided_at?: string | null
+          hire_decision?: string | null
+          hire_message?: string | null
           id?: string
           landing_slug?: string | null
           last_login_at?: string | null
@@ -1335,6 +1344,59 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string
+          candidate_id: string | null
+          created_at: string
+          dedup_key: string | null
+          employer_user_id: string | null
+          id: string
+          kind: string
+          link: string | null
+          meta: Json
+          read_at: string | null
+          recipient_kind: string
+          title: string
+        }
+        Insert: {
+          body?: string
+          candidate_id?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          employer_user_id?: string | null
+          id?: string
+          kind: string
+          link?: string | null
+          meta?: Json
+          read_at?: string | null
+          recipient_kind: string
+          title: string
+        }
+        Update: {
+          body?: string
+          candidate_id?: string | null
+          created_at?: string
+          dedup_key?: string | null
+          employer_user_id?: string | null
+          id?: string
+          kind?: string
+          link?: string | null
+          meta?: Json
+          read_at?: string | null
+          recipient_kind?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -1792,6 +1854,7 @@ export type Database = {
           mission_text: string | null
           motivation_text: string | null
           motivation_text_detail: string | null
+          notify_score_threshold: number
           onboarding_text: string | null
           payouts_text: string | null
           public_id: string | null
@@ -1839,6 +1902,7 @@ export type Database = {
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
+          notify_score_threshold?: number
           onboarding_text?: string | null
           payouts_text?: string | null
           public_id?: string | null
@@ -1886,6 +1950,7 @@ export type Database = {
           mission_text?: string | null
           motivation_text?: string | null
           motivation_text_detail?: string | null
+          notify_score_threshold?: number
           onboarding_text?: string | null
           payouts_text?: string | null
           public_id?: string | null
@@ -2672,6 +2737,10 @@ export type Database = {
           }
       candidate_flow_state: { Args: never; Returns: Json }
       candidate_full_details: { Args: { _candidate: string }; Returns: Json }
+      candidate_invite_decision: {
+        Args: { _candidate: string; _decision: string; _message?: string }
+        Returns: Json
+      }
       candidate_list_applications: {
         Args: { _email: string; _password: string }
         Returns: Json
@@ -2814,6 +2883,9 @@ export type Database = {
           usage_count: number
         }[]
       }
+      notifications_list: { Args: { _limit?: number }; Returns: Json }
+      notifications_mark_read: { Args: { _ids?: string[] }; Returns: Json }
+      notifications_run_reminders: { Args: never; Returns: Json }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
       project_archive: { Args: { _id: string }; Returns: Json }
       project_create_draft: { Args: { _company: string }; Returns: Json }
