@@ -9,7 +9,6 @@ import { useRouter } from "../components/RouterContext";
 import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import OnboardingHost from "../components/OnboardingHost";
-import type { OnboardingSection } from "@/lib/onboarding";
 import HiringCalculator from "../components/HiringCalculator";
 import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
@@ -2680,6 +2679,11 @@ export default function EmployerPanel() {
                 </>
               )}
             </div>
+
+            {/* Кнопка перезапуска велком-тура */}
+            <div className="pt-2">
+              <OnboardingHost buttonOnly />
+            </div>
           </div>
 
           {isAdmin && (
@@ -2740,10 +2744,9 @@ export default function EmployerPanel() {
         {/* Right Side Main Workspaces */}
         <main className={`${activeTab === "crm" ? "min-w-0" : "lg:col-span-9"} space-y-6`}>
 
-          {/* Велком-онбординг и справочник раздела */}
-          {(["profile","companies","vacancies","interviews","training","crm","tariff"] as const).includes(activeTab as any) && (
-            <OnboardingHost section={(activeTab === "tariff" ? "billing" : activeTab) as OnboardingSection} />
-          )}
+          {/* Авто-старт сквозного welcome-тура (рендерит null) */}
+          <OnboardingHost />
+
 
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (
