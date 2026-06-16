@@ -227,6 +227,7 @@ export default function CandidateDetailsModal({
     setOverallSaving(true);
     setOverallErr(null);
     try {
+      const candName = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
       const { aiEvaluate } = await import("@/lib/aiClient");
       const result: any = await aiEvaluate({
         mode: "overall_candidate" as any,
@@ -234,7 +235,7 @@ export default function CandidateDetailsModal({
         project_id: c.project_id || pr.id,
         payload: {
           candidate: {
-            name,
+            name: candName,
             role: c.role_name || pr.role_name,
             resume_text: c.resume_text || "",
           },
