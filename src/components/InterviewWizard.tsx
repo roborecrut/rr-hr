@@ -45,6 +45,17 @@ const WISH_EXAMPLE: Record<Kind, string> = {
   situations: "Что писать: 1) тип конфликтных ситуаций, характерных для вашей компании; 2) стиль поведения «контрагента» (агрессивный/мягкий клиент); 3) на какие компетенции делать упор (эмпатия, аргументация, навыки переговоров).",
 };
 
+const PROMPT_TITLE: Record<Kind, string> = {
+  resume:     "Промт для ИИ — что учитывать при оценке резюме",
+  checklist:  "Промт для ИИ — какие навыки и темы проверять",
+  situations: "Промт для ИИ — какие сценарии генерировать",
+};
+const RESULT_TITLE: Record<Kind, string> = {
+  resume:     "Результат ИИ — критерии, по которым ИИ оценит резюме кандидата",
+  checklist:  "Результат ИИ — чек-лист, который проходит кандидат (ИИ оценивает каждый пункт)",
+  situations: "Результат ИИ — ситуации, на которые отвечает кандидат (ИИ оценивает соответствие критериям)",
+};
+
 import { FN as FN_URL } from "@/config";
 
 export default function InterviewWizard({ projects, refreshProjects, addAuditEvent, initialProjectId, createMode, onBack }: Props) {
