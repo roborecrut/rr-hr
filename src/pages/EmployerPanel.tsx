@@ -4488,7 +4488,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
 
               {/* Header */}
-              <div className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/80 border border-[#E7C768]/35 rounded-3xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="space-y-1">
                   <h2 className="text-lg font-black text-white flex items-center gap-2">
                     <User className="w-5 h-5 text-amber-400" />
@@ -4503,7 +4503,9 @@ export default function EmployerPanel() {
               </div>
 
               {/* Реферальная ссылка (только Google) */}
-              <ReferralLinkBlock employerPublicId={employerId} />
+              <div data-tour="section.profile.referral">
+                <ReferralLinkBlock employerPublicId={employerId} />
+              </div>
 
               {/* GOOGLE PROFILE — read-only из аккаунта Google */}
               <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
