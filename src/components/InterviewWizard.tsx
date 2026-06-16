@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
+import FieldHelp from "@/components/FieldHelp";
 import type { JobProject } from "../types";
 
 type Kind = "resume" | "checklist" | "situations";
