@@ -30,14 +30,19 @@ async function invoke<T = any>(fn: "ai-chat" | "ai-enhance" | "ai-evaluate" | "a
   if (error) {
     // supabase-js wraps non-2xx as FunctionsHttpError; body may be on `context`
     let serverCode = "";
+    let serverDetail = "";
     try {
       const ctx: any = (error as any).context;
       if (ctx && typeof ctx.json === "function") {
         const j = await ctx.json();
         serverCode = j?.error || "";
+        serverDetail = j?.detail || j?.message || "";
+        // eslint-disable-next-line no-console
+        console.error(`[aiClient ${fn}] server error`, j);
       }
     } catch { /* ignore */ }
-    throw new Error(friendly(serverCode) || error.message || `invoke_${fn}_failed`);
+    const msg = friendly(serverCode) || error.message || `invoke_${fn}_failed`;
+    throw new Error(serverDetail ? `${msg} (${serverDetail})` : msg);
   }
   if (data && typeof data === "object" && "error" in data && (data as any).error) {
     throw new Error(friendly(String((data as any).error)));
