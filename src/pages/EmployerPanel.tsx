@@ -2996,7 +2996,7 @@ export default function EmployerPanel() {
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
                 <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
-                  <div className="crm-scroll overflow-auto max-h-[calc(100vh-290px)] min-h-[420px]">
+                  <div className="crm-scroll overflow-x-auto overflow-y-visible min-h-[420px]">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
