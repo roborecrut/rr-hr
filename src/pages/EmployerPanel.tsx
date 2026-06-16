@@ -176,6 +176,7 @@ import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
 import HHTemplatesSection from "../components/HHTemplatesSection";
 import { useConfirm } from "../components/ConfirmDialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
