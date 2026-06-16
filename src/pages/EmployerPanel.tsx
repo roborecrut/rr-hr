@@ -174,6 +174,7 @@ import {
 } from "../components/VacancySections";
 import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
+import HHTemplatesSection from "../components/HHTemplatesSection";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
@@ -1176,6 +1177,10 @@ export default function EmployerPanel() {
             trainingSystemsText: p.training_systems_text || undefined,
             trainingWikiText: p.training_wiki_text || undefined,
             trainingRegulationsText: p.training_regulations_text || undefined,
+            // HH publish templates (generated after vacancy creation)
+            hhPostText: p.hh_post_text || undefined,
+            hhInviteText: p.hh_invite_text || undefined,
+            hhAutoresumeText: p.hh_autoresume_text || undefined,
             // legacy aliases kept for older code paths
             trainingProfText: p.training_prof_text || p.training_professional_text || undefined,
             trainingSystemText: p.training_system_text || p.training_systems_text || undefined,
@@ -1904,6 +1909,9 @@ export default function EmployerPanel() {
         training_systems_text: ep.trainingSystemsText ?? null,
         training_wiki_text: ep.trainingWikiText ?? null,
         training_regulations_text: ep.trainingRegulationsText ?? null,
+        hh_post_text: ep.hhPostText ?? null,
+        hh_invite_text: ep.hhInviteText ?? null,
+        hh_autoresume_text: ep.hhAutoresumeText ?? null,
       };
       const upd = await supabase.from("projects").update(patch).eq("id", ep.id);
       if (upd.error) throw new Error(upd.error.message || "Не удалось сохранить изменения вакансии.");
@@ -5006,6 +5014,20 @@ export default function EmployerPanel() {
                     setAiEnhancingField(null);
                   }
                 }}
+              />
+
+              {/* HH publish templates — only available after the vacancy exists (i.e. in edit mode). */}
+              <HHTemplatesSection
+                projectId={editingProject.id}
+                roleName={editingProject.roleName}
+                companyName={editingProject.companyName}
+                values={{
+                  hhPostText: (editingProject as any).hhPostText || "",
+                  hhInviteText: (editingProject as any).hhInviteText || "",
+                  hhAutoresumeText: (editingProject as any).hhAutoresumeText || "",
+                }}
+                onChange={(patch) => setEditingProject({ ...editingProject, ...patch } as any)}
+                onAudit={addAuditEvent}
               />
 
               {/* Bottom control buttons */}

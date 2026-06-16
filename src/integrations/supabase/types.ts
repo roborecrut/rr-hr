@@ -1912,6 +1912,9 @@ export type Database = {
           custom_wiki: string | null
           deleted_at: string | null
           employer_id: string
+          hh_autoresume_text: string | null
+          hh_invite_text: string | null
+          hh_post_text: string | null
           id: string
           interview_pass_score: number
           is_published: boolean
@@ -1960,6 +1963,9 @@ export type Database = {
           custom_wiki?: string | null
           deleted_at?: string | null
           employer_id: string
+          hh_autoresume_text?: string | null
+          hh_invite_text?: string | null
+          hh_post_text?: string | null
           id?: string
           interview_pass_score?: number
           is_published?: boolean
@@ -2008,6 +2014,9 @@ export type Database = {
           custom_wiki?: string | null
           deleted_at?: string | null
           employer_id?: string
+          hh_autoresume_text?: string | null
+          hh_invite_text?: string | null
+          hh_post_text?: string | null
           id?: string
           interview_pass_score?: number
           is_published?: boolean

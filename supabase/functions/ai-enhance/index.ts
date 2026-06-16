@@ -54,6 +54,13 @@ const LIMITS: Record<string, number> = {
   training_systems_text: 1500,
   training_wiki_text: 600,
   training_regulations_text: 800,
+  // HH publish templates
+  hh_post_text: 6000,
+  hhPostText: 6000,
+  hh_invite_text: 3000,
+  hhInviteText: 3000,
+  hh_autoresume_text: 5000,
+  hhAutoresumeText: 5000,
 };
 const clampField = (field: string | undefined, val: unknown): string => {
   const v = typeof val === "string" ? val : String(val ?? "");
