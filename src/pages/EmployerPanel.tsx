@@ -176,6 +176,7 @@ import CandidateDetailsModal from "../components/CandidateDetailsModal";
 import OfferConsent from "../components/OfferConsent";
 import HHTemplatesSection from "../components/HHTemplatesSection";
 import { useConfirm } from "../components/ConfirmDialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export default function EmployerPanel() {
   const { path, navigate } = useRouter();
@@ -4127,8 +4128,25 @@ export default function EmployerPanel() {
           {activeTab === "tariff" && (
             <div className="space-y-6 text-left">
 
-              {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
-              <HiringCalculator />
+              <Tabs defaultValue="balance" className="space-y-6">
+                <TabsList className="bg-[#1D3E5E]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                  <TabsTrigger value="balance" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    💰 Баланс
+                  </TabsTrigger>
+                  <TabsTrigger value="buy" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    🛒 Покупка и оплата
+                  </TabsTrigger>
+                  <TabsTrigger value="history" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    📋 История списаний
+                  </TabsTrigger>
+                  <TabsTrigger value="referral" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
+                    🎁 Реферальная программа
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="balance" className="space-y-6 mt-0">
+                  {/* 1. КАЛЬКУЛЯТОР ВЫГОДЫ */}
+                  <HiringCalculator />
 
               {/* БАЛАНС + ЛИМИТЫ КАРТОЧКИ */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -4173,9 +4191,11 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
+                </TabsContent>
 
-              {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <TabsContent value="buy" className="space-y-6 mt-0">
+                  {/* 2. ФИКС-УСЛУГИ (информационно) + 3. ПАКЕТЫ */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Фикс-услуги */}
                 <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
@@ -4385,9 +4405,11 @@ export default function EmployerPanel() {
                   </p>
                 </form>
               </div>
+                </TabsContent>
 
-              {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
-              <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+                <TabsContent value="referral" className="space-y-6 mt-0">
+                  {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
+                  <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🎁</span>
                   <div>
@@ -4461,9 +4483,11 @@ export default function EmployerPanel() {
                   )}
                 </div>
               </div>
+                </TabsContent>
 
-              {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
-              <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
+                <TabsContent value="history" className="space-y-6 mt-0">
+                  {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
+                  <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
                 <div className="p-4 bg-gradient-to-r from-[#17344F] to-[#265582] text-xs font-bold font-mono tracking-wider text-slate-300">
                   История всех операций по балансу
                 </div>
@@ -4516,6 +4540,8 @@ export default function EmployerPanel() {
                   </div>
                 )}
               </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
 
