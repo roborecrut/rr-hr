@@ -3393,6 +3393,7 @@ export default function EmployerPanel() {
               )}
 
               {/* LIST OF CURRENT PLACED VACANCIES */}
+              {!showAddNewVacancy && !editingProject && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {projects.map(proj => {
                   const isPaused = pausedProjectIds.includes(proj.id);
@@ -3494,6 +3495,7 @@ export default function EmployerPanel() {
                   );
                 })}
               </div>
+              )}
             </div>
           )}
 
