@@ -353,7 +353,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             </div>
 
             {/* Wishes textarea + example tip — same for every block, content varies */}
-            <div className="bg-[#0F2A42]/60 border border-white/10 rounded-xl p-3 space-y-2">
+            <div className="bg-[#0F2A42]/60 border-l-4 border-l-sky-400/60 border border-white/10 rounded-xl p-3 space-y-2">
+              <div className="text-[10px] uppercase tracking-wider text-sky-300 font-bold flex items-center gap-1">
+                <Wand2 className="w-3 h-3" /> Вход для ИИ
+              </div>
+              <h4 className="text-sm font-bold text-white leading-snug">{PROMPT_TITLE[kind]}</h4>
               <div className="flex items-center justify-between">
                 <label className="text-[11px] text-slate-200 font-bold inline-flex items-center">
                   Пожелания к блоку «{KINDS.find(k => k.key === kind)?.title.replace(/^\d+\.\s*/, "")}» (передаются ИИ)
@@ -386,6 +390,12 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "resume" && (
               <div className="space-y-2">
+                <div className="border-l-4 border-l-emerald-400/60 bg-emerald-500/5 rounded-xl px-3 py-2 space-y-0.5">
+                  <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Результат ИИ
+                  </div>
+                  <h4 className="text-sm font-bold text-white leading-snug">{RESULT_TITLE.resume}</h4>
+                </div>
                 <FullscreenTextarea
                   label="Критерии оценки резюме"
                   value={resumeMd}
@@ -413,6 +423,12 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "checklist" && (
               <div className="space-y-3">
+                <div className="border-l-4 border-l-emerald-400/60 bg-emerald-500/5 rounded-xl px-3 py-2 space-y-0.5">
+                  <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Результат ИИ
+                  </div>
+                  <h4 className="text-sm font-bold text-white leading-snug">{RESULT_TITLE.checklist}</h4>
+                </div>
                 <div className="text-[10px] text-slate-400 font-bold">Вопросов: {checklist.length}/30</div>
                 <label className="flex items-center gap-2 bg-black/30 border border-white/10 rounded-lg px-3 py-2 cursor-pointer">
                   <input type="checkbox" checked={checklistShuffle}
@@ -466,6 +482,12 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {kind === "situations" && (
               <div className="space-y-3">
+                <div className="border-l-4 border-l-emerald-400/60 bg-emerald-500/5 rounded-xl px-3 py-2 space-y-0.5">
+                  <div className="text-[10px] uppercase tracking-wider text-emerald-300 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Результат ИИ
+                  </div>
+                  <h4 className="text-sm font-bold text-white leading-snug">{RESULT_TITLE.situations}</h4>
+                </div>
                 {situations.length === 0 && <p className="text-xs text-slate-400">Нет ситуаций. Сгенерируйте или добавьте.</p>}
                 {situations.map((s, i) => (
                   <div key={s.id || i} className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
