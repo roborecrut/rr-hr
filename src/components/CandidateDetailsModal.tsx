@@ -12,7 +12,7 @@ import RichMarkdown from "@/components/RichMarkdown";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2
+  Building2, UserCheck, UserX
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -60,6 +60,10 @@ export default function CandidateDetailsModal({
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [decisionOpen, setDecisionOpen] = useState<null | "invited" | "rejected">(null);
+  const [decisionMsg, setDecisionMsg] = useState("");
+  const [decisionSaving, setDecisionSaving] = useState(false);
+  const [decisionErr, setDecisionErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!candidateId) return;
@@ -76,6 +80,28 @@ export default function CandidateDetailsModal({
   }, [candidateId]);
 
   if (!candidateId) return null;
+
+  const submitDecision = async () => {
+    if (!candidateId || !decisionOpen) return;
+    setDecisionSaving(true); setDecisionErr(null);
+    try {
+      const { error } = await (supabase as any).rpc("candidate_invite_decision", {
+        _candidate: candidateId,
+        _decision: decisionOpen,
+        _message: decisionMsg.trim() || null,
+      });
+      if (error) throw error;
+      // refresh
+      const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+      setData(fresh);
+      setDecisionOpen(null);
+      setDecisionMsg("");
+    } catch (e: any) {
+      setDecisionErr(e?.message || "Не удалось сохранить решение");
+    } finally {
+      setDecisionSaving(false);
+    }
+  };
 
   const c = data?.candidate || {};
   const p = data?.profile || {};
