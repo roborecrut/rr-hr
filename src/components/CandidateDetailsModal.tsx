@@ -12,7 +12,7 @@ import RichMarkdown from "@/components/RichMarkdown";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
-  Building2, UserCheck, UserX
+  Building2, UserCheck, UserX, ChevronDown, ChevronUp
 } from "lucide-react";
 
 const STAGE_LABELS: Record<string, string> = {
@@ -26,12 +26,29 @@ const STAGE_LABELS: Record<string, string> = {
   certified: "Сертификат",
 };
 
+/** Цветовая разметка ИИ-оценок: green ≥70, yellow 40-69, red <40. */
+function scoreTone(value: any, max = 100): { cls: string; label: "good" | "mid" | "bad" | "none" } {
+  const n = value === null || value === undefined ? NaN : Number(value);
+  if (!Number.isFinite(n)) return { cls: "text-slate-400", label: "none" };
+  const pct = max === 100 ? n : (n / max) * 100;
+  if (pct >= 70) return { cls: "text-emerald-300", label: "good" };
+  if (pct >= 40) return { cls: "text-amber-300", label: "mid" };
+  return { cls: "text-rose-300", label: "bad" };
+}
+function toneBg(label: ReturnType<typeof scoreTone>["label"]): string {
+  if (label === "good") return "bg-emerald-500/15 border-emerald-400/40";
+  if (label === "mid") return "bg-amber-500/15 border-amber-400/40";
+  if (label === "bad") return "bg-rose-500/15 border-rose-400/40";
+  return "bg-black/30 border-white/10";
+}
+
 function Score({ label, value }: { label: string; value: any }) {
   const n = value === null || value === undefined ? null : Number(value);
+  const tone = scoreTone(value);
   return (
-    <div className="bg-black/30 rounded-xl border border-white/10 px-3 py-2 flex items-center justify-between">
-      <span className="text-[11px] text-slate-300">{label}</span>
-      <span className="text-sm font-mono font-bold text-[#E7C768]">
+    <div className={`rounded-xl border px-3 py-2.5 flex items-center justify-between ${toneBg(tone.label)}`}>
+      <span className="text-[12px] text-slate-200 font-semibold">{label}</span>
+      <span className={`text-base font-mono font-black ${tone.cls}`}>
         {n === null || Number.isNaN(n) ? "—" : `${Math.round(n)}/100`}
       </span>
     </div>
@@ -40,11 +57,12 @@ function Score({ label, value }: { label: string; value: any }) {
 
 function Field({ label, value }: { label: string; value: any }) {
   const empty = value === null || value === undefined || value === "";
+  if (empty) return null;
   return (
-    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2">
-      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{label}</div>
-      <div className={`text-[12px] mt-0.5 break-words ${empty ? "text-slate-500 italic" : "text-white font-semibold"}`}>
-        {empty ? "—" : String(value)}
+    <div className="bg-black/25 border border-white/10 rounded-xl px-3 py-2.5">
+      <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="text-[14px] mt-1 break-words text-white font-semibold">
+        {String(value)}
       </div>
     </div>
   );
