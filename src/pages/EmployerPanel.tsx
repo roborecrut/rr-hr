@@ -907,13 +907,13 @@ export default function EmployerPanel() {
     const mapped = roleTplToFields(tpl as any);
     const valueFor = (key: VacancyFieldKey) =>
       (mapped[key] && mapped[key]!.trim()) || VACANCY_FIELDS_BY_KEY[key].example;
-    if (!window.confirm(`Заменить все 15 полей шаблоном для должности «${editingProject.roleName}»?`)) return;
     const patch: Partial<Record<VacancyFieldKey, string>> = {};
     (Object.keys(CAMEL_BY_KEY) as VacancyFieldKey[]).forEach((k) => {
       if (k === "role_name") return;
       patch[k] = valueFor(k);
     });
     setEditingProject({ ...editingProject, ...vacancyValuesToCamel(patch) } as any);
+    addAuditEvent("success", "Шаблон применён", `Поля заполнены шаблоном для «${editingProject.roleName}».`);
   };
 
   // Archive the currently edited vacancy (soft, reversible).
