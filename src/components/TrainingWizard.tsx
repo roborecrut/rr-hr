@@ -64,6 +64,9 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
   // spend-confirm dialog chose it in create mode).
   const lockedProject = !!initialProjectId;
   const [stage, setStage] = useState<Stage>("professional");
+  // Под-вкладка в рамках выбранного этапа: материал обучения vs аттестация (тест).
+  // Делит длинную простыню на 2 экрана, как просит работодатель.
+  const [subTab, setSubTab] = useState<"material" | "test">("material");
   const [block, setBlock] = useState<BlockRow | null>(null);
   const [materials, setMaterials] = useState<string>("");
   const [test, setTest] = useState<TestRow>({ questions: [], pass_score: 70, total_score: 100, shuffle: true });
