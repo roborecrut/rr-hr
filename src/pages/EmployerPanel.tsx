@@ -2931,8 +2931,8 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-sticky-wrap crm-scroll">
-                  <div className="flex gap-3 min-w-max h-full">
+                <div className="crm-sticky-wrap crm-scroll rounded-3xl border border-white/10 bg-[#17344F]/35 p-3 shadow-xl">
+                  <div className="grid grid-flow-col auto-cols-[minmax(190px,210px)] gap-3 h-full">
                   {[
                     { stage: "registration", title: "1. Регистрация" },
                     { stage: "screening",    title: "2. Скрининг" },
@@ -2948,8 +2948,7 @@ export default function EmployerPanel() {
                     return (
                       <div
                         key={column.stage}
-                        className="crm-kanban-col bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-2.5 space-y-2.5 min-h-[350px] shadow flex-shrink-0"
-                        style={{ width: 220, minWidth: 200, resize: "horizontal", overflow: "auto" }}
+                        className="crm-kanban-col bg-[#1D3E5E]/55 border border-white/10 rounded-2xl p-2.5 space-y-2.5 shadow"
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={async () => {
                           // Drag & drop triggers action
@@ -2967,7 +2966,7 @@ export default function EmployerPanel() {
 
                         <div className="space-y-2.5">
                           {colCandidates.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500 text-[11px] font-medium font-semibold">Пусто</div>
+                            <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
                           ) : (
                             colCandidates.map(cand => (
                               <div
@@ -2996,9 +2995,9 @@ export default function EmployerPanel() {
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl shadow-xl">
-                  <div className="crm-scroll overflow-x-auto">
-                    <table className="text-left text-xs" style={{ minWidth: "1100px" }}>
+                <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                  <div className="crm-scroll overflow-auto max-h-[calc(100vh-290px)] min-h-[420px]">
+                    <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
                       <thead>
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
