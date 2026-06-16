@@ -139,7 +139,7 @@ export const HHTemplatesSection: React.FC<Props> = ({
       }
     } catch (err) {
       console.error(err);
-      onAudit?.("warning", "Ошибка ИИ", `Не удалось улучшить «${label}».`);
+        onAudit?.("warning", "Ошибка ИИ", `Не удалось улучшить шаблон «${label}».`);
     } finally {
       setEnhancingKey(null);
     }
