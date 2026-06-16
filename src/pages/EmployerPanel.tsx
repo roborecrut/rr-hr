@@ -3998,6 +3998,7 @@ export default function EmployerPanel() {
               )}
 
               {/* LIST VIEW */}
+              {!showAddCompany && (
               <div className="space-y-4">
                 {companiesList.length === 0 && (
                   <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center text-slate-400 text-xs">
