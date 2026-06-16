@@ -51,6 +51,26 @@ Deno.serve(async (req) => {
       knowledge = items
         .map((f: any, i: number) => `[${i + 1}] (${f.category}) В: ${f.question}\nО: ${f.answer}`)
         .join("\n\n");
+
+      // Append onboarding knowledge — welcome of each section + field helps.
+      const { data: onb } = await admin
+        .from("onboarding_content")
+        .select("section, field_key, kind, title, body_md, order_idx")
+        .order("section", { ascending: true })
+        .order("order_idx", { ascending: true })
+        .limit(500);
+      const onbItems = onb || [];
+      if (onbItems.length) {
+        const onbText = onbItems
+          .map((o: any, i: number) => {
+            const head = o.kind === "section_welcome"
+              ? `КАБИНЕТ • Раздел «${o.section}» — обзор: ${o.title}`
+              : `КАБИНЕТ • ${o.section} → поле «${o.field_key}»: ${o.title}`;
+            return `[${items.length + i + 1}] ${head}\n${o.body_md}`;
+          })
+          .join("\n\n");
+        knowledge = `${knowledge}\n\n=== БАЗА ЗНАНИЙ КАБИНЕТА RR ===\n${onbText}`;
+      }
     }
   } catch (e) {
     console.error("faq load failed:", e);
