@@ -416,11 +416,21 @@ body {
 .driver-active-element * {
   pointer-events: auto;
 }
-.driver-overlay { backdrop-filter: blur(3px); }
+/* Меньше размытия фона — было слишком «размазано», цель плохо читалась. */
+.driver-overlay { backdrop-filter: none; }
+/* Чёткая золотая стрелка от поповера к подсвеченному элементу. */
+.driver-popover-arrow {
+  border-width: 14px !important;
+  filter: drop-shadow(0 0 6px rgba(231,199,104,0.55));
+}
+.driver-popover-arrow-side-left.driver-popover-arrow   { border-left-color:   #E7C768 !important; }
+.driver-popover-arrow-side-right.driver-popover-arrow  { border-right-color:  #E7C768 !important; }
+.driver-popover-arrow-side-top.driver-popover-arrow    { border-top-color:    #E7C768 !important; }
+.driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: #E7C768 !important; }
 /* Пульсирующая золотая обводка вокруг подсвеченной зоны */
 @keyframes rrTourPulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgba(231,199,104,0.55), 0 0 28px 6px rgba(231,199,104,0.45); }
-  50%      { box-shadow: 0 0 0 5px rgba(231,199,104,0.85), 0 0 44px 12px rgba(231,199,104,0.7); }
+  0%, 100% { box-shadow: 0 0 0 4px rgba(231,199,104,0.75), 0 0 36px 10px rgba(231,199,104,0.55); }
+  50%      { box-shadow: 0 0 0 6px rgba(231,199,104,1),    0 0 56px 16px rgba(231,199,104,0.85); }
 }
 .driver-active-element {
   border-radius: 14px;
