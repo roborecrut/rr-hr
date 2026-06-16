@@ -3076,6 +3076,7 @@ export default function EmployerPanel() {
           {/* PAGE 2: VACANCIES & AI CREATOR */}
           {activeTab === "vacancies" && (
             <div className="space-y-6 text-left">
+              {!showAddNewVacancy && !editingProject && (
               <div data-tour="section.vacancies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
@@ -3092,6 +3093,7 @@ export default function EmployerPanel() {
                   <Plus className="w-4 h-4" /> Добавить вакансию
                 </button>
               </div>
+              )}
 
               {/* DYNAMIC VACANCY CREATOR FROM FORM OR DIRECT IMPORT */}
               {showAddNewVacancy && (
