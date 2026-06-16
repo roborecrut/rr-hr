@@ -37,7 +37,7 @@ export async function loadOnboarding(): Promise<OnboardingItem[]> {
       cache = [];
       return cache;
     }
-    cache = (data || []) as OnboardingItem[];
+    cache = ((data as unknown) as OnboardingItem[]) || [];
     return cache;
   })();
   return pending;
