@@ -2998,7 +2998,7 @@ export default function EmployerPanel() {
                 <div className="bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
                   <div className="crm-scroll overflow-auto max-h-[calc(100vh-290px)] min-h-[420px]">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1040px" }}>
-                      <thead>
+                      <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
                             { label: "ФИО Кандидата", w: 240, align: "left" },
@@ -3014,7 +3014,7 @@ export default function EmployerPanel() {
                             <th
                               key={i}
                               className={`p-3 text-${h.align} whitespace-nowrap`}
-                              style={{ minWidth: h.w, width: h.w, resize: "horizontal", overflow: "auto" }}
+                              style={{ minWidth: h.w, width: h.w }}
                             >
                               {h.label}
                             </th>
