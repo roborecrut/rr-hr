@@ -2969,7 +2969,7 @@ export default function EmployerPanel() {
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
-                        <div className="crm-kanban-cards crm-scroll-area space-y-2.5 px-2.5 py-2.5">
+                        <div className="crm-kanban-cards space-y-2.5 px-2.5 py-2.5">
                           {colCandidates.length === 0 ? (
                             <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
                           ) : (
@@ -3001,7 +3001,7 @@ export default function EmployerPanel() {
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="crm-workspace crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                <div className="crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
                   <div className="crm-table-viewport crm-scroll-area">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1300px" }}>
                       <thead className="sticky top-0 z-10">
