@@ -91,14 +91,20 @@ export default function VacancyAIAssistant({
         },
       ]);
     } catch (e: any) {
+      const detail = (e?.message || "").toString().slice(0, 300);
       setMessages(prev => [
         ...prev,
         {
           sender: "assistant",
-          text: "Сетевая ошибка при обращении к ИИ-консультанту. Проверьте интернет и попробуйте снова.",
+          text:
+            "Не удалось получить ответ от ИИ-консультанта. " +
+            (detail ? `Причина: ${detail}. ` : "") +
+            "Попробуйте задать вопрос ещё раз — иногда модель отвечает со второго запроса.",
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
+      // eslint-disable-next-line no-console
+      console.error("[VacancyAIAssistant] aiChat failed", e);
     } finally {
       setIsTyping(false);
     }
