@@ -226,30 +226,46 @@ body {
   height: auto;
   overflow: visible;
 }
+@media (min-width: 1024px) {
+  .crm-page {
+    height: calc(100dvh - 110px);
+    min-height: 0;
+    overflow: hidden;
+  }
+  .crm-workspace {
+    flex: 1 1 auto;
+    min-height: 360px;
+    height: auto;
+    overflow: hidden;
+  }
+}
 .crm-kanban-viewport {
   width: 100%;
   min-width: 0;
+  height: 100%;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   scrollbar-gutter: stable;
 }
 .crm-kanban-track {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   gap: 12px;
   width: max-content;
   min-width: 100%;
+  height: 100%;
   padding: 12px;
 }
 .crm-kanban-column {
-  width: 250px;
-  min-width: 250px;
-  flex: 0 0 250px;
-  min-height: 180px;
+  width: 260px;
+  min-width: 260px;
+  flex: 0 0 260px;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
 }
 .crm-kanban-column-header {
   flex: 0 0 auto;
@@ -258,8 +274,61 @@ body {
   z-index: 2;
 }
 .crm-kanban-cards {
-  flex: 0 0 auto;
-  overflow: visible;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+}
+
+/* Kanban shell + floating arrows (CRM hotfix v2) */
+.crm-kanban-shell { position: relative; height: 100%; min-height: 0; overflow: hidden; }
+.crm-kanban-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 36px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(23, 52, 79, 0.78);
+  border: 1px solid rgba(231, 199, 104, 0.45);
+  color: #E7C768;
+  box-shadow: 0 6px 20px -8px rgba(0,0,0,0.6);
+  backdrop-filter: blur(8px);
+  transition: background-color .15s, opacity .15s, border-color .15s;
+}
+.crm-kanban-arrow:hover:not(:disabled) { background: rgba(23,52,79,0.95); border-color: #E7C768; }
+.crm-kanban-arrow:disabled { opacity: 0.25; cursor: default; }
+.crm-kanban-arrow-left  { left: 6px; }
+.crm-kanban-arrow-right { right: 6px; }
+
+/* Thin, calm vertical scrollbar inside each column */
+.crm-column-scroll { scrollbar-width: thin; scrollbar-color: rgba(231,199,104,0.28) transparent; }
+.crm-column-scroll::-webkit-scrollbar { width: 6px; }
+.crm-column-scroll::-webkit-scrollbar-track { background: transparent; }
+.crm-column-scroll::-webkit-scrollbar-thumb {
+  background: rgba(231, 199, 104, 0.22);
+  border-radius: 999px;
+}
+.crm-kanban-column:hover .crm-column-scroll::-webkit-scrollbar-thumb {
+  background: rgba(231, 199, 104, 0.52);
+}
+
+/* Visible golden horizontal scrollbar (only for kanban viewport) */
+.crm-kanban-h-scroll { scrollbar-color: #E7C768 rgba(255,255,255,0.08); scrollbar-width: thin; }
+.crm-kanban-h-scroll::-webkit-scrollbar { height: 10px; width: 0; }
+.crm-kanban-h-scroll::-webkit-scrollbar-track { background: rgba(23,52,79,0.6); border-radius: 999px; }
+.crm-kanban-h-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #F4EE8E, #D99E41);
+  border-radius: 999px;
+  border: 2px solid #17344F;
+}
+.crm-kanban-h-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #D99E41, #F4EE8E);
 }
 .crm-table-shell { display: flex; flex-direction: column; }
 .crm-table-viewport {
