@@ -2270,7 +2270,7 @@ export default function CandidateFlow() {
 
         {/* Tab 2: Terms & Conditions with nested tabs */}
         {activeTab === "terms" && (
-          <div className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl overflow-hidden min-h-[480px] flex flex-col md:flex-row">
+          <Reveal key="tab-terms" direction="up" className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl overflow-hidden min-h-[480px] flex flex-col md:flex-row">
             
             {/* Left/Internal Sub navigation list */}
             <div className="w-full md:w-56 bg-gradient-to-b from-[#17344F] to-[#17344F]/70 p-4 border-r border-white/10 flex flex-col justify-between">
