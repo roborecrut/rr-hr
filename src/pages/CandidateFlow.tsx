@@ -2265,57 +2265,6 @@ export default function CandidateFlow() {
               </div>
             )}
 
-            {/* Resume Upload Module */}
-            <div className="bg-black/15 p-5 border border-white/5 rounded-2xl text-left">
-              <h3 className="font-bold text-xs text-[#E7C768] uppercase pb-2 mb-3 border-b border-white/15">
-                📁 Файловое досье кандидата (Резюме и Документы)
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="space-y-2 text-xs text-slate-300">
-                  <p>
-                    Для улучшения ИИ-аналитики и более точной оценки выставите подробное описание опыта в поле ниже или загрузите резюме в формате PDF.
-                  </p>
-                  <p className="font-mono text-[10px] text-emerald-400">
-                    Статус файла: {resumeFile ? `✅ Загружен: ${resumeFile.name}` : "⚠️ Файл не загружен. Используется текстовое резюме"}
-                  </p>
-                </div>
-
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed rounded-2xl p-5 text-center transition ${
-                    isDragOver 
-                      ? "border-[#E7C768] bg-amber-950/20" 
-                      : attachmentUploaded 
-                      ? "border-emerald-500 bg-emerald-950/20" 
-                      : "border-white/10 bg-black/20 hover:border-[#E7C768]"
-                  }`}
-                >
-                  <Upload className="w-5 h-5 text-gray-400 mx-auto" />
-                  <div className="text-xs font-bold text-gray-300 mt-1">
-                    {attachmentUploaded ? "✅ Файл резюме прикреплен" : "Перетащите PDF сюда"}
-                  </div>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    className="hidden"
-                    id="profile-resume-input"
-                  />
-                  <label
-                    htmlFor="profile-resume-input"
-                    className="cursor-pointer inline-block mt-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-bold text-center hover:bg-white/10 transition"
-                  >
-                    Обзор файлов
-                  </label>
-                </div>
-              </div>
-
-              {/* Дополнительные документы кандидата (bucket: candidate-docs) */}
-              <CandidateDocsDossier candidateId={candidate?.id || ""} />
-            </div>
-
           </div>
         )}
 
