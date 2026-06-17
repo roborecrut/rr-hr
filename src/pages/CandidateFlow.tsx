@@ -12,7 +12,6 @@ import TrainingCoursePreview from "../components/TrainingCoursePreview";
 import CandidateStageTraining from "../components/CandidateStageTraining";
 import CandidateInterview from "../components/CandidateInterview";
 import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
-import CandidateDocsDossier from "../components/CandidateDocsDossier";
 import { useAIWait } from "@/components/AIWaitProvider";
 import NotificationsBell from "@/components/NotificationsBell";
 import HireDecisionBanner from "@/components/HireDecisionBanner";
