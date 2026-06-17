@@ -2270,7 +2270,7 @@ export default function CandidateFlow() {
 
         {/* Tab 2: Terms & Conditions with nested tabs */}
         {activeTab === "terms" && (
-          <div className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl overflow-hidden min-h-[480px] flex flex-col md:flex-row">
+          <Reveal key="tab-terms" direction="up" className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl overflow-hidden min-h-[480px] flex flex-col md:flex-row">
             
             {/* Left/Internal Sub navigation list */}
             <div className="w-full md:w-56 bg-gradient-to-b from-[#17344F] to-[#17344F]/70 p-4 border-r border-white/10 flex flex-col justify-between">
@@ -2525,7 +2525,7 @@ export default function CandidateFlow() {
               </div>
 
             </div>
-          </div>
+          </Reveal>
         )}
 
         {/* Tab 3: Interview module */}
@@ -2663,7 +2663,7 @@ export default function CandidateFlow() {
               || (candidate?.scores?.overallScore ?? 0) >= 60;
             if (!unlocked) {
               return (
-                <div className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
+                <Reveal direction="scale" className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
                   <BookOpen className="w-10 h-10 text-[#E7C768] mx-auto" />
                   <h2 className="text-lg font-bold text-white">Курс обучения откроется после интервью</h2>
                   <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -2676,16 +2676,20 @@ export default function CandidateFlow() {
                   >
                     💬 Перейти к интервью
                   </button>
-                </div>
+                </Reveal>
               );
             }
-            return <CandidateStageTraining candidateId={candidate!.id} projectId={candidate!.projectId} />;
+            return (
+              <Reveal key="tab-training" direction="up">
+                <CandidateStageTraining candidateId={candidate!.id} projectId={candidate!.projectId} />
+              </Reveal>
+            );
           })()
         )}
 
         {/* Tab 6: Certified diploma success tab */}
         {activeTab === "certified" && (
-          <div className="space-y-8 max-w-2xl mx-auto">
+          <Reveal key="tab-certified" direction="scale" className="space-y-8 max-w-2xl mx-auto">
             {(() => {
               const certUnlocked = effectiveStage === "certified";
               return <>
@@ -2811,7 +2815,7 @@ export default function CandidateFlow() {
             </div>
               </>;
             })()}
-          </div>
+          </Reveal>
         )}
 
       </main>
