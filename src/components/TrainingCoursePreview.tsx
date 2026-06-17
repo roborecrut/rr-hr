@@ -47,13 +47,13 @@ export default function TrainingCoursePreview({ projectFull, trainingSubTab }: P
       {(projectFull.training_wiki_text || projectFull.training_regulations_text) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {projectFull.training_wiki_text && (
-            <div className="bg-[#0F2A42]/70 border border-white/10 rounded-2xl p-4 text-xs space-y-1.5">
+            <div className="bg-[#17344F]/70 border border-white/10 rounded-2xl p-4 text-xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-[#E7C768] font-bold"><FileText className="w-3.5 h-3.5" /> База Wiki</div>
               <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{projectFull.training_wiki_text}</p>
             </div>
           )}
           {projectFull.training_regulations_text && (
-            <div className="bg-[#0F2A42]/70 border border-white/10 rounded-2xl p-4 text-xs space-y-1.5">
+            <div className="bg-[#17344F]/70 border border-white/10 rounded-2xl p-4 text-xs space-y-1.5">
               <div className="flex items-center gap-1.5 text-[#E7C768] font-bold"><BadgeCheck className="w-3.5 h-3.5" /> Регламенты</div>
               <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{projectFull.training_regulations_text}</p>
             </div>

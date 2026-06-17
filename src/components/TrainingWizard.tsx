@@ -566,7 +566,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                             setContextDirty(d => ({ ...d, [opt.key]: true }));
                           }}
                           placeholder={`Текст блока «${opt.label}» (передаётся ИИ, если галочка справа активна).`}
-                          className="flex-1 bg-[#0F2A42]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
+                          className="flex-1 bg-[#17344F]/80 text-xs p-2.5 rounded-lg border border-white/10 text-white focus:outline-[#E7C768]"
                         />
                       </div>
                     )}
@@ -630,7 +630,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-1 bg-[#0F2A42]/60 border border-white/10 rounded-lg p-1.5">
+                <div className="flex flex-wrap gap-1 bg-[#17344F]/60 border border-white/10 rounded-lg p-1.5">
                   <button type="button" title="Заголовок H1" onClick={() => applyLinePrefix("# ")}
                     className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Heading1 className="w-3.5 h-3.5" /></button>
                   <button type="button" title="Заголовок H2" onClick={() => applyLinePrefix("## ")}
@@ -710,7 +710,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               </button>
             </div>
             {/* Editable pass score */}
-            <div className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5">
+            <div className="flex items-center gap-2 flex-wrap bg-[#17344F]/60 border border-white/10 rounded-lg p-2.5">
               <label className="text-[11px] text-slate-300 font-bold inline-flex items-center">
                 Минимальный проходной балл:
                 <FieldHelp
@@ -734,7 +734,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               <span className="text-[10px] text-slate-500 ml-auto">Меняйте под свои требования и нажмите «Сохранить тест».</span>
             </div>
             {/* Shuffle toggle */}
-            <label className="flex items-center gap-2 flex-wrap bg-[#0F2A42]/60 border border-white/10 rounded-lg p-2.5 cursor-pointer">
+            <label className="flex items-center gap-2 flex-wrap bg-[#17344F]/60 border border-white/10 rounded-lg p-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={test.shuffle}
@@ -767,7 +767,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
             <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
               {test.questions.map((q, i) => (
-                <div key={q.id || i} className="bg-[#0F2A42]/70 border border-white/10 rounded-xl p-3 space-y-2">
+                <div key={q.id || i} className="bg-[#17344F]/70 border border-white/10 rounded-xl p-3 space-y-2">
                   <div className="flex items-center justify-between text-[10px] text-[#E7C768] font-bold uppercase">
                     <span>#{i + 1} • {q.kind === "choice" ? "Выбор" : "Текст"} • {q.points || 5} б.</span>
                     <button type="button"

@@ -51,7 +51,7 @@ export function PaymentSuccessPage() {
   const isPaid = status === "paid";
 
   return (
-    <div className="min-h-screen bg-[#0F2A45] text-white flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[#17344F] text-white flex flex-col items-center justify-center px-4 py-10">
       <div className={`bg-[#17344F] border-2 ${isPaid ? "border-emerald-500/40" : "border-[#E7C768]/40"} rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl space-y-5`}>
         <RRImage src={IMG_SUCCESS} w={192} alt="Оплата прошла" className="w-48 h-48 object-contain mx-auto" />
         {isPaid ? (
@@ -92,7 +92,7 @@ export function PaymentSuccessPage() {
 export function PaymentFailPage() {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-[#0F2A45] text-white flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[#17344F] text-white flex flex-col items-center justify-center px-4 py-10">
       <div className="bg-[#17344F] border-2 border-rose-500/40 rounded-3xl p-8 md:p-10 max-w-md w-full text-center shadow-2xl space-y-5">
         <RRImage src={IMG_FAIL} w={192} alt="Оплата не прошла" className="w-48 h-48 object-contain mx-auto" />
         <div className="flex items-center justify-center gap-2 text-rose-400">

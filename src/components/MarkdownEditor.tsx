@@ -106,7 +106,7 @@ export default function MarkdownEditor({
             Полноэкранный режим · Esc для выхода
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1 bg-[#0F2A42]/60 border border-white/10 rounded-lg p-1">
+        <div className="ml-auto flex items-center gap-1 bg-[#17344F]/60 border border-white/10 rounded-lg p-1">
           <button type="button" onClick={() => setPreview(false)}
             className={`px-2.5 py-1 rounded-md text-[11px] font-bold inline-flex items-center gap-1 ${!preview ? "bg-[#E7C768] text-[#17344F]" : "text-slate-200 hover:bg-white/10"}`}>
             <Pencil className="w-3 h-3" /> Редактор
@@ -125,14 +125,14 @@ export default function MarkdownEditor({
       </div>
 
       {preview ? (
-        <div className={fullscreen ? "flex-1 overflow-auto bg-[#0F2A42]/40 rounded-2xl p-4" : "min-h-[200px]"}>
+        <div className={fullscreen ? "flex-1 overflow-auto bg-[#17344F]/40 rounded-2xl p-4" : "min-h-[200px]"}>
           <RichTrainingMaterialCard title={previewTitle}>
             {value || "_Пусто_"}
           </RichTrainingMaterialCard>
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1 bg-[#0F2A42]/60 border border-white/10 rounded-lg p-1.5">
+          <div className="flex flex-wrap gap-1 bg-[#17344F]/60 border border-white/10 rounded-lg p-1.5">
             <button type="button" title="Заголовок H1" onClick={() => applyLinePrefix("# ")}
               className="p-1.5 rounded hover:bg-white/10 text-slate-200"><Heading1 className="w-3.5 h-3.5" /></button>
             <button type="button" title="Заголовок H2" onClick={() => applyLinePrefix("## ")}
@@ -162,7 +162,7 @@ export default function MarkdownEditor({
               className="p-1.5 rounded hover:bg-white/10 text-emerald-300"><FileText className="w-3.5 h-3.5" /></button>
           </div>
           {embedPrompt && (
-            <div className="bg-[#0F2A42]/80 border border-[#E7C768]/40 rounded-xl p-3 space-y-2 animate-in fade-in">
+            <div className="bg-[#17344F]/80 border border-[#E7C768]/40 rounded-xl p-3 space-y-2 animate-in fade-in">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-[#E7C768] uppercase tracking-wider">
                   Ссылка ({embedPrompt.kind.toUpperCase()})

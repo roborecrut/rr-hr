@@ -160,7 +160,7 @@ export const HHTemplatesSection: React.FC<Props> = ({
   };
 
   return (
-    <div className="brand-editor space-y-4 rounded-3xl border border-[#E7C768]/40 bg-gradient-to-br from-[#1a3d5e] to-[#234d7a] p-5">
+    <div className="brand-editor space-y-4 rounded-3xl border border-[#E7C768]/40 bg-gradient-to-br from-[#1a3d5e] to-[#265582] p-5">
       <header className="flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-center md:justify-between">
         <div>
           <span className="text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r from-[#F4EE8E] to-[#D99E41] bg-clip-text text-transparent">

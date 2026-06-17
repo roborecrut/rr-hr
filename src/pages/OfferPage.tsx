@@ -9,7 +9,7 @@ export default function OfferPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#0F2A45] text-white">
+    <div className="min-h-screen bg-[#17344F] text-white">
       <header className="border-b border-white/10 bg-[#17344F]">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <button onClick={() => navigate("/")} className="flex items-center gap-2 text-xs font-bold text-slate-200 hover:text-[#E7C768]">
