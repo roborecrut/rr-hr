@@ -2969,68 +2969,128 @@ export default function EmployerPanel() {
 
               {/* KANBAN FUNNEL LAYOUT */}
               {crmViewMode === "kanban" && (
-                <div className="crm-workspace rounded-3xl border border-white/10 bg-[#17344F]/35 shadow-xl">
-                  <div className="crm-kanban-viewport crm-scroll-area">
-                    <div className="crm-kanban-track">
-                  {[
-                    { stage: "registration", title: "1. Регистрация" },
-                    { stage: "screening",    title: "2. Скрининг" },
-                    { stage: "checklist",    title: "3. Чеклист" },
-                    { stage: "situations",   title: "4. Ситуации" },
-                    { stage: "professional", title: "5. Профессия" },
-                    { stage: "product",      title: "6. Продукт" },
-                    { stage: "systems",      title: "7. Система" },
-                    { stage: "certified",    title: "8. Сертификат 🎓" },
-                  ].map(column => {
-                    const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
+                (() => {
+                  const columns = [
+                    { stage: "registration", title: "1. Регистрация", short: "Регистрация" },
+                    { stage: "screening",    title: "2. Скрининг",    short: "Скрининг" },
+                    { stage: "checklist",    title: "3. Чеклист",     short: "Чеклист" },
+                    { stage: "situations",   title: "4. Ситуации",    short: "Ситуации" },
+                    { stage: "professional", title: "5. Профессия",   short: "Профессия" },
+                    { stage: "product",      title: "6. Продукт",     short: "Продукт" },
+                    { stage: "systems",      title: "7. Система",     short: "Система" },
+                    { stage: "certified",    title: "8. Сертификат 🎓", short: "Сертификат" },
+                  ];
+                  return (
+                <div className="crm-workspace rounded-3xl border border-white/10 bg-[#17344F]/35 shadow-xl flex flex-col overflow-hidden">
+                  {/* Quick stage nav */}
+                  <div className="crm-kanban-stagebar flex items-center gap-1 overflow-x-auto no-scrollbar px-3 py-2 border-b border-white/10 bg-[#17344F]/60">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-2 shrink-0">Этапы:</span>
+                    {columns.map((c, i) => {
+                      const count = filteredCandidates.filter(x => (x.crmStage || "registration") === c.stage).length;
+                      return (
+                        <button
+                          key={c.stage}
+                          type="button"
+                          onClick={() => scrollToKanbanStage(c.stage)}
+                          className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#1D3E5E]/70 hover:bg-[#1D3E5E] border border-white/10 hover:border-[#E7C768] text-slate-200 hover:text-[#E7C768] transition whitespace-nowrap"
+                          title={c.title}
+                        >
+                          {i + 1}. {c.short} <span className="text-[#E7C768] font-mono">· {count}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                    return (
-                      <div
-                        key={column.stage}
-                        className="crm-kanban-column bg-[#1D3E5E]/55 border border-white/10 rounded-2xl shadow"
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={async () => {
-                          // Drag & drop triggers action
-                          const draggedId = localStorage.getItem("dragged_candidate_id");
-                          if (draggedId) {
-                            await handleUpdateCrmStage(draggedId, column.stage as any);
-                            localStorage.removeItem("dragged_candidate_id");
+                  <div className="crm-kanban-shell relative flex-1 min-h-0">
+                    {/* Arrows */}
+                    <button
+                      type="button"
+                      onClick={() => scrollKanban("left")}
+                      disabled={kanbanEdge.left}
+                      aria-label="Прокрутить влево"
+                      className="crm-kanban-arrow crm-kanban-arrow-left"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => scrollKanban("right")}
+                      disabled={kanbanEdge.right}
+                      aria-label="Прокрутить вправо"
+                      className="crm-kanban-arrow crm-kanban-arrow-right"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+
+                    <div
+                      ref={(el) => {
+                        kanbanViewportRef.current = el;
+                        if (el) {
+                          // attach listener once
+                          if (!(el as any).__edgeBound) {
+                            (el as any).__edgeBound = true;
+                            el.addEventListener("scroll", updateKanbanEdges, { passive: true });
+                            requestAnimationFrame(updateKanbanEdges);
                           }
-                        }}
-                      >
-                        <div className="crm-kanban-column-header flex items-center justify-between border-b border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 bg-[#1D3E5E]/95 rounded-t-2xl">
-                          <span className="whitespace-nowrap">{column.title}</span>
-                          <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
-                        </div>
-
-                        <div className="crm-kanban-cards space-y-2.5 px-2.5 py-2.5">
-                          {colCandidates.length === 0 ? (
-                            <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
-                          ) : (
-                            colCandidates.map(cand => (
-                              <div
-                                key={cand.id}
-                                draggable
-                                onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
-                                onClick={() => setSelectedCandidateId((cand as any).uuid || null)}
-                                className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm space-y-1.5"
-                              >
-                                <div className="text-xs font-bold text-[#E7C768] hover:underline">
-                                  {cand.name}
-                                </div>
-                                <div className="text-[10px] text-slate-300 line-clamp-1">{cand.roleName}</div>
-                                {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
-                                {(cand as any).phone && <div className="text-[10px] text-slate-500 truncate">{(cand as any).phone}</div>}
+                        }
+                      }}
+                      className="crm-kanban-viewport crm-kanban-h-scroll"
+                      onDragOver={handleKanbanDragOver}
+                    >
+                      <div className="crm-kanban-track">
+                        {columns.map(column => {
+                          const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
+                          return (
+                            <div
+                              key={column.stage}
+                              ref={(el) => { kanbanColumnRefs.current[column.stage] = el; }}
+                              data-stage={column.stage}
+                              className="crm-kanban-column bg-[#1D3E5E]/55 border border-white/10 rounded-2xl shadow"
+                              onDragOver={(e) => e.preventDefault()}
+                              onDrop={async () => {
+                                const draggedId = localStorage.getItem("dragged_candidate_id");
+                                if (draggedId) {
+                                  await handleUpdateCrmStage(draggedId, column.stage as any);
+                                  localStorage.removeItem("dragged_candidate_id");
+                                }
+                              }}
+                            >
+                              <div className="crm-kanban-column-header flex items-center justify-between border-b border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 bg-[#1D3E5E]/95 rounded-t-2xl">
+                                <span className="whitespace-nowrap">{column.title}</span>
+                                <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                               </div>
-                            ))
-                          )}
-                        </div>
+
+                              <div className="crm-kanban-cards crm-column-scroll space-y-2 px-2.5 py-2.5">
+                                {colCandidates.length === 0 ? (
+                                  <div className="text-slate-500 text-[11px] font-semibold py-3 text-center">Пусто</div>
+                                ) : (
+                                  colCandidates.map(cand => (
+                                    <div
+                                      key={cand.id}
+                                      draggable
+                                      onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
+                                      onClick={() => setSelectedCandidateId((cand as any).uuid || null)}
+                                      className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm space-y-1"
+                                    >
+                                      <div className="text-xs font-bold text-[#E7C768] hover:underline line-clamp-2">
+                                        {cand.name}
+                                      </div>
+                                      <div className="text-[10px] text-slate-300 truncate">{cand.roleName}</div>
+                                      {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
+                                      {(cand as any).phone && <div className="text-[10px] text-slate-500 truncate">{(cand as any).phone}</div>}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    );
-                  })}
                     </div>
                   </div>
                 </div>
+                  );
+                })()
               )}
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
