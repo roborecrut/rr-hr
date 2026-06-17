@@ -2540,7 +2540,7 @@ export default function EmployerPanel() {
 
   // Render content area based on six main tabs
   return (
-    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
+    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between overflow-x-hidden">
       
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
@@ -2588,10 +2588,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`w-full max-w-[1920px] mx-auto py-6 px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 flex-1 min-w-0`}>
+      <div className={`w-full mx-auto py-6 px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 flex-1 min-w-0 ${activeTab === "crm" ? "max-w-[1800px]" : "max-w-7xl"}`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className="sidebar-readable crm-sidebar space-y-6 lg:sticky lg:top-[88px] lg:self-start lg:max-h-[calc(100dvh-104px)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <aside className="sidebar-readable space-y-6 lg:sticky lg:top-[88px] lg:self-start">
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
@@ -2855,9 +2855,9 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[220px_minmax(280px,1.35fr)_minmax(170px,1fr)_minmax(170px,1fr)_170px] gap-2 items-stretch">
                   {/* View selectors */}
-                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1">
+                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1 2xl:col-span-1 min-h-10">
                     <button
                       onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
@@ -2969,7 +2969,7 @@ export default function EmployerPanel() {
                           <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                         </div>
 
-                        <div className="crm-kanban-cards crm-scroll-area space-y-2.5 px-2.5 py-2.5">
+                        <div className="crm-kanban-cards space-y-2.5 px-2.5 py-2.5">
                           {colCandidates.length === 0 ? (
                             <div className="text-center py-8 text-slate-500 text-[11px] font-semibold">Пусто</div>
                           ) : (
@@ -3001,7 +3001,7 @@ export default function EmployerPanel() {
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="crm-workspace crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                <div className="crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
                   <div className="crm-table-viewport crm-scroll-area">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1300px" }}>
                       <thead className="sticky top-0 z-10">
