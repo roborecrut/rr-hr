@@ -2525,7 +2525,7 @@ export default function CandidateFlow() {
               </div>
 
             </div>
-          </div>
+          </Reveal>
         )}
 
         {/* Tab 3: Interview module */}
