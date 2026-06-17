@@ -15,6 +15,7 @@ import TabbedChecklistBlock from "../components/TabbedChecklistBlock";
 import { useAIWait } from "@/components/AIWaitProvider";
 import NotificationsBell from "@/components/NotificationsBell";
 import HireDecisionBanner from "@/components/HireDecisionBanner";
+import Reveal from "@/components/Reveal";
 import { JobProject, Candidate, Message, TrainingBlock } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { FN } from "@/config";
