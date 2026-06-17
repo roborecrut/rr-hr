@@ -92,17 +92,81 @@ export function tryParseJson<T = unknown>(s: string): T | null {
   const start = (firstObj === -1) ? firstArr : (firstArr === -1 ? firstObj : Math.min(firstObj, firstArr));
   if (start === -1) return null;
   const isArr = cleaned[start] === "[";
-  const end = isArr ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
-  if (end === -1 || end < start) return null;
-  cleaned = cleaned.slice(start, end + 1);
-  try { return JSON.parse(cleaned) as T; } catch { /* try sanitize */ }
-  try {
-    const fixed = cleaned
-      .replace(/,\s*}/g, "}")
-      .replace(/,\s*]/g, "]")
-      .replace(/[\x00-\x1F\x7F]/g, " ");
-    return JSON.parse(fixed) as T;
-  } catch { return null; }
+  const lastEnd = isArr ? cleaned.lastIndexOf("]") : cleaned.lastIndexOf("}");
+  if (lastEnd === -1 || lastEnd < start) return null;
+  // Strategy A: take from first opening to last matching close.
+  const candA = cleaned.slice(start, lastEnd + 1);
+  const sanitize = (str: string) => str
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
+  const attempt = (str: string): T | null => {
+    try { return JSON.parse(str) as T; } catch { /* ignore */ }
+    try { return JSON.parse(sanitize(str)) as T; } catch { /* ignore */ }
+    return null;
+  };
+  let res = attempt(candA);
+  if (res) return res;
+  // Strategy B: balanced brace/bracket scan that respects string literals.
+  const open = isArr ? "[" : "{";
+  const close = isArr ? "]" : "}";
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let scanEnd = -1;
+  for (let i = start; i < cleaned.length; i++) {
+    const ch = cleaned[i];
+    if (inStr) {
+      if (esc) { esc = false; continue; }
+      if (ch === "\\") { esc = true; continue; }
+      if (ch === '"') { inStr = false; }
+      continue;
+    }
+    if (ch === '"') { inStr = true; continue; }
+    if (ch === open) depth++;
+    else if (ch === close) { depth--; if (depth === 0) { scanEnd = i; break; } }
+  }
+  if (scanEnd > start) {
+    res = attempt(cleaned.slice(start, scanEnd + 1));
+    if (res) return res;
+  }
+  return null;
+}
+
+// Per-element extractor for arrays of objects. When the full JSON is broken
+// (e.g. an unescaped quote in one item), salvage as many complete `{...}`
+// objects as possible by scanning with string-aware brace matching.
+export function extractJsonObjects<T = any>(s: string): T[] {
+  if (!s) return [];
+  const cleaned = s.replace(/```json\s*/gi, "").replace(/```/g, "");
+  const out: T[] = [];
+  let i = 0;
+  while (i < cleaned.length) {
+    if (cleaned[i] !== "{") { i++; continue; }
+    const start = i;
+    let depth = 0, inStr = false, esc = false;
+    for (; i < cleaned.length; i++) {
+      const ch = cleaned[i];
+      if (inStr) {
+        if (esc) { esc = false; continue; }
+        if (ch === "\\") { esc = true; continue; }
+        if (ch === '"') { inStr = false; }
+        continue;
+      }
+      if (ch === '"') { inStr = true; continue; }
+      if (ch === "{") depth++;
+      else if (ch === "}") { depth--; if (depth === 0) { i++; break; } }
+    }
+    const chunk = cleaned.slice(start, i);
+    try { out.push(JSON.parse(chunk) as T); } catch {
+      try {
+        const fixed = chunk
+          .replace(/,\s*([}\]])/g, "$1")
+          .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
+        out.push(JSON.parse(fixed) as T);
+      } catch { /* skip broken item */ }
+    }
+  }
+  return out;
 }
 
 // chat_id rules:
