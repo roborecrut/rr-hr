@@ -3917,6 +3917,11 @@ export default function EmployerPanel() {
                             <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["logoUrl"] ? "animate-spin text-yellow-400" : ""}`} />
                           </button>
                         </div>
+                        {logoUploadError && (
+                          <div className="md:col-span-2 -mt-2 text-[10px] text-rose-300 font-mono">
+                            ⚠ {logoUploadError}
+                          </div>
+                        )}
                       </div>
                     </div>
 
