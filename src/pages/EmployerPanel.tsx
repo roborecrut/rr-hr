@@ -156,6 +156,7 @@ import {
   Award,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Phone,
   MessageSquare,
   GraduationCap,
