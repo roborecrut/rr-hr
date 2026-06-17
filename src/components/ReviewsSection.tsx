@@ -81,7 +81,7 @@ function ReviewCard({ r }: { r: Review }) {
   const date = new Date(r.created_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
   const initials = `${(r.first_name[0] || "?").toUpperCase()}${(r.last_name[0] || "").toUpperCase()}`;
   return (
-    <article className="bg-[#1D3E5E]/80 border border-white/10 rounded-2xl p-5 space-y-3 backdrop-blur h-full">
+    <article className="bg-[#1E4468]/80 border border-white/10 rounded-2xl p-5 space-y-3 backdrop-blur h-full">
       <header className="flex items-center justify-between">
         <div>
           <div className="font-bold text-white">{r.first_name} {r.last_name}</div>

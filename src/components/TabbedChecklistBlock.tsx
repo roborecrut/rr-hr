@@ -86,7 +86,7 @@ export const TabbedChecklistBlock: React.FC<TabbedChecklistBlockProps> = ({
                   onClick={() => setActive(idx)}
                   className={`transition text-[10px] sm:text-xs font-bold p-2 rounded-xl border text-center cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis ${
                     isActive
-                      ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow-md"
+                      ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] shadow-md"
                       : "bg-white/10 text-white border-white/15 hover:bg-white/20"
                   }`}
                 >

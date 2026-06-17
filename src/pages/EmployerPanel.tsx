@@ -2565,7 +2565,7 @@ export default function EmployerPanel() {
   if (!isEmployerIdReady) {
     return (
       <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased flex items-center justify-center px-4">
-        <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-6 shadow-xl text-center max-w-sm w-full space-y-3">
+        <div className="bg-[#1E4468]/85 border border-[#E7C768]/40 rounded-3xl p-6 shadow-xl text-center max-w-sm w-full space-y-3">
           <Mascot state="narrator" size="md" className="mx-auto" />
           <h1 className="text-lg font-black text-[#E7C768]">Загружаем кабинет</h1>
           <p className="text-xs text-slate-300">Получаем ваш реальный ID работодателя из базы.</p>
@@ -2651,7 +2651,7 @@ export default function EmployerPanel() {
         
         {/* Left Side Tab Drawer */}
         <aside className="sidebar-readable space-y-6 lg:sticky lg:top-[88px] lg:self-start">
-          <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
+          <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
               <h3 className="font-bold text-sm text-[#E7C768]">Пульт Управления Рекрутом</h3>
@@ -2791,7 +2791,7 @@ export default function EmployerPanel() {
           )}
 
           {/* Quick Realtime Limit Monitor Tracker Widget */}
-          <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-4 shadow-xl text-xs space-y-2 text-left">
+          <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-4 shadow-xl text-xs space-y-2 text-left">
             <span className="text-[#E7C768] font-bold block uppercase tracking-wider font-mono text-[9px]">Баланс и лимиты</span>
             <div className="space-y-1.5">
               <div className="text-[11px] flex justify-between border-b border-white/5 pb-1 mb-1">
@@ -2831,7 +2831,7 @@ export default function EmployerPanel() {
 
           {/* DYNAMIC ONBOARDING PROGRESS STEPPER */}
           {(activeTab === "profile" || activeTab === "companies" || activeTab === "vacancies") && (
-            <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/40 rounded-3xl p-5 shadow-xl text-left space-y-4">
+            <div className="bg-[#1E4468]/85 border border-[#E7C768]/40 rounded-3xl p-5 shadow-xl text-left space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div className="space-y-0.5">
                   <div className="flex items-center gap-1.5 text-xs text-[#E7C768] font-bold uppercase tracking-wider">
@@ -2906,7 +2906,7 @@ export default function EmployerPanel() {
             <div className="crm-page text-left">
               
               {/* Layout controls */}
-              <div data-tour="section.crm.header" className="crm-controls bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
+              <div data-tour="section.crm.header" className="crm-controls bg-[#1E4468]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Users className="w-5 h-5 text-amber-400" /> ИИ-Воронка и CRM-Кандидаты
@@ -3017,7 +3017,7 @@ export default function EmployerPanel() {
                           key={c.stage}
                           type="button"
                           onClick={() => scrollToKanbanStage(c.stage)}
-                          className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#1D3E5E]/70 hover:bg-[#1D3E5E] border border-white/10 hover:border-[#E7C768] text-slate-200 hover:text-[#E7C768] transition whitespace-nowrap"
+                          className="shrink-0 text-[11px] font-semibold px-2 py-1 rounded-lg bg-[#1E4468]/70 hover:bg-[#1E4468] border border-white/10 hover:border-[#E7C768] text-slate-200 hover:text-[#E7C768] transition whitespace-nowrap"
                           title={c.title}
                         >
                           {i + 1}. {c.short} <span className="text-[#E7C768] font-mono">· {count}</span>
@@ -3070,7 +3070,7 @@ export default function EmployerPanel() {
                               key={column.stage}
                               ref={(el) => { kanbanColumnRefs.current[column.stage] = el; }}
                               data-stage={column.stage}
-                              className="crm-kanban-column bg-[#1D3E5E]/55 border border-white/10 rounded-2xl shadow"
+                              className="crm-kanban-column bg-[#1E4468]/55 border border-white/10 rounded-2xl shadow"
                               onDragOver={(e) => e.preventDefault()}
                               onDrop={async () => {
                                 const draggedId = localStorage.getItem("dragged_candidate_id");
@@ -3080,7 +3080,7 @@ export default function EmployerPanel() {
                                 }
                               }}
                             >
-                              <div className="crm-kanban-column-header flex items-center justify-between border-b border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 bg-[#1D3E5E]/95 rounded-t-2xl">
+                              <div className="crm-kanban-column-header flex items-center justify-between border-b border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 bg-[#1E4468]/95 rounded-t-2xl">
                                 <span className="whitespace-nowrap">{column.title}</span>
                                 <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{colCandidates.length}</span>
                               </div>
@@ -3120,7 +3120,7 @@ export default function EmployerPanel() {
 
               {/* TABLE LAYOUT FOR DATA-RICH CHECKS */}
               {crmViewMode === "table" && (
-                <div className="crm-table-shell bg-[#1D3E5E]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
+                <div className="crm-table-shell bg-[#1E4468]/55 border border-white/10 rounded-3xl shadow-xl overflow-hidden">
                   <div className="crm-table-viewport crm-scroll-area">
                     <table className="text-left text-xs w-full" style={{ minWidth: "1300px" }}>
                       <thead className="sticky top-0 z-10">
@@ -3219,7 +3219,7 @@ export default function EmployerPanel() {
           {activeTab === "vacancies" && (
             <div className="space-y-6 text-left">
               {!showAddNewVacancy && !editingProject && (
-              <div data-tour="section.vacancies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.vacancies.header" className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Briefcase className="w-5 h-5 text-amber-500" /> Вакансии & ИИ Онбординги
@@ -3355,7 +3355,7 @@ export default function EmployerPanel() {
                                   key={spec}
                                   type="button"
                                   onClick={() => { setSetupRoleName(spec); setSpecialtySearch(""); }}
-                                  className="bg-[#1D3E5E]/85 border border-white/5 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition flex items-center gap-1"
+                                  className="bg-[#1E4468]/85 border border-white/5 hover:border-[#E7C768] text-[9.5px] px-2 py-0.5 rounded text-white transition flex items-center gap-1"
                                 >
                                   💼 {spec}
                                 </button>
@@ -3557,7 +3557,7 @@ export default function EmployerPanel() {
                   return (
                     <div 
                       key={proj.id} 
-                      className={`border p-5 rounded-3xl flex flex-col justify-between hover:shadow-xl transition-all ${isPaused ? "bg-black/30 border-white/5 filter grayscale opacity-70" : "bg-[#1D3E5E]/60 border-white/10 hover:border-[#E7C768]"}`}
+                      className={`border p-5 rounded-3xl flex flex-col justify-between hover:shadow-xl transition-all ${isPaused ? "bg-black/30 border-white/5 filter grayscale opacity-70" : "bg-[#1E4468]/60 border-white/10 hover:border-[#E7C768]"}`}
                     >
                       <div>
                         {/* Status bar */}
@@ -3651,7 +3651,7 @@ export default function EmployerPanel() {
           {activeTab === "companies" && (
             <div className="space-y-6 text-left">
               {!showAddCompany && (
-              <div data-tour="section.companies.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div data-tour="section.companies.header" className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-1.5">
                     <Building2 className="w-5 h-5 text-amber-400" /> Зарегистрированные компании
@@ -4171,7 +4171,7 @@ export default function EmployerPanel() {
               {!showAddCompany && (
               <div className="space-y-4">
                 {companiesList.length === 0 && (
-                  <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center text-slate-400 text-xs">
+                  <div className="bg-[#1E4468]/40 border border-white/5 p-8 rounded-3xl text-center text-slate-400 text-xs">
                     Компаний пока нет. Нажмите «+ Добавить Компанию» выше, чтобы создать карточку и её ИИ-лендинг. Все действия по компании — бесплатно.
                   </div>
                 )}
@@ -4179,7 +4179,7 @@ export default function EmployerPanel() {
                   const compVacancies = projects.filter(p => p.companyName?.toLowerCase() === comp.name?.toLowerCase());
 
                   return (
-                    <div key={idx} className="bg-[#1D3E5E]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
+                    <div key={idx} className="bg-[#1E4468]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           {comp.logoUrl ? (
@@ -4283,7 +4283,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
 
               <Tabs defaultValue="balance" className="space-y-6">
-                <TabsList className="bg-[#1D3E5E]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+                <TabsList className="bg-[#1E4468]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
                   <TabsTrigger value="balance" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                     💰 Баланс
                   </TabsTrigger>
@@ -4304,7 +4304,7 @@ export default function EmployerPanel() {
                 <TabsContent value="balance" className="space-y-6 mt-0">
                   {/* 1. БАЛАНС + ЛИМИТЫ КАРТОЧКИ — на первом месте */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                <div className="md:col-span-5 bg-[#1D3E5E]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="md:col-span-5 bg-[#1E4468]/95 border border-[#E7C768]/45 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div data-tour="section.tariff.balance">
                     <span className="text-[10px] font-bold text-[#E7C768] tracking-widest uppercase font-mono block">Лицевой счёт</span>
                     <h2 className="text-3xl font-extrabold text-white mt-1.5 font-mono select-none">
@@ -4321,7 +4321,7 @@ export default function EmployerPanel() {
                   </div>
                 </div>
 
-                <div className="md:col-span-7 bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
+                <div className="md:col-span-7 bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                   <div>
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5">
                       <Award className="w-4 h-4 text-[#E7C768]" /> Купленные пакетные лимиты
@@ -4351,7 +4351,7 @@ export default function EmployerPanel() {
 
                 <TabsContent value="buy" className="space-y-6 mt-0">
                   {/* 1. ПОПОЛНЕНИЕ RR ЗА РУБЛИ — на первом месте */}
-                  <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
+                  <div className="bg-[#1E4468]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
                     <form onSubmit={handleTopupBalance} className="space-y-4">
                       <div>
                         <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
@@ -4416,7 +4416,7 @@ export default function EmployerPanel() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 {/* Фикс-услуги */}
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
                   <div>
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                       🛍️ Разовые услуги (фикс. цена)
@@ -4486,7 +4486,7 @@ export default function EmployerPanel() {
                 </div>
 
                 {/* Пакеты лимитов */}
-                <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-4">
+                <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-4">
                   <div>
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                       📦 Пакеты лимитов интервью и обучения
@@ -4561,7 +4561,7 @@ export default function EmployerPanel() {
 
                 <TabsContent value="referral" className="space-y-6 mt-0">
                   {/* 5. РЕФЕРАЛЬНАЯ ПРОГРАММА */}
-                  <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
+                  <div className="bg-[#1E4468]/60 border border-white/10 rounded-3xl p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🎁</span>
                   <div>
@@ -4639,7 +4639,7 @@ export default function EmployerPanel() {
 
                 <TabsContent value="history" className="space-y-6 mt-0">
                   {/* 6. ИСТОРИЯ ОПЕРАЦИЙ */}
-                  <div className="bg-[#1D3E5E]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
+                  <div className="bg-[#1E4468]/45 border border-white/10 rounded-3xl overflow-hidden shadow">
                 <div className="p-4 bg-gradient-to-r from-[#17344F] to-[#265582] text-xs font-bold font-mono tracking-wider text-slate-300">
                   История всех операций по балансу
                 </div>
@@ -4695,7 +4695,7 @@ export default function EmployerPanel() {
                 </TabsContent>
 
                 <TabsContent value="prices" className="space-y-6 mt-0">
-                  <div className="bg-[#1D3E5E]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl space-y-2">
+                  <div className="bg-[#1E4468]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl space-y-2">
                     <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                       💲 Прейскурант RR
                     </h3>
@@ -4706,7 +4706,7 @@ export default function EmployerPanel() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* 1. Разовые услуги при создании вакансии */}
-                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                    <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
                       <div className="border-b border-white/10 pb-2">
                         <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                           🛍️ Разовые услуги при создании вакансии
@@ -4732,7 +4732,7 @@ export default function EmployerPanel() {
                     </div>
 
                     {/* 2. Стоимость интервью и обучения */}
-                    <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
+                    <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-3">
                       <div className="border-b border-white/10 pb-2">
                         <h4 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                           📦 Стоимость интервью и обучения
@@ -4769,7 +4769,7 @@ export default function EmployerPanel() {
             <div className="space-y-6 text-left">
 
               {/* GOOGLE PROFILE — read-only из аккаунта Google (теперь первый блок) */}
-              <div data-tour="section.profile.header" className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+              <div data-tour="section.profile.header" className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                     <Chrome className="w-4 h-4 text-sky-400" /> Аккаунт Google
@@ -4815,7 +4815,7 @@ export default function EmployerPanel() {
               </div>
 
               {/* КОНТАКТЫ ДЛЯ КАНДИДАТОВ */}
-              <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
+              <div className="bg-[#1E4468]/85 border border-white/15 rounded-3xl p-6 shadow-xl space-y-5">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                     <Phone className="w-4 h-4 text-amber-400" /> Контакты для кандидатов
@@ -5067,7 +5067,7 @@ export default function EmployerPanel() {
       {/* MODAL WINDOW FOR PAYMENT */}
       {selectedPlanToBuy && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/60 p-6 rounded-3xl w-full max-w-md text-left text-white shadow-2xl relative space-y-4 animate-fadeIn">
+          <div className="bg-[#1E4468] border-2 border-[#E7C768]/60 p-6 rounded-3xl w-full max-w-md text-left text-white shadow-2xl relative space-y-4 animate-fadeIn">
             <button 
               onClick={() => setSelectedPlanToBuy(null)} 
               className="absolute top-4 right-4 text-slate-400 hover:text-white text-lg font-bold cursor-pointer bg-white/5 border border-white/5 w-8 h-8 rounded-full flex items-center justify-center transition"
@@ -5081,7 +5081,7 @@ export default function EmployerPanel() {
             <button
               onClick={handleConfirmPayment}
               disabled={isProcessingPayment}
-              className="w-full bg-[#E7C768] hover:bg-[#d6b75c] active:scale-98 text-[#112335] font-black text-xs py-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full bg-[#E7C768] hover:bg-[#d6b75c] active:scale-98 text-[#17344F] font-black text-xs py-3.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
               {isProcessingPayment ? (
                 <span className="flex items-center justify-center gap-1">
@@ -5333,7 +5333,7 @@ export default function EmployerPanel() {
       {/* MODAL WINDOW: INLINE POPUP SECTION EDITOR */}
       {editingProject && inlineEditSection && (
         <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-[#12283C] border-2 border-[#E7C768] rounded-3xl w-full max-w-2xl text-left text-white shadow-2xl relative p-6 sm:p-8 space-y-5 animate-fadeIn overflow-y-auto max-h-[90vh]">
+          <div className="bg-[#1E4468] border-2 border-[#E7C768] rounded-3xl w-full max-w-2xl text-left text-white shadow-2xl relative p-6 sm:p-8 space-y-5 animate-fadeIn overflow-y-auto max-h-[90vh]">
             <button 
               type="button"
               onClick={() => setInlineEditSection(null)} 
@@ -5376,7 +5376,7 @@ export default function EmployerPanel() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-[#E7C768]">Факты о компании (каждый с новой строки):</label>
                     <textarea
-                      className="w-full bg-[#112335] text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-none focus:border-[#E7C768]"
+                      className="w-full bg-[#17344F] text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-none focus:border-[#E7C768]"
                       rows={4}
                       value={editingProject.companyText || ""}
                       onChange={(e) => setEditingProject({ ...editingProject, companyText: e.target.value })}
@@ -5387,7 +5387,7 @@ export default function EmployerPanel() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-[#E7C768]">Цитата / Миссия компании:</label>
                     <textarea
-                      className="w-full bg-[#112335] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-none focus:border-[#E7C768]"
+                      className="w-full bg-[#17344F] text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-none focus:border-[#E7C768]"
                       rows={2}
                       value={editingProject.missionText || "Наша миссия — избавить людей от рутины в холодных звонках, автоматизировав базовую квалификацию лидов. Каждый день мы упрощаем работу сотрудникам отделов продаж по всему миру."}
                       onChange={(e) => setEditingProject({ ...editingProject, missionText: e.target.value })}
@@ -5399,54 +5399,54 @@ export default function EmployerPanel() {
                     <span className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] font-bold block mb-2">🔥 Настройка 3-х характеристик/счетчиков</span>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <div className="bg-[#112335]/55 p-2 rounded-xl border border-white/5 space-y-1">
+                      <div className="bg-[#17344F]/55 p-2 rounded-xl border border-white/5 space-y-1">
                         <span className="text-[9px] text-[#E7C768] font-bold font-mono">Счетчик 1</span>
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
+                          className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
                           value={editingProject.statsValClients !== undefined && editingProject.statsValClients !== null ? editingProject.statsValClients : "350+"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsValClients: e.target.value })}
                           placeholder="Значение"
                         />
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
+                          className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
                           value={editingProject.statsLabelClients !== undefined && editingProject.statsLabelClients !== null ? editingProject.statsLabelClients : "Клиентов в СНГ"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsLabelClients: e.target.value })}
                           placeholder="Подпись"
                         />
                       </div>
 
-                      <div className="bg-[#112335]/55 p-2 rounded-xl border border-white/5 space-y-1">
+                      <div className="bg-[#17344F]/55 p-2 rounded-xl border border-white/5 space-y-1">
                         <span className="text-[9px] text-[#E7C768] font-bold font-mono">Счетчик 2</span>
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
+                          className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
                           value={editingProject.statsValDialogs !== undefined && editingProject.statsValDialogs !== null ? editingProject.statsValDialogs : "15 000+"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsValDialogs: e.target.value })}
                           placeholder="Значение"
                         />
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-355"
+                          className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-355"
                           value={editingProject.statsLabelDialogs !== undefined && editingProject.statsLabelDialogs !== null ? editingProject.statsLabelDialogs : "ИИ-диалогов в сутки"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsLabelDialogs: e.target.value })}
                           placeholder="Подпись"
                         />
                       </div>
 
-                      <div className="bg-[#112335]/55 p-2 rounded-xl border border-white/5 space-y-1">
+                      <div className="bg-[#17344F]/55 p-2 rounded-xl border border-white/5 space-y-1">
                         <span className="text-[9px] text-[#E7C768] font-bold font-mono">Счетчик 3</span>
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
+                          className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-black"
                           value={editingProject.statsValFounded !== undefined && editingProject.statsValFounded !== null ? editingProject.statsValFounded : "2021"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsValFounded: e.target.value })}
                           placeholder="Значение"
                         />
                         <input
                           type="text"
-                          className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
+                          className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
                           value={editingProject.statsLabelFounded !== undefined && editingProject.statsLabelFounded !== null ? editingProject.statsLabelFounded : "Год основания"}
                           onChange={(e) => setEditingProject({ ...editingProject, statsLabelFounded: e.target.value })}
                           placeholder="Подпись"
@@ -5461,7 +5461,7 @@ export default function EmployerPanel() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#E7C768]">Содержание контента блока:</label>
                   <textarea
-                    className="w-full bg-[#112335] text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-none focus:border-[#E7C768] scrollbar-thin"
+                    className="w-full bg-[#17344F] text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-none focus:border-[#E7C768] scrollbar-thin"
                     rows={12}
                     value={(() => {
                       const map: Record<string, string> = {
@@ -5506,7 +5506,7 @@ export default function EmployerPanel() {
               <button
                 type="button"
                 onClick={() => setInlineEditSection(null)}
-                className="cursor-pointer bg-[#E7C768] text-[#112335] font-black text-xs px-5 py-3 rounded-xl hover:bg-[#d6b75c] active:scale-98 transition flex items-center gap-1.5"
+                className="cursor-pointer bg-[#E7C768] text-[#17344F] font-black text-xs px-5 py-3 rounded-xl hover:bg-[#d6b75c] active:scale-98 transition flex items-center gap-1.5"
               >
                 ✅ Применить и закрыть
               </button>
@@ -5540,7 +5540,7 @@ function ReferralLinkBlock({ employerPublicId }: { employerPublicId: string }) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-emerald-950/40 to-[#1D3E5E]/70 border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-3 text-left">
+    <div className="bg-gradient-to-r from-emerald-950/40 to-[#1E4468]/70 border border-emerald-500/30 rounded-3xl p-5 shadow-xl space-y-3 text-left">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-black text-emerald-300 uppercase tracking-wider flex items-center gap-2">

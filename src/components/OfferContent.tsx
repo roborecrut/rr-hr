@@ -8,7 +8,7 @@ export const OFFER_VERSION = "2026-06-06";
 
 function Section({ n, title, children }: { n: string; title: string; children: React.ReactNode }) {
   return (
-    <section className="bg-[#1D3E5E]/70 border border-[#E7C768]/20 rounded-2xl p-5 md:p-6 shadow-lg">
+    <section className="bg-[#1E4468]/70 border border-[#E7C768]/20 rounded-2xl p-5 md:p-6 shadow-lg">
       <h2 className="text-base md:text-lg font-black text-[#E7C768] mb-3 tracking-tight">
         <span className="font-mono text-xs text-[#D99E41] mr-2">§ {n}</span>{title}
       </h2>

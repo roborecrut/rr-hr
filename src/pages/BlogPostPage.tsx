@@ -81,12 +81,12 @@ export default function BlogPostPage() {
 
             <RichTrainingMaterialCard>{post.content_md || ""}</RichTrainingMaterialCard>
 
-            <div className="rounded-3xl border border-white/10 bg-[#1D3E5E]/70 p-5 space-y-3">
+            <div className="rounded-3xl border border-white/10 bg-[#1E4468]/70 p-5 space-y-3">
               <div className="text-sm text-slate-300">Понравилась статья? Оставьте реакцию:</div>
               <PostReactions postId={post.id} userId={userId} onRequireLogin={() => setAuthOpen(true)} />
             </div>
 
-            <div className="rounded-3xl border border-white/10 bg-[#1D3E5E]/70 p-5">
+            <div className="rounded-3xl border border-white/10 bg-[#1E4468]/70 p-5">
               <PostComments postId={post.id} userId={userId} onRequireLogin={() => setAuthOpen(true)} />
             </div>
           </>

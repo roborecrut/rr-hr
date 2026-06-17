@@ -417,7 +417,7 @@ export const VacancyLandingBlocks: React.FC<{ values: VacancyFormValues }> = ({
       {present.map((f) => (
         <section
           key={f.key}
-          className="rounded-2xl border border-white/10 bg-[#12283C]/80 p-5"
+          className="rounded-2xl border border-white/10 bg-[#1E4468]/80 p-5"
         >
           <header className="mb-3 flex items-center gap-2 border-b border-white/10 pb-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#E7C768]/10 text-[#E7C768]">

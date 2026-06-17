@@ -76,7 +76,7 @@ export default function AuthModal({ isOpen, onClose, intent = "employer" }: Auth
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/45 text-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl relative text-left animate-in fade-in zoom-in duration-200">
+      <div className="bg-[#1E4468] border-2 border-[#E7C768]/45 text-white rounded-3xl max-w-lg w-full max-h-[92vh] overflow-y-auto p-6 md:p-8 space-y-6 shadow-2xl relative text-left animate-in fade-in zoom-in duration-200">
         
         {/* Close Button */}
         <button

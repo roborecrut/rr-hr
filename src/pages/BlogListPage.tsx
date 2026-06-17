@@ -66,7 +66,7 @@ export default function BlogListPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {posts.map(p => (
               <button key={p.id} type="button" onClick={() => navigate(`/blog/post${p.public_id}`)}
-                className="text-left group rounded-3xl overflow-hidden border border-white/10 bg-[#1D3E5E]/70 hover:border-[#E7C768]/50 hover:-translate-y-0.5 transition shadow-xl shadow-black/20">
+                className="text-left group rounded-3xl overflow-hidden border border-white/10 bg-[#1E4468]/70 hover:border-[#E7C768]/50 hover:-translate-y-0.5 transition shadow-xl shadow-black/20">
                 <div className="aspect-[16/9] bg-[#17344F] overflow-hidden">
                   {p.cover_url
                     ? <img src={p.cover_url} alt={p.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
