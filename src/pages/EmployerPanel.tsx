@@ -2540,7 +2540,7 @@ export default function EmployerPanel() {
 
   // Render content area based on six main tabs
   return (
-    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between">
+    <div className="bg-gradient-to-b from-[#17344F] to-[#265582] min-h-screen text-white font-sans antialiased selection:bg-[#E7C768] selection:text-[#17344F] flex flex-col justify-between overflow-x-hidden">
       
       {/* Top Header Navigation */}
       <header className="sticky top-0 z-50 bg-[#17344F]/95 backdrop-blur-md border-b border-white/10 px-4 md:px-8 py-4">
@@ -2588,10 +2588,10 @@ export default function EmployerPanel() {
       </header>
 
       {/* Main Workspace Frame */}
-      <div className={`w-full max-w-[1920px] mx-auto py-6 px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 flex-1 min-w-0`}>
+      <div className={`w-full mx-auto py-6 px-4 md:px-6 grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)] gap-6 flex-1 min-w-0 ${activeTab === "crm" ? "max-w-[1800px]" : "max-w-7xl"}`}>
         
         {/* Left Side Tab Drawer */}
-        <aside className="sidebar-readable crm-sidebar space-y-6 lg:sticky lg:top-[88px] lg:self-start lg:max-h-[calc(100dvh-104px)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <aside className="sidebar-readable space-y-6 lg:sticky lg:top-[88px] lg:self-start">
           <div className="bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-5 shadow-xl space-y-4 text-center">
             <Mascot state="recruitment" size="sm" className="mx-auto" />
             <div>
