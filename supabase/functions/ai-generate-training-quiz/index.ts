@@ -63,16 +63,38 @@ Deno.serve(async (req) => {
     if (!Array.isArray(arr) || arr.length === 0) throw new Error("bad_quiz_json");
 
     await admin.from("training_questions").delete().eq("block_id", body.block_id);
-    const rows = arr.slice(0, 30).map((q, i) => ({
-      block_id: body.block_id,
-      order_no: i + 1,
-      kind: q.kind === "text" ? "text" : "choice",
-      question: String(q.question || "").slice(0, 1000),
-      options: q.kind === "choice" ? (q.options || []) : null,
-      expected_answer: q.kind === "text" ? String(q.expected_answer || "").slice(0, 2000) : null,
-      points: Number(q.points) > 0 ? Number(q.points) : 5,
-      explanation: q.explanation ? String(q.explanation).slice(0, 500) : null,
-    }));
+    const rows = arr.slice(0, 30).map((q, i) => {
+      const kind = q.kind === "text" ? "text" : "choice";
+      let options: any[] | null = null;
+      if (kind === "choice") {
+        const rawOpts = Array.isArray(q.options) ? q.options : [];
+        // Normalize: model sometimes returns `correct` as the text of the right
+        // option instead of marking is_correct inside options. Reconcile both.
+        const correctText = q.correct != null ? String(q.correct).trim() : "";
+        let hasFlag = rawOpts.some((o: any) => o && o.is_correct === true);
+        options = rawOpts.map((o: any) => {
+          const text = String(o?.text ?? "").trim();
+          let is_correct = !!o?.is_correct;
+          if (!hasFlag && correctText && text && text === correctText) is_correct = true;
+          return { text, is_correct };
+        });
+        // If still nothing flagged but options contain the correctText partially.
+        if (!options.some((o: any) => o.is_correct) && correctText) {
+          const idx = options.findIndex((o: any) => o.text.toLowerCase() === correctText.toLowerCase());
+          if (idx >= 0) options[idx].is_correct = true;
+        }
+      }
+      return {
+        block_id: body.block_id,
+        order_no: i + 1,
+        kind,
+        question: String(q.question || "").slice(0, 1000),
+        options,
+        expected_answer: kind === "text" ? String(q.expected_answer || "").slice(0, 2000) : null,
+        points: Number(q.points) > 0 ? Number(q.points) : 5,
+        explanation: q.explanation ? String(q.explanation).slice(0, 500) : null,
+      };
+    });
     const { error: ie } = await admin.from("training_questions").insert(rows);
     if (ie) throw new Error("save_failed: " + ie.message);
 
