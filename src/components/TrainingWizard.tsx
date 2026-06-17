@@ -281,6 +281,15 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           project_id: project.id, stage, source_text: source || undefined,
           context_keys: contextKeys, wishes: wishesMaterial || undefined,
         }),
+        fallback: {
+          viewerAllowed: true,
+          onSuccess: async (data: any) => {
+            if (data?.text) {
+              setMaterials(data.text);
+              addAuditEvent("success", "RR Pro Max", "Материал сгенерирован резервной моделью");
+            }
+          },
+        },
       });
       if (!r) return;
       setMaterials(r.text || "");
@@ -302,6 +311,21 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           project_id: project.id, stage,
           context_keys: contextKeys, wishes: wishesTest || undefined,
         }),
+        fallback: {
+          viewerAllowed: true,
+          onSuccess: async () => {
+            const { data: t } = await supabase.from("training_stage_tests")
+              .select("*").eq("project_id", project.id).eq("stage", stage).maybeSingle();
+            setTest({
+              id: (t as any)?.id,
+              questions: ((t as any)?.questions as QuestionRow[]) || [],
+              pass_score: (t as any)?.pass_score || 70,
+              total_score: (t as any)?.total_score || 100,
+              shuffle: (t as any)?.shuffle_questions !== false,
+            });
+            addAuditEvent("success", "RR Pro Max", "Тест сгенерирован резервной моделью");
+          },
+        },
       });
       if (!r) return;
       // reload test
