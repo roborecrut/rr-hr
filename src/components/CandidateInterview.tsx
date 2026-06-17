@@ -105,7 +105,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       // Overlay (AIRestartGate) is driven by beginAIRestart() inside aiRestart().
       if (!restartFiredRef.current) {
         restartFiredRef.current = true;
-        aiRestart().catch(() => {});
+        try { await aiRestart(); } catch { /* overlay closes on its own */ }
       }
       // Gate 1: can this candidate actually start an interview right now?
       try {
