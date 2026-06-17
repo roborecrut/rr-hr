@@ -2685,7 +2685,7 @@ export default function CandidateFlow() {
 
         {/* Tab 6: Certified diploma success tab */}
         {activeTab === "certified" && (
-          <div className="space-y-8 max-w-2xl mx-auto">
+          <Reveal key="tab-certified" direction="scale" className="space-y-8 max-w-2xl mx-auto">
             {(() => {
               const certUnlocked = effectiveStage === "certified";
               return <>
@@ -2811,7 +2811,7 @@ export default function CandidateFlow() {
             </div>
               </>;
             })()}
-          </div>
+          </Reveal>
         )}
 
       </main>
