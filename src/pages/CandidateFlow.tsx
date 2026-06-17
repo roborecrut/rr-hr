@@ -2590,7 +2590,7 @@ export default function CandidateFlow() {
                   {candidate?.scores?.checklistScore !== undefined ? `${candidate.scores.checklistScore}/100` : "—"}
                 </strong>
               </div>
-              <div className="bg-[#101010]/35 p-3 rounded-xl border border-[#FAFAFA]/5 text-center flex flex-col justify-between">
+              <div className="bg-[#17344F]/35 p-3 rounded-xl border border-[#FAFAFA]/5 text-center flex flex-col justify-between">
                 <span className="text-[9px] text-slate-300 uppercase font-semibold font-mono block">3. Ситуации</span>
                 <strong className="text-[#E7C768] font-extrabold text-lg block mt-1">
                   {candidate?.scores?.situationsScore !== undefined ? `${candidate.scores.situationsScore}/100` : "—"}
