@@ -61,11 +61,25 @@ export default function CandidateStageTraining({
       headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
     });
     if (error) {
-      const msg = (data as any)?.error || (error as any)?.message || `fn_${fn}_failed`;
-      throw new Error(msg);
+      // Извлекаем тело ответа (job_id, fallback_available) — нужно для
+      // оверлея RR Pro Max. supabase-js оборачивает не-2xx как
+      // FunctionsHttpError, реальное тело лежит в context.
+      let bodyJson: any = null;
+      try {
+        const ctx: any = (error as any).context;
+        if (ctx && typeof ctx.json === "function") bodyJson = await ctx.json();
+      } catch { /* ignore */ }
+      const msg = bodyJson?.error || (data as any)?.error || (error as any)?.message || `fn_${fn}_failed`;
+      const e: any = new Error(msg);
+      e.jobId = bodyJson?.job_id || null;
+      e.fallbackAvailable = !!bodyJson?.fallback_available;
+      throw e;
     }
     if (data && typeof data === "object" && "error" in (data as any) && (data as any).error) {
-      throw new Error((data as any).error);
+      const e: any = new Error((data as any).error);
+      e.jobId = (data as any).job_id || null;
+      e.fallbackAvailable = !!(data as any).fallback_available;
+      throw e;
     }
     return data as T;
   };
