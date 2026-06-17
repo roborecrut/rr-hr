@@ -2650,7 +2650,7 @@ export default function CandidateFlow() {
             >
               Открыть персональный курс ИИ-обучения <ArrowRight className="w-4.5 h-4.5" />
             </button>
-          </div>
+          </Reveal>
         )}
 
         {/* Tab 5: Training interactive program */}
