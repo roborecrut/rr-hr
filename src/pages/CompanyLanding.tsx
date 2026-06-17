@@ -16,6 +16,7 @@ import CompanySections from "../components/CompanySections";
 import SitePreview from "../components/SitePreview";
 import VacancyAIAssistant from "@/components/VacancyAIAssistant";
 import VacancyCard from "@/components/VacancyCard";
+import Reveal from "@/components/Reveal";
 import { useSeo, SITE_URL } from "@/lib/seo";
 
 /** Map a Supabase `projects` row + parent company into the UI's JobProject shape. */
@@ -672,7 +673,7 @@ export default function CompanyLanding() {
                       он не предназначен для кандидата. */}
                 </div>
 
-                <div className="bg-black/25 p-4 sm:p-6 rounded-2xl border border-white/10 shadow-inner">
+                <Reveal key={subTab} direction="up" className="bg-black/25 p-4 sm:p-6 rounded-2xl border border-white/10 shadow-inner">
                   {(() => {
                     switch (subTab) {
                       case "motivation":
@@ -694,7 +695,7 @@ export default function CompanyLanding() {
                         return <VacancyView project={selectedVacancy} />;
                     }
                   })()}
-                </div>
+                </Reveal>
               </div>
 
               <button
