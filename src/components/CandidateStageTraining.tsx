@@ -160,6 +160,17 @@ export default function CandidateStageTraining({
         task: () => callEdge<any>("ai-grade-training-quiz", {
           candidate_id: candidateId, project_id: projectId, stage: active, answers: payload,
         }),
+        fallback: {
+          viewerAllowed: true,
+          onSuccess: async (data: any) => {
+            // Резервная модель вернула результат — обновляем UI как при основном пути.
+            if (data) {
+              setLastResult({ score: data.score, passed: data.passed, per_question: data.per_question });
+              setProgress(p => ({ ...p, [active]: { passed: data.passed || p[active].passed, best: Math.max(p[active].best, data.score || 0), attempts: data.attempts || p[active].attempts } }));
+              setMode("result");
+            }
+          },
+        },
       });
       if (!r) return;
       // Списание лимита у работодателя — только после получения первой оценки от ИИ
