@@ -58,7 +58,7 @@ export default function TrainingList({ projects, onOpen, onCreate }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="brand-editor bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl flex items-center gap-4">
+      <div className="brand-editor bg-[#1E4468]/80 border border-white/10 rounded-3xl p-6 shadow-xl flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
           <GraduationCap className="w-6 h-6" />
         </div>
@@ -90,7 +90,7 @@ export default function TrainingList({ projects, onOpen, onCreate }: Props) {
               professional: "Проф.", product: "Прод.", system: "Сист.",
             };
             return (
-              <div key={p.id} className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3 hover:border-[#E7C768]/40 transition">
+              <div key={p.id} className="bg-[#1E4468]/60 border border-white/10 rounded-2xl p-4 space-y-3 hover:border-[#E7C768]/40 transition">
                 <div>
                   <div className="text-sm font-bold text-white">{p.roleName || "(без названия)"}</div>
                   <div className="text-[11px] text-slate-400">🏢 {p.companyName || "—"}</div>

@@ -64,7 +64,7 @@ export default function FieldHelp({
       {open && (
         <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)}>
           <div
-            className="absolute z-[9999] max-w-sm w-[320px] bg-[#1D3E5E] border border-[#E7C768]/60 rounded-2xl shadow-2xl p-4 text-left text-white"
+            className="absolute z-[9999] max-w-sm w-[320px] bg-[#1E4468] border border-[#E7C768]/60 rounded-2xl shadow-2xl p-4 text-left text-white"
             style={{ top, left }}
             onClick={(e) => e.stopPropagation()}
           >

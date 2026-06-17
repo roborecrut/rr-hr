@@ -322,7 +322,7 @@ export default function DemoInterviewPage() {
       <main className="brand-editor max-w-5xl w-full mx-auto px-4 md:px-8 py-8 md:py-12 flex-1 space-y-6">
         {/* Step indicator */}
         {state && state.stage !== "pick" && (
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
+          <div className="bg-[#1E4468]/60 border border-white/10 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
             <div className="text-xs text-slate-300">Вакансия:</div>
             <div className="text-sm font-bold text-[#E7C768]">{state.title}</div>
             <button onClick={restartAll} className="ml-auto text-[11px] text-slate-300 hover:text-white underline">Сменить должность</button>
@@ -356,7 +356,7 @@ export default function DemoInterviewPage() {
 
         {/* RESTART STAGE */}
         {state && state.stage === "restart" && (
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-8 text-center space-y-5">
+          <div className="bg-[#1E4468]/60 border border-white/10 rounded-3xl p-8 text-center space-y-5">
             <div className="flex justify-center">
               <img
                 src={prepError ? MASCOT.broken : MASCOT.greeting}
@@ -588,7 +588,7 @@ function PickStage({ titles, search, onSearch, onPick, totalCount }: {
   return (
     <div className="space-y-6">
       {/* Promo header */}
-      <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 md:p-8 grid md:grid-cols-3 gap-6 items-center">
+      <div className="bg-[#1E4468]/60 border border-white/10 rounded-3xl p-6 md:p-8 grid md:grid-cols-3 gap-6 items-center">
         <div className="md:col-span-2 space-y-3">
           <div className="inline-flex items-center gap-2 bg-[#E7C768]/15 border border-[#E7C768]/30 rounded-full px-3 py-1.5">
             <Sparkles className="w-4 h-4 text-[#E7C768]" />
@@ -614,7 +614,7 @@ function PickStage({ titles, search, onSearch, onPick, totalCount }: {
       </div>
 
       {/* Search */}
-      <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl p-5 md:p-6 space-y-4">
+      <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl p-5 md:p-6 space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <h2 className="text-lg font-bold text-[#E7C768] flex items-center gap-2"><Briefcase className="w-5 h-5"/> Выбери должность</h2>
           <div className="text-xs text-slate-300 font-mono">{titles.length} из {totalCount}</div>
@@ -635,7 +635,7 @@ function PickStage({ titles, search, onSearch, onPick, totalCount }: {
               <button
                 key={t.id}
                 onClick={() => onPick(t)}
-                className="text-left bg-[#1D3E5E]/60 hover:bg-[#1D3E5E]/90 hover:border-[#E7C768] border border-white/5 rounded-xl p-3 transition flex items-center justify-between group"
+                className="text-left bg-[#1E4468]/60 hover:bg-[#1E4468]/90 hover:border-[#E7C768] border border-white/5 rounded-xl p-3 transition flex items-center justify-between group"
               >
                 <div className="truncate pr-2">
                   <div className="text-xs font-bold text-slate-100 truncate">{t.title}</div>

@@ -181,7 +181,7 @@ export default function EmployerAIAssistant() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 30 }}
             transition={{ type: "spring", damping: 25, stiffness: 350 }}
-            className="fixed bottom-24 right-6 z-50 w-[380px] h-[550px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)] bg-[#1D3E5E]/95 backdrop-blur-md border border-[#E7C768]/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
+            className="fixed bottom-24 right-6 z-50 w-[380px] h-[550px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)] bg-[#1E4468]/95 backdrop-blur-md border border-[#E7C768]/30 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
           >
             {/* Header info */}
             <div className="bg-gradient-to-r from-[#17344F] to-[#265582] p-4 border-b border-white/10 flex items-center justify-between">

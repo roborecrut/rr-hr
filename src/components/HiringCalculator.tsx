@@ -57,7 +57,7 @@ export default function HiringCalculator() {
   const ratioTime = round((hrTotalH * 60) / Math.max(totalMin, 1), 0);
 
   return (
-    <div className="bg-[#1D3E5E]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left space-y-6">
+    <div className="bg-[#1E4468]/85 border-2 border-white/10 rounded-3xl p-6 md:p-8 shadow-2xl text-left space-y-6">
       <div className="text-center space-y-2">
         <h3 className="text-xl md:text-2xl font-bold text-white">
           Калькулятор «Робот vs Рекрутер»

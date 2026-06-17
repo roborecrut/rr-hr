@@ -81,7 +81,7 @@ export default function SitePreview({ url, variant = "card", className = "" }: P
         ) : (
           <div className="aspect-[4/1] w-full bg-gradient-to-br from-[#17344F] to-[#265582]" />
         )}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0E2235]/95 via-[#0E2235]/70 to-transparent px-4 py-3 flex items-center gap-2.5">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#17344F]/95 via-[#17344F]/70 to-transparent px-4 py-3 flex items-center gap-2.5">
           <img src={favicon} alt="" className="w-6 h-6 rounded-md shrink-0 bg-white/10 p-0.5" referrerPolicy="no-referrer" />
           <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-widest text-[#E7C768] font-bold leading-none">Официальный сайт</div>
@@ -102,7 +102,7 @@ export default function SitePreview({ url, variant = "card", className = "" }: P
       className={`group block rounded-2xl border border-white/10 bg-black/30 hover:border-[#E7C768]/50 hover:bg-black/40 transition overflow-hidden ${className}`}
     >
       {imgOk ? (
-        <div className="aspect-[16/9] bg-gradient-to-br from-[#1D3E5E]/60 to-[#0E2235]/60 overflow-hidden">
+        <div className="aspect-[16/9] bg-gradient-to-br from-[#1E4468]/60 to-[#17344F]/60 overflow-hidden">
           <img
             src={shot}
             alt={`Превью ${host}`}

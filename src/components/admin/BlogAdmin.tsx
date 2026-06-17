@@ -67,7 +67,7 @@ export default function BlogAdmin() {
           {posts.map(p => (
             <button key={p.id} onClick={() => setEditing(p)}
               className={`w-full text-left rounded-2xl border p-3 transition ${
-                editing?.id === p.id ? "bg-[#E7C768]/10 border-[#E7C768]/50" : "bg-[#1D3E5E]/60 border-white/10 hover:bg-[#1D3E5E]"
+                editing?.id === p.id ? "bg-[#E7C768]/10 border-[#E7C768]/50" : "bg-[#1E4468]/60 border-white/10 hover:bg-[#1E4468]"
               }`}>
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-lg bg-[#17344F] overflow-hidden flex-shrink-0">
@@ -92,7 +92,7 @@ export default function BlogAdmin() {
           {editing ? (
             <BlogEditor key={editing.id} post={editing} onSaved={(p) => { setEditing(p); load(); }} onDelete={() => remove(editing.id)} onClose={() => setEditing(null)} />
           ) : (
-            <div className="rounded-3xl border border-white/10 bg-[#1D3E5E]/60 p-8 text-center text-slate-300">
+            <div className="rounded-3xl border border-white/10 bg-[#1E4468]/60 p-8 text-center text-slate-300">
               Выберите статью слева или создайте новую.
             </div>
           )}

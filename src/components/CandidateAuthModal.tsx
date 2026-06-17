@@ -99,7 +99,7 @@ export default function CandidateAuthModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-[#1D3E5E] border-2 border-[#E7C768]/50 text-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
+      <div className="bg-[#1E4468] border-2 border-[#E7C768]/50 text-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl relative">
         <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-full text-slate-300 hover:bg-white/10 hover:text-white">
           <X className="w-5 h-5" />
         </button>
@@ -126,7 +126,7 @@ export default function CandidateAuthModal({
                 <button key={t}
                   onClick={() => { setTab(t); setErr(""); }}
                   className={`py-2 text-xs font-bold rounded-lg transition ${
-                    tab===t ? "bg-[#E7C768] text-[#112335]" : "text-slate-300 hover:text-white"
+                    tab===t ? "bg-[#E7C768] text-[#17344F]" : "text-slate-300 hover:text-white"
                   }`}>
                   {t === "signup" ? "Регистрация" : "Вход"}
                 </button>
@@ -216,7 +216,7 @@ export default function CandidateAuthModal({
 
             <button
               onClick={submit} disabled={busy}
-              className="w-full bg-[#E7C768] text-[#112335] font-extrabold text-sm py-3 rounded-2xl hover:bg-[#F4EE8E] disabled:opacity-60 flex items-center justify-center gap-2">
+              className="w-full bg-[#E7C768] text-[#17344F] font-extrabold text-sm py-3 rounded-2xl hover:bg-[#F4EE8E] disabled:opacity-60 flex items-center justify-center gap-2">
               {busy ? <Loader className="w-4 h-4 animate-spin" /> : null}
               {tab === "signup" ? "Создать кабинет" : "Войти"}
             </button>

@@ -355,7 +355,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   return (
     <div className="space-y-5">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-5 shadow-xl">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-5 shadow-xl">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl bg-[#E7C768]/20 flex items-center justify-center text-[#E7C768]"><MessageSquare className="w-5 h-5"/></div>
           <div className="flex-1">

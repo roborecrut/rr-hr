@@ -422,7 +422,7 @@ function CompaniesListSection() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-[#E7C768]">Компании — {rows.length}</h2>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по названию / отрасли / ID…"
           className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
@@ -431,7 +431,7 @@ function CompaniesListSection() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {filtered.map((r) => (
             <div key={r.id} onClick={() => openEntity("company", r.id)}
-              className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
+              className="bg-[#1E4468]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-sm font-bold text-white truncate">{r.name || `Компания #${r.public_id}`}</div>
@@ -445,7 +445,7 @@ function CompaniesListSection() {
             </div>
           ))}
           {filtered.length === 0 && (
-            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">Ничего не найдено</div>
+            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1E4468]/40 border border-white/10 rounded-3xl">Ничего не найдено</div>
           )}
         </div>
       )}
@@ -579,7 +579,7 @@ export default function AdminPanel() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#17344F] to-[#265582] text-white flex items-center justify-center px-4">
-        <div className="max-w-md w-full bg-[#1D3E5E]/85 border border-white/15 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+        <div className="max-w-md w-full bg-[#1E4468]/85 border border-white/15 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
           <ShieldCheck className="w-12 h-12 text-rose-400 mx-auto" />
           <h1 className="text-2xl font-bold text-[#E7C768]">Доступ запрещён</h1>
           <p className="text-sm text-slate-300">
@@ -636,7 +636,7 @@ export default function AdminPanel() {
 
       <main className="max-w-[1500px] mx-auto py-6 px-4 md:px-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
         <aside className="lg:col-span-2">
-          <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-3 space-y-1 sticky top-20">
+          <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-3 space-y-1 sticky top-20">
             {SECTIONS.map((s) => {
               const Icon = s.icon;
               const active = section === s.key;
@@ -719,7 +719,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
         <h2 className="text-base font-bold text-[#E7C768]">Клиенты (работодатели) — {rows.length}</h2>
         <div className="flex items-center gap-2">
           <div className="relative">
@@ -744,7 +744,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           {COLS.map((col) => {
             const items = filtered.filter((r) => classifyClient(r).key === col.key);
             return (
-              <div key={col.key} className="bg-[#1D3E5E]/40 border border-white/5 rounded-2xl p-3 min-h-[300px]">
+              <div key={col.key} className="bg-[#1E4468]/40 border border-white/5 rounded-2xl p-3 min-h-[300px]">
                 <div className="flex items-center justify-between border-b border-white/5 pb-2 text-xs font-bold text-slate-300">
                   <span>{col.label}</span>
                   <span className="bg-black/30 font-mono px-2 py-0.5 rounded-full text-[10px] text-[#E7C768]">{items.length}</span>
@@ -767,7 +767,7 @@ function ClientsSection({ setToast }: { setToast: (t: any) => void }) {
           })}
         </div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -829,7 +829,7 @@ function CandidatesSection() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
         <h2 className="text-base font-bold text-[#E7C768]">Кандидаты — {rows.length}</h2>
         <div className="flex items-center gap-2">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск..."
@@ -843,7 +843,7 @@ function CandidatesSection() {
       {loading ? (
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -888,15 +888,15 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
   const lbls = RU_LABELS[table] || {};
   return (
     <div className="space-y-3">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
         <h2 className="text-base font-bold text-[#E7C768]">{title} — {rows.length}</h2>
       </div>
       {loading ? (
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
       ) : rows.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">Нет данных</div>
+        <div className="text-center py-12 text-slate-400 bg-[#1E4468]/40 border border-white/10 rounded-3xl">Нет данных</div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[11px]">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -935,7 +935,7 @@ function SimpleTable({ table, title }: { table: string; title: string }) {
 
 function MailingsSection() {
   return (
-    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-8 text-center space-y-3">
+    <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-8 text-center space-y-3">
       <Mail className="w-10 h-10 mx-auto text-[#E7C768]" />
       <h2 className="text-base font-bold text-[#E7C768]">Рассылки</h2>
       <p className="text-xs text-slate-300 max-w-md mx-auto">
@@ -989,7 +989,7 @@ function InterviewsSection() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-[#E7C768]">Интервью (оценки кандидатов) — {filtered.length}</h2>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по ФИО / email / роли / компании…"
           className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[260px]" />
@@ -997,7 +997,7 @@ function InterviewsSection() {
       {loading ? (
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка…</div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -1083,7 +1083,7 @@ function TrainingsSection() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
         <h2 className="text-base font-bold text-[#E7C768]">Прогресс обучения — {filtered.length}</h2>
         <div className="flex items-center gap-2">
           <select value={stage} onChange={(e) => setStage(e.target.value)}
@@ -1098,7 +1098,7 @@ function TrainingsSection() {
       {loading ? (
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка…</div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -1161,13 +1161,13 @@ function RolesSection({ setToast }: { setToast: (t: any) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between">
         <h2 className="text-base font-bold text-[#E7C768]">Роли — {users.length} пользователей</h2>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск..."
           className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10" />
       </div>
       {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -1277,12 +1277,12 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4">
         <h2 className="text-base font-bold text-[#E7C768]">Счета и балансы <span className="text-[10px] text-emerald-300 ml-2">● live</span></h2>
       </div>
       {loading ? <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /></div> : (
         <>
-          <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+          <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono">
@@ -1309,7 +1309,7 @@ function AccountsSection({ setToast }: { setToast: (t: any) => void }) {
             </div>
           </div>
 
-          <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+          <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4">
             <div className="flex items-center justify-between gap-3 mb-3">
               <h3 className="text-sm font-bold text-[#E7C768]">Последние транзакции — {filteredTxs.length}</h3>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по клиенту / email / заметке…"
@@ -1439,7 +1439,7 @@ function VacanciesAnalyticsSection() {
 
   return (
     <div className="space-y-3">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex items-center justify-between gap-3">
         <h2 className="text-base font-bold text-[#E7C768]">Вакансии — {projects.length} <span className="text-[10px] text-emerald-300 ml-2">● live</span></h2>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск по роли / компании / ID…"
           className="bg-[#17344F]/60 text-xs text-white px-3 py-2 rounded-xl border border-white/10 min-w-[220px]" />
@@ -1454,7 +1454,7 @@ function VacanciesAnalyticsSection() {
             const avg = st.scoreCount > 0 ? Math.round(st.sumScore / st.scoreCount) : null;
             return (
               <div key={p.id} onClick={() => openEntity("project", p.id)}
-                className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
+                className="bg-[#1E4468]/60 border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-[#E7C768]/40 transition">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-white truncate">{p.role_name || "—"}</div>
@@ -1484,7 +1484,7 @@ function VacanciesAnalyticsSection() {
             );
           })}
           {filtered.length === 0 && (
-            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1D3E5E]/40 border border-white/10 rounded-3xl">
+            <div className="col-span-full text-center py-12 text-slate-400 bg-[#1E4468]/40 border border-white/10 rounded-3xl">
               Ничего не найдено
             </div>
           )}
@@ -1506,14 +1506,14 @@ function AISection() {
   ];
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4">
         <h2 className="text-base font-bold text-[#E7C768]">ИИ — функции и настройки</h2>
         <p className="text-xs text-slate-300 mt-1">Список развернутых edge-функций. Редактирование промптов будет добавлено в следующих итерациях (после выноса промптов в БД).</p>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
         {fns.map((f) => (
           <a key={f} href={`https://supabase.com/dashboard/project/rjhtauzookkvlipvqpvr/functions/${f}/logs`} target="_blank" rel="noreferrer"
-            className="bg-[#1D3E5E]/60 hover:bg-[#1D3E5E]/90 border border-white/10 hover:border-[#E7C768]/50 rounded-xl p-3 text-xs font-mono text-slate-200 transition">
+            className="bg-[#1E4468]/60 hover:bg-[#1E4468]/90 border border-white/10 hover:border-[#E7C768]/50 rounded-xl p-3 text-xs font-mono text-slate-200 transition">
             {f}
           </a>
         ))}
@@ -1562,7 +1562,7 @@ function LogsSection() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4 flex flex-wrap items-center gap-3 justify-between">
         <div>
           <h2 className="text-base font-bold text-[#E7C768]">Логи сообщений ProTalk — {rows.length}</h2>
           <p className="text-[11px] text-slate-300 mt-0.5">
@@ -1579,11 +1579,11 @@ function LogsSection() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+        <div className="bg-[#1E4468]/70 border border-white/10 rounded-2xl p-4">
           <div className="text-[10px] uppercase tracking-wider text-slate-300">Записей в выборке</div>
           <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{filtered.length}</div>
         </div>
-        <div className="bg-[#1D3E5E]/70 border border-white/10 rounded-2xl p-4">
+        <div className="bg-[#1E4468]/70 border border-white/10 rounded-2xl p-4">
           <div className="text-[10px] uppercase tracking-wider text-slate-300">Сумма токенов (tokens_total)</div>
           <div className="text-2xl font-bold text-[#E7C768] font-mono mt-1">{totalTokens.toLocaleString("ru-RU")}</div>
         </div>
@@ -1598,7 +1598,7 @@ function LogsSection() {
       {loading ? (
         <div className="text-center py-12 text-slate-400"><Loader2 className="w-4 h-4 animate-spin inline" /> Загрузка...</div>
       ) : (
-        <div className="bg-[#1D3E5E]/40 border border-white/10 rounded-3xl overflow-hidden">
+        <div className="bg-[#1E4468]/40 border border-white/10 rounded-3xl overflow-hidden">
           <div className="overflow-x-auto overflow-y-auto max-h-[60vh]" style={{ WebkitOverflowScrolling: "touch" }}>
             <table className="text-left text-[11px]" style={{ minWidth: 1400 }}>
               <thead className="bg-[#17344F] text-[#E7C768] uppercase tracking-wider text-[10px] font-mono sticky top-0">
@@ -1679,7 +1679,7 @@ function ReviewsSection({ setToast }: { setToast: (t: any) => void }) {
   };
 
   return (
-    <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-4">
+    <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-bold text-white">Отзывы — модерация</h2>
         <button onClick={load} className="text-slate-300 hover:text-white inline-flex items-center gap-1 text-sm">

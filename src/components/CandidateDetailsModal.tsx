@@ -313,7 +313,7 @@ export default function CandidateDetailsModal({
   return (
     <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-start justify-center overflow-y-auto p-4" onClick={onClose}>
       <div
-        className="relative w-full max-w-4xl bg-gradient-to-b from-[#1D3E5E] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl my-8"
+        className="relative w-full max-w-4xl bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl my-8"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -469,7 +469,7 @@ export default function CandidateDetailsModal({
 
             {decisionOpen && (
               <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !decisionSaving && setDecisionOpen(null)}>
-                <div className="bg-gradient-to-b from-[#1D3E5E] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
                   <h4 className="text-lg font-bold text-white mb-3">
                     {decisionOpen === "invited" ? "Пригласить на работу" : "Отказать кандидату"}
                   </h4>
@@ -514,7 +514,7 @@ export default function CandidateDetailsModal({
             )}
 
             <Tabs defaultValue="general" className="space-y-4">
-              <TabsList className="bg-[#1D3E5E]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
+              <TabsList className="bg-[#1E4468]/85 border border-white/15 p-1 rounded-2xl flex flex-wrap h-auto gap-1">
                 <TabsTrigger value="general" className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl">
                   👤 Общая
                 </TabsTrigger>

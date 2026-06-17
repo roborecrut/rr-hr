@@ -419,7 +419,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           <ArrowLeft className="w-3.5 h-3.5" /> К списку систем
         </button>
       )}
-      <div className="bg-[#1D3E5E]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-3">
+      <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-6 shadow-xl space-y-3">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
             <GraduationCap className="w-6 h-6" />
@@ -472,8 +472,8 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
             {STAGES.map(s => (
               <button key={s.key} type="button" onClick={() => setStage(s.key)}
                 className={`p-3 rounded-2xl text-left border transition ${stage === s.key
-                  ? "bg-[#E7C768] text-[#1D3E5E] border-[#E7C768]"
-                  : "bg-[#1D3E5E]/60 text-white border-white/10 hover:border-[#E7C768]/40"}`}>
+                  ? "bg-[#E7C768] text-[#1E4468] border-[#E7C768]"
+                  : "bg-[#1E4468]/60 text-white border-white/10 hover:border-[#E7C768]/40"}`}>
                 <div className="text-xs font-bold">{s.title}</div>
                 <div className="text-[10px] opacity-80 mt-0.5">{s.hint}</div>
               </button>
@@ -488,7 +488,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               className={`px-4 py-2.5 rounded-2xl text-sm font-bold border transition ${
                 subTab === "material"
                   ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
-                  : "bg-[#1D3E5E]/40 border-white/10 text-white hover:border-[#E7C768]/40"
+                  : "bg-[#1E4468]/40 border-white/10 text-white hover:border-[#E7C768]/40"
               }`}
             >
               📚 Обучение — материал
@@ -499,7 +499,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               className={`px-4 py-2.5 rounded-2xl text-sm font-bold border transition ${
                 subTab === "test"
                   ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
-                  : "bg-[#1D3E5E]/40 border-white/10 text-white hover:border-[#E7C768]/40"
+                  : "bg-[#1E4468]/40 border-white/10 text-white hover:border-[#E7C768]/40"
               }`}
             >
               ✅ Аттестация — тест
@@ -508,7 +508,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
           {subTab === "material" && (<>
           {/* Context sources — placed under the stage selector. Each row = textarea + checkbox on right. */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-2xl p-4 space-y-3">
+          <div className="bg-[#1E4468]/60 border border-white/10 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
                 <div className="text-xs font-bold text-[#E7C768]">Источники контекста для ИИ</div>
@@ -518,7 +518,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               </div>
               <button type="button" onClick={saveContextValues}
                 disabled={contextSaving || !Object.values(contextDirty).some(Boolean)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1.5 disabled:opacity-40">
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1E4468] font-bold flex items-center gap-1.5 disabled:opacity-40">
                 {contextSaving ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                 Сохранить контекст в БД
               </button>
@@ -551,7 +551,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                           checked ? "bg-[#E7C768] border-[#E7C768]" : "bg-white/5 border-white/20"
                         }`}>
                         <input type="checkbox" checked={checked} onChange={() => toggleContextKey(opt.key)} className="hidden" />
-                        {checked && <CheckCircle2 className="w-3.5 h-3.5 text-[#1D3E5E]" />}
+                        {checked && <CheckCircle2 className="w-3.5 h-3.5 text-[#1E4468]" />}
                       </label>
                     </div>
                     {isOpen && (
@@ -577,7 +577,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
           </div>
 
           {/* Materials */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 space-y-3">
+          <div className="bg-[#1E4468]/60 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-bold text-white flex items-center gap-2"><BookOpen className="w-4 h-4 text-[#E7C768]" /> Учебный материал</div>
               <div className="flex gap-2">
@@ -688,7 +688,7 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
                   </span>
                 )}
                 <button type="button" onClick={() => saveMaterials(false)} disabled={saving}
-                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#1D3E5E] text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5">
+                  className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#1E4468] text-xs font-bold hover:opacity-90 disabled:opacity-50 flex items-center gap-1.5">
                   <Save className="w-3 h-3" /> Сохранить материал
                 </button>
               </div>
@@ -698,13 +698,13 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
 
           {subTab === "test" && (<>
           {/* Test */}
-          <div className="bg-[#1D3E5E]/60 border border-white/10 rounded-3xl p-6 space-y-3">
+          <div className="bg-[#1E4468]/60 border border-white/10 rounded-3xl p-6 space-y-3">
             <div className="flex items-center justify-between">
               <div className="text-sm font-bold text-white flex items-center gap-2">
                 <FileQuestion className="w-4 h-4 text-[#E7C768]" /> Тест по этапу ({test.questions.length}/{MAX_QUESTIONS} вопр., проходной {test.pass_score}/{test.total_score || 100})
               </div>
               <button type="button" onClick={generateTest} disabled={busyTest || !materials}
-                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1D3E5E] font-bold flex items-center gap-1 disabled:opacity-40">
+                className="text-xs px-3 py-1.5 rounded-lg bg-[#E7C768] text-[#1E4468] font-bold flex items-center gap-1 disabled:opacity-40">
                 {busyTest ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 Сгенерировать тест ИИ
               </button>

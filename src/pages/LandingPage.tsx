@@ -204,7 +204,7 @@ export default function LandingPage() {
           </Reveal>
 
           <Reveal direction="right" delay={150} className="lg:col-span-5 flex justify-center">
-            <div className="bg-[#1D3E5E]/80 rounded-3xl p-8 border border-white/15 w-full max-w-md shadow-2xl flex flex-col items-center">
+            <div className="bg-[#1E4468]/80 rounded-3xl p-8 border border-white/15 w-full max-w-md shadow-2xl flex flex-col items-center">
               <Mascot state="greeting" size="lg" speechBubble="Привет! Я — Робот Рекрутер. Помогу нанять и обучить персонал за минуты!" />
               <div className="w-full h-px bg-white/10 my-6" />
               <div className="grid grid-cols-2 gap-4 w-full">
@@ -223,7 +223,7 @@ export default function LandingPage() {
       </Reveal>
 
       {/* DEMO PROMO — главный CTA для всех посетителей */}
-      <Reveal as="section" direction="up" className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1D3E5E]/80 to-[#17344F]/50">
+      <Reveal as="section" direction="up" className="px-4 md:px-8 py-16 border-y border-[#E7C768]/30 bg-gradient-to-br from-[#1E4468]/80 to-[#17344F]/50">
         <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
           <Reveal direction="left" className="space-y-5">
             <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/30 rounded-full px-3 py-1.5">
@@ -280,7 +280,7 @@ export default function LandingPage() {
         direction="up"
         id="vacancies"
         aria-labelledby="vacancies-title"
-        className="px-4 md:px-8 py-20 border-t border-white/10 bg-gradient-to-b from-[#17344F] to-[#1D3E5E]/60"
+        className="px-4 md:px-8 py-20 border-t border-white/10 bg-gradient-to-b from-[#17344F] to-[#1E4468]/60"
       >
         <div className="max-w-7xl mx-auto">
           <Reveal as="header" direction="down" className="text-center max-w-3xl mx-auto mb-12 space-y-4">
@@ -301,7 +301,7 @@ export default function LandingPage() {
 
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Соискателю */}
-            <Reveal as="article" direction="left" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-[#1D3E5E]/60 to-[#17344F]/40 border border-emerald-400/20 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+            <Reveal as="article" direction="left" className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-[#1E4468]/60 to-[#17344F]/40 border border-emerald-400/20 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
               <div className="flex items-start gap-5">
                 <img
                   src={MASCOT.shine}
@@ -345,7 +345,7 @@ export default function LandingPage() {
             </Reveal>
 
             {/* Работодателю */}
-            <Reveal as="article" direction="right" delay={120} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E7C768]/15 via-[#1D3E5E]/60 to-[#17344F]/40 border border-[#E7C768]/30 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
+            <Reveal as="article" direction="right" delay={120} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#E7C768]/15 via-[#1E4468]/60 to-[#17344F]/40 border border-[#E7C768]/30 p-7 md:p-9 flex flex-col gap-5 shadow-2xl">
               <div className="flex items-start gap-5">
                 <img
                   src={MASCOT.success}
@@ -420,7 +420,7 @@ export default function LandingPage() {
             { icon: MessageSquare, title: "ИИ-Система Интервью", price: "200 RR", desc: "Сценарии диалога с кандидатом, детальный скоринг и ситуативные тесты под вашу сферу." },
             { icon: GraduationCap, title: "ИИ-Система Обучения", price: "300 RR", desc: "Индивидуальный симулятор онбординга: профессиональное дообучение, обучение продукту и процессам." },
           ].map(({ icon: Icon, title, price, desc }, i) => (
-            <Reveal key={title} direction="up" delay={i * 120} className="bg-[#1D3E5E]/60 rounded-2xl p-6 border border-white/10 hover:border-[#E7C768] transition flex flex-col gap-4">
+            <Reveal key={title} direction="up" delay={i * 120} className="bg-[#1E4468]/60 rounded-2xl p-6 border border-white/10 hover:border-[#E7C768] transition flex flex-col gap-4">
               <div className="flex items-start justify-between">
                 <div className="w-12 h-12 rounded-xl bg-[#E7C768]/15 flex items-center justify-center text-[#E7C768]">
                   <Icon className="w-6 h-6" />
@@ -435,7 +435,7 @@ export default function LandingPage() {
       </Reveal>
 
       {/* Calculator */}
-      <Reveal as="section" direction="scale" id="tariffs" className="px-4 md:px-8 py-16 bg-[#1D3E5E]/40 border-t border-b border-white/10">
+      <Reveal as="section" direction="scale" id="tariffs" className="px-4 md:px-8 py-16 bg-[#1E4468]/40 border-t border-b border-white/10">
         <div className="max-w-5xl mx-auto space-y-8">
           <div className="text-center space-y-3">
             <p className="text-gray-300 text-sm md:text-base max-w-2xl mx-auto">

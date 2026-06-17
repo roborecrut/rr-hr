@@ -14,7 +14,7 @@ type Props = {
 /**
  * Glassy section card with gold gradient title, soft inner glow,
  * and on-scroll reveal animation. All colors/animations come from
- * the existing Tailwind tokens (#1D3E5E / #E7C768 brand palette).
+ * the existing Tailwind tokens (#1E4468 / #E7C768 brand palette).
  */
 export default function SectionCard({
   id,
@@ -33,7 +33,7 @@ export default function SectionCard({
       style={{ transitionDelay: `${delay}ms` }}
       className={[
         "relative overflow-hidden rounded-3xl",
-        "bg-[#1D3E5E]/70 backdrop-blur-xl",
+        "bg-[#1E4468]/70 backdrop-blur-xl",
         "border border-white/10 ring-1 ring-inset ring-[#E7C768]/10",
         "shadow-[0_20px_60px_-30px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.05)]",
         "p-5 md:p-8 transition-all duration-700 ease-out",
