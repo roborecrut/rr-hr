@@ -125,7 +125,7 @@ function StickyNav({ items }: { items: { id: string; label: string }[] }) {
             className={[
               "whitespace-nowrap px-3 py-1.5 rounded-full text-[11px] font-bold border transition",
               active === it.id
-                ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow"
+                ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] shadow"
                 : "bg-black/30 text-slate-300 border-white/10 hover:text-white hover:border-white/30",
             ].join(" ")}
           >
@@ -190,7 +190,7 @@ export default function CompanySections({
         ref={heroRef.ref}
         className={[
           "relative overflow-hidden rounded-3xl p-6 md:p-10",
-          "bg-gradient-to-br from-[#1D3E5E]/85 via-[#17344F]/85 to-[#0E2235]/85 backdrop-blur-xl",
+          "bg-gradient-to-br from-[#1E4468]/85 via-[#17344F]/85 to-[#17344F]/85 backdrop-blur-xl",
           "border border-white/10 ring-1 ring-inset ring-[#E7C768]/15",
           "shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)]",
           "transition-all duration-700",
@@ -215,7 +215,7 @@ export default function CompanySections({
               className="w-20 h-20 md:w-24 md:h-24 rounded-2xl object-contain p-2 bg-white/10 border border-white/15 shrink-0"
             />
           ) : (
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center bg-gradient-to-br from-[#E7C768] to-[#D99E41] text-[#112335] text-3xl font-black shrink-0">
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl flex items-center justify-center bg-gradient-to-br from-[#E7C768] to-[#D99E41] text-[#17344F] text-3xl font-black shrink-0">
               {(company.name || "C")[0]}
             </div>
           )}
@@ -250,7 +250,7 @@ export default function CompanySections({
                       .getElementById("sec-vacancies")
                       ?.scrollIntoView({ behavior: "smooth" });
                   }}
-                  className="bg-[#E7C768] text-[#112335] text-xs font-black px-4 py-2 rounded-xl hover:bg-[#F4EE8E] transition shadow"
+                  className="bg-[#E7C768] text-[#17344F] text-xs font-black px-4 py-2 rounded-xl hover:bg-[#F4EE8E] transition shadow"
                 >
                   Смотреть вакансии ({vacancies.length})
                 </a>

@@ -415,7 +415,7 @@ export default function CompanyLanding() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-[#112335] to-[#1C3A56] min-h-screen text-white font-sans antialiased flex flex-col justify-between">
+    <div className="bg-gradient-to-b from-[#17344F] to-[#1E4468] min-h-screen text-white font-sans antialiased flex flex-col justify-between">
       <h1 className="sr-only">
         {selectedVacancy?.roleName
           ? `${selectedVacancy.roleName} — ${displayCompany.name}`
@@ -423,7 +423,7 @@ export default function CompanyLanding() {
       </h1>
 
       {/* Dynamic Header */}
-      <header className="sticky top-0 z-40 bg-[#112335]/95 backdrop-blur-md border-b border-[#204569]/40 py-2">
+      <header className="sticky top-0 z-40 bg-[#17344F]/95 backdrop-blur-md border-b border-[#265582]/40 py-2">
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8">
           <div className="flex items-center justify-between gap-4 py-2">
             {/* Logo field */}
@@ -460,7 +460,7 @@ export default function CompanyLanding() {
                       onClick={() => navigate(`/com${companySlug}/vac${(selectedVacancy as any).slug || selectedVacancy.id}/${tb.key}`)}
                       className={`transition px-3 py-1.5 text-xs font-bold rounded-lg border cursor-pointer whitespace-nowrap ${
                         isActive
-                          ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow"
+                          ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] shadow"
                           : "bg-black/25 text-slate-300 border-white/5 hover:bg-white/5 hover:text-white"
                       }`}
                     >
@@ -513,12 +513,12 @@ export default function CompanyLanding() {
                       }}
                       className={`w-full text-left transition px-3.5 py-2.5 text-xs font-bold rounded-xl border flex items-center justify-between ${
                         isActive
-                          ? "bg-[#E7C768] text-[#112335] border-[#E7C768]"
+                          ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]"
                           : "bg-black/25 text-slate-300 border-white/5 hover:bg-white/5"
                       }`}
                     >
                       <span>{tb.label}</span>
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#112335]" />}
+                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#17344F]" />}
                     </button>
                   );
                 })}
@@ -528,7 +528,7 @@ export default function CompanyLanding() {
                 <div className="pt-2 border-t border-white/5 font-sans">
                   <button
                     onClick={() => { setMenuOpen(false); setShowApplyModal(true); }}
-                    className="w-full cursor-pointer bg-[#E7C768] text-[#112335] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
+                    className="w-full cursor-pointer bg-[#E7C768] text-[#17344F] text-xs font-black py-2.5 rounded-xl hover:bg-[#F4EE8E] transition shadow-md text-center block"
                   >
                     Войти / Регистрация 🔑
                   </button>
@@ -587,7 +587,7 @@ export default function CompanyLanding() {
           {/* Active Job Vacancy presentation banner — only when a vacancy is in the URL
               AND we are NOT on the /company sub-tab (company view is handled above). */}
           {vacancyId && subTab !== "company" && selectedVacancy && (selectedRaw?.is_published && (selectedRaw?.status ?? "active") === "active") ? (
-            <div className="rounded-3xl overflow-hidden border border-white/10 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] bg-gradient-to-br from-[#1B3A58] via-[#204569] to-[#17344F]">
+            <div className="rounded-3xl overflow-hidden border border-white/10 shadow-[0_30px_80px_-40px_rgba(0,0,0,0.7)] bg-gradient-to-br from-[#1E4468] via-[#265582] to-[#17344F]">
               {/* Hero — фирменный, без внешних скриншотов */}
               <div className="relative px-6 md:px-10 pt-8 md:pt-10 pb-6 md:pb-8 overflow-hidden">
                 <div aria-hidden className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#E7C768]/15 blur-3xl pointer-events-none" />
@@ -701,7 +701,7 @@ export default function CompanyLanding() {
                 onClick={() => {
                   setShowApplyModal(true);
                 }}
-                className="w-full bg-gradient-to-r from-[#E7C768] to-[#F4D685] text-[#112335] font-extrabold text-sm md:text-base py-4 rounded-2xl hover:from-[#F4EE8E] hover:to-[#F8E89A] transition shadow-xl flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-gradient-to-r from-[#E7C768] to-[#F4D685] text-[#17344F] font-extrabold text-sm md:text-base py-4 rounded-2xl hover:from-[#F4EE8E] hover:to-[#F8E89A] transition shadow-xl flex items-center justify-center gap-2 cursor-pointer"
               >
                 Начать отбор в компанию <ChevronRight className="w-4 h-4" />
               </button>
@@ -709,7 +709,7 @@ export default function CompanyLanding() {
 
             </div>
           ) : vacancyId && subTab !== "company" && selectedRaw ? (
-            <div className="bg-[#1D3E5E]/40 border border-amber-500/30 p-8 rounded-3xl text-center space-y-3">
+            <div className="bg-[#1E4468]/40 border border-amber-500/30 p-8 rounded-3xl text-center space-y-3">
               <AlertCircle className="w-10 h-10 mx-auto text-amber-400" />
               <h3 className="font-bold text-white text-lg">
                 {(selectedRaw?.status === "deleted")
@@ -721,13 +721,13 @@ export default function CompanyLanding() {
               </p>
               <button
                 onClick={() => navigate(`/com${companySlug}`)}
-                className="inline-flex items-center gap-2 bg-[#E7C768] text-[#112335] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#F4EE8E] transition"
+                className="inline-flex items-center gap-2 bg-[#E7C768] text-[#17344F] font-bold text-sm px-5 py-2.5 rounded-xl hover:bg-[#F4EE8E] transition"
               >
                 Смотреть другие вакансии компании <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           ) : vacancyId && subTab !== "company" ? (
-            <div className="bg-[#1D3E5E]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
+            <div className="bg-[#1E4468]/40 border border-white/5 p-8 rounded-3xl text-center space-y-2">
               <AlertCircle className="w-8 h-8 mx-auto text-amber-400/80" />
               <h3 className="font-bold text-white">Список вакансий пуст</h3>
               <p className="text-xs text-slate-400">Наш робот подбирает новые должности. Пожалуйста, загляните позже.</p>

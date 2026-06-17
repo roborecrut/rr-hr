@@ -2210,7 +2210,7 @@ export default function CandidateFlow() {
                               <strong className={`${isSelected ? "text-[#E7C768]" : "text-white"} font-extrabold text-xs block mt-0.5`}>{proj.roleName}</strong>
                             </div>
                             {isSelected && (
-                              <span className="text-[8px] bg-[#E7C768] text-[#112335] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap">Активна</span>
+                              <span className="text-[8px] bg-[#E7C768] text-[#17344F] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap">Активна</span>
                             )}
                           </div>
                           
@@ -2239,7 +2239,7 @@ export default function CandidateFlow() {
                               }}
                               className={`cursor-pointer text-[10px] w-full font-bold px-3 py-2 rounded-xl text-center transition-all duration-200 flex items-center justify-center gap-1.5 ${
                                 isSelected 
-                                  ? "bg-[#E7C768] text-[#112335] hover:bg-[#f3ea8b]" 
+                                  ? "bg-[#E7C768] text-[#17344F] hover:bg-[#f3ea8b]" 
                                   : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10"
                               }`}
                             >
@@ -2272,7 +2272,7 @@ export default function CandidateFlow() {
           <div className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl overflow-hidden min-h-[480px] flex flex-col md:flex-row">
             
             {/* Left/Internal Sub navigation list */}
-            <div className="w-full md:w-56 bg-gradient-to-b from-[#17344F] to-[#1F2E3E]/70 p-4 border-r border-white/10 flex flex-col justify-between">
+            <div className="w-full md:w-56 bg-gradient-to-b from-[#17344F] to-[#17344F]/70 p-4 border-r border-white/10 flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="border-b border-white/10 pb-2 text-left">
                   <span className="text-[#E7C768] font-bold text-[10px] uppercase tracking-wider block">Разделы условий</span>
