@@ -50,13 +50,13 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
   return (
     <div className="space-y-6">
       {isEditable && (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-4 text-left">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-4 text-left">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-amber-300 block">Раздел &quot;Чем вы будете заниматься&quot; (Табы и содержание):</label>
             <span className="text-[10px] text-slate-400">Формат: [Название Таба] Описание задачи</span>
           </div>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={5}
             value={activityText}
             onChange={(e) => onChangeText?.("tasksActivityText", e.target.value)}
@@ -72,7 +72,7 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         
         {/* Main Responsibilities Block */}
-        <div className="bg-[#12283C]/85 border border-[#E7C768]/15 rounded-2xl p-5 space-y-4">
+        <div className="bg-[#1E4468]/85 border border-[#E7C768]/15 rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-white/5">
             <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
               <Briefcase className="w-4 h-4" />
@@ -82,7 +82,7 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
 
           {isEditable ? (
             <textarea
-              className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+              className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
               rows={5}
               value={text}
               onChange={(e) => onChangeText?.("vacancyText", e.target.value)}
@@ -104,7 +104,7 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
         </div>
 
         {/* Requirements Block */}
-        <div className="bg-[#12283C]/85 border border-[#E7C768]/15 rounded-2xl p-5 space-y-4">
+        <div className="bg-[#1E4468]/85 border border-[#E7C768]/15 rounded-2xl p-5 space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-white/5">
             <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400">
               <Award className="w-4 h-4" />
@@ -148,15 +148,15 @@ export const VacancyView: React.FC<SectionProps> = ({ project, onChangeText, isE
                 onClick={() => setActiveTaskIndex(idx)}
                 className={`transition text-[10px] sm:text-xs font-bold p-2.5 rounded-xl border text-center cursor-pointer ${
                   activeTaskIndex === idx 
-                    ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow-md" 
-                    : "bg-[#112335]/70 text-slate-300 border-white/5 hover:bg-white/5"
+                    ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] shadow-md" 
+                    : "bg-[#17344F]/70 text-slate-300 border-white/5 hover:bg-white/5"
                 }`}
               >
                 {t.title}
               </button>
             ))}
           </div>
-          <div className="bg-[#112335] border border-[#E7C768]/10 p-3.5 rounded-xl block min-h-[50px]">
+          <div className="bg-[#17344F] border border-[#E7C768]/10 p-3.5 rounded-xl block min-h-[50px]">
             <p className="text-xs text-slate-350 leading-relaxed font-sans">{activeActivity.desc}</p>
             <div className="mt-3 flex items-center gap-1 text-[10px] text-[#E7C768] font-mono font-bold">
               <CheckCircle2 className="w-3.5 h-3.5 inline text-emerald-400" /> Все необходимые регламенты и подсказки будут доступны в ИИ-Кабинете!
@@ -179,10 +179,10 @@ export const MotivationView: React.FC<SectionProps> = ({ project, onChangeText, 
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <label className="text-xs font-bold text-amber-300 block">Краткая мотивация (баннер):</label>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={2}
             value={bannerText}
             onChange={(e) => onChangeText?.("motivationText", e.target.value)}
@@ -190,7 +190,7 @@ export const MotivationView: React.FC<SectionProps> = ({ project, onChangeText, 
           />
           <label className="text-xs font-bold text-amber-300 block">Полный текст мотивации и льгот:</label>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={5}
             value={detailText}
             onChange={(e) => onChangeText?.("motivationTextDetail", e.target.value)}
@@ -200,14 +200,14 @@ export const MotivationView: React.FC<SectionProps> = ({ project, onChangeText, 
       ) : (
         <div className="space-y-5">
           {bannerText && (
-            <div className="bg-gradient-to-r from-[#12283C] to-[#1A344D] border-l-4 border-[#E7C768] p-4 rounded-r-2xl text-left">
+            <div className="bg-gradient-to-r from-[#1E4468] to-[#265582] border-l-4 border-[#E7C768] p-4 rounded-r-2xl text-left">
               <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-widest block mb-1">Главное о мотивации</span>
               <p className="text-xs text-white font-medium leading-relaxed">{bannerText}</p>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {points.map((pt, i) => (
-            <div key={i} className="bg-gradient-to-br from-[#12283C] to-[#1A344D] border border-white/5 hover:border-amber-500/20 p-4 rounded-2xl flex items-start gap-3 transition hover:shadow-lg">
+            <div key={i} className="bg-gradient-to-br from-[#1E4468] to-[#265582] border border-white/5 hover:border-amber-500/20 p-4 rounded-2xl flex items-start gap-3 transition hover:shadow-lg">
               <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
                 {i % 2 === 0 ? <Sparkles className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
               </div>
@@ -245,11 +245,11 @@ export const CompanyView: React.FC<SectionProps> = ({ project, onChangeText, isE
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-4 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-4 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <div className="space-y-2">
             <label className="text-xs font-bold text-amber-300 block">Презентация компании на лендинге:</label>
             <textarea
-              className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+              className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
               rows={4}
               value={text}
               onChange={(e) => onChangeText?.("companyText", e.target.value)}
@@ -260,7 +260,7 @@ export const CompanyView: React.FC<SectionProps> = ({ project, onChangeText, isE
           <div className="space-y-2">
             <label className="text-xs font-bold text-amber-300 block">Цитата / Миссия компании:</label>
             <textarea
-              className="w-full bg-[#112335]/90 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
+              className="w-full bg-[#17344F]/90 text-xs p-2.5 rounded-xl border border-white/10 text-white focus:outline-[#E7C768]"
               rows={2}
               value={mission}
               onChange={(e) => onChangeText?.("missionText", e.target.value)}
@@ -272,54 +272,54 @@ export const CompanyView: React.FC<SectionProps> = ({ project, onChangeText, isE
             <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold block mb-2">🔥 Настройка 3-х счетчиков/характеристик</span>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#112335]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
+              <div className="bg-[#17344F]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
                 <span className="text-[9px] text-slate-400 block font-bold">Счетчик 1 (Клиенты):</span>
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
+                  className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
                   value={project.statsValClients !== undefined && project.statsValClients !== null ? project.statsValClients : "350+"}
                   onChange={(e) => onChangeText?.("statsValClients", e.target.value)}
                   placeholder="Значение"
                 />
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
+                  className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
                   value={project.statsLabelClients !== undefined && project.statsLabelClients !== null ? project.statsLabelClients : "Клиентов в СНГ"}
                   onChange={(e) => onChangeText?.("statsLabelClients", e.target.value)}
                   placeholder="Подпись"
                 />
               </div>
 
-              <div className="bg-[#112335]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
+              <div className="bg-[#17344F]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
                 <span className="text-[9px] text-slate-400 block font-bold">Счетчик 2 (ИИ диалоги):</span>
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
+                  className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
                   value={project.statsValDialogs !== undefined && project.statsValDialogs !== null ? project.statsValDialogs : "15 000+"}
                   onChange={(e) => onChangeText?.("statsValDialogs", e.target.value)}
                   placeholder="Значение"
                 />
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
+                  className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
                   value={project.statsLabelDialogs !== undefined && project.statsLabelDialogs !== null ? project.statsLabelDialogs : "ИИ-диалогов в сутки"}
                   onChange={(e) => onChangeText?.("statsLabelDialogs", e.target.value)}
                   placeholder="Подпись"
                 />
               </div>
 
-              <div className="bg-[#112335]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
+              <div className="bg-[#17344F]/50 p-2.5 border border-white/5 rounded-xl space-y-1.5">
                 <span className="text-[9px] text-slate-400 block font-bold">Счетчик 3 (Основание):</span>
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
+                  className="w-full bg-[#17344F] text-xs p-1.5 rounded-lg border border-white/10 text-white font-bold"
                   value={project.statsValFounded !== undefined && project.statsValFounded !== null ? project.statsValFounded : "2021"}
                   onChange={(e) => onChangeText?.("statsValFounded", e.target.value)}
                   placeholder="Значение"
                 />
                 <input
                   type="text"
-                  className="w-full bg-[#112335] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
+                  className="w-full bg-[#17344F] text-[10px] p-1.5 rounded-lg border border-white/10 text-slate-350"
                   value={project.statsLabelFounded !== undefined && project.statsLabelFounded !== null ? project.statsLabelFounded : "Год основания"}
                   onChange={(e) => onChangeText?.("statsLabelFounded", e.target.value)}
                   placeholder="Подпись"
@@ -331,7 +331,7 @@ export const CompanyView: React.FC<SectionProps> = ({ project, onChangeText, isE
       ) : (
         <div className="space-y-5">
           {/* Quote Block */}
-          <div className="bg-gradient-to-r from-[#12283C] to-[#1A344D] border-l-4 border-[#E7C768] p-4 rounded-r-2xl text-left">
+          <div className="bg-gradient-to-r from-[#1E4468] to-[#265582] border-l-4 border-[#E7C768] p-4 rounded-r-2xl text-left">
             <span className="text-2xl font-serif text-[#E7C768] leading-none select-none">“</span>
             <p className="text-xs italic text-slate-200 mt-1 font-sans leading-relaxed">
               {mission}
@@ -349,7 +349,7 @@ export const CompanyView: React.FC<SectionProps> = ({ project, onChangeText, isE
           </div>
 
           {/* Bullet points fact checklist */}
-          <div className="bg-[#12283C]/50 border border-white/5 p-4 rounded-xl space-y-3 text-left">
+          <div className="bg-[#1E4468]/50 border border-white/5 p-4 rounded-xl space-y-3 text-left">
             <h5 className="text-[10px] font-bold text-[#E7C768] uppercase font-mono tracking-wider">Факты о компании:</h5>
             <div className="space-y-2.5">
               {bullets.map((b, i) => (
@@ -401,13 +401,13 @@ export const OnboardingView: React.FC<SectionProps> = ({ project, onChangeText, 
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-amber-300 block">Этапы ввода в должность и оформления:</label>
             <span className="text-[10px] text-slate-400">Формат: [Заголовок] Описание</span>
           </div>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={6}
             value={text}
             onChange={(e) => onChangeText?.("onboardingText", e.target.value)}
@@ -433,8 +433,8 @@ export const OnboardingView: React.FC<SectionProps> = ({ project, onChangeText, 
                   onClick={() => setViewStep(idx)}
                   className={`transition p-2 rounded-xl text-center border font-bold text-[9px] sm:text-xs cursor-pointer ${
                     viewStep === idx
-                      ? "bg-[#E7C768] text-[#112335] border-[#E7C768]"
-                      : "bg-[#112335]/40 text-slate-300 border-white/5 hover:bg-white/5"
+                      ? "bg-[#E7C768] text-[#17344F] border-[#E7C768]"
+                      : "bg-[#17344F]/40 text-slate-300 border-white/5 hover:bg-white/5"
                   }`}
                 >
                   {s.title}
@@ -444,7 +444,7 @@ export const OnboardingView: React.FC<SectionProps> = ({ project, onChangeText, 
           )}
 
           {/* Stepper body display */}
-          <div className="bg-[#12283C] p-4 sm:p-5 rounded-2xl border border-white/10 text-left relative overflow-hidden">
+          <div className="bg-[#1E4468] p-4 sm:p-5 rounded-2xl border border-white/10 text-left relative overflow-hidden">
             <div className="absolute right-3 top-3 text-[50px] font-serif font-black select-none text-white/5">
               0{viewStep + 1}
             </div>
@@ -497,10 +497,10 @@ export const PayoutsView: React.FC<SectionProps> = ({ project, onChangeText, isE
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <label className="text-xs font-bold text-amber-300 block">Условия выплат и премий:</label>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={5}
             value={text}
             onChange={(e) => onChangeText?.("payoutsText", e.target.value)}
@@ -542,10 +542,10 @@ export const ScheduleView: React.FC<SectionProps> = ({ project, onChangeText, is
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <label className="text-xs font-bold text-amber-300 block">Разъяснение графика смен:</label>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={5}
             value={text}
             onChange={(e) => onChangeText?.("scheduleText", e.target.value)}
@@ -642,13 +642,13 @@ export const TeamView: React.FC<SectionProps> = ({ project, onChangeText, isEdit
   return (
     <div className="space-y-6">
       {isEditable ? (
-        <div className="space-y-3 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-3 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-amber-300 block">Команда адаптации соискателей по отделам:</label>
             <span className="text-[10px] text-slate-400">Формат: [Отдел] Название ИЛИ Имя - Роль. Текст.</span>
           </div>
           <textarea
-            className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+            className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
             rows={7}
             value={text}
             onChange={(e) => onChangeText?.("teamText", e.target.value)}
@@ -672,7 +672,7 @@ export const TeamView: React.FC<SectionProps> = ({ project, onChangeText, isEdit
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {group.members.map((m, i) => (
-                    <div key={i} className="bg-gradient-to-b from-[#12283C] to-[#1A344D] border border-white/15 p-4 rounded-2xl text-left space-y-2.5 relative hover:border-amber-500/20 transition hover:shadow-lg">
+                    <div key={i} className="bg-gradient-to-b from-[#1E4468] to-[#265582] border border-white/15 p-4 rounded-2xl text-left space-y-2.5 relative hover:border-amber-500/20 transition hover:shadow-lg">
                       <div className="flex items-center gap-2.5">
                         <div className="w-10 h-10 rounded-full bg-[#E7C768]/10 text-[#E7C768] flex items-center justify-center font-bold text-sm border border-[#E7C768]/20 select-none">
                           {m.title.slice(0, 2).toUpperCase()}
@@ -701,7 +701,7 @@ export const TeamView: React.FC<SectionProps> = ({ project, onChangeText, isEdit
             ))}
           </div>
 
-          <div className="bg-[#1D3E5E]/60 border border-white/10 p-4 rounded-2xl text-left flex items-start gap-3">
+          <div className="bg-[#1E4468]/60 border border-white/10 p-4 rounded-2xl text-left flex items-start gap-3">
             <HeartHandshake className="w-5 h-5 text-[#E7C768] shrink-0 mt-0.5" />
             <div>
               <h5 className="text-xs font-black text-white">Всегда на связи в Telegram</h5>
@@ -763,14 +763,14 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
   return (
     <div className="space-y-6 text-left">
       {isEditable ? (
-        <div className="space-y-4 bg-[#12283C]/80 border border-white/5 rounded-2xl p-5">
+        <div className="space-y-4 bg-[#1E4468]/80 border border-white/5 rounded-2xl p-5">
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold text-amber-300 block">Интерактивный кабинет: Вкладки рабочих платформ:</label>
               <span className="text-[10px] text-slate-400">Формат: [Таб] Описание | Секретный совет</span>
             </div>
             <textarea
-              className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+              className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
               rows={7}
               value={rawCabinetText}
               onChange={(e) => onChangeText?.("cabinetTabsText", e.target.value)}
@@ -781,7 +781,7 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
           <div className="pt-2 border-t border-white/5 space-y-2">
             <label className="text-xs font-bold text-amber-300 block">Ежедневная система регламентов и чек-лист отчетности (список):</label>
             <textarea
-              className="w-full bg-[#112335]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
+              className="w-full bg-[#17344F]/90 text-xs p-3 rounded-xl border border-white/10 text-white font-mono focus:outline-[#E7C768]"
               rows={5}
               value={text}
               onChange={(e) => onChangeText?.("systemText", e.target.value)}
@@ -817,7 +817,7 @@ export const SystemView: React.FC<SectionProps> = ({ project, onChangeText, isEd
                       onClick={() => setActiveSystemIndex(idx)}
                       className={`transition text-[10px] sm:text-xs font-bold p-2 rounded-xl border text-center cursor-pointer whitespace-nowrap overflow-hidden text-ellipsis ${
                         isActive 
-                          ? "bg-[#E7C768] text-[#112335] border-[#E7C768] shadow-md" 
+                          ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] shadow-md" 
                           : "bg-white/10 text-white border-white/15 hover:bg-white/20"
                       }`}
                     >
