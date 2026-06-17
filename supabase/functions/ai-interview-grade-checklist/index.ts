@@ -1,6 +1,6 @@
 // Grade 20-question checklist answers (server-side using correct/expected_answer).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, extractJsonObjects, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
 
@@ -63,6 +63,25 @@ ${JSON.stringify(fullBatch)}
       const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 180_000 });
       aiText = r.text;
       aiObj = tryParseJson<any>(r.text) || null;
+      if (!aiObj) {
+        // Salvage as many per-item objects as we can when the wrapper is broken
+        // (unescaped quotes, trailing prose, etc.). Then synthesize aiObj.items
+        // from the salvaged objects that look like grading items.
+        const objs = extractJsonObjects<any>(r.text);
+        const items = objs.filter((o) => o && o.id != null && (o.score != null || o.verdict));
+        if (items.length > 0) {
+          // Try to also extract a top-level "total"/"summary" by scanning text.
+          const totalMatch = r.text.match(/"total"\s*:\s*(\d+)/);
+          const summaryMatch = r.text.match(/"summary"\s*:\s*"([^"]{1,1500})"/);
+          aiObj = {
+            items,
+            total: totalMatch ? Number(totalMatch[1]) : null,
+            summary: summaryMatch ? summaryMatch[1] : "",
+            strengths: [],
+            gaps: [],
+          };
+        }
+      }
     } catch (e) {
       // fall through to local scoring
     }
