@@ -187,12 +187,18 @@ body {
    Применяется к <aside> в EmployerPanel: пункты меню и блок
    «Баланс и лимиты» становятся заметно крупнее и читабельнее.
    ============================================================ */
-.sidebar-readable .text-xs { font-size: 14px !important; line-height: 1.45 !important; }
-.sidebar-readable .text-\[9px\] { font-size: 11.5px !important; letter-spacing: 0.06em; }
-.sidebar-readable .text-\[10px\] { font-size: 12.5px !important; }
-.sidebar-readable .text-\[11px\] { font-size: 13.5px !important; }
+.sidebar-readable .text-xs { font-size: 12.5px !important; line-height: 1.35 !important; }
+.sidebar-readable .text-\[9px\] { font-size: 10px !important; letter-spacing: 0.06em; }
+.sidebar-readable .text-\[10px\] { font-size: 10.5px !important; }
+.sidebar-readable .text-\[11px\] { font-size: 12px !important; }
 .sidebar-readable h3.text-sm,
-.sidebar-readable h3 { font-size: 16px !important; }
+.sidebar-readable h3 { font-size: 15px !important; }
+/* Все пункты меню — одна строка, бейдж и иконка не сжимаются. */
+.sidebar-readable button { gap: 0.5rem; }
+.sidebar-readable button > span { white-space: nowrap; }
+.sidebar-readable button > span:first-child { min-width: 0; flex: 1 1 auto; }
+.sidebar-readable button > span:last-child { flex-shrink: 0; }
+.sidebar-readable button svg { flex-shrink: 0; }
 
 /* ============================================================
    CRM LAYOUT — реальная геометрия канбана и таблицы.
@@ -215,39 +221,35 @@ body {
 }
 .crm-workspace {
   flex: 1 1 auto;
-  min-height: 0;
   min-width: 0;
   max-width: 100%;
-  overflow: hidden;
-  height: clamp(420px, calc(100dvh - 320px), 680px);
+  height: auto;
+  overflow: visible;
 }
 .crm-kanban-viewport {
   width: 100%;
-  height: 100%;
   min-width: 0;
-  min-height: 0;
   overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior: contain;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
   scrollbar-gutter: stable;
 }
 .crm-kanban-track {
   display: flex;
+  align-items: flex-start;
   gap: 12px;
   width: max-content;
   min-width: 100%;
-  height: 100%;
   padding: 12px;
 }
 .crm-kanban-column {
-  width: 220px;
-  min-width: 220px;
-  flex: 0 0 220px;
-  height: 100%;
-  min-height: 0;
+  width: 250px;
+  min-width: 250px;
+  flex: 0 0 250px;
+  min-height: 180px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
 }
 .crm-kanban-column-header {
   flex: 0 0 auto;
@@ -256,21 +258,17 @@ body {
   z-index: 2;
 }
 .crm-kanban-cards {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  overscroll-behavior: contain;
-  padding-right: 3px;
+  flex: 0 0 auto;
+  overflow: visible;
 }
 .crm-table-shell { display: flex; flex-direction: column; }
 .crm-table-viewport {
   width: 100%;
-  height: clamp(420px, calc(100dvh - 320px), 680px);
   min-width: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
 }
 .crm-table-viewport thead th { background-color: #17344F; }
 
@@ -290,15 +288,6 @@ body {
   background: linear-gradient(90deg, #D99E41, #F4EE8E);
 }
 
-/* Скромный scrollbar для закреплённого левого меню работодателя. */
-.crm-sidebar { scrollbar-color: rgba(231,199,104,0.5) transparent; scrollbar-width: thin; }
-.crm-sidebar::-webkit-scrollbar { width: 6px; }
-.crm-sidebar::-webkit-scrollbar-track { background: transparent; }
-.crm-sidebar::-webkit-scrollbar-thumb {
-  background: rgba(231,199,104,0.35);
-  border-radius: 999px;
-}
-.crm-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(231,199,104,0.6); }
 /* Внутри .brand-editor правила .brand-editor (более специфичные сами по себе
    за счёт двойного класса) выигрывают — это ожидаемо. */
 .brand-editor input[type="text"],
