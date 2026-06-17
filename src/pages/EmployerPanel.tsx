@@ -26,6 +26,7 @@ import {
   type TrainingFieldKey,
 } from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
+import { resizeToWebP } from "@/lib/imageResize";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import { useAIWait } from "../components/AIWaitProvider";
 import { ruField } from "@/lib/fieldLabels";
