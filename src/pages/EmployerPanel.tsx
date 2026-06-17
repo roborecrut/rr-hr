@@ -229,6 +229,39 @@ export default function EmployerPanel() {
   const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
 
+  // Kanban refs + helpers (CRM hotfix v2)
+  const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
+  const kanbanColumnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [kanbanEdge, setKanbanEdge] = useState<{ left: boolean; right: boolean }>({ left: true, right: false });
+  const updateKanbanEdges = () => {
+    const v = kanbanViewportRef.current;
+    if (!v) return;
+    const atLeft = v.scrollLeft <= 2;
+    const atRight = v.scrollLeft + v.clientWidth >= v.scrollWidth - 2;
+    setKanbanEdge({ left: atLeft, right: atRight });
+  };
+  const scrollKanban = (direction: "left" | "right") => {
+    const v = kanbanViewportRef.current;
+    if (!v) return;
+    const delta = v.clientWidth * 0.75;
+    v.scrollBy({ left: direction === "right" ? delta : -delta, behavior: "smooth" });
+  };
+  const scrollToKanbanStage = (stage: string) => {
+    const v = kanbanViewportRef.current;
+    const col = kanbanColumnRefs.current[stage];
+    if (!v || !col) return;
+    v.scrollTo({ left: col.offsetLeft - 12, behavior: "smooth" });
+  };
+  const handleKanbanDragOver = (e: React.DragEvent) => {
+    const v = kanbanViewportRef.current;
+    if (!v) return;
+    const rect = v.getBoundingClientRect();
+    const edgeZone = 80;
+    const step = 24;
+    if (e.clientX < rect.left + edgeZone) v.scrollLeft -= step;
+    else if (e.clientX > rect.right - edgeZone) v.scrollLeft += step;
+  };
+
   // Fetching data state
   const [projects, setProjects] = useState<JobProject[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
