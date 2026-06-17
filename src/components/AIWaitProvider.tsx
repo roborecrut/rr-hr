@@ -490,7 +490,7 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, phraseSeq, ela
             <button
               type="button"
               onClick={onNext}
-              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-5 py-2 text-sm shadow-lg transition"
+              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#17344F] font-bold px-5 py-2 text-sm shadow-lg transition"
             >
               Далее →
             </button>
@@ -504,7 +504,7 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, phraseSeq, ela
                 type="button"
                 onClick={onFallback}
                 disabled={fallbackBusy}
-                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
+                className="rounded-xl bg-gradient-to-r from-[#E7C768] to-[#F4D679] hover:brightness-110 text-[#17344F] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 Запустить RR Pro Max
               </button>
@@ -520,7 +520,7 @@ const Overlay: React.FC<OverlayProps> = ({ status, title, phrase, phraseSeq, ela
               type="button"
               onClick={onRetry}
               disabled={fallbackBusy}
-              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#0a1828] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-xl bg-[#E7C768] hover:bg-[#F4D679] text-[#17344F] font-bold px-4 py-2 text-sm shadow transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               Повторить
             </button>

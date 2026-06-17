@@ -353,7 +353,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             </div>
 
             {/* Wishes textarea + example tip — same for every block, content varies */}
-            <div className="bg-[#0F2A42]/60 border-l-4 border-l-sky-400/60 border border-white/10 rounded-xl p-3 space-y-2">
+            <div className="bg-[#17344F]/60 border-l-4 border-l-sky-400/60 border border-white/10 rounded-xl p-3 space-y-2">
               <div className="text-[10px] uppercase tracking-wider text-sky-300 font-bold flex items-center gap-1">
                 <Wand2 className="w-3 h-3" /> Вход для ИИ
               </div>

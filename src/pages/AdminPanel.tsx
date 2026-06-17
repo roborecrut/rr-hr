@@ -501,7 +501,7 @@ function ClientLimitsEditor({
       <div className="text-xs font-bold text-[#E7C768]">Лимиты и баланс (с логированием в «Историю операций»)</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {LIMIT_FIELDS.map((f) => (
-          <div key={f.key} className="flex items-center gap-2 bg-[#0F2336]/60 rounded-lg p-2">
+          <div key={f.key} className="flex items-center gap-2 bg-[#17344F]/60 rounded-lg p-2">
             <div className="text-[11px] text-slate-200 flex-1">{f.label}</div>
             <input type="number" min={0} value={vals[f.key]}
               onChange={(e) => setVals((s) => ({ ...s, [f.key]: Math.max(0, Number(e.target.value) || 0) }))}
@@ -513,7 +513,7 @@ function ClientLimitsEditor({
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 bg-[#0F2336]/60 rounded-lg p-2 border-t border-white/10 pt-3">
+      <div className="flex items-center gap-2 bg-[#17344F]/60 rounded-lg p-2 border-t border-white/10 pt-3">
         <div className="text-[11px] text-slate-200 flex-1">
           Баланс RR: <span className="font-mono font-bold text-[#E7C768]">{bal}</span>
         </div>
