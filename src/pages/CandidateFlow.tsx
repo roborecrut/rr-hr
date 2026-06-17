@@ -2530,7 +2530,7 @@ export default function CandidateFlow() {
 
         {/* Tab 3: Interview module */}
         {activeTab === "interview" && (
-          <div className="space-y-6">
+          <Reveal key="tab-interview" direction="up" className="space-y-6">
             {candidate?.projectId && candidate?.id ? (
               <CandidateInterview
                 projectId={candidate.projectId}
@@ -2546,14 +2546,14 @@ export default function CandidateFlow() {
             ) : (
               <div className="text-slate-300 text-sm">Загрузка...</div>
             )}
-          </div>
+          </Reveal>
         )}
 
 
 
         {/* Tab 4: Evaluation scoring tab */}
         {activeTab === "scoring" && (
-          <div className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl p-6 md:p-8 space-y-6 text-center max-w-2xl mx-auto">
+          <Reveal key="tab-scoring" direction="up" className="bg-[#1E4468]/15 border border-white/10 shadow-2xl backdrop-blur-md rounded-3xl p-6 md:p-8 space-y-6 text-center max-w-2xl mx-auto">
             <Mascot state="serious" size="lg" />
             
             <div>
