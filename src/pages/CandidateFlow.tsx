@@ -2663,7 +2663,7 @@ export default function CandidateFlow() {
               || (candidate?.scores?.overallScore ?? 0) >= 60;
             if (!unlocked) {
               return (
-                <div className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
+                <Reveal direction="scale" className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
                   <BookOpen className="w-10 h-10 text-[#E7C768] mx-auto" />
                   <h2 className="text-lg font-bold text-white">Курс обучения откроется после интервью</h2>
                   <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
@@ -2676,10 +2676,14 @@ export default function CandidateFlow() {
                   >
                     💬 Перейти к интервью
                   </button>
-                </div>
+                </Reveal>
               );
             }
-            return <CandidateStageTraining candidateId={candidate!.id} projectId={candidate!.projectId} />;
+            return (
+              <Reveal key="tab-training" direction="up">
+                <CandidateStageTraining candidateId={candidate!.id} projectId={candidate!.projectId} />
+              </Reveal>
+            );
           })()
         )}
 
