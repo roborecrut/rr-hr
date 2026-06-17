@@ -3885,10 +3885,27 @@ export default function EmployerPanel() {
                           <input 
                             type="text" 
                             placeholder="URL-ссылка на логотип бренда" 
-                            className="w-full bg-black/40 text-xs pl-3 pr-8 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
+                            className="w-full bg-black/40 text-xs pl-3 pr-20 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
                             value={newCompanyLogo}
                             onChange={(e) => setNewCompanyLogo(e.target.value)}
                           />
+                          <label
+                            className="absolute right-9 p-1 text-slate-400 hover:text-[#E7C768] cursor-pointer transition-colors"
+                            title={isUploadingLogo ? "Загрузка…" : "Загрузить файл (ресайз до 256×256 WebP)"}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleLogoFilePick}
+                              disabled={isUploadingLogo}
+                            />
+                            <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 ${isUploadingLogo ? "animate-spin text-yellow-400" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="17 8 12 3 7 8"/>
+                              <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                          </label>
                           <button
                             type="button"
                             style={{ display: aiReady && (newCompanyLogo||"").trim().length >= 7 ? undefined : "none" }}
