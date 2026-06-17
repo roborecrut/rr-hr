@@ -26,6 +26,7 @@ import {
   type TrainingFieldKey,
 } from "@/lib/vacancyTemplates";
 import { supabase } from "@/integrations/supabase/client";
+import { resizeToWebP } from "@/lib/imageResize";
 import { FIXED_PRICES, packTierPrice } from "@/lib/rr";
 import { useAIWait } from "../components/AIWaitProvider";
 import { ruField } from "@/lib/fieldLabels";
@@ -571,6 +572,30 @@ export default function EmployerPanel() {
   const [newCompanySite, setNewCompanySite] = useState("");
   const DEFAULT_LOGO_URL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png";
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState("");
+  const handleLogoFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoUploadError("");
+    setIsUploadingLogo(true);
+    try {
+      const { blob } = await resizeToWebP(file, 256, 0.85);
+      const path = `companies/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+      const up = await supabase.storage
+        .from("Logos")
+        .upload(path, blob, { contentType: "image/webp", upsert: false });
+      if (up.error) throw up.error;
+      const { data } = supabase.storage.from("Logos").getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("no_public_url");
+      setNewCompanyLogo(data.publicUrl);
+    } catch (err: any) {
+      setLogoUploadError(err?.message || "Не удалось загрузить логотип");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
@@ -3860,10 +3885,27 @@ export default function EmployerPanel() {
                           <input 
                             type="text" 
                             placeholder="URL-ссылка на логотип бренда" 
-                            className="w-full bg-black/40 text-xs pl-3 pr-8 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
+                            className="w-full bg-black/40 text-xs pl-3 pr-20 py-2.5 rounded-xl text-white border border-white/10 focus:outline-none"
                             value={newCompanyLogo}
                             onChange={(e) => setNewCompanyLogo(e.target.value)}
                           />
+                          <label
+                            className="absolute right-9 p-1 text-slate-400 hover:text-[#E7C768] cursor-pointer transition-colors"
+                            title={isUploadingLogo ? "Загрузка…" : "Загрузить файл (ресайз до 256×256 WebP)"}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={handleLogoFilePick}
+                              disabled={isUploadingLogo}
+                            />
+                            <svg viewBox="0 0 24 24" className={`w-3.5 h-3.5 ${isUploadingLogo ? "animate-spin text-yellow-400" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                              <polyline points="17 8 12 3 7 8"/>
+                              <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                          </label>
                           <button
                             type="button"
                             style={{ display: aiReady && (newCompanyLogo||"").trim().length >= 7 ? undefined : "none" }}
@@ -3875,6 +3917,11 @@ export default function EmployerPanel() {
                             <Sparkles className={`w-3.5 h-3.5 ${enhancingFields["logoUrl"] ? "animate-spin text-yellow-400" : ""}`} />
                           </button>
                         </div>
+                        {logoUploadError && (
+                          <div className="md:col-span-2 -mt-2 text-[10px] text-rose-300 font-mono">
+                            ⚠ {logoUploadError}
+                          </div>
+                        )}
                       </div>
                     </div>
 
