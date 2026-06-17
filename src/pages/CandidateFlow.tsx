@@ -2608,11 +2608,32 @@ export default function CandidateFlow() {
                   ? `"${candidate.scores.assessmentSummary}"`
                   : "Пройдите ИИ-собеседование, чтобы получить персональный разбор результатов."}
               </p>
-              {candidate?.scores?.checklistFeedback?.summary ? (
-                <p className="text-[11px] text-emerald-200 mt-2"><b>Чек-лист:</b> {candidate.scores.checklistFeedback.summary}</p>
+              {candidate?.scores?.checklistFeedback ? (
+                <div className="mt-3 pt-3 border-t border-white/10 space-y-1.5">
+                  <div className="text-[10px] uppercase font-bold text-emerald-300/80">Чек-лист — итог ИИ</div>
+                  {candidate.scores.checklistFeedback.summary && (
+                    <p className="text-[11px] text-emerald-100 leading-relaxed">{candidate.scores.checklistFeedback.summary}</p>
+                  )}
+                  {Array.isArray(candidate.scores.checklistFeedback.strengths) && candidate.scores.checklistFeedback.strengths.length > 0 && (
+                    <div className="text-[11px] text-emerald-200">
+                      <b>Сильные стороны:</b>
+                      <ul className="list-disc list-inside opacity-90">
+                        {candidate.scores.checklistFeedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {Array.isArray(candidate.scores.checklistFeedback.gaps) && candidate.scores.checklistFeedback.gaps.length > 0 && (
+                    <div className="text-[11px] text-amber-200">
+                      <b>Зоны роста:</b>
+                      <ul className="list-disc list-inside opacity-90">
+                        {candidate.scores.checklistFeedback.gaps.map((g: string, i: number) => <li key={i}>{g}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               ) : null}
               {candidate?.scores?.situationsFeedback?.advice ? (
-                <p className="text-[11px] text-amber-200 mt-1"><b>Ситуации:</b> {candidate.scores.situationsFeedback.advice}</p>
+                <p className="text-[11px] text-amber-200 mt-2 pt-2 border-t border-white/10"><b>Ситуации:</b> {candidate.scores.situationsFeedback.advice}</p>
               ) : null}
             </div>
 
