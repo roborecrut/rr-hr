@@ -572,6 +572,30 @@ export default function EmployerPanel() {
   const [newCompanySite, setNewCompanySite] = useState("");
   const DEFAULT_LOGO_URL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RR-Logo.png";
   const [newCompanyLogo, setNewCompanyLogo] = useState(DEFAULT_LOGO_URL);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState("");
+  const handleLogoFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoUploadError("");
+    setIsUploadingLogo(true);
+    try {
+      const { blob } = await resizeToWebP(file, 256, 0.85);
+      const path = `companies/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.webp`;
+      const up = await supabase.storage
+        .from("Logos")
+        .upload(path, blob, { contentType: "image/webp", upsert: false });
+      if (up.error) throw up.error;
+      const { data } = supabase.storage.from("Logos").getPublicUrl(path);
+      if (!data?.publicUrl) throw new Error("no_public_url");
+      setNewCompanyLogo(data.publicUrl);
+    } catch (err: any) {
+      setLogoUploadError(err?.message || "Не удалось загрузить логотип");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
   const [newCompanyFiles, setNewCompanyFiles] = useState("");
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
