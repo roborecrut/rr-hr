@@ -143,7 +143,7 @@ export default function CandidateStageTraining({
       const payload = examQuestions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
       const r = await aiWaitRun<any>({
         title: "Проверка ответов",
-        task: () => callEdge<any>("ai-check-stage-answers", {
+        task: () => callEdge<any>("ai-grade-training-quiz", {
           candidate_id: candidateId, project_id: projectId, stage: active, answers: payload,
         }),
       });
@@ -165,6 +165,19 @@ export default function CandidateStageTraining({
       }
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
       setProgress(p => ({ ...p, [active]: { passed: r.passed || p[active].passed, best: Math.max(p[active].best, r.score), attempts: r.attempts } }));
+      // Re-sync FULL progress from DB so locked/unlocked state of next stages
+      // refreshes immediately without page reload.
+      try {
+        const { data: prog } = await supabase.from("candidate_stage_progress")
+          .select("stage,best_score,attempts,passed_at").eq("candidate_id", candidateId);
+        if (prog) {
+          const next = { ...progress };
+          (prog as any[]).forEach((row) => {
+            next[row.stage as Stage] = { passed: !!row.passed_at, best: row.best_score || 0, attempts: row.attempts || 0 };
+          });
+          setProgress(next);
+        }
+      } catch { /* ignore */ }
       setMode("result");
       try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
     } catch (e: any) {
