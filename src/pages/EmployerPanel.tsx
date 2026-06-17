@@ -2855,9 +2855,9 @@ export default function EmployerPanel() {
                   <p className="text-xs text-slate-300 mt-1">Отслеживайте прогресс соискателей на каждом этапе адаптации и запускайте рассылки.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 items-stretch">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-[220px_minmax(280px,1.35fr)_minmax(170px,1fr)_minmax(170px,1fr)_170px] gap-2 items-stretch">
                   {/* View selectors */}
-                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1">
+                  <div className="bg-black/25 p-1 rounded-xl border border-white/10 flex gap-1 sm:col-span-2 xl:col-span-1 2xl:col-span-1 min-h-10">
                     <button
                       onClick={() => setCrmViewMode("kanban")}
                       className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${crmViewMode === "kanban" ? "bg-[#1E4468] text-[#E7C768]" : "text-slate-300 hover:text-white"}`}
