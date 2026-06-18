@@ -449,7 +449,7 @@ export type Database = {
           {
             foreignKeyName: "candidate_checklist_answers_v2_candidate_id_fkey"
             columns: ["candidate_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "candidates"
             referencedColumns: ["id"]
           },
