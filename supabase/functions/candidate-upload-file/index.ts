@@ -31,7 +31,18 @@ Deno.serve(async (req) => {
   if (!["resume", "avatar", "doc", "list-docs", "delete-doc"].includes(kind)) return json({ error: "bad_kind" }, 400);
   if (["resume", "avatar", "doc"].includes(kind)) {
     if (!(file instanceof File)) return json({ error: "no_file" }, 400);
-    if (file.size > 25 * 1024 * 1024) return json({ error: "file_too_large" }, 413);
+    if (kind === "avatar") {
+      const allowedAvatarMime = new Set(["image/jpeg", "image/png", "image/webp"]);
+      const mime = (file as File).type || "";
+      if (!allowedAvatarMime.has(mime)) {
+        return json({ error: "unsupported_format", detail: "Только JPEG, PNG или WebP" }, 415);
+      }
+      if ((file as File).size > 5 * 1024 * 1024) {
+        return json({ error: "file_too_large", detail: "Максимум 5 МБ" }, 413);
+      }
+    } else if (file.size > 25 * 1024 * 1024) {
+      return json({ error: "file_too_large" }, 413);
+    }
   }
 
   // Validate token
@@ -89,6 +100,18 @@ Deno.serve(async (req) => {
   {
     const { data } = await admin.storage.from(bucket).createSignedUrl(path, 60 * 60 * 24 * 365);
     signedUrl = data?.signedUrl || null;
+  }
+
+  // For avatars, persist the permanent public URL directly on the candidate
+  // so it survives reload without requiring a separate profile save.
+  if (kind === "avatar" && publicUrl) {
+    const { error: updErr } = await admin
+      .from("candidates")
+      .update({ avatar_url: publicUrl })
+      .eq("id", candidateId);
+    if (updErr) {
+      return json({ error: `avatar_save_failed: ${updErr.message}` }, 500);
+    }
   }
 
   return json({ ok: true, bucket, path, publicUrl, signedUrl, candidate_id: candidateId });
