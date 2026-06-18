@@ -15,9 +15,9 @@ import { toUserError, formatUserError } from "@/lib/userError";
 import {
   startResumeScreenV2, pollJobUntilTerminal,
   getActiveJob, clearActiveJob, isSuccess, isTerminal,
-  startChecklistGradeV2, startSituationsGradeV2,
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
+import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -212,54 +212,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   // Reload-recovery for checklist v2 job. Resumes polling, never re-starts;
   // on terminal success refetches DB so candidate sees fresh score/feedback.
-  useEffect(() => {
-    const rec = getActiveJob("checklist_grade", candidateId);
-    if (!rec) return;
-    let cancelled = false;
-    const ac = new AbortController();
-    (async () => {
-      try {
-        const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
-        if (cancelled) return;
-        if (isSuccess(row.status)) {
-          const { data: sc } = await (supabase as any).from("candidate_scores")
-            .select("checklist_score,checklist_feedback,candidate_checklist_feedback")
-            .eq("candidate_id", candidateId).maybeSingle();
-          if (sc?.checklist_score != null) setChecklistScore(sc.checklist_score);
-          const cfb = (sc as any)?.candidate_checklist_feedback || sc?.checklist_feedback;
-          if (cfb) setChecklistFeedback(cfb);
-        }
-      } catch { /* aborted or timeout */ }
-      finally { if (!cancelled) clearActiveJob("checklist_grade", candidateId); }
-    })();
-    return () => { cancelled = true; ac.abort(); };
-  }, [candidateId]);
-
-  // Reload-recovery for situations v2 job — same contract as checklist.
-  useEffect(() => {
-    const rec = getActiveJob("situations_grade", candidateId);
-    if (!rec) return;
-    let cancelled = false;
-    const ac = new AbortController();
-    (async () => {
-      try {
-        const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
-        if (cancelled) return;
-        if (isSuccess(row.status)) {
-          const { data: sc } = await (supabase as any).from("candidate_scores")
-            .select("situations_score,situations_feedback,candidate_situations_feedback,overall_score")
-            .eq("candidate_id", candidateId).maybeSingle();
-          if (sc?.situations_score != null) setSituationsScore(sc.situations_score);
-          const candFb = (sc as any)?.candidate_situations_feedback;
-          if (candFb?.items && Array.isArray(candFb.items)) setSituationsFeedback(candFb.items);
-          else if (sc?.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
-          if (sc?.overall_score != null) setFinalScore(Math.round(Number(sc.overall_score)));
-        }
-      } catch { /* aborted or timeout */ }
-      finally { if (!cancelled) clearActiveJob("situations_grade", candidateId); }
-    })();
-    return () => { cancelled = true; ac.abort(); };
-  }, [candidateId]);
+  // NOTE (D1a-FIX): reload-recovery for checklist_grade and situations_grade
+  // is now owned by useCandidateAiJob (single lifecycle owner). The hook
+  // mounts, reads namespaced active job from localStorage, resumes polling
+  // and fires onSuccess/onFailure exactly once per jobId. No parallel
+  // pollJobUntilTerminal loop is allowed for v2 grading.
 
   const refetchCandidateScores = async () => {
     const { data: sc } = await (supabase as any).from("candidate_scores")
@@ -395,99 +352,71 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   /**
-   * Checklist v2 (Phase 3B-2B Step D1a): async AI-job lifecycle.
-   * 1) Reuse active job if present; otherwise start a NEW job (one request_id).
-   * 2) Poll via candidate-token-safe status endpoint (focus/visibility wake).
-   * 3) On terminal success: refetch candidate_scores from DB and display via
-   *    the existing renderer. NEVER use the start response payload.
-   * 4) On terminal failure: show safe RU text; keep answers; do NOT advance.
-   * Legacy v1 endpoint is preserved for rollback but not invoked here.
+   * Checklist v2 (Phase 3B-2B Step D1a-FIX): single-owner async lifecycle.
+   * useCandidateAiJob owns request_id creation, polling, focus/visibility
+   * wake-up, reload-recovery, terminal cleanup, and onSuccess/onFailure
+   * dispatch. submitChecklist only:
+   *   - calls hook.start() (in-memory lock guards double-click)
+   *   - awaits a Promise that the hook resolves via onSuccess/onFailure
+   *   - never reads/writes localStorage, never calls pollJobUntilTerminal,
+   *     never generates a request_id.
    */
-  const submitChecklist = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const existing = getActiveJob("checklist_grade", candidateId);
-      let jobId: string;
-      if (existing?.job_id) {
-        jobId = existing.job_id;
-      } else {
-        const started = await startChecklistGradeV2({ candidateId, answers });
-        jobId = started.job_id;
-      }
-      const row = await aiWaitRun<any>({
-        title: "AI анализирует ответы анкеты. Можно продолжить работу — результат сохранится автоматически",
-        task: () => pollJobUntilTerminal({ jobId }),
-      });
-      if (!row) return; // overlay closed but background polling persists
-      clearActiveJob("checklist_grade", candidateId);
-      if (!isSuccess(row.status)) {
-        alert(describeJobError(row.status));
-        return;
-      }
-      const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("checklist_score,checklist_feedback,candidate_checklist_feedback")
-        .eq("candidate_id", candidateId).maybeSingle();
-      if (sc?.checklist_score != null) setChecklistScore(sc.checklist_score);
-      // Кандидату показываем безопасный candidate-only feedback (адаптер
-      // отсечёт employer-only поля при рендеринге в существующем UI).
-      if ((sc as any)?.candidate_checklist_feedback) {
-        setChecklistFeedback((sc as any).candidate_checklist_feedback);
-      } else if (sc?.checklist_feedback) {
-        setChecklistFeedback(sc.checklist_feedback);
-      }
-    } catch (e: any) {
-      const code = String(e?.message || "orchestration_failed");
-      alert(describeJobError(/^[a-z0-9_:-]{1,64}$/i.test(code) ? code : "orchestration_failed"));
-    } finally { setBusy(false); }
+  const checklistPendingRef = useRef<((ok: boolean) => void) | null>(null);
+  const situationsPendingRef = useRef<((ok: boolean) => void) | null>(null);
+
+  const refetchChecklistFromDb = async () => {
+    const { data: sc } = await (supabase as any).from("candidate_scores")
+      .select("checklist_score,checklist_feedback,candidate_checklist_feedback")
+      .eq("candidate_id", candidateId).maybeSingle();
+    if (sc?.checklist_score != null) setChecklistScore(sc.checklist_score);
+    if ((sc as any)?.candidate_checklist_feedback) {
+      setChecklistFeedback((sc as any).candidate_checklist_feedback);
+    } else if (sc?.checklist_feedback) {
+      setChecklistFeedback(sc.checklist_feedback);
+    }
   };
 
-  /**
-   * Situations v2 (Phase 3B-2B Step D1a): async AI-job lifecycle + idempotent
-   * server-side stage advance. The only DB stage write triggered by v1 was
-   * `current_stage = 'training'` after a passing interview overall_score; we
-   * preserve that exact contract but route it through
-   * `candidate-stage-advance-v2`, which guards: (a) job ownership, (b) job_type,
-   * (c) terminal success, (d) expected current_stage. Repeat calls return
-   * `{ok:true, already:true}` without rewriting.
-   */
-  const submitSituations = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const existing = getActiveJob("situations_grade", candidateId);
-      let jobId: string;
-      if (existing?.job_id) {
-        jobId = existing.job_id;
-      } else {
-        const started = await startSituationsGradeV2({ candidateId, answers: sitAnswers });
-        jobId = started.job_id;
-      }
-      const row = await aiWaitRun<any>({
-        title: "AI анализирует решения ситуаций. Можно продолжить работу — результат сохранится автоматически",
-        task: () => pollJobUntilTerminal({ jobId }),
-      });
-      if (!row) return;
-      clearActiveJob("situations_grade", candidateId);
-      if (!isSuccess(row.status)) {
-        alert(describeJobError(row.status));
-        return;
-      }
-      // Refetch from DB — never use start/status response payload for results.
-      const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("situations_score,situations_feedback,candidate_situations_feedback,overall_score")
-        .eq("candidate_id", candidateId).maybeSingle();
-      if (sc?.situations_score != null) setSituationsScore(sc.situations_score);
-      const candFb = (sc as any)?.candidate_situations_feedback;
-      if (candFb?.items && Array.isArray(candFb.items)) {
-        setSituationsFeedback(candFb.items);
-      } else if (sc?.situations_feedback?.items) {
-        setSituationsFeedback(sc.situations_feedback.items);
-      }
-      const overall = sc?.overall_score != null
-        ? Math.round(Number(sc.overall_score))
-        : (sc?.situations_score != null ? Number(sc.situations_score) : 0);
-      setFinalScore(overall);
+  const refetchSituationsFromDb = async (): Promise<{ overall: number } | null> => {
+    const { data: sc } = await (supabase as any).from("candidate_scores")
+      .select("situations_score,situations_feedback,candidate_situations_feedback,overall_score")
+      .eq("candidate_id", candidateId).maybeSingle();
+    if (!sc) return null;
+    if (sc.situations_score != null) setSituationsScore(sc.situations_score);
+    const candFb = (sc as any)?.candidate_situations_feedback;
+    if (candFb?.items && Array.isArray(candFb.items)) {
+      setSituationsFeedback(candFb.items);
+    } else if (sc?.situations_feedback?.items) {
+      setSituationsFeedback(sc.situations_feedback.items);
+    }
+    const overall = sc.overall_score != null
+      ? Math.round(Number(sc.overall_score))
+      : (sc.situations_score != null ? Number(sc.situations_score) : 0);
+    setFinalScore(overall);
+    return { overall };
+  };
+
+  const checklistJob = useCandidateAiJob({
+    kind: "checklist_grade",
+    candidateId,
+    onSuccess: async () => {
+      try { await refetchChecklistFromDb(); } catch { /* swallow — UI keeps stale state */ }
+      checklistPendingRef.current?.(true);
+      checklistPendingRef.current = null;
+    },
+    onFailure: ({ message }) => {
+      try { alert(message); } catch { /* ignore */ }
+      checklistPendingRef.current?.(false);
+      checklistPendingRef.current = null;
+    },
+  });
+
+  const situationsJob = useCandidateAiJob({
+    kind: "situations_grade",
+    candidateId,
+    onSuccess: async (jobId) => {
+      let info: { overall: number } | null = null;
+      try { info = await refetchSituationsFromDb(); } catch { /* swallow */ }
+      const overall = info?.overall ?? 0;
       const passed = overall >= passScore;
       if (passed) {
         try {
@@ -496,22 +425,63 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             const raw = localStorage.getItem("cand_session");
             if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
           } catch { /* ignore */ }
+          // Idempotent server-side stage advance. Repeat calls are safe:
+          // the RPC returns {ok:true, already:true} without rewriting.
           await supabase.functions.invoke("candidate-stage-advance-v2", {
             body: {
               job_id: jobId,
-              expected_current_stage: null, // any pre-training stage is acceptable
+              expected_current_stage: null,
               next_stage: "training",
               job_type: "grade_situations_v2",
               candidate_token: candidateToken,
             },
             headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
           });
-        } catch { /* RPC failure is non-fatal — user can re-trigger by refresh */ }
+        } catch { /* non-fatal */ }
       }
-      onCompleted?.(passed, overall);
-    } catch (e: any) {
-      const code = String(e?.message || "orchestration_failed");
-      alert(describeJobError(/^[a-z0-9_:-]{1,64}$/i.test(code) ? code : "orchestration_failed"));
+      try { onCompleted?.(passed, overall); } catch { /* ignore */ }
+      situationsPendingRef.current?.(true);
+      situationsPendingRef.current = null;
+    },
+    onFailure: ({ message }) => {
+      try { alert(message); } catch { /* ignore */ }
+      situationsPendingRef.current?.(false);
+      situationsPendingRef.current = null;
+    },
+  });
+
+  const submitChecklist = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await aiWaitRun<any>({
+        title: "AI анализирует ответы анкеты. Можно продолжить работу — результат сохранится автоматически",
+        task: () => new Promise<boolean>((resolve) => {
+          checklistPendingRef.current = resolve;
+          void checklistJob.start({ kind: "checklist_grade", answers });
+        }),
+      });
+    } finally { setBusy(false); }
+  };
+
+  /**
+   * Situations v2 (D1a-FIX): single-owner async lifecycle. Lifecycle, stage
+   * advance and onCompleted are all routed through useCandidateAiJob's
+   * onSuccess callback. submitSituations only kicks off the hook and waits
+   * for terminal — it never reads localStorage, never polls, never decides
+   * pass/fail itself.
+   */
+  const submitSituations = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await aiWaitRun<any>({
+        title: "AI анализирует решения ситуаций. Можно продолжить работу — результат сохранится автоматически",
+        task: () => new Promise<boolean>((resolve) => {
+          situationsPendingRef.current = resolve;
+          void situationsJob.start({ kind: "situations_grade", answers: sitAnswers });
+        }),
+      });
     } finally { setBusy(false); }
   };
 
