@@ -22,7 +22,8 @@ export type JobStatus =
   | "fallback_available" | "fallback_running"
   | "primary_succeeded" | "fallback_succeeded"
   | "save_failed" | "validation_failed" | "fallback_failed"
-  | "fallback_unavailable" | "cancelled" | "timed_out";
+  | "fallback_unavailable" | "cancelled" | "timed_out"
+  | "orchestration_failed";
 
 export type ResumeJob = {
   id: string;
@@ -154,6 +155,7 @@ export type RunOutcome =
   | { kind: "fallback_unavailable" }
   | { kind: "fallback_failed" }
   | { kind: "primary_failed" }
+  | { kind: "orchestration_failed"; code: string }
   | { kind: "noop_terminal"; status: JobStatus }
   | { kind: "noop_missing" };
 
@@ -161,6 +163,7 @@ const TERMINAL = new Set<JobStatus>([
   "primary_succeeded", "fallback_succeeded",
   "save_failed", "validation_failed", "fallback_failed",
   "fallback_unavailable", "cancelled", "timed_out",
+  "orchestration_failed",
 ]);
 
 function safe(code: string): string {
@@ -232,8 +235,12 @@ export async function runResumeScreenJob(
   const pStart = deps.clock.now();
   const primaryAttemptId = await deps.attempts.startAttempt(args.jobId, "primary");
   if (!primaryAttemptId) {
-    await deps.jobs.markStatus(args.jobId, "primary_failed", true);
-    return { kind: "primary_failed" };
+    // We could not even start an attempt (RPC/DB failure). Provider was
+    // NEVER called → this must be a terminal orchestration_failed so the
+    // frontend stops polling, clears localStorage, and can start a new
+    // job with a new request_id.
+    await deps.jobs.markStatus(args.jobId, "orchestration_failed", true);
+    return { kind: "orchestration_failed", code: "attempt_start_failed" };
   }
   await deps.jobs.markStatus(args.jobId, "primary_running", false);
   const pRes = await deps.provider.callPrimary({ jobId: args.jobId, candidateId: job.candidateId, prompt });
@@ -275,7 +282,12 @@ export async function runResumeScreenJob(
     for (let i = 1; i <= fallbackAttempts && !report; i++) {
       const fbStart = deps.clock.now();
       const fbId = await deps.attempts.startAttempt(args.jobId, "rr_pro_max");
-      if (!fbId) break;
+      if (!fbId) {
+        // Cannot even start a fallback attempt — surface as terminal
+        // orchestration_failed, not as fallback_failed.
+        await deps.jobs.markStatus(args.jobId, "orchestration_failed", true);
+        return { kind: "orchestration_failed", code: "fallback_start_failed" };
+      }
       await deps.jobs.markStatus(args.jobId, "fallback_running", false);
       const f = await deps.provider.callFallback({
         jobId: args.jobId, candidateId: job.candidateId, prompt, attempt: i,
