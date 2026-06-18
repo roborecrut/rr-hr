@@ -119,8 +119,9 @@ const SEVERITY_RED_FLAG_ENUM = new Set(["средний", "высокий"]);
 // NOTE: JavaScript's `\b` is ASCII-only, so it's unreliable around Cyrillic.
 // We use lookaround on non-letter characters instead.
 const PROTECTED_PATTERNS: RegExp[] = [
-  /(?:^|[^\p{L}])\d{1,2}\s*(?:лет|года|год)(?:$|[^\p{L}])/iu,
-  /(?:возраст|пожилой|молод(?:ой|ая)|старш(?:е|ий))/iu,
+  // Age must be explicitly about the candidate, not duration like "3 года опыта".
+  /(?:кандидат(?:у|а|ом)?|ему|ей)\s+\d{1,2}\s*(?:лет|года|год)/iu,
+  /(?:возраст\s+кандидат|пожилой\s+кандидат|молод(?:ой|ая)\s+кандидат|преклонн)/iu,
   /(?:мужчин[аы]|женщин[аы]|пол\s+кандидата)/iu,
   /(?:национальност|раса|расов|еврей|татарин|узбек|таджик|армянин)/iu,
   /(?:религи|мусульман|христиан|православн|католик|иудей|атеист)/iu,
