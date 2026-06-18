@@ -230,8 +230,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           if (cfb) setChecklistFeedback(cfb);
         }
       } catch { /* aborted or timeout */ }
-      finally { if (!cancelled && isTerminal((await (async () => "")()) as any) ) {/* noop */} }
-      if (!cancelled) clearActiveJob("checklist_grade", candidateId);
+      finally { if (!cancelled) clearActiveJob("checklist_grade", candidateId); }
     })();
     return () => { cancelled = true; ac.abort(); };
   }, [candidateId]);
