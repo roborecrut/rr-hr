@@ -585,28 +585,7 @@ export default function CandidateDetailsModal({
               </TabsContent>
 
               <TabsContent value="resume" className="space-y-6 mt-0">
-            {/* Resume — крупнее, без моноширинного, со скроллом */}
-            {(c.resume_text || s.assessment_summary) && (
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
-                <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><FileText className="w-4 h-4" /> Распознанный текст резюме</h3>
-                {s.assessment_summary && (
-                  <div className={`text-[13px] rounded-lg p-3 border ${toneBg(scoreTone(s.resume_score).label)} text-white`}>
-                    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300 mb-1">Резюме оценил ИИ</div>
-                    {s.assessment_summary}
-                  </div>
-                )}
-                <div className="text-[14.5px] text-slate-100 leading-relaxed max-h-96 overflow-y-auto pr-1">
-                  {c.resume_text
-                    ? <RichMarkdown tone="resume">{c.resume_text}</RichMarkdown>
-                    : <span className="italic text-slate-500">Резюме не загружено</span>}
-                </div>
-              </div>
-            )}
-            {!(c.resume_text || s.assessment_summary) && (
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
-                Резюме ещё не загружено и не оценено ИИ.
-              </div>
-            )}
+            <EmployerResumeReportView score={s.resume_score} feedback={s.resume_feedback} fallbackSummary={s.assessment_summary} resumeText={c.resume_text} />
               </TabsContent>
 
               <TabsContent value="checklist" className="space-y-6 mt-0">
