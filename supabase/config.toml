@@ -89,3 +89,6 @@ verify_jwt = false
 
 [functions.candidate-stage-advance-v2]
 verify_jwt = false
+
+[functions.test-stage-advance-v2]
+verify_jwt = false
