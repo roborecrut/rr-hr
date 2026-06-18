@@ -148,7 +148,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setSituations(r.situations || []);
       // try fetch existing scores
       const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback")
         .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
         if (sc.resume_score != null) {
@@ -177,8 +177,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           }
         }
         if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
-        if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
+        // Prefer candidate-facing feedback (v2). The adapter strips employer-only
+        // fields from the legacy column when used as a fallback.
+        const candChk = (sc as any).candidate_checklist_feedback;
+        if (candChk) setChecklistFeedback(candChk);
+        else if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
         if (sc.situations_score != null) setSituationsScore(sc.situations_score);
+        const candSit = (sc as any).candidate_situations_feedback;
+        if (candSit) setSituationsFeedbackRaw(candSit);
+        else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
         // Восстанавливаем итоговый балл, чтобы вкладка «4. Итог» открывалась
         // при возврате на страницу собеседования после прохождения всех этапов.
