@@ -210,6 +210,58 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     return () => { cancelled = true; ac.abort(); };
   }, [candidateId]);
 
+  // Reload-recovery for checklist v2 job. Resumes polling, never re-starts;
+  // on terminal success refetches DB so candidate sees fresh score/feedback.
+  useEffect(() => {
+    const rec = getActiveJob("checklist_grade", candidateId);
+    if (!rec) return;
+    let cancelled = false;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
+        if (cancelled) return;
+        if (isSuccess(row.status)) {
+          const { data: sc } = await (supabase as any).from("candidate_scores")
+            .select("checklist_score,checklist_feedback,candidate_checklist_feedback")
+            .eq("candidate_id", candidateId).maybeSingle();
+          if (sc?.checklist_score != null) setChecklistScore(sc.checklist_score);
+          const cfb = (sc as any)?.candidate_checklist_feedback || sc?.checklist_feedback;
+          if (cfb) setChecklistFeedback(cfb);
+        }
+      } catch { /* aborted or timeout */ }
+      finally { if (!cancelled && isTerminal((await (async () => "")()) as any) ) {/* noop */} }
+      if (!cancelled) clearActiveJob("checklist_grade", candidateId);
+    })();
+    return () => { cancelled = true; ac.abort(); };
+  }, [candidateId]);
+
+  // Reload-recovery for situations v2 job — same contract as checklist.
+  useEffect(() => {
+    const rec = getActiveJob("situations_grade", candidateId);
+    if (!rec) return;
+    let cancelled = false;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
+        if (cancelled) return;
+        if (isSuccess(row.status)) {
+          const { data: sc } = await (supabase as any).from("candidate_scores")
+            .select("situations_score,situations_feedback,candidate_situations_feedback,overall_score")
+            .eq("candidate_id", candidateId).maybeSingle();
+          if (sc?.situations_score != null) setSituationsScore(sc.situations_score);
+          const candFb = (sc as any)?.candidate_situations_feedback;
+          if (candFb?.items && Array.isArray(candFb.items)) setSituationsFeedback(candFb.items);
+          else if (sc?.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+          if (sc?.overall_score != null) setFinalScore(Math.round(Number(sc.overall_score)));
+        }
+      } catch { /* aborted or timeout */ }
+      finally { if (!cancelled) clearActiveJob("situations_grade", candidateId); }
+    })();
+    return () => { cancelled = true; ac.abort(); };
+  }, [candidateId]);
+
   const refetchCandidateScores = async () => {
     const { data: sc } = await (supabase as any).from("candidate_scores")
       .select("resume_score,assessment_summary,resume_feedback,candidate_resume_feedback")
