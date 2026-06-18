@@ -2980,17 +2980,13 @@ export type Database = {
       get_ai_job_safe_status: {
         Args: { _job_id: string }
         Returns: {
+          attempts_count: number
           completed_at: string
           created_at: string
-          credits_status: Database["public"]["Enums"]["ai_job_credits_status"]
-          fallback_allowed: boolean
           fallback_used: boolean
-          id: string
+          job_id: string
           job_type: string
-          last_attempt_provider: Database["public"]["Enums"]["ai_job_provider"]
-          last_attempt_status: Database["public"]["Enums"]["ai_job_attempt_status"]
-          last_safe_error_code: string
-          status: Database["public"]["Enums"]["ai_job_status"]
+          status: string
           updated_at: string
         }[]
       }
@@ -3073,6 +3069,16 @@ export type Database = {
       }
       robokassa_mark_paid: {
         Args: { _amount: number; _inv_id: number; _payload: Json }
+        Returns: Json
+      }
+      save_candidate_resume_evaluation_v2: {
+        Args: {
+          _assessment_summary: string
+          _candidate: string
+          _candidate_resume_feedback: Json
+          _resume_feedback: Json
+          _resume_score: number
+        }
         Returns: Json
       }
       search_vacancies: {
