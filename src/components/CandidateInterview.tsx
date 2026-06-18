@@ -645,46 +645,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </div>
           ) : checklistScore != null ? (
             <div className="space-y-3">
-              <div className="text-3xl font-extrabold text-emerald-300">{checklistScore}/100</div>
-              {checklistFeedback?.summary ? (
-                <p className="text-sm text-white/90 italic">{checklistFeedback.summary}</p>
-              ) : null}
-              {(checklistFeedback?.strengths?.length || checklistFeedback?.gaps?.length) ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {checklistFeedback.strengths?.length ? (
-                    <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold text-emerald-300">Сильные стороны</div>
-                      <ul className="list-disc pl-5 text-xs text-emerald-100 mt-1 space-y-0.5">
-                        {checklistFeedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {checklistFeedback.gaps?.length ? (
-                    <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold text-amber-300">Что улучшить</div>
-                      <ul className="list-disc pl-5 text-xs text-amber-100 mt-1 space-y-0.5">
-                        {checklistFeedback.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              {checklistFeedback?.items?.length ? (
-                <DisclosureBlock title="Подробный разбор по каждому вопросу">
-                  <div className="space-y-3">
-                    {checklistFeedback.items.map((it: any) => (
-                      <section key={it.id} className="bg-black/20 border border-white/10 rounded-lg p-3 space-y-1.5">
-                        <div className="text-sm font-bold text-white leading-snug">{it.question}</div>
-                        <div className="text-sm text-slate-300">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
-                        {it.correct ? <div className="text-sm text-emerald-300">Эталон: {it.correct}</div> : null}
-                        <div className={`text-sm font-semibold ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
-                          {it.score}/{it.max} · <span className="font-normal">{it.explanation}</span>
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </DisclosureBlock>
-              ) : null}
+              <CandidateChecklistReport
+                view={adaptCandidateChecklist(checklistFeedback)}
+                score={checklistScore}
+              />
               <div className="flex gap-2">
                 <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
                 <button onClick={() => {
