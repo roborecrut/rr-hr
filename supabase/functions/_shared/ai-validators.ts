@@ -195,7 +195,7 @@ function hasForbiddenKeysDeep(obj: unknown): string | null {
     if (!cur || typeof cur !== "object") continue;
     if (Array.isArray(cur)) { for (const v of cur) stack.push(v); continue; }
     for (const k of Object.keys(cur)) {
-      if (CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
+      if (TRAINING_CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
       stack.push((cur as any)[k]);
     }
   }
