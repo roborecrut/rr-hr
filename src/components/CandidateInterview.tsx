@@ -349,9 +349,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const sendResumeToRR = async () => {
     if (!uploadedResume) return;
-    // Make sure /restart finished before we hit the neural network,
-    // otherwise we get two parallel responses and the parser breaks.
-    await waitForAIReady();
+    // Resume recognition uses ai-ingest-document — provider reset (if any)
+    // is handled server-side per attempt. No client-side restart wait.
     setParsing(true);
     try {
       const r = await aiWaitRun<any>({
