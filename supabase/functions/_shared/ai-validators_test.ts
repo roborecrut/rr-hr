@@ -6,6 +6,8 @@ import {
   validateSituations3,
   validateResumeScreenReport,
   detectProtectedCharacteristic,
+  validateChecklistGradeReport,
+  validateSituationsGradeReport,
 } from "./ai-validators.ts";
 import { canonicalJsonStringify, isTerminalStatus } from "./ai-jobs.ts";
 
