@@ -47,11 +47,13 @@ export type ActiveJobRecord = {
   created_at: string;
 };
 
-export function activeJobKey(kind: "screen_resume", candidateId: string): string {
+export type AiJobKind = "screen_resume" | "checklist_grade" | "situations_grade";
+
+export function activeJobKey(kind: AiJobKind, candidateId: string): string {
   return `rr_active_ai_job:${kind}:${candidateId}`;
 }
 
-export function getActiveJob(kind: "screen_resume", candidateId: string): ActiveJobRecord | null {
+export function getActiveJob(kind: AiJobKind, candidateId: string): ActiveJobRecord | null {
   try {
     const raw = localStorage.getItem(activeJobKey(kind, candidateId));
     if (!raw) return null;
@@ -61,12 +63,12 @@ export function getActiveJob(kind: "screen_resume", candidateId: string): Active
   } catch { return null; }
 }
 
-export function setActiveJob(kind: "screen_resume", rec: ActiveJobRecord): void {
+export function setActiveJob(kind: AiJobKind, rec: ActiveJobRecord): void {
   try { localStorage.setItem(activeJobKey(kind, rec.candidate_id), JSON.stringify(rec)); }
   catch { /* ignore quota */ }
 }
 
-export function clearActiveJob(kind: "screen_resume", candidateId: string): void {
+export function clearActiveJob(kind: AiJobKind, candidateId: string): void {
   try { localStorage.removeItem(activeJobKey(kind, candidateId)); } catch { /* ignore */ }
 }
 
