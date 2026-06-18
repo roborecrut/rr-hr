@@ -257,3 +257,92 @@ export async function logToDb(p: LogPayload): Promise<void> {
     console.error("logToDb failed:", e);
   }
 }
+
+// -------------------------------------------------------------------------
+// Retry classification + helper (Stage BUILD §1.6).
+//
+// Retryable: AbortError / timeout, network errors, HTTP 429, HTTP 5xx,
+// inline `[Server Error: ...]`, empty body, broken JSON, schema-fail.
+// NOT retryable: 400/401/402/403, no_project, no_candidate, no_credits,
+// bad_body, validation_failed_input — callers should bubble those up.
+
+const NON_RETRY_NEEDLES = [
+  "bad_body",
+  "no_project",
+  "no_candidate",
+  "no_credits",
+  "no_owner",
+  "protalk_payment_required",
+  "protalk_401",
+  "protalk_403",
+  "protalk_400",
+  "unauthorized",
+  "forbidden",
+] as const;
+
+export function isRetryableProtalkError(err: unknown): boolean {
+  const msg = String((err as Error)?.message || err || "").toLowerCase();
+  if (!msg) return true; // unknown → assume transient
+  if (NON_RETRY_NEEDLES.some((n) => msg.includes(n))) return false;
+  // Transient patterns we explicitly retry on.
+  if (msg.includes("abort")) return true;
+  if (msg.includes("timeout")) return true;
+  if (msg.includes("fetch_failed")) return true;
+  if (msg.includes("rate_limited")) return true;
+  if (msg.includes("server_error")) return true;
+  if (msg.includes("empty")) return true;
+  if (msg.includes("bad_json")) return true;
+  if (msg.includes("schema_invalid")) return true;
+  // Generic protalk_5xx
+  if (/protalk_5\d{2}/.test(msg)) return true;
+  if (/protalk_429/.test(msg)) return true;
+  // Default: retry once more rather than fail the job.
+  return true;
+}
+
+export type RetryOpts = CallOpts & {
+  /** Max attempts including the first. Default 3. */
+  attempts?: number;
+  /** Base backoff ms before attempt 2. Default 1500. Attempt N waits base * 2^(N-2) + jitter. */
+  baseDelayMs?: number;
+  /** Stable seed for chat_id rotation (e.g. ai_${jobId}_${attemptNumber}). */
+  chatIdSeed?: string;
+  /** Optional validator. Return ok=false to trigger a retry. */
+  validate?: (text: string) => { ok: true } | { ok: false; code: string };
+  /** Called once per attempt for observability/logging. */
+  onAttempt?: (info: { attempt: number; error?: string }) => void | Promise<void>;
+};
+
+export type RetryResult = { text: string; raw: any; attempts: number };
+
+export async function callProTalkWithRetry(opts: RetryOpts): Promise<RetryResult> {
+  const max = Math.max(1, opts.attempts ?? 3);
+  const base = opts.baseDelayMs ?? 1500;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= max; attempt++) {
+    const chatId = opts.chatIdSeed
+      ? `${opts.chatIdSeed}_a${attempt}`
+      : (opts.chatId || buildChatId({}));
+    try {
+      const r = await callProTalk({ ...opts, chatId });
+      const text = r.text || "";
+      if (!text.trim()) throw new Error("protalk_empty_response");
+      if (opts.validate) {
+        const v = opts.validate(text);
+        if (!v.ok) throw new Error(`schema_invalid:${v.code}`);
+      }
+      if (opts.onAttempt) await opts.onAttempt({ attempt });
+      return { text, raw: r.raw, attempts: attempt };
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as Error)?.message || e);
+      if (opts.onAttempt) await opts.onAttempt({ attempt, error: msg });
+      if (!isRetryableProtalkError(e) || attempt >= max) throw e;
+      // Exponential backoff + jitter (±25%).
+      const delay = base * Math.pow(2, attempt - 1);
+      const jitter = delay * (0.75 + Math.random() * 0.5);
+      await new Promise((res) => setTimeout(res, Math.round(jitter)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("protalk_retry_exhausted");
+}

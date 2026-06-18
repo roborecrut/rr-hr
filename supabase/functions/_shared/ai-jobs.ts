@@ -22,7 +22,18 @@ export type CreateJobInput = {
   fallbackAllowed?: boolean;
 };
 
-export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: string; reused: boolean } | { error: string }> {
+/** Statuses that mean the job is over for good — must NOT be reused / restarted. */
+const TERMINAL_STATUSES = new Set([
+  "primary_succeeded",
+  "fallback_succeeded",
+  "cancelled",
+  "timed_out",
+  "save_failed",
+  "validation_failed",
+  "fallback_failed",
+]);
+
+export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: string; reused: boolean; status?: string } | { error: string }> {
   const admin = getAdminClient();
   if (!admin) return { error: "no_admin_client" };
   const snapshot = input.requestSnapshot;
@@ -33,11 +44,23 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
   if (!ownerVal) return { error: "no_owner" };
   const existing = await admin
     .from("ai_jobs")
-    .select("id")
+    .select("id,status")
     .eq("idempotency_key", input.idempotencyKey)
     .eq(ownerCol, ownerVal)
     .maybeSingle();
-  if (existing.data?.id) return { id: existing.data.id, reused: true };
+  if (existing.error) return { error: existing.error.message };
+  if (existing.data?.id) {
+    // Only reuse non-terminal jobs. Terminal jobs are sealed; a new explicit
+    // request_id from the client will produce a fresh idempotency_key and
+    // therefore a brand-new job here.
+    const st = String(existing.data.status || "");
+    if (!TERMINAL_STATUSES.has(st)) {
+      return { id: existing.data.id, reused: true, status: st };
+    }
+    // If client somehow reuses an idempotency key after terminal status, do
+    // not reanimate — return error so caller can surface a clear message.
+    return { error: `terminal_job_exists:${st}` };
+  }
   const ins = await admin.from("ai_jobs").insert({
     user_id: input.userId,
     candidate_id: input.candidateId || null,
@@ -54,14 +77,53 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
   return { id: ins.data.id, reused: false };
 }
 
+/**
+ * Atomic primary attempt start. Uses SECURITY DEFINER RPC `start_ai_job_attempt`
+ * which locks the ai_jobs row, refuses a second active attempt of the same
+ * provider, and computes the next attempt_number across all providers.
+ *
+ * Signature preserved (string | null) for backward-compat with existing edge
+ * functions. The richer info is available via `startAttempt({ provider })`.
+ */
 export async function startPrimaryAttempt(jobId: string): Promise<string | null> {
+  const r = await startAttempt(jobId, "primary", { jobStatus: "primary_running" });
+  return r?.attemptId ?? null;
+}
+
+export async function startFallbackAttempt(jobId: string): Promise<string | null> {
+  const r = await startAttempt(jobId, "rr_pro_max", {
+    jobStatus: "fallback_running",
+    extraJobPatch: { fallback_used: true },
+  });
+  return r?.attemptId ?? null;
+}
+
+export async function startAttempt(
+  jobId: string,
+  provider: "primary" | "rr_pro_max",
+  opts: { jobStatus?: string; extraJobPatch?: Record<string, unknown> } = {},
+): Promise<{ attemptId: string; attemptNumber: number } | null> {
   const admin = getAdminClient();
   if (!admin) return null;
-  await admin.from("ai_jobs").update({ status: "primary_running" }).eq("id", jobId);
-  const ins = await admin.from("ai_job_attempts").insert({
-    job_id: jobId, provider: "protalk_primary", attempt_number: 1, status: "started",
-  }).select("id").single();
-  return ins.data?.id || null;
+  if (opts.jobStatus) {
+    const patch: Record<string, unknown> = { status: opts.jobStatus, ...(opts.extraJobPatch || {}) };
+    const upd = await admin.from("ai_jobs").update(patch).eq("id", jobId);
+    if (upd.error) {
+      console.error("startAttempt: ai_jobs status update failed", upd.error.message, { jobId, provider });
+      return null;
+    }
+  }
+  const { data, error } = await admin.rpc("start_ai_job_attempt", { _job_id: jobId, _provider: provider });
+  if (error) {
+    console.error("startAttempt: RPC failed", error.message, { jobId, provider });
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.attempt_id) {
+    console.error("startAttempt: no attempt returned", { jobId, provider });
+    return null;
+  }
+  return { attemptId: row.attempt_id as string, attemptNumber: row.attempt_number as number };
 }
 
 export async function finishAttempt(
@@ -84,7 +146,18 @@ export async function markJobStatus(jobId: string, status: string, completed = f
   if (!admin) return;
   const patch: Record<string, unknown> = { status };
   if (completed) patch.completed_at = new Date().toISOString();
-  await admin.from("ai_jobs").update(patch).eq("id", jobId);
+  const r = await admin.from("ai_jobs").update(patch).eq("id", jobId);
+  if (r.error) console.error("markJobStatus update failed", r.error.message, { jobId, status });
+}
+
+/** Mark job as save_failed without losing existing successful generation. */
+export async function markSaveFailed(jobId: string, _safeCode: string) {
+  await markJobStatus(jobId, "save_failed", true);
+}
+
+/** Mark job as validation_failed when AI output (and repair) cannot satisfy schema. */
+export async function markValidationFailed(jobId: string, _safeCode: string) {
+  await markJobStatus(jobId, "validation_failed", true);
 }
 
 export async function sha256Hex(s: string): Promise<string> {
