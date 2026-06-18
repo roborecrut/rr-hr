@@ -274,12 +274,16 @@ export function adaptEmployerChecklist(raw: unknown): EmployerChecklistView {
     };
   }).filter((x): x is EmployerChecklistItem => !!x && !!x.questionId);
 
-  const gaps = asArr(obj.gaps).map((g) => {
+  type Gap = { criterion: string; finding: string; impact?: string };
+  const gaps: Gap[] = asArr(obj.gaps).map((g): Gap | null => {
     const o = asObj(g); if (!o) return null;
     const criterion = asStr(o.criterion); const finding = asStr(o.finding);
     if (!criterion || !finding) return null;
-    return { criterion, finding, impact: asStr(o.impact) };
-  }).filter((x): x is { criterion: string; finding: string; impact?: string } => !!x);
+    const out: Gap = { criterion, finding };
+    const impact = asStr(o.impact);
+    if (impact) out.impact = impact;
+    return out;
+  }).filter((x): x is Gap => !!x);
 
   const risks = adaptRisks(obj.risks);
   const redFlags = adaptRedFlags(obj.red_flags);
