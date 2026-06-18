@@ -240,3 +240,93 @@ describe("useCandidateAiJob — situations v2 (kind parity)", () => {
     expect(result.current.state).toBe("succeeded");
   });
 });
+
+// =============================================================================
+// FIX-2 follow-up: 4 critical hook checks (focus / visibility / no overlapping
+// polling / reload recovery).
+// =============================================================================
+describe("useCandidateAiJob — focus/visibility/reload critical checks", () => {
+  it("focus event triggers immediate status check on active job", async () => {
+    const storage = new Map<string, ActiveJobRecord>([
+      ["checklist_grade:cf1", { job_id: "jf", request_id: "rf", candidate_id: "cf1", created_at: "" }],
+    ]);
+    let focusFn: (() => void) | null = null;
+    const { deps, runNextTimer, calls } = makeDeps({
+      storage, statusSequence: [row("primary_running", "jf"), row("primary_running", "jf")],
+    });
+    deps.addFocus = (fn) => { focusFn = fn; return () => {}; };
+    renderHook(() => useCandidateAiJob({
+      kind: "checklist_grade", candidateId: "cf1", deps,
+    }));
+    await runNextTimer(); // initial poll
+    const before = calls.status;
+    await act(async () => { focusFn?.(); await Promise.resolve(); await Promise.resolve(); });
+    expect(calls.status).toBe(before + 1);
+  });
+
+  it("visibilitychange visible triggers immediate status check", async () => {
+    const storage = new Map<string, ActiveJobRecord>([
+      ["checklist_grade:cv1", { job_id: "jv", request_id: "rv", candidate_id: "cv1", created_at: "" }],
+    ]);
+    let visFn: (() => void) | null = null;
+    const { deps, runNextTimer, calls } = makeDeps({
+      storage, statusSequence: [row("primary_running", "jv"), row("primary_running", "jv")],
+    });
+    deps.addVisibility = (fn) => { visFn = fn; return () => {}; };
+    renderHook(() => useCandidateAiJob({
+      kind: "checklist_grade", candidateId: "cv1", deps,
+    }));
+    await runNextTimer();
+    const before = calls.status;
+    await act(async () => { visFn?.(); await Promise.resolve(); await Promise.resolve(); });
+    expect(calls.status).toBe(before + 1);
+  });
+
+  it("focus during in-flight request does NOT create overlapping fetch", async () => {
+    const storage = new Map<string, ActiveJobRecord>([
+      ["checklist_grade:co1", { job_id: "jo", request_id: "ro", candidate_id: "co1", created_at: "" }],
+    ]);
+    let focusFn: (() => void) | null = null;
+    let resolveFirst!: (v: JobStatusRow | null) => void;
+    const calls = { status: 0 };
+    const deps: Partial<HookDeps> = {
+      readActive: (k, c) => storage.get(`${k}:${c}`) || null,
+      clearActive: (k, c) => { storage.delete(`${k}:${c}`); },
+      setTimer: (fn) => { setTimeout(fn as () => void, 0); return 1; },
+      clearTimer: () => {},
+      addFocus: (fn) => { focusFn = fn; return () => {}; },
+      addVisibility: () => () => {},
+      pollStatus: () => {
+        calls.status++;
+        return new Promise((res) => { resolveFirst = res; });
+      },
+      startChecklist: async () => ({ job_id: "jo", request_id: "ro", status: "primary_running", reused: false, terminal: false }),
+    };
+    renderHook(() => useCandidateAiJob({
+      kind: "checklist_grade", candidateId: "co1", deps,
+    }));
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(calls.status).toBe(1);
+    // Fire focus while the first poll is still in-flight — inflightRef must
+    // suppress a second concurrent fetch.
+    await act(async () => { focusFn?.(); await Promise.resolve(); });
+    expect(calls.status).toBe(1);
+    await act(async () => { resolveFirst(row("primary_running", "jo")); await new Promise((r) => setTimeout(r, 0)); });
+  });
+
+  it("reload recovery does NOT call startChecklist (no new request_id)", async () => {
+    const storage = new Map<string, ActiveJobRecord>([
+      ["checklist_grade:cr1", { job_id: "jrl", request_id: "rrl", candidate_id: "cr1", created_at: "" }],
+    ]);
+    const { deps, runNextTimer, calls } = makeDeps({
+      storage, statusSequence: [row("primary_running", "jrl")],
+    });
+    const { result } = renderHook(() => useCandidateAiJob({
+      kind: "checklist_grade", candidateId: "cr1", deps,
+    }));
+    expect(result.current.jobId).toBe("jrl");
+    await runNextTimer();
+    expect(calls.checklist).toBe(0); // no new start despite mount
+    expect(calls.situations).toBe(0);
+  });
+});

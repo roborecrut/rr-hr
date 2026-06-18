@@ -18,6 +18,9 @@ import {
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
 import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
+import { adaptCandidateChecklist, adaptCandidateSituations } from "@/lib/feedbackAdapters";
+import CandidateChecklistReport from "@/components/reports/CandidateChecklistReport";
+import CandidateSituationsReport from "@/components/reports/CandidateSituationsReport";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -109,6 +112,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [sitAnswers, setSitAnswers] = useState<Record<string, string>>({});
   const [situationsScore, setSituationsScore] = useState<number | null>(null);
   const [situationsFeedback, setSituationsFeedback] = useState<{ id: string; feedback: string; score: number }[]>([]);
+  // Raw structured object (prefers `candidate_situations_feedback`; falls back
+  // to legacy `situations_feedback` only as a SAFE TEXT path through the
+  // adapter — employer-only fields are stripped before reaching the UI).
+  const [situationsFeedbackRaw, setSituationsFeedbackRaw] = useState<any>(null);
 
   const [finalScore, setFinalScore] = useState<number | null>(null);
 
@@ -141,7 +148,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setSituations(r.situations || []);
       // try fetch existing scores
       const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback")
         .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
         if (sc.resume_score != null) {
@@ -170,8 +177,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           }
         }
         if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
-        if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
+        // Prefer candidate-facing feedback (v2). The adapter strips employer-only
+        // fields from the legacy column when used as a fallback.
+        const candChk = (sc as any).candidate_checklist_feedback;
+        if (candChk) setChecklistFeedback(candChk);
+        else if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
         if (sc.situations_score != null) setSituationsScore(sc.situations_score);
+        const candSit = (sc as any).candidate_situations_feedback;
+        if (candSit) setSituationsFeedbackRaw(candSit);
+        else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
         // Восстанавливаем итоговый балл, чтобы вкладка «4. Итог» открывалась
         // при возврате на страницу собеседования после прохождения всех этапов.
@@ -383,6 +397,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     if (!sc) return null;
     if (sc.situations_score != null) setSituationsScore(sc.situations_score);
     const candFb = (sc as any)?.candidate_situations_feedback;
+    if (candFb) setSituationsFeedbackRaw(candFb);
+    else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
     if (candFb?.items && Array.isArray(candFb.items)) {
       setSituationsFeedback(candFb.items);
     } else if (sc?.situations_feedback?.items) {
@@ -642,46 +658,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </div>
           ) : checklistScore != null ? (
             <div className="space-y-3">
-              <div className="text-3xl font-extrabold text-emerald-300">{checklistScore}/100</div>
-              {checklistFeedback?.summary ? (
-                <p className="text-sm text-white/90 italic">{checklistFeedback.summary}</p>
-              ) : null}
-              {(checklistFeedback?.strengths?.length || checklistFeedback?.gaps?.length) ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {checklistFeedback.strengths?.length ? (
-                    <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold text-emerald-300">Сильные стороны</div>
-                      <ul className="list-disc pl-5 text-xs text-emerald-100 mt-1 space-y-0.5">
-                        {checklistFeedback.strengths.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {checklistFeedback.gaps?.length ? (
-                    <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
-                      <div className="text-[10px] uppercase font-bold text-amber-300">Что улучшить</div>
-                      <ul className="list-disc pl-5 text-xs text-amber-100 mt-1 space-y-0.5">
-                        {checklistFeedback.gaps.map((s: string, i: number) => <li key={i}>{s}</li>)}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-              {checklistFeedback?.items?.length ? (
-                <DisclosureBlock title="Подробный разбор по каждому вопросу">
-                  <div className="space-y-3">
-                    {checklistFeedback.items.map((it: any) => (
-                      <section key={it.id} className="bg-black/20 border border-white/10 rounded-lg p-3 space-y-1.5">
-                        <div className="text-sm font-bold text-white leading-snug">{it.question}</div>
-                        <div className="text-sm text-slate-300">Ваш ответ: <span className="text-white">{it.answer || "—"}</span></div>
-                        {it.correct ? <div className="text-sm text-emerald-300">Эталон: {it.correct}</div> : null}
-                        <div className={`text-sm font-semibold ${it.verdict === "correct" ? "text-emerald-200" : it.verdict === "partial" ? "text-amber-200" : "text-red-200"}`}>
-                          {it.score}/{it.max} · <span className="font-normal">{it.explanation}</span>
-                        </div>
-                      </section>
-                    ))}
-                  </div>
-                </DisclosureBlock>
-              ) : null}
+              <CandidateChecklistReport
+                view={adaptCandidateChecklist(checklistFeedback)}
+                score={checklistScore}
+              />
               <div className="flex gap-2">
                 <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
                 <button onClick={() => {
@@ -734,20 +714,17 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </div>
           ) : situationsScore != null ? (
             <div className="space-y-3">
-              <div className="text-3xl font-extrabold text-emerald-300">{situationsScore}/100</div>
-              {situationsFeedback.map(f => (
-                <div key={f.id} className="bg-black/30 border border-white/10 rounded-xl p-3">
-                  <div className="text-xs text-[#E7C768] font-bold">{f.id}: {f.score}/100</div>
-                  <div className="text-sm text-slate-200">{f.feedback}</div>
-                </div>
-              ))}
+              <CandidateSituationsReport
+                view={adaptCandidateSituations(situationsFeedbackRaw)}
+                score={situationsScore}
+              />
               <div className="flex flex-wrap gap-2">
                 {finalScore != null && (
                   <button onClick={() => setStage("done")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-1">
                     <Award className="w-4 h-4"/> Показать итоговую оценку →
                   </button>
                 )}
-                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setSituationsFeedbackRaw(null); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
               </div>
             </div>
           ) : situations.length === 0 ? (

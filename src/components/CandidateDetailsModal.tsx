@@ -10,6 +10,9 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import RichMarkdown from "@/components/RichMarkdown";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { adaptEmployerChecklist, adaptEmployerSituations } from "@/lib/feedbackAdapters";
+import EmployerChecklistReport from "@/components/reports/EmployerChecklistReport";
+import EmployerSituationsReport from "@/components/reports/EmployerSituationsReport";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
@@ -759,8 +762,16 @@ export default function CandidateDetailsModal({
               </TabsContent>
 
               <TabsContent value="checklist" className="space-y-6 mt-0">
-            {/* Answers — Checklist (анкета) */}
-            {checklistAnswersView.length > 0 ? (
+            {/* v2 structured employer report. Falls back to legacy answer list
+                if the new candidate_scores.checklist_feedback is missing. */}
+            {((s as any)?.checklist_feedback || (s as any)?.checklist_score != null) ? (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4">
+                <EmployerChecklistReport
+                  view={adaptEmployerChecklist((s as any)?.checklist_feedback)}
+                  score={(s as any)?.checklist_score ?? null}
+                />
+              </div>
+            ) : checklistAnswersView.length > 0 ? (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на анкету (чек-лист)</h3>
                 <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">
@@ -793,8 +804,14 @@ export default function CandidateDetailsModal({
               </TabsContent>
 
               <TabsContent value="situations" className="space-y-6 mt-0">
-            {/* Answers — Situations */}
-            {situationAnswersView.length > 0 ? (
+            {((s as any)?.situations_feedback || (s as any)?.situations_score != null) ? (
+              <div className="bg-black/20 border border-white/10 rounded-2xl p-4">
+                <EmployerSituationsReport
+                  view={adaptEmployerSituations((s as any)?.situations_feedback)}
+                  score={(s as any)?.situations_score ?? null}
+                />
+              </div>
+            ) : situationAnswersView.length > 0 ? (
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Ответы по ситуациям</h3>
                 <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">

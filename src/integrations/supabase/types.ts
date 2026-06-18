@@ -2855,7 +2855,6 @@ export type Database = {
     Functions: {
       _owns_company: { Args: { _id: string }; Returns: boolean }
       _owns_project: { Args: { _id: string }; Returns: boolean }
-      _test_advance_stage_v2_run: { Args: never; Returns: Json }
       accept_offer: { Args: { _version?: string }; Returns: Json }
       admin_delete_job_title: { Args: { _id: string }; Returns: Json }
       admin_employer_set_limit: {
