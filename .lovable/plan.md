@@ -1,145 +1,87 @@
-## Phase 3B-2A.1 — Crash-safe resume job, lifecycle tests, safe runtime prep
+# Phase 3B-2B — Step D1 plan
 
-Goal: make resume v2 worker independent of HTTP closure, add real DI-based lifecycle tests, find a safe test fixture, and prepare (NOT execute) one real paid run. No real AI calls, no debits, no publish, no checklist/situations changes.
+## Preflight (done)
+- `bunx tsc --noEmit`: 0 errors
+- `bun run build`: OK (existing dynamic/static import warning, no new)
+- `supabase test edge-functions`: exit 0, 155 tests (46 validators + 25 resume + 41 checklist + 43 situations)
 
----
+## 1. Backend — checklist composite key parity
+Audit existing rows in `candidate_checklist_answers_v2` to confirm no `candidate_id` appears with two different `project_id`s; if clean, migrate.
 
-### 1. Crash-safe orchestration (`ai-interview-screen-resume-v2`)
+Migration (additive, no data loss):
+- Drop existing PK `candidate_checklist_answers_v2_pkey` (PK only `candidate_id`).
+- Add composite PK `(candidate_id, project_id)`.
+- Recreate `save_checklist_answers_v2` RPC to upsert on the composite key, keep `SECURITY DEFINER`, `SET search_path=public`, `REVOKE ALL`, `GRANT EXECUTE` only to `service_role`.
 
-Refactor the function so the background worker reloads everything from DB by `job_id` only.
+Update:
+- `_shared/checklist-grade-runner.ts`: snapshot reload now keyed by `(candidate_id, project_id)`.
+- `ai-interview-grade-checklist-v2/index.ts`: pass `project_id` to RPC.
+- `_shared/checklist-grade-runner_test.ts`: existing fakes parameterized.
+- New test: same `candidate_id`, two `project_id`s, hashes/answers isolated; project-A worker never reads project-B answers.
 
-- Sync phase:
-  1. validate candidate token, project, resume_text length/PII
-  2. atomically save `resume_text` + `resume_hash` (full SHA-256 hex) + `resume_updated_at` via new RPC `save_candidate_resume_text` (SECURITY DEFINER, service_role only)
-  3. compute `criteria_hash` from project criteria
-  4. create job with **minimal** `request_snapshot`:
-     ```json
-     { "candidate_id", "project_id", "resume_hash", "resume_updated_at", "criteria_hash", "requested_at" }
-     ```
-  5. return `{ job_id, status, reused, terminal }`
-- Background phase: `EdgeRuntime.waitUntil(runResumeJob(jobId))` — receives **only `job_id`**. No closure over `resumeText`, no closure over project/criteria.
-- Worker reloads: ai_job → candidate (resume_text, resume_updated_at, resume_hash) → project → criteria → employer wishes.
-- Worker recomputes resume_hash; compares with snapshot:
-  - hash + version match → run provider
-  - resume_text empty → `validation_failed` code `resume_text_missing`, no provider call, no debit, prior report preserved
-  - hash/version mismatch → `validation_failed` code `resume_version_changed`, no provider call, no new debit, prior report preserved
-- Strict no-leak: resume_text NEVER goes to snapshot, attempts, response_meta, logs, error_message, localStorage.
+## 2. Frontend — `src/lib/aiJobs.ts`
+- Widen `kind` union: `"screen_resume" | "checklist_grade" | "situations_grade"`.
+- Add `startChecklistGradeV2({ candidateId, answers, requestId? })` → `ai-interview-grade-checklist-v2`.
+- Add `startSituationsGradeV2({ candidateId, answers, requestId? })` → `ai-interview-grade-situations-v2`.
+- `activeJobKey` already namespaces by kind — extend tests.
+- Only `{job_id, request_id, candidate_id, created_at}` in localStorage; never answers, token, project, score.
+- Token continues to be passed via `x-candidate-token` header only.
 
-### 2. Resume version columns (additive migration)
+## 3. Frontend — generic job hook
+New `src/hooks/useCandidateAiJob.ts`:
+- Reads/writes localStorage by kind.
+- Restores active job on mount, starts polling via existing `pollJobUntilTerminal` (which already handles focus/visibility wake-up).
+- In-memory ref guard against double-click start.
+- Terminal-only localStorage cleanup; `primary_failed` does NOT clear.
+- Returns `{ status, isRunning, isTerminal, start, lastError, jobId }`.
+- Cleanup on unmount (AbortController).
 
-Migration adds (if missing):
-- `candidates.resume_hash text`
-- `candidates.resume_updated_at timestamptz`
-- RPC `save_candidate_resume_text(_candidate uuid, _resume_text text) returns jsonb`
-  - SECURITY DEFINER, `SET search_path=public`
-  - REVOKE all PUBLIC, GRANT EXECUTE to `service_role` only
-  - atomically sets `resume_text`, `resume_hash`, `resume_updated_at = now()`
-  - returns `{ ok, resume_hash, resume_updated_at }`
-  - touches **only** resume fields
+## 4. CandidateInterview wiring
+- Replace direct invoke of `ai-interview-grade-checklist` / `ai-interview-grade-situations` with the new hook for v2 endpoints, gated by feature flag `useV2 = true` (kept simple — old call paths removed only for these two ops, resume v2 untouched).
+- On terminal success: refetch candidate row from DB to read fresh `checklist_score`/`candidate_checklist_feedback` (situations analogous). Do NOT use start response payload.
+- Stage progression audit + idempotency: existing flow advances stage via candidate row update on success; wrap in guard `if (candidate.current_stage === expectedStage) advance`. Reload/reused-terminal path won't re-advance.
 
-### 3. Status edge function audit (`ai-job-status-candidate-v2`)
+## 5. AIWaitProvider
+Extend the job-based mode (currently resume v2) to accept `kind: 'checklist_grade' | 'situations_grade'` with the specified Russian copy. Overlay dismissible; dismiss does NOT cancel job.
 
-Verify and harden:
-- input: `{ job_id }` only — ignore any `candidate_id` in body
-- require `x-candidate-token`, validate via `requireCandidateToken`
-- UUID regex check (already present)
-- enforce `job.candidate_id === session.candidate_id` (already present)
-- explicit status codes for: invalid_uuid (400), invalid_token (401), expired_token (401), not_found (404), forbidden (403), ok (200)
-- CORS: tighten `Access-Control-Allow-Origin` from `*` to an allowlist of current app origins (preview, published, hr-rr.ru, hr-rr.online + localhost dev) — **only for this function** to avoid breaking other endpoints in this pass
-- verify_jwt stays false (already correct — candidates have no JWT)
+## 6. Error mapping
+New `src/lib/aiJobErrors.ts` mapping safe codes (`answers_missing`, `answers_version_changed`, `checklist_version_changed`, `situations_version_changed`, `orchestration_failed`, `save_failed`, `fallback_failed`, `fallback_unavailable`, `no_credits`) to the exact Russian copy from the spec. Used by hook + overlay.
 
-### 4. Extract testable lifecycle service
+## 7. Report renderers
+New presentation components (no logic in CandidateDetailsModal beyond mounting):
+- `src/components/reports/CandidateChecklistReport.tsx`
+- `src/components/reports/CandidateSituationsReport.tsx`
+- `src/components/reports/EmployerChecklistReport.tsx`
+- `src/components/reports/EmployerSituationsReport.tsx`
 
-New file `supabase/functions/_shared/resume-screen-runner.ts` with the interfaces listed in the request:
-- `ResumeJobRepository`, `ResumeInputRepository`, `ResumeAttemptRepository`, `ResumeBillingAdapter`, `ResumeProviderAdapter`, `ResumeResultRepository`, `ResumeClock`
-- Pure orchestrator `runResumeScreenJob(deps, { jobId })` containing all branching: load → hash check → debit → primary loop with retries → fallback → validate → save → terminal status.
-- Production adapters live in `ai-interview-screen-resume-v2/index.ts` and wrap Supabase + ProTalk + RR Pro Max + existing helpers (`debit_ai_job_once`, `save_candidate_resume_evaluation_v2`, `markJobStatusStrict`, `recordAttemptDiagnostics`, validators).
-- Other functions (checklist/situations) **not touched** in this pass.
+Each accepts a single typed prop derived through adapters:
+- `src/lib/feedbackAdapters.ts`:
+  - `adaptCandidateChecklist(raw)` — strips `expected_answer`, `gaps`, `risks`, `red_flags`, `employer_*`.
+  - `adaptCandidateSituations(raw)` — strips `criteria`, employer fields.
+  - `adaptEmployerChecklist(raw)` / `adaptEmployerSituations(raw)` — preserves risks/red_flags.
+  - Legacy string/JSON inputs → safe text-only path for candidate; raw legacy preserved for employer.
 
-### 5. Real lifecycle tests
+CandidateDetailsModal: replace existing `pre-wrap` blob for checklist/situations tabs with the employer renderers, keeping the v1 fallback path for legacy candidates.
 
-New file `supabase/functions/_shared/resume-screen-runner_test.ts` using in-memory fakes for every interface. All 32 scenarios from the request, e.g.:
+CandidateInterview report view (post-success): uses candidate renderers.
 
-```text
-primary_success, timeout_retry_success, http_429_retry, http_502_retry,
-empty_response_retry, broken_json_repair, schema_invalid_retry,
-primary_exhausted_fallback_success, both_fail_terminal,
-no_credits_skips_provider, reused_request_id_running,
-reused_request_id_terminal, new_request_id_new_job,
-retry_no_double_debit, concurrent_debit_single_spend,
-save_failure_save_failed, status_update_failure_no_false_success,
-diagnostics_update_failure_no_false_success,
-failed_rerun_preserves_old_report,
-resume_save_isolated_from_checklist/situations/overall/ai_fit,
-hash_match_calls_provider, hash_mismatch_skips_provider,
-empty_resume_skips_provider, candidate_report_no_employer_fields,
-red_flag_without_evidence_rejected, protected_chars_rejected,
-chat_id_duration_stored, primary_attempt_provider_tag,
-fallback_attempt_provider_tag
-```
+## 8. Frontend test setup
+- Add Vitest config + `src/test/setup.ts` per the standard guide (if not present; verify first).
+- New tests:
+  - `src/lib/__tests__/aiJobs.test.ts` — 13 cases: single request_id per start, active job blocks re-start, reload restores polling, focus/visibility immediate check, terminal clears LS, primary_failed keeps LS, orchestration_failed clears LS, reused-job no new request_id, polling cleanup, two mounts → one loop, token never in LS, answers never in LS, resume v2 still works.
+  - `src/lib/__tests__/feedbackAdapters.test.ts` — 7 cases: candidate adapters strip employer-only; legacy candidate strips risks/red_flags; employer keeps them; expected_answer never in candidate output; unknown JSON not rendered raw; success triggers refetch; failure does not advance stage; idempotent stage advance.
+  All tests use fake start/status clients (DI), no real network.
 
-Tests exercise the **actual** `runResumeScreenJob`, not duplicate logic.
+## 9. Postflight
+- `supabase test edge-functions` — expect 155 + new project-isolation checklist test (≥1).
+- `bunx vitest run` — all new frontend tests.
+- `bunx tsc --noEmit` — 0 errors.
+- `bun run build` — OK.
 
-Report will show: validator-tests count, lifecycle-tests count, total, and pass/fail per suite separately.
+## 10. Stop conditions honoured
+No real AI invoke. No balance touched. No ai_jobs inserts in prod (DI fakes only). No publish.
 
-### 6. Billing SQL static review
+## Out of scope (untouched)
+CRM, kanban, employer profile, companies, vacancies, training, общая AI-оценка, resume v2 runtime, Google OAuth, tariffs, widths.
 
-No real debit. Inspect `debit_ai_job_once`, `spend_pack`, related uniques. Document evidence for:
-- row lock on ai_jobs / debit row
-- UNIQUE (job_id, charge_kind) → idempotent
-- spend_pack failure → debit row rollback in same transaction
-- concurrent calls serialize (FOR UPDATE)
-- business key `pack:interview:{candidate_id}` so one interview pack = one charge across stages
-
-If gaps found, **report them** — do not change pricing in this pass.
-
-### 7. Safe test-fixture search
-
-SELECT (masked) over `candidates` + `companies` + `projects`:
-- name LIKE '%test%'/'%тест%'/'%demo%'
-- email domain test/example/demo or +test/+demo
-- company name suggesting test
-- no recent real activity
-
-For each candidate: `public_id`, masked email (`a***@d***.com`), project_id, company, vacancy, current scores, employer interview credits. Report findings without PII. If nothing safe → recommend creating a dedicated fixture (do NOT auto-create in production).
-
-### 8. Environment identification
-
-Check: which Supabase project ref, whether preview and production share DB, whether v2 functions are live, whether real candidates exist on this DB. Report classification (production / shared-preview / dev).
-
-### 9. Real-run plan (NOT executed)
-
-Written plan only:
-- pick the safe fixture from §7
-- snapshot before: wallet balance, candidate_scores row, ai_jobs/attempts/debits row counts for that candidate
-- single primary call, no forced fallback, max 1 interview credit
-- snapshot after, diff
-- success criteria & rollback note
-- separate fallback test described as **server-side env-flag** (e.g. `RESUME_V2_FORCE_PRIMARY_FAIL` for one specific job_id) — no public param, no public URL, no UI button
-
-### 10. Checks
-
-Run in this order, report each separately:
-- `bunx tsc --noEmit`
-- `bun run build`
-- validator tests: `supabase test edge-functions --filter ai-validators_test`
-- lifecycle tests: `supabase test edge-functions --filter resume-screen-runner_test`
-
-### 11. Out of scope
-
-No real ProTalk/RR Pro Max call. No debit. No balance change. No candidate creation. No checklist v2. No situations v2. No training. No overall score. No publish. No extra UX.
-
-### 12. Final report
-
-Will cover every bullet listed in the request: worker source of resume_text, closure usage, hash/version storage, behavior on resume change/missing, status fn audit, CORS allowlist, changed files, migrations, test counts and per-suite results, typecheck, build, debit SQL review, environment type, preview/prod DB sharing, test fixture (public_id + project_id + masked PII), current interview credits, real-run plan, max possible debit, fallback-test plan, and explicit confirmations: no real AI calls, no balance change, checklist/situations untouched, app not published.
-
----
-
-### Execution order
-
-1. Migration (resume_hash, resume_updated_at, `save_candidate_resume_text` RPC) — needs approval before the worker can use it.
-2. Build `resume-screen-runner.ts` + lifecycle tests in parallel with adapter rewrite of `ai-interview-screen-resume-v2/index.ts`.
-3. Harden `ai-job-status-candidate-v2` CORS allowlist.
-4. Run typecheck + build + both test suites.
-5. Read-only DB queries for fixture + environment + billing review.
-6. Write final report. Stop. **Do not run a real paid AI call.**
+Awaiting your "go" to execute.
