@@ -274,29 +274,60 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             <p className="text-xs text-slate-300">3 этапа: Резюме → Чек-лист → Ситуации. ИИ генерирует, вы редактируете.</p>
           </div>
           <div className="w-full md:w-auto">
-            <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1 inline-flex items-center">
-              Вакансия{createMode ? " (обязательно)" : ""}
-              <FieldHelp
-                section="interviews"
-                fieldKey="project_select"
-                fallbackTitle="Выбор вакансии"
-                fallbackBody="Сценарий интервью всегда привязан к вакансии. ИИ берёт описание вакансии и компании как контекст для блоков «Резюме», «Чек-лист» и «Ситуации»."
-              />
-            </label>
-            <select value={projectId} disabled={lockedProject} onChange={e => setProjectId(e.target.value)}
-              className="bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm disabled:opacity-70 min-w-[260px]">
-              <option value="">— выберите вакансию —</option>
-              {projects.map(p => (
-                <option key={p.id} value={p.id}>
-                  {p.roleName || "(без названия)"} · {p.companyName || ""}
-                  {createMode && existingSystems.has(p.id) ? " · уже есть система" : ""}
-                </option>
-              ))}
-            </select>
-            {createMode && projectId && existingSystems.has(projectId) && (
-              <p className="text-[11px] text-amber-300 mt-1.5">
-                ⚠️ Для этой вакансии уже создана система интервью. Сохранение перезапишет существующие блоки.
-              </p>
+            {lockedProject ? (
+              <div
+                data-testid="iw-locked-vacancy-card"
+                className="bg-black/30 border border-[#E7C768]/40 rounded-xl px-4 py-3 min-w-[260px] text-left"
+              >
+                <div className="text-[10px] font-bold text-slate-300 uppercase mb-1">
+                  Система оценки для вакансии
+                </div>
+                <div className="text-sm font-extrabold text-white leading-tight">
+                  {project?.roleName || "(без названия)"}
+                </div>
+                {project?.companyName && (
+                  <div className="text-[11px] text-slate-300 mt-0.5">{project.companyName}</div>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#E7C768]/15 text-[#E7C768] border border-[#E7C768]/40">
+                    Вакансия закреплена
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    Система редактируется только для этой вакансии.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1 inline-flex items-center">
+                  Вакансия{createMode ? " (обязательно)" : ""}
+                  <FieldHelp
+                    section="interviews"
+                    fieldKey="project_select"
+                    fallbackTitle="Выбор вакансии"
+                    fallbackBody="Сценарий интервью всегда привязан к вакансии. ИИ берёт описание вакансии и компании как контекст для блоков «Резюме», «Чек-лист» и «Ситуации»."
+                  />
+                </label>
+                <select
+                  data-testid="iw-vacancy-select"
+                  value={projectId}
+                  onChange={e => setProjectId(e.target.value)}
+                  className="bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm min-w-[260px]"
+                >
+                  <option value="">— выберите вакансию —</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.roleName || "(без названия)"} · {p.companyName || ""}
+                      {createMode && existingSystems.has(p.id) ? " · уже есть система" : ""}
+                    </option>
+                  ))}
+                </select>
+                {createMode && projectId && existingSystems.has(projectId) && (
+                  <p className="text-[11px] text-amber-300 mt-1.5">
+                    ⚠️ Для этой вакансии уже создана система интервью. Сохранение перезапишет существующие блоки.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
