@@ -13,6 +13,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { adaptEmployerChecklist, adaptEmployerSituations } from "@/lib/feedbackAdapters";
 import EmployerChecklistReport from "@/components/reports/EmployerChecklistReport";
 import EmployerSituationsReport from "@/components/reports/EmployerSituationsReport";
+import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
+import {
+  startOverallCandidateV2, pollEmployerJobUntilTerminal,
+  getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
+  isTerminal, isSuccess,
+} from "@/lib/aiJobs";
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
@@ -259,6 +265,7 @@ export default function CandidateDetailsModal({
   const [reviewSaving, setReviewSaving] = useState(false);
   const [overallSaving, setOverallSaving] = useState(false);
   const [overallErr, setOverallErr] = useState<string | null>(null);
+  const [overallStatus, setOverallStatus] = useState<string>("");
 
   const markReview = async () => {
     if (!candidateId) return;
