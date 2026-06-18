@@ -86,3 +86,6 @@ verify_jwt = false
 
 [functions.demo-upload-resume]
 verify_jwt = false
+
+[functions.candidate-stage-advance-v2]
+verify_jwt = false
