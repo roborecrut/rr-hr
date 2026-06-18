@@ -1,70 +1,145 @@
-## PHASE 3B-2A — Vertical Slice: Resume Screening v2
+## Phase 3B-2A.1 — Crash-safe resume job, lifecycle tests, safe runtime prep
 
-Полный сквозной сценарий только для скрининга резюме. Действующая `ai-interview-screen-resume` НЕ меняется (rollback-контур). Новая `ai-interview-screen-resume-v2` использует job lifecycle, реальный RR Pro Max, атомарный stage-specific save, frontend polling с восстановлением после reload.
-
-### Выбранный вариант защиты live-продукта
-**Versioned function**: создаём `ai-interview-screen-resume-v2`. Старая функция остаётся как есть. Frontend переключается на v2 только в зоне отображения резюме.
+Goal: make resume v2 worker independent of HTTP closure, add real DI-based lifecycle tests, find a safe test fixture, and prepare (NOT execute) one real paid run. No real AI calls, no debits, no publish, no checklist/situations changes.
 
 ---
 
-### 1. Preflight (миграции, без изменения бизнес-логики)
-- Прочитать фактический SQL `debit_ai_job_once`, `start_ai_job_attempt`, `ai_job_debits` — подтвердить атомарность, service_role only, `search_path=public`.
-- Подтвердить бизнес-правило: один `spend_pack(_kind='interview')` на кандидата (ключ `pack:interview:{candidate_id}`). `ai_job_debits` — техническая привязка job↔списание, НЕ превращает 3 этапа в 3 платных интервью. resume/checklist/situations используют один и тот же interview credit.
-- Additive migration (если нужно): добавить `duration_ms` в `ai_job_attempts` (если отсутствует); добавить `resume_version` / `resume_hash` в `candidates` (если отсутствует).
-- Новая RPC `save_candidate_resume_evaluation_v2(_candidate uuid, _resume_score int, _resume_feedback jsonb, _candidate_resume_feedback jsonb, _assessment_summary text)`:
-  - SECURITY DEFINER, `search_path=public`, EXECUTE только `service_role`.
-  - Атомарный UPDATE только: `resume_score`, `resume_feedback`, `candidate_resume_feedback`, `assessment_summary`, `updated_at`. Не трогает checklist/situations/overall/training поля.
-  - Возвращает сохранённую строку.
-- RPC `get_ai_job_safe_status(_job_id uuid)` для polling: возвращает `{status, job_type, attempts_count, updated_at}` без request_snapshot/result. EXECUTE для `authenticated` + проверка владельца (candidate_id принадлежит вызывающему через candidate_sessions).
+### 1. Crash-safe orchestration (`ai-interview-screen-resume-v2`)
 
-### 2. Shared backend
-- `supabase/functions/_shared/ai-validators.ts`: добавить `validateResumeScreenReport(obj)` со строгой схемой (employer{verdict, summary, matches[], gaps[], strengths[], risks[], red_flags[], questions_to_verify[]}, candidate{summary, strengths, areas_to_clarify, recommendations}, score 0..100). Enums для verdict/severity/degree. Отклонять risk/red_flag без evidence. Отклонять markdown fences.
-- `_shared/ai-runner.ts`: рефакторинг под интерфейсы (`ProviderAdapter`, `JobRepository`, `AttemptRepository`, `BillingAdapter`, `ResultRepository`, `ClockAdapter`) с production adapters по умолчанию. Сохранить текущее API `runJobLifecycle`.
-- `_shared/protect-pii.ts`: набор regex/keyword guard для prompt — инструкция модели игнорировать защищённые характеристики; пост-валидатор отклоняет evidence-цитаты с возрастом/полом/национальностью/религией без объективной причины.
+Refactor the function so the background worker reloads everything from DB by `job_id` only.
 
-### 3. Новая edge function `ai-interview-screen-resume-v2`
-Контракт:
+- Sync phase:
+  1. validate candidate token, project, resume_text length/PII
+  2. atomically save `resume_text` + `resume_hash` (full SHA-256 hex) + `resume_updated_at` via new RPC `save_candidate_resume_text` (SECURITY DEFINER, service_role only)
+  3. compute `criteria_hash` from project criteria
+  4. create job with **minimal** `request_snapshot`:
+     ```json
+     { "candidate_id", "project_id", "resume_hash", "resume_updated_at", "criteria_hash", "requested_at" }
+     ```
+  5. return `{ job_id, status, reused, terminal }`
+- Background phase: `EdgeRuntime.waitUntil(runResumeJob(jobId))` — receives **only `job_id`**. No closure over `resumeText`, no closure over project/criteria.
+- Worker reloads: ai_job → candidate (resume_text, resume_updated_at, resume_hash) → project → criteria → employer wishes.
+- Worker recomputes resume_hash; compares with snapshot:
+  - hash + version match → run provider
+  - resume_text empty → `validation_failed` code `resume_text_missing`, no provider call, no debit, prior report preserved
+  - hash/version mismatch → `validation_failed` code `resume_version_changed`, no provider call, no new debit, prior report preserved
+- Strict no-leak: resume_text NEVER goes to snapshot, attempts, response_meta, logs, error_message, localStorage.
+
+### 2. Resume version columns (additive migration)
+
+Migration adds (if missing):
+- `candidates.resume_hash text`
+- `candidates.resume_updated_at timestamptz`
+- RPC `save_candidate_resume_text(_candidate uuid, _resume_text text) returns jsonb`
+  - SECURITY DEFINER, `SET search_path=public`
+  - REVOKE all PUBLIC, GRANT EXECUTE to `service_role` only
+  - atomically sets `resume_text`, `resume_hash`, `resume_updated_at = now()`
+  - returns `{ ok, resume_hash, resume_updated_at }`
+  - touches **only** resume fields
+
+### 3. Status edge function audit (`ai-job-status-candidate-v2`)
+
+Verify and harden:
+- input: `{ job_id }` only — ignore any `candidate_id` in body
+- require `x-candidate-token`, validate via `requireCandidateToken`
+- UUID regex check (already present)
+- enforce `job.candidate_id === session.candidate_id` (already present)
+- explicit status codes for: invalid_uuid (400), invalid_token (401), expired_token (401), not_found (404), forbidden (403), ok (200)
+- CORS: tighten `Access-Control-Allow-Origin` from `*` to an allowlist of current app origins (preview, published, hr-rr.ru, hr-rr.online + localhost dev) — **only for this function** to avoid breaking other endpoints in this pass
+- verify_jwt stays false (already correct — candidates have no JWT)
+
+### 4. Extract testable lifecycle service
+
+New file `supabase/functions/_shared/resume-screen-runner.ts` with the interfaces listed in the request:
+- `ResumeJobRepository`, `ResumeInputRepository`, `ResumeAttemptRepository`, `ResumeBillingAdapter`, `ResumeProviderAdapter`, `ResumeResultRepository`, `ResumeClock`
+- Pure orchestrator `runResumeScreenJob(deps, { jobId })` containing all branching: load → hash check → debit → primary loop with retries → fallback → validate → save → terminal status.
+- Production adapters live in `ai-interview-screen-resume-v2/index.ts` and wrap Supabase + ProTalk + RR Pro Max + existing helpers (`debit_ai_job_once`, `save_candidate_resume_evaluation_v2`, `markJobStatusStrict`, `recordAttemptDiagnostics`, validators).
+- Other functions (checklist/situations) **not touched** in this pass.
+
+### 5. Real lifecycle tests
+
+New file `supabase/functions/_shared/resume-screen-runner_test.ts` using in-memory fakes for every interface. All 32 scenarios from the request, e.g.:
+
+```text
+primary_success, timeout_retry_success, http_429_retry, http_502_retry,
+empty_response_retry, broken_json_repair, schema_invalid_retry,
+primary_exhausted_fallback_success, both_fail_terminal,
+no_credits_skips_provider, reused_request_id_running,
+reused_request_id_terminal, new_request_id_new_job,
+retry_no_double_debit, concurrent_debit_single_spend,
+save_failure_save_failed, status_update_failure_no_false_success,
+diagnostics_update_failure_no_false_success,
+failed_rerun_preserves_old_report,
+resume_save_isolated_from_checklist/situations/overall/ai_fit,
+hash_match_calls_provider, hash_mismatch_skips_provider,
+empty_resume_skips_provider, candidate_report_no_employer_fields,
+red_flag_without_evidence_rejected, protected_chars_rejected,
+chat_id_duration_stored, primary_attempt_provider_tag,
+fallback_attempt_provider_tag
 ```
-POST { request_id: uuid, async_version: 2 }   (candidate_id берётся из candidate token)
-→ { ok, job_id, status, reused, terminal }
-```
-Порядок:
-1. CORS, method, body schema.
-2. `requireCandidateToken` → candidateId. Загрузить project_id, criteria, vacancy, resume_text, resume_version/hash из БД (сервер). Если `resume_text` пуст → 400 `no_resume`.
-3. `idem = screen_resume:${candidateId}:${request_id}`. `createOrReuseAiJob` с `requestSnapshot = { candidate_id, project_id, resume_version, resume_hash, criteria_version, requested_at }` (без текста резюме).
-4. Если job reused и terminal → вернуть `{terminal:true, status}`.
-5. Если новая job → `debitAiJobOnce(job_id, candidate_id, 'interview')` который внутри вызывает `spend_pack` с тем же ключом `pack:interview:{candidate_id}` (повторный вызов того же кандидата по другому этапу не списывает повторно). При `no_credits` → не запускать provider, статус job `cancelled`/`primary_failed` с safeCode `no_credits`, вернуть 402.
-6. Проверить `EdgeRuntime.waitUntil` — если нет → 503, без debit.
-7. `runInBackground(runJobLifecycle({...}))` с:
-   - **primary**: ProTalk via `_shared/protalk.ts` (до 3 attempts, backoff+jitter, отдельный chat_id, диагностика).
-   - **fallback**: `RrProMaxProvider` (`_shared/rr-pro-max.ts`) с реальным `RR_PRO_MAX_BOT_ID`/`RR_PRO_MAX_API_TOKEN`. Если `isConfigured()===false` → не fallback_succeeded, статус `fallback_unavailable`.
-   - **validate**: `validateResumeScreenReport`.
-   - **save**: RPC `save_candidate_resume_evaluation_v2`.
-8. Вернуть `{ok, job_id, status:'primary_running', reused:false, terminal:false}`.
 
-### 4. Frontend
-- `src/lib/aiJobs.ts` (новый, generic): `startResumeScreenV2(candidateId)`, `pollJob(jobId)`, восстановление по `localStorage` ключу `rr_active_ai_job:screen_resume:${candidate_id}` (только `{job_id, request_id, candidate_id, created_at}`). Polling 2s→4s→8s (cap 8s), очистка таймера на unmount, listeners `focus`/`visibilitychange`.
-- `AIWaitProvider`: добавить новый метод `waitForJob(jobId, {stageLabel})` параллельно текущему API — не трогать существующие вызовы. Overlay сворачиваемый, текст: «Анализ выполняется. Можно продолжить работу — результат сохранится автоматически».
-- `CandidateInterview.tsx`: в обработчике запуска резюме переключиться на `aiJobs.startResumeScreenV2` + `waitForJob`. Двойной клик блокируется по `active job key`. После terminal success — refetch candidate.
-- Чтение `candidate_resume_feedback` (новое поле в `candidate_scores`, append-only логика; legacy fallback на старый `resume_feedback` без employer-only секций).
-- `CandidateDetailsModal.tsx`: только вкладка «Резюме» рендерит новый структурированный отчёт из `resume_feedback` (matches/gaps/strengths/risks/red_flags/questions_to_verify). Карточки + списки + раскрываемый блок с raw resume text. Остальные вкладки не трогаем.
+Tests exercise the **actual** `runResumeScreenJob`, not duplicate logic.
 
-### 5. Tests (Deno, in-memory adapters)
-`supabase/functions/_shared/ai-runner_test.ts` — все 28 сценариев из ТЗ (primary success / timeout retry / 429 / 502 / empty / broken JSON repair / schema invalid / fallback success / both fail / save fail / diagnostics fail / terminal update fail / reuse active / reuse terminal / new request_id new job / double debit one charge / retry one charge / no_credits no provider call / parallel primary one active / fallback during active primary forbidden / chat_id / duration_ms / provider tag primary / provider tag rr_pro_max / failed new run preserves old / resume save isolates fields / protected characteristic ignored / red flag without evidence rejected / candidate report has no employer fields / reload polling no new job).
-`ai-validators_test.ts` — расширить под новый report schema.
+Report will show: validator-tests count, lifecycle-tests count, total, and pass/fail per suite separately.
 
-### 6. Regression
-TS clean, production build clean (Lovable runs автоматически), старая `ai-interview-screen-resume` не изменена, анкета/ситуации/обучение/CRM/канбан/таблица/меню/ширины не трогаются.
+### 6. Billing SQL static review
 
-### 7. Финальный отчёт
-По всем пунктам из секции 20 ТЗ. Без публикации.
+No real debit. Inspect `debit_ai_job_once`, `spend_pack`, related uniques. Document evidence for:
+- row lock on ai_jobs / debit row
+- UNIQUE (job_id, charge_kind) → idempotent
+- spend_pack failure → debit row rollback in same transaction
+- concurrent calls serialize (FOR UPDATE)
+- business key `pack:interview:{candidate_id}` so one interview pack = one charge across stages
+
+If gaps found, **report them** — do not change pricing in this pass.
+
+### 7. Safe test-fixture search
+
+SELECT (masked) over `candidates` + `companies` + `projects`:
+- name LIKE '%test%'/'%тест%'/'%demo%'
+- email domain test/example/demo or +test/+demo
+- company name suggesting test
+- no recent real activity
+
+For each candidate: `public_id`, masked email (`a***@d***.com`), project_id, company, vacancy, current scores, employer interview credits. Report findings without PII. If nothing safe → recommend creating a dedicated fixture (do NOT auto-create in production).
+
+### 8. Environment identification
+
+Check: which Supabase project ref, whether preview and production share DB, whether v2 functions are live, whether real candidates exist on this DB. Report classification (production / shared-preview / dev).
+
+### 9. Real-run plan (NOT executed)
+
+Written plan only:
+- pick the safe fixture from §7
+- snapshot before: wallet balance, candidate_scores row, ai_jobs/attempts/debits row counts for that candidate
+- single primary call, no forced fallback, max 1 interview credit
+- snapshot after, diff
+- success criteria & rollback note
+- separate fallback test described as **server-side env-flag** (e.g. `RESUME_V2_FORCE_PRIMARY_FAIL` for one specific job_id) — no public param, no public URL, no UI button
+
+### 10. Checks
+
+Run in this order, report each separately:
+- `bunx tsc --noEmit`
+- `bun run build`
+- validator tests: `supabase test edge-functions --filter ai-validators_test`
+- lifecycle tests: `supabase test edge-functions --filter resume-screen-runner_test`
+
+### 11. Out of scope
+
+No real ProTalk/RR Pro Max call. No debit. No balance change. No candidate creation. No checklist v2. No situations v2. No training. No overall score. No publish. No extra UX.
+
+### 12. Final report
+
+Will cover every bullet listed in the request: worker source of resume_text, closure usage, hash/version storage, behavior on resume change/missing, status fn audit, CORS allowlist, changed files, migrations, test counts and per-suite results, typecheck, build, debit SQL review, environment type, preview/prod DB sharing, test fixture (public_id + project_id + masked PII), current interview credits, real-run plan, max possible debit, fallback-test plan, and explicit confirmations: no real AI calls, no balance change, checklist/situations untouched, app not published.
 
 ---
 
-### Технические замечания
-- `candidate_resume_feedback` колонка отсутствует в `candidate_scores` — добавляется этой миграцией.
-- `resume_version`/`resume_hash` — если в `candidates` нет, добавим nullable text колонки и заполним при сохранении resume_text в backend.
-- Runtime-проверка RR Pro Max: использую контролируемый primary fail (невалидный prompt route или временный флаг) — не расходуем неконтролируемо реальные кредиты.
-- Объём кода большой (~10 файлов + 1 миграция + ~30 тестов). Реализую последовательно: миграция → shared → v2 function → tests → frontend.
+### Execution order
 
-**После плана: жду подтверждения, потом запускаю миграцию первой (она требует approval), затем код параллельно.**
+1. Migration (resume_hash, resume_updated_at, `save_candidate_resume_text` RPC) — needs approval before the worker can use it.
+2. Build `resume-screen-runner.ts` + lifecycle tests in parallel with adapter rewrite of `ai-interview-screen-resume-v2/index.ts`.
+3. Harden `ai-job-status-candidate-v2` CORS allowlist.
+4. Run typecheck + build + both test suites.
+5. Read-only DB queries for fixture + environment + billing review.
+6. Write final report. Stop. **Do not run a real paid AI call.**
