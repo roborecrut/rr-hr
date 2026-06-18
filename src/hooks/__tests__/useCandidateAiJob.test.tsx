@@ -213,6 +213,9 @@ describe("useCandidateAiJob — checklist v2", () => {
       kind: "checklist_grade", candidateId: "cu", onSuccess, deps,
     }));
     await act(async () => { await result.current.start({ kind: "checklist_grade", answers: { q1: "a" } }); });
+    // Let the scheduled tick fire so pollStatus is invoked and resolveLate
+    // is assigned. Without this, unmount races the macrotask scheduler.
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
     unmount();
     // Late terminal-success response must not fire onSuccess on an unmounted hook.
     resolveLate(row("primary_succeeded", "j"));
