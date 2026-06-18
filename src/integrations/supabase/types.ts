@@ -3149,6 +3149,7 @@ export type Database = {
         | "timed_out"
         | "save_failed"
         | "validation_failed"
+        | "orchestration_failed"
       app_role: "admin" | "employer" | "candidate"
       candidate_stage:
         | "terms"
@@ -3334,6 +3335,7 @@ export const Constants = {
         "timed_out",
         "save_failed",
         "validation_failed",
+        "orchestration_failed",
       ],
       app_role: ["admin", "employer", "candidate"],
       candidate_stage: [
