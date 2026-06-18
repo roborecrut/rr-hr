@@ -16,6 +16,176 @@ import {
   Building2, UserCheck, UserX, ChevronDown, ChevronUp, Clock, RefreshCw
 } from "lucide-react";
 
+/**
+ * Employer-facing structured resume report (v2 / Phase 3B-2A).
+ * Renders matches / gaps / strengths / risks / red_flags / questions_to_verify
+ * when the new schema is present; falls back to the legacy {summary,strengths,
+ * gaps} shape from the old synchronous function.
+ *
+ * IMPORTANT: this view is the ONLY place that shows employer-only fields
+ * (verdict, risks, red_flags, questions_to_verify, employer_wishes). The
+ * candidate cabinet must NEVER render these.
+ */
+function EmployerResumeReportView({ score, feedback, fallbackSummary, resumeText }: {
+  score: any; feedback: any; fallbackSummary?: string | null; resumeText?: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const hasFeedback = feedback && typeof feedback === "object" && !Array.isArray(feedback);
+  const isV2 = hasFeedback && typeof (feedback as any).verdict === "string";
+  const tone = scoreTone(score);
+
+  const renderBody = () => {
+    if (!hasFeedback && !fallbackSummary && !resumeText) {
+      return (
+        <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+          Резюме ещё не загружено и не оценено ИИ.
+        </div>
+      );
+    }
+    if (!isV2) {
+      // Legacy fallback: old schema {summary,strengths,gaps} OR just a text summary.
+      const f: any = hasFeedback ? feedback : {};
+      const summary = f.summary || fallbackSummary || "";
+      const strengths = Array.isArray(f.strengths) ? f.strengths : [];
+      const gaps      = Array.isArray(f.gaps) ? f.gaps : [];
+      return (
+        <div className="space-y-3">
+          {summary && (
+            <div className={`text-[13px] rounded-xl p-3 border ${toneBg(tone.label)} text-white`}>
+              <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300 mb-1">Резюме оценил ИИ</div>
+              <RichMarkdown tone="resume">{summary}</RichMarkdown>
+            </div>
+          )}
+          {strengths.length > 0 && (
+            <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 mb-1">Сильные стороны</div>
+              <ul className="text-[13px] text-slate-100 list-disc pl-5 space-y-1">{strengths.map((x: any, i: number) => <li key={i}>{String(x)}</li>)}</ul>
+            </div>
+          )}
+          {gaps.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
+              <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300 mb-1">Пробелы</div>
+              <ul className="text-[13px] text-slate-100 list-disc pl-5 space-y-1">{gaps.map((x: any, i: number) => <li key={i}>{String(x)}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      );
+    }
+    const f: any = feedback;
+    const matches  = Array.isArray(f.matches) ? f.matches : [];
+    const gaps     = Array.isArray(f.gaps) ? f.gaps : [];
+    const strengths= Array.isArray(f.strengths) ? f.strengths : [];
+    const risks    = Array.isArray(f.risks) ? f.risks : [];
+    const redFlags = Array.isArray(f.red_flags) ? f.red_flags : [];
+    const questions= Array.isArray(f.questions_to_verify) ? f.questions_to_verify : [];
+    return (
+      <div className="space-y-3">
+        <div className={`rounded-xl p-3 border ${toneBg(tone.label)} text-white space-y-1.5`}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Вердикт</span>
+            <span className={`text-[12px] font-bold ${tone.cls}`}>{String(f.verdict || "—")}</span>
+            {Number.isFinite(Number(score)) && (
+              <span className={`text-[12px] font-mono font-black ml-auto ${tone.cls}`}>{Math.round(Number(score))}/100</span>
+            )}
+          </div>
+          <div className="text-[13.5px] leading-relaxed text-white">
+            <RichMarkdown tone="resume">{String(f.summary || "")}</RichMarkdown>
+          </div>
+        </div>
+        {matches.length > 0 && (
+          <div className="bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3 space-y-1.5">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300">Соответствия требованиям</div>
+            <ul className="space-y-1.5">
+              {matches.map((m: any, i: number) => (
+                <li key={i} className="text-[13px] text-slate-100">
+                  <div className="font-semibold text-white">{m.criterion} <span className="text-[10px] font-mono uppercase text-emerald-300 ml-1">{m.degree}</span></div>
+                  {m.evidence && <div className="text-slate-300 text-[12.5px]">{m.evidence}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {gaps.length > 0 && (
+          <div className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3 space-y-1.5">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-amber-300">Пробелы и расхождения</div>
+            <ul className="space-y-1.5">
+              {gaps.map((g: any, i: number) => (
+                <li key={i} className="text-[13px] text-slate-100">
+                  <div className="font-semibold text-white">{g.criterion}</div>
+                  {g.finding && <div className="text-slate-300 text-[12.5px]">{g.finding}</div>}
+                  {g.impact && <div className="text-[11.5px] italic text-amber-200/90">Влияние: {g.impact}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {strengths.length > 0 && (
+          <div className="bg-emerald-500/5 border border-emerald-400/20 rounded-xl p-3">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 mb-1">Сильные стороны</div>
+            <ul className="text-[13px] text-slate-100 list-disc pl-5 space-y-1">{strengths.map((x: any, i: number) => <li key={i}>{String(x)}</li>)}</ul>
+          </div>
+        )}
+        {risks.length > 0 && (
+          <div className="bg-rose-500/5 border border-rose-400/30 rounded-xl p-3 space-y-1.5">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-rose-300">Риски</div>
+            <ul className="space-y-1.5">
+              {risks.map((r: any, i: number) => (
+                <li key={i} className="text-[13px] text-slate-100">
+                  <div className="font-semibold text-white">{r.title} <span className="text-[10px] font-mono uppercase text-rose-300 ml-1">{r.severity}</span></div>
+                  {r.evidence && <div className="text-slate-300 text-[12.5px]">Свидетельство: {r.evidence}</div>}
+                  {r.how_to_verify && <div className="text-[11.5px] italic text-slate-300">Как проверить: {r.how_to_verify}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {redFlags.length > 0 && (
+          <div className="bg-rose-500/15 border border-rose-400/50 rounded-xl p-3 space-y-1.5">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-rose-200">Красные флаги</div>
+            <ul className="space-y-1.5">
+              {redFlags.map((r: any, i: number) => (
+                <li key={i} className="text-[13px] text-slate-100">
+                  <div className="font-semibold text-white">{r.title} <span className="text-[10px] font-mono uppercase text-rose-200 ml-1">{r.severity}</span></div>
+                  {r.evidence && <div className="text-slate-200 text-[12.5px]">{r.evidence}</div>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {questions.length > 0 && (
+          <div className="bg-sky-500/10 border border-sky-400/30 rounded-xl p-3">
+            <div className="text-[10px] font-mono uppercase tracking-wider text-sky-300 mb-1">Что проверить на интервью</div>
+            <ul className="text-[13px] text-slate-100 list-disc pl-5 space-y-1">{questions.map((q: any, i: number) => <li key={i}>{String(q)}</li>)}</ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      {renderBody()}
+      {resumeText && (
+        <div className="bg-black/20 border border-white/10 rounded-2xl">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-[12px] font-mono uppercase tracking-wider text-slate-300 hover:text-white"
+          >
+            <span className="flex items-center gap-2"><FileText className="w-4 h-4" /> Распознанный текст резюме</span>
+            {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {open && (
+            <div className="px-4 pb-4 text-[14px] text-slate-100 leading-relaxed max-h-96 overflow-y-auto">
+              <RichMarkdown tone="resume">{resumeText}</RichMarkdown>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STAGE_LABELS: Record<string, string> = {
   registration: "Регистрация",
   screening: "Скрининг",
