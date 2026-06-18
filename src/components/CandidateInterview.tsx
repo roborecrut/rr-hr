@@ -417,28 +417,27 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       let info: { overall: number } | null = null;
       try { info = await refetchSituationsFromDb(); } catch { /* swallow */ }
       const overall = info?.overall ?? 0;
-      const passed = overall >= passScore;
-      if (passed) {
+      // Server-authoritative advance. The frontend sends ONLY { job_id }; the
+      // server checks job ownership/type/status/project, the score and the
+      // allowed source stage, then decides whether to move the candidate.
+      let passed = false;
+      try {
+        let candidateToken: string | null = null;
         try {
-          let candidateToken: string | null = null;
-          try {
-            const raw = localStorage.getItem("cand_session");
-            if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
-          } catch { /* ignore */ }
-          // Idempotent server-side stage advance. Repeat calls are safe:
-          // the RPC returns {ok:true, already:true} without rewriting.
-          await supabase.functions.invoke("candidate-stage-advance-v2", {
-            body: {
-              job_id: jobId,
-              expected_current_stage: null,
-              next_stage: "training",
-              job_type: "grade_situations_v2",
-              candidate_token: candidateToken,
-            },
-            headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
-          });
-        } catch { /* non-fatal */ }
-      }
+          const raw = localStorage.getItem("cand_session");
+          if (raw) candidateToken = (JSON.parse(raw) as any)?.token || null;
+        } catch { /* ignore */ }
+        const { data } = await supabase.functions.invoke<any>("candidate-stage-advance-v2", {
+          body: { job_id: jobId, candidate_token: candidateToken },
+          headers: candidateToken ? { "x-candidate-token": candidateToken } : undefined,
+        });
+        // Treat advanced or already-in-next-stage as "passed". below_threshold
+        // / stage_conflict / job_not_succeeded are NOT technical failures —
+        // they leave the local stage untouched and the candidate sees the
+        // actual interview score. A real failure (no response, network err)
+        // is also treated as not-passed; the candidate can retry safely.
+        passed = Boolean(data && (data.advanced === true || data.already === true));
+      } catch { /* non-fatal — UX shows the interview result */ }
       try { onCompleted?.(passed, overall); } catch { /* ignore */ }
       situationsPendingRef.current?.(true);
       situationsPendingRef.current = null;
