@@ -116,17 +116,18 @@ const SEVERITY_RED_FLAG_ENUM = new Set(["средний", "высокий"]);
 /** Patterns that indicate the model is leaking protected-characteristic
  *  reasoning into employer-visible report. We reject the whole report so the
  *  runner re-rolls. Keep narrow to avoid false positives on legitimate text. */
+// NOTE: JavaScript's `\b` is ASCII-only, so it's unreliable around Cyrillic.
+// We use lookaround on non-letter characters instead.
 const PROTECTED_PATTERNS: RegExp[] = [
-  // Age: any "(N лет|года)" inside an evidence/risk/red_flag finding
-  /\b\d{1,2}\s*(?:лет|года|год)\b/i,
-  /\b(возраст|пожилой|молод(ой|ая)|старш(е|ий))\b/i,
-  /\b(мужчин(а|ы)|женщин(а|ы)|пол\s+кандидата)\b/i,
-  /\b(национальн|раса|расовой|еврей|русск(ий|ая)|татарин|узбек|таджик|армянин)\b/i,
-  /\b(религи|мусульман|христиан|православн|католик|иудей|атеист)\b/i,
-  /\b(беременн|декрет|материнств)/i,
-  /\b(инвалид|инвалидност|ограниченн(ые|ыми)\s+возможност)/i,
-  /\b(гомосекс|ориентаци\s+|ЛГБТ)/i,
-  /\b(политическ(ие|их)\s+взгляд)/i,
+  /(?:^|[^\p{L}])\d{1,2}\s*(?:лет|года|год)(?:$|[^\p{L}])/iu,
+  /(?:возраст|пожилой|молод(?:ой|ая)|старш(?:е|ий))/iu,
+  /(?:мужчин[аы]|женщин[аы]|пол\s+кандидата)/iu,
+  /(?:национальност|раса|расов|еврей|татарин|узбек|таджик|армянин)/iu,
+  /(?:религи|мусульман|христиан|православн|католик|иудей|атеист)/iu,
+  /(?:беременн|декрет|материнств)/iu,
+  /(?:инвалид|инвалидност|ограниченн[ыо].{0,3}возможност)/iu,
+  /(?:гомосекс|ориентаци\s|ЛГБТ)/iu,
+  /(?:политическ[ие][их]?\s+взгляд)/iu,
 ];
 
 export function detectProtectedCharacteristic(text: string): string | null {
