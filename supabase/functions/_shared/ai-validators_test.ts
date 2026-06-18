@@ -122,8 +122,8 @@ Deno.test("canonicalJsonStringify is stable across key order", () => {
 
 // ---------------- ResumeScreenReport v2 ----------------
 
-function validReport(over: Record<string, any> = {}) {
-  const base = {
+function validReport(over: Record<string, any> = {}): any {
+  const base: any = {
     score: 72,
     employer: {
       verdict: "частичное соответствие",
