@@ -2024,11 +2024,7 @@ export default function CandidateFlow() {
                     {[
                       ["social_telegram", "Telegram"],
                       ["social_whatsapp", "WhatsApp"],
-                      ["social_instagram", "Instagram"],
                       ["social_vk", "ВКонтакте"],
-                      ["social_max", "MAX"],
-                      ["social_setka", "Сетка"],
-                      ["social_github", "GitHub"],
                     ].map(([k, label]) => (
                       <div key={k} className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-400">{label}</label>
@@ -2078,20 +2074,34 @@ export default function CandidateFlow() {
                       📄 Ссылка на резюме <ExternalLink className="w-3 h-3"/>
                     </a>
                   )}
-                  <div className="pt-2 border-t border-white/5 space-y-1.5">
-                    <div className="text-[10px] uppercase text-slate-400 font-bold">Соцсети</div>
-                    {[
-                      ["social_telegram","Telegram"],["social_whatsapp","WhatsApp"],["social_instagram","Instagram"],
-                      ["social_vk","ВКонтакте"],["social_max","MAX"],["social_setka","Сетка"],["social_github","GitHub"],
-                    ].map(([k,label]) => {
-                      const v = profSocials[k];
-                      return v ? (
-                        <a key={k} href={v} target="_blank" rel="noreferrer" className="block text-xs text-slate-200 hover:text-[#E7C768] truncate">{label}: <span className="text-[#E7C768] underline">{v}</span></a>
-                      ) : (
-                        <div key={k} className="text-[10px] text-slate-500">{label}: <span className="italic">не указано</span></div>
-                      );
-                    })}
-                  </div>
+                  {(() => {
+                    const socialList: Array<[string, string]> = [
+                      ["social_telegram", "Telegram"],
+                      ["social_whatsapp", "WhatsApp"],
+                      ["social_vk", "ВКонтакте"],
+                    ];
+                    const filled = socialList.filter(([k]) => (profSocials[k] || "").trim() !== "");
+                    if (filled.length === 0) return null;
+                    return (
+                      <div className="pt-2 border-t border-white/5 space-y-1.5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Соцсети</div>
+                        {filled.map(([k, label]) => {
+                          const v = profSocials[k];
+                          return (
+                            <a
+                              key={k}
+                              href={v}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block text-xs text-slate-200 hover:text-[#E7C768] truncate"
+                            >
+                              {label}: <span className="text-[#E7C768] underline">{v}</span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. Onboarding map Checklist progression */}
