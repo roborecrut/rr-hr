@@ -621,6 +621,7 @@ export default function CandidateDetailsModal({
         ) : !data ? (
           <div className="p-12 text-center text-slate-300">Нет данных</div>
         ) : (
+          <CandidateBodyErrorBoundary onClose={onClose}>
           <div className="p-6 md:p-8 space-y-6 text-left">
             {/* Header / profile */}
             <div className="flex flex-col md:flex-row gap-5 items-start">
