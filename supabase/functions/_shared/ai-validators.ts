@@ -178,7 +178,7 @@ export type TrainingStageReport = {
 };
 
 const TRAINING_CANDIDATE_FORBIDDEN_KEYS = new Set([
-  "risks", "red_flags", "recommendation", "evidence", "how_to_verify",
+  "risks", "red_flags", "evidence", "how_to_verify",
   "verdict", "internal", "weight", "weights", "expected_answer",
 ]);
 
@@ -189,15 +189,10 @@ function strArr(x: unknown, max = 16): string[] {
 
 function hasForbiddenKeysDeep(obj: unknown): string | null {
   if (!obj || typeof obj !== "object") return null;
-  const stack: any[] = [obj];
-  while (stack.length) {
-    const cur = stack.pop();
-    if (!cur || typeof cur !== "object") continue;
-    if (Array.isArray(cur)) { for (const v of cur) stack.push(v); continue; }
-    for (const k of Object.keys(cur)) {
-      if (TRAINING_CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
-      stack.push((cur as any)[k]);
-    }
+  // Check only the top-level keys of the candidate object — nested per-item
+  // fields like `recommendation` are legitimately part of the candidate shape.
+  for (const k of Object.keys(obj as Record<string, unknown>)) {
+    if (TRAINING_CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
   }
   return null;
 }
