@@ -397,6 +397,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     if (!sc) return null;
     if (sc.situations_score != null) setSituationsScore(sc.situations_score);
     const candFb = (sc as any)?.candidate_situations_feedback;
+    if (candFb) setSituationsFeedbackRaw(candFb);
+    else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
     if (candFb?.items && Array.isArray(candFb.items)) {
       setSituationsFeedback(candFb.items);
     } else if (sc?.situations_feedback?.items) {
