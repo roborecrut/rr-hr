@@ -374,51 +374,78 @@ export type Database = {
       }
       candidate_scores: {
         Row: {
+          ai_fit_score: number | null
           assessment_summary: string | null
+          candidate_checklist_feedback: Json | null
           candidate_id: string
+          candidate_overall_feedback: Json | null
+          candidate_resume_feedback: Json | null
+          candidate_situations_feedback: Json | null
           checklist_feedback: Json | null
           checklist_points: number | null
           checklist_score: number | null
           checklist_sys_score: number | null
+          employer_overall_feedback: Json | null
           interview_score: number | null
+          overall_generated_at: string | null
           overall_score: number | null
           resume_feedback: Json | null
           resume_score: number | null
           roleplay_points: number | null
           situations_feedback: Json | null
           situations_score: number | null
+          training_candidate_feedback: Json | null
+          training_employer_feedback: Json | null
           updated_at: string
         }
         Insert: {
+          ai_fit_score?: number | null
           assessment_summary?: string | null
+          candidate_checklist_feedback?: Json | null
           candidate_id: string
+          candidate_overall_feedback?: Json | null
+          candidate_resume_feedback?: Json | null
+          candidate_situations_feedback?: Json | null
           checklist_feedback?: Json | null
           checklist_points?: number | null
           checklist_score?: number | null
           checklist_sys_score?: number | null
+          employer_overall_feedback?: Json | null
           interview_score?: number | null
+          overall_generated_at?: string | null
           overall_score?: number | null
           resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
           situations_feedback?: Json | null
           situations_score?: number | null
+          training_candidate_feedback?: Json | null
+          training_employer_feedback?: Json | null
           updated_at?: string
         }
         Update: {
+          ai_fit_score?: number | null
           assessment_summary?: string | null
+          candidate_checklist_feedback?: Json | null
           candidate_id?: string
+          candidate_overall_feedback?: Json | null
+          candidate_resume_feedback?: Json | null
+          candidate_situations_feedback?: Json | null
           checklist_feedback?: Json | null
           checklist_points?: number | null
           checklist_score?: number | null
           checklist_sys_score?: number | null
+          employer_overall_feedback?: Json | null
           interview_score?: number | null
+          overall_generated_at?: string | null
           overall_score?: number | null
           resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
           situations_feedback?: Json | null
           situations_score?: number | null
+          training_candidate_feedback?: Json | null
+          training_employer_feedback?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -465,7 +492,9 @@ export type Database = {
           attempts: number
           best_score: number
           candidate_id: string
+          candidate_summary: Json | null
           created_at: string
+          employer_summary: Json | null
           last_answers: Json | null
           last_feedback: Json | null
           last_score: number | null
@@ -477,7 +506,9 @@ export type Database = {
           attempts?: number
           best_score?: number
           candidate_id: string
+          candidate_summary?: Json | null
           created_at?: string
+          employer_summary?: Json | null
           last_answers?: Json | null
           last_feedback?: Json | null
           last_score?: number | null
@@ -489,7 +520,9 @@ export type Database = {
           attempts?: number
           best_score?: number
           candidate_id?: string
+          candidate_summary?: Json | null
           created_at?: string
+          employer_summary?: Json | null
           last_answers?: Json | null
           last_feedback?: Json | null
           last_score?: number | null
@@ -3005,6 +3038,16 @@ export type Database = {
           }
       spend_pack: { Args: { _candidate: string; _kind: string }; Returns: Json }
       spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
+      start_ai_job_attempt: {
+        Args: {
+          _job_id: string
+          _provider: Database["public"]["Enums"]["ai_job_provider"]
+        }
+        Returns: {
+          attempt_id: string
+          attempt_number: number
+        }[]
+      }
       topup_rr: { Args: { _amount_rub: number }; Returns: Json }
     }
     Enums: {
