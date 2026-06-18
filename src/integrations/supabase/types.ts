@@ -2906,6 +2906,16 @@ export type Database = {
         Args: { _delta: number; _employer: string; _note: string }
         Returns: Json
       }
+      advance_candidate_stage_after_ai_job: {
+        Args: {
+          _candidate_id: string
+          _expected_current_stage: string
+          _job_id: string
+          _job_type: string
+          _next_stage: string
+        }
+        Returns: Json
+      }
       apply_transaction: {
         Args: {
           _amount: number
