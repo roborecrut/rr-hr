@@ -4,6 +4,8 @@ import {
   validateChecklistChoice10,
   validateChecklistText10,
   validateSituations3,
+  validateResumeScreenReport,
+  detectProtectedCharacteristic,
 } from "./ai-validators.ts";
 import { canonicalJsonStringify, isTerminalStatus } from "./ai-jobs.ts";
 
@@ -116,4 +118,115 @@ Deno.test("canonicalJsonStringify is stable across key order", () => {
   const a = canonicalJsonStringify({ b: 1, a: { y: [1, 2], x: "s" } });
   const b = canonicalJsonStringify({ a: { x: "s", y: [1, 2] }, b: 1 });
   assertEquals(a, b);
+});
+
+// ---------------- ResumeScreenReport v2 ----------------
+
+function validReport(over: Record<string, any> = {}): any {
+  const base: any = {
+    score: 72,
+    employer: {
+      verdict: "частичное соответствие",
+      summary: "Кандидат закрывает половину ключевых требований, есть пробелы по продажам B2B.",
+      matches: [
+        { criterion: "Опыт холодных звонков", degree: "полностью", evidence: "5 лет в колл-центре" },
+      ],
+      gaps: [
+        { criterion: "Опыт B2B-продаж", finding: "Не указано", impact: "Критично для роли" },
+      ],
+      strengths: ["Системное мышление"],
+      risks: [
+        { title: "Частая смена работы", evidence: "5 мест за 3 года", severity: "средний", how_to_verify: "Спросить на интервью" },
+      ],
+      red_flags: [],
+      questions_to_verify: ["Опишите конкретную сделку B2B"],
+    },
+    candidate: {
+      summary: "Спасибо за резюме! Видно сильную базу в продажах, давайте уточним опыт B2B.",
+      strengths: ["Опыт колл-центра"],
+      areas_to_clarify: ["Опыт B2B"],
+      recommendations: ["Добавить конкретные цифры результатов"],
+    },
+    ...over,
+  };
+  return base;
+}
+
+Deno.test("resume v2: valid report passes", () => {
+  const r = validateResumeScreenReport(validReport());
+  assertEquals(r.ok, true);
+});
+
+Deno.test("resume v2: bad verdict rejected", () => {
+  const r = validateResumeScreenReport(validReport({ employer: { ...validReport().employer, verdict: "идеально" } }));
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: score out of range rejected", () => {
+  const r = validateResumeScreenReport(validReport({ score: 150 }));
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: risk without evidence rejected", () => {
+  const bad = validReport();
+  bad.employer.risks = [{ title: "Что-то", evidence: "", severity: "низкий", how_to_verify: "" }];
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: red_flag without evidence rejected", () => {
+  const bad = validReport();
+  bad.employer.red_flags = [{ title: "Подозрительно", evidence: "", severity: "высокий" }];
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: match with bad degree rejected", () => {
+  const bad = validReport();
+  bad.employer.matches[0].degree = "очень круто";
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: missing candidate block rejected", () => {
+  const bad: any = validReport();
+  delete bad.candidate;
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: protected characteristic in evidence rejected (age)", () => {
+  const bad = validReport();
+  bad.employer.risks = [
+    { title: "Возраст", evidence: "Кандидату 52 лет, может не подойти", severity: "средний", how_to_verify: "" },
+  ];
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: protected characteristic in summary rejected (religion)", () => {
+  const bad = validReport({
+    employer: {
+      ...validReport().employer,
+      summary: "Кандидат православный, рекомендую отказать. ".repeat(2),
+    },
+  });
+  const r = validateResumeScreenReport(bad);
+  assertEquals(r.ok, false);
+});
+
+Deno.test("resume v2: detectProtectedCharacteristic finds gender mention", () => {
+  const hit = detectProtectedCharacteristic("Кандидат — женщина, что важно");
+  assertEquals(typeof hit, "string");
+});
+
+Deno.test("resume v2: candidate report has no employer-only fields after validation", () => {
+  const r = validateResumeScreenReport(validReport());
+  if (!r.ok) throw new Error("setup");
+  const c = r.value.candidate as any;
+  assertEquals("verdict" in c, false);
+  assertEquals("risks" in c, false);
+  assertEquals("red_flags" in c, false);
+  assertEquals("questions_to_verify" in c, false);
+  assertEquals("matches" in c, false);
 });
