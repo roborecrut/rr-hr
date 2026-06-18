@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.ai-evaluate-overall-candidate-v2]
 verify_jwt = false
+
+[functions.ai-evaluate-training-summary-v2]
+verify_jwt = false

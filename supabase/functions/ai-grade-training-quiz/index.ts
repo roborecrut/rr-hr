@@ -9,6 +9,7 @@ import {
 } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
+import { detectProtectedCharacteristic } from "../_shared/ai-validators.ts";
 
 type Answer = { question_id: string; value: string };
 
@@ -187,6 +188,88 @@ ${JSON.stringify(aiBatch)}
     server_name: "ai-grade-training-quiz",
     function_call_params: JSON.stringify({ candidate_id: candidateId, project_id: body.project_id, stage: body.stage }),
   });
+
+  // ---------------------------------------------------------------------------
+  // Stage-level structured summaries (employer / candidate). Best-effort:
+  // computed deterministically from per-question results — no extra AI call
+  // and no billing. Stored into candidate_stage_progress.employer_summary /
+  // candidate_summary which are already in the schema.
+  // ---------------------------------------------------------------------------
+  try {
+    const sanitizedItems = perQuestion.map((pq) => {
+      const q = questions.find((qq) => String(qq.id) === String(pq.id));
+      const qText = q ? String(q.question || "") : "";
+      const safeComment = String(pq.comment || "").replace(/```json[\s\S]*?```/gi, "").trim();
+      return {
+        question_id: String(pq.id),
+        question: qText,
+        score: Math.round((Number(pq.score) / Math.max(1, Number(pq.max))) * 100),
+        verdict: pq.verdict,
+        what_was_right: String(pq.what_was_right || ""),
+        what_was_wrong: String(pq.what_was_wrong || ""),
+        comment: safeComment,
+      };
+    });
+
+    const strong = sanitizedItems.filter((x) => x.verdict === "correct");
+    const weak = sanitizedItems.filter((x) => x.verdict !== "correct");
+    const stageScore = Math.round((total / Math.max(1, totalMax)) * 100);
+
+    const employerSummary = {
+      summary: passed
+        ? `Кандидат сдал этап обучения с результатом ${total}/${totalMax} (${stageScore}/100). Большинство тем усвоено.`
+        : `Кандидат не сдал этап: ${total}/${totalMax} (${stageScore}/100), проходной ${passScore}. Требуется повторное прохождение.`,
+      strengths: strong.slice(0, 6).map((x) => x.question || "").filter(Boolean),
+      gaps: weak.slice(0, 8).map((x) => x.question || "").filter(Boolean),
+      risks: [] as any[],
+      red_flags: [] as any[],
+      items: sanitizedItems.map((x) => ({
+        question_id: x.question_id, score: x.score,
+        feedback: x.comment || x.what_was_wrong || x.what_was_right || "",
+        evidence: x.what_was_wrong || x.what_was_right || "",
+      })),
+      recommendation: passed
+        ? "Допустить к следующему этапу."
+        : (weak.length >= sanitizedItems.length / 2
+            ? "Требуется повторное обучение по слабым темам и повторная попытка."
+            : "Повторить отдельные темы и пересдать тест."),
+    };
+
+    const candidateSummary = {
+      summary: passed
+        ? `Поздравляем — этап сдан! Балл: ${total}/${totalMax}.`
+        : `Этап пока не сдан: ${total}/${totalMax}, нужно ${passScore}. Не переживайте — разберём слабые темы и попробуем снова.`,
+      strengths: strong.slice(0, 6).map((x) => x.question || "").filter(Boolean),
+      areas_to_improve: weak.slice(0, 8).map((x) => x.question || "").filter(Boolean),
+      items: sanitizedItems.map((x) => ({
+        question_id: x.question_id,
+        score: x.score,
+        feedback: x.verdict === "correct"
+          ? (x.what_was_right || "Ответ зачтён.")
+          : (x.what_was_wrong || x.comment || "Ответ требует доработки."),
+        recommendation: x.verdict === "correct"
+          ? "Закрепите тему практикой."
+          : "Вернитесь к материалу по этой теме и попробуйте сформулировать ответ своими словами.",
+      })),
+      next_steps: passed
+        ? ["Переходите к следующему этапу обучения."]
+        : ["Повторите слабые темы.", "Пересдайте тест после повторения."],
+    };
+
+    // Strip any accidental protected-characteristic mention.
+    const guardBlob = JSON.stringify({ employerSummary, candidateSummary });
+    const safe = !detectProtectedCharacteristic(guardBlob);
+
+    if (safe) {
+      await admin.from("candidate_stage_progress").update({
+        employer_summary: employerSummary,
+        candidate_summary: candidateSummary,
+      }).eq("candidate_id", candidateId).eq("stage", body.stage);
+    }
+  } catch (e) {
+    console.error("[ai-grade-training-quiz] summary build failed", (e as Error).message);
+    // Non-fatal — legacy per_question feedback is already saved above.
+  }
 
   return jsonResponse({
     ok: true, score: total, total_score: totalMax,

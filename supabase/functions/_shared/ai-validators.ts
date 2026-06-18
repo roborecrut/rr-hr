@@ -139,6 +139,267 @@ export function detectProtectedCharacteristic(text: string): string | null {
   return null;
 }
 
+// =============================================================================
+// Training stage report v2 — split employer / candidate, used by
+// ai-grade-training-quiz (extended) and ai-evaluate-training-summary-v2.
+// =============================================================================
+
+const TRAINING_SEVERITY_RISK_ENUM = new Set(["низкий", "средний", "высокий"]);
+const TRAINING_SEVERITY_RED_FLAG_ENUM = new Set(["средний", "высокий"]);
+const TRAINING_VERDICT_ENUM = new Set([
+  "готов",
+  "частично готов",
+  "требуется повторение",
+  "недостаточно данных",
+]);
+
+export type TrainingStageEmployer = {
+  summary: string;
+  strengths: string[];
+  gaps: string[];
+  risks: { title: string; evidence: string; severity: string; how_to_verify: string }[];
+  red_flags: { title: string; evidence: string; severity: string }[];
+  items: { question_id: string; score: number; feedback: string; evidence: string }[];
+  recommendation: string;
+};
+
+export type TrainingStageCandidate = {
+  summary: string;
+  strengths: string[];
+  areas_to_improve: string[];
+  items: { question_id: string; score: number; feedback: string; recommendation: string }[];
+  next_steps: string[];
+};
+
+export type TrainingStageReport = {
+  score: number;
+  employer: TrainingStageEmployer;
+  candidate: TrainingStageCandidate;
+};
+
+const TRAINING_CANDIDATE_FORBIDDEN_KEYS = new Set([
+  "risks", "red_flags", "evidence", "how_to_verify",
+  "verdict", "internal", "weight", "weights", "expected_answer",
+]);
+
+function strArr(x: unknown, max = 16): string[] {
+  if (!Array.isArray(x)) return [];
+  return x.map((s) => (typeof s === "string" ? s.trim() : "")).filter(Boolean).slice(0, max);
+}
+
+function hasForbiddenKeysDeep(obj: unknown): string | null {
+  if (!obj || typeof obj !== "object") return null;
+  // Check only the top-level keys of the candidate object — nested per-item
+  // fields like `recommendation` are legitimately part of the candidate shape.
+  for (const k of Object.keys(obj as Record<string, unknown>)) {
+    if (TRAINING_CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
+  }
+  return null;
+}
+
+export function validateTrainingStageReport(
+  raw: unknown,
+  knownQuestionIds: string[],
+): V<TrainingStageReport> {
+  if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
+  const r = raw as any;
+  const score = Number(r.score);
+  if (!Number.isFinite(score) || score < 0 || score > 100) return { ok: false, code: "bad_score" };
+
+  const emp = r.employer;
+  const cand = r.candidate;
+  if (!emp || typeof emp !== "object") return { ok: false, code: "no_employer" };
+  if (!cand || typeof cand !== "object") return { ok: false, code: "no_candidate" };
+
+  const empSummary = nonEmpty(emp.summary);
+  if (!empSummary) return { ok: false, code: "empty_employer_summary" };
+  const candSummary = nonEmpty(cand.summary);
+  if (!candSummary) return { ok: false, code: "empty_candidate_summary" };
+
+  const known = new Set(knownQuestionIds);
+  const empItemsRaw = Array.isArray(emp.items) ? emp.items : [];
+  const empSeen = new Set<string>();
+  const empItems = [];
+  for (const it of empItemsRaw) {
+    const qid = nonEmpty(it?.question_id);
+    if (!qid || (known.size && !known.has(qid))) return { ok: false, code: `emp_bad_qid_${qid || "?"}` };
+    if (empSeen.has(qid)) return { ok: false, code: `emp_dup_qid_${qid}` };
+    empSeen.add(qid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `emp_bad_item_score_${qid}` };
+    empItems.push({
+      question_id: qid,
+      score: sc,
+      feedback: nonEmpty(it?.feedback),
+      evidence: nonEmpty(it?.evidence),
+    });
+  }
+
+  const candItemsRaw = Array.isArray(cand.items) ? cand.items : [];
+  const candSeen = new Set<string>();
+  const candItems = [];
+  for (const it of candItemsRaw) {
+    const qid = nonEmpty(it?.question_id);
+    if (!qid || (known.size && !known.has(qid))) return { ok: false, code: `cand_bad_qid_${qid || "?"}` };
+    if (candSeen.has(qid)) return { ok: false, code: `cand_dup_qid_${qid}` };
+    candSeen.add(qid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `cand_bad_item_score_${qid}` };
+    candItems.push({
+      question_id: qid,
+      score: sc,
+      feedback: nonEmpty(it?.feedback),
+      recommendation: nonEmpty(it?.recommendation),
+    });
+  }
+
+  const risks = Array.isArray(emp.risks) ? emp.risks : [];
+  const risksOut = [];
+  for (const r0 of risks) {
+    const title = nonEmpty(r0?.title);
+    const evidence = nonEmpty(r0?.evidence);
+    const sev = nonEmpty(r0?.severity);
+    if (!title || !evidence) return { ok: false, code: "risk_no_evidence" };
+    if (!TRAINING_SEVERITY_RISK_ENUM.has(sev)) return { ok: false, code: `risk_bad_sev_${sev}` };
+    risksOut.push({ title, evidence, severity: sev, how_to_verify: nonEmpty(r0?.how_to_verify) });
+  }
+
+  const rfs = Array.isArray(emp.red_flags) ? emp.red_flags : [];
+  const rfsOut = [];
+  for (const r0 of rfs) {
+    const title = nonEmpty(r0?.title);
+    const evidence = nonEmpty(r0?.evidence);
+    const sev = nonEmpty(r0?.severity);
+    if (!title || !evidence) return { ok: false, code: "rf_no_evidence" };
+    if (!TRAINING_SEVERITY_RED_FLAG_ENUM.has(sev)) return { ok: false, code: `rf_bad_sev_${sev}` };
+    rfsOut.push({ title, evidence, severity: sev });
+  }
+
+  const guardBlob = JSON.stringify({ employer: emp, candidate: cand });
+  if (detectProtectedCharacteristic(guardBlob)) return { ok: false, code: "protected_characteristic" };
+
+  const leaked = hasForbiddenKeysDeep(cand);
+  if (leaked) return { ok: false, code: `cand_forbidden_${leaked}` };
+
+  const employer: TrainingStageEmployer = {
+    summary: empSummary,
+    strengths: strArr(emp.strengths),
+    gaps: strArr(emp.gaps),
+    risks: risksOut,
+    red_flags: rfsOut,
+    items: empItems,
+    recommendation: nonEmpty(emp.recommendation),
+  };
+  const candidate: TrainingStageCandidate = {
+    summary: candSummary,
+    strengths: strArr(cand.strengths),
+    areas_to_improve: strArr(cand.areas_to_improve),
+    items: candItems,
+    next_steps: strArr(cand.next_steps),
+  };
+
+  return { ok: true, value: { score: Math.round(score), employer, candidate } };
+}
+
+export type TrainingSummaryEmployer = {
+  score: number;
+  data_completeness: number;
+  verdict: string;
+  summary: string;
+  completed_stages: string[];
+  missing_stages: string[];
+  mastered_topics: string[];
+  weak_topics: string[];
+  risks: { title: string; evidence: string; severity: string }[];
+  red_flags: { title: string; evidence: string; severity: string }[];
+  revision_plan: string[];
+  readiness: string;
+  recommendation: string;
+};
+
+export type TrainingSummaryCandidate = {
+  summary: string;
+  completed_stages: string[];
+  missing_stages: string[];
+  strengths: string[];
+  topics_to_repeat: string[];
+  revision_plan: string[];
+  next_steps: string[];
+};
+
+export type TrainingSummaryReport = {
+  employer: TrainingSummaryEmployer;
+  candidate: TrainingSummaryCandidate;
+};
+
+export function validateTrainingSummary(raw: unknown): V<TrainingSummaryReport> {
+  if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
+  const r = raw as any;
+  const emp = r.employer, cand = r.candidate;
+  if (!emp || typeof emp !== "object") return { ok: false, code: "no_employer" };
+  if (!cand || typeof cand !== "object") return { ok: false, code: "no_candidate" };
+
+  const score = Number(emp.score);
+  if (!Number.isFinite(score) || score < 0 || score > 100) return { ok: false, code: "bad_score" };
+  const completeness = Number(emp.data_completeness);
+  if (!Number.isFinite(completeness) || completeness < 0 || completeness > 100) return { ok: false, code: "bad_completeness" };
+  const verdict = nonEmpty(emp.verdict);
+  if (!TRAINING_VERDICT_ENUM.has(verdict)) return { ok: false, code: `bad_verdict_${verdict}` };
+  const empSummary = nonEmpty(emp.summary);
+  const candSummary = nonEmpty(cand.summary);
+  if (!empSummary || !candSummary) return { ok: false, code: "empty_summary" };
+
+  const risks: TrainingSummaryEmployer["risks"] = [];
+  for (const r0 of (Array.isArray(emp.risks) ? emp.risks : [])) {
+    const title = nonEmpty(r0?.title), evidence = nonEmpty(r0?.evidence), sev = nonEmpty(r0?.severity);
+    if (!title || !evidence) return { ok: false, code: "risk_no_evidence" };
+    if (!TRAINING_SEVERITY_RISK_ENUM.has(sev)) return { ok: false, code: `risk_bad_sev_${sev}` };
+    risks.push({ title, evidence, severity: sev });
+  }
+  const redFlags: TrainingSummaryEmployer["red_flags"] = [];
+  for (const r0 of (Array.isArray(emp.red_flags) ? emp.red_flags : [])) {
+    const title = nonEmpty(r0?.title), evidence = nonEmpty(r0?.evidence), sev = nonEmpty(r0?.severity);
+    if (!title || !evidence) return { ok: false, code: "rf_no_evidence" };
+    if (!TRAINING_SEVERITY_RED_FLAG_ENUM.has(sev)) return { ok: false, code: `rf_bad_sev_${sev}` };
+    redFlags.push({ title, evidence, severity: sev });
+  }
+
+  const guardBlob = JSON.stringify({ employer: emp, candidate: cand });
+  if (detectProtectedCharacteristic(guardBlob)) return { ok: false, code: "protected_characteristic" };
+  const leaked = hasForbiddenKeysDeep(cand);
+  if (leaked) return { ok: false, code: `cand_forbidden_${leaked}` };
+
+  return {
+    ok: true,
+    value: {
+      employer: {
+        score: Math.round(score),
+        data_completeness: Math.round(completeness),
+        verdict,
+        summary: empSummary,
+        completed_stages: strArr(emp.completed_stages),
+        missing_stages: strArr(emp.missing_stages),
+        mastered_topics: strArr(emp.mastered_topics),
+        weak_topics: strArr(emp.weak_topics),
+        risks,
+        red_flags: redFlags,
+        revision_plan: strArr(emp.revision_plan),
+        readiness: nonEmpty(emp.readiness),
+        recommendation: nonEmpty(emp.recommendation),
+      },
+      candidate: {
+        summary: candSummary,
+        completed_stages: strArr(cand.completed_stages),
+        missing_stages: strArr(cand.missing_stages),
+        strengths: strArr(cand.strengths),
+        topics_to_repeat: strArr(cand.topics_to_repeat),
+        revision_plan: strArr(cand.revision_plan),
+        next_steps: strArr(cand.next_steps),
+      },
+    },
+  };
+}
+
 export type ResumeMatch = { criterion: string; degree: string; evidence: string };
 export type ResumeGap = { criterion: string; finding: string; impact: string };
 export type ResumeRisk = { title: string; evidence: string; severity: string; how_to_verify: string };
