@@ -12,6 +12,10 @@ import ResumeDropzone from "@/components/ResumeDropzone";
 import DisclosureBlock from "@/components/DisclosureBlock";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
 import { toUserError, formatUserError } from "@/lib/userError";
+import {
+  startResumeScreenV2, pollJobUntilTerminal,
+  getActiveJob, clearActiveJob, isSuccess, isTerminal,
+} from "@/lib/aiJobs";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -75,7 +79,14 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   // resume
   const [resumeText, setResumeText] = useState("");
-  const [resumeResult, setResumeResult] = useState<{ score: number; summary: string; strengths: string[]; gaps: string[] } | null>(null);
+  const [resumeResult, setResumeResult] = useState<{
+    score: number;
+    summary: string;
+    strengths: string[];
+    gaps: string[];
+    areas_to_clarify?: string[];
+    recommendations?: string[];
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -132,13 +143,29 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
         if (sc.resume_score != null) {
-          const rf = sc.resume_feedback || {};
-          setResumeResult({
-            score: sc.resume_score,
-            summary: sc.assessment_summary || rf.summary || "",
-            strengths: Array.isArray(rf.strengths) ? rf.strengths : [],
-            gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
-          });
+          // Prefer the new candidate-facing report (v2). It never contains
+          // employer-only fields (risks, red_flags, employer verdict, etc.).
+          const crf = (sc as any).candidate_resume_feedback || null;
+          const rf  = sc.resume_feedback || {};
+          if (crf && typeof crf === "object") {
+            setResumeResult({
+              score: sc.resume_score,
+              summary: String(crf.summary || sc.assessment_summary || ""),
+              strengths: Array.isArray(crf.strengths) ? crf.strengths : [],
+              gaps: [],
+              areas_to_clarify: Array.isArray(crf.areas_to_clarify) ? crf.areas_to_clarify : [],
+              recommendations: Array.isArray(crf.recommendations) ? crf.recommendations : [],
+            });
+          } else {
+            // Legacy fallback: old synchronous function stored {summary, strengths, gaps}
+            // directly under resume_feedback. Show without employer-only sections.
+            setResumeResult({
+              score: sc.resume_score,
+              summary: sc.assessment_summary || rf.summary || "",
+              strengths: Array.isArray(rf.strengths) ? rf.strengths : [],
+              gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
+            });
+          }
         }
         if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
         if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
@@ -161,24 +188,91 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     })();
   }, [projectId, candidateId]);
 
+  // Re-hydrate active v2 resume job after reload/refocus. Never starts a NEW
+  // job — only resumes polling on whatever job_id the user already launched.
+  useEffect(() => {
+    const rec = getActiveJob("screen_resume", candidateId);
+    if (!rec) return;
+    let cancelled = false;
+    const ac = new AbortController();
+    (async () => {
+      try {
+        const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
+        if (cancelled) return;
+        if (isSuccess(row.status)) {
+          await refetchCandidateScores();
+        }
+      } catch { /* aborted or timeout */ }
+      finally { if (!cancelled) clearActiveJob("screen_resume", candidateId); }
+    })();
+    return () => { cancelled = true; ac.abort(); };
+  }, [candidateId]);
+
+  const refetchCandidateScores = async () => {
+    const { data: sc } = await (supabase as any).from("candidate_scores")
+      .select("resume_score,assessment_summary,resume_feedback,candidate_resume_feedback")
+      .eq("candidate_id", candidateId).maybeSingle();
+    if (!sc || sc.resume_score == null) return;
+    const crf = (sc as any).candidate_resume_feedback;
+    if (crf && typeof crf === "object") {
+      setResumeResult({
+        score: sc.resume_score,
+        summary: String(crf.summary || sc.assessment_summary || ""),
+        strengths: Array.isArray(crf.strengths) ? crf.strengths : [],
+        gaps: [],
+        areas_to_clarify: Array.isArray(crf.areas_to_clarify) ? crf.areas_to_clarify : [],
+        recommendations: Array.isArray(crf.recommendations) ? crf.recommendations : [],
+      });
+    } else {
+      const rf = sc.resume_feedback || {};
+      setResumeResult({
+        score: sc.resume_score,
+        summary: sc.assessment_summary || rf.summary || "",
+        strengths: Array.isArray(rf.strengths) ? rf.strengths : [],
+        gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
+      });
+    }
+  };
+
   const submitResume = async () => {
     if (!resumeText.trim() || resumeText.length < 50) { alert("Введите резюме (минимум 50 символов)"); return; }
+    // Double-click guard: if an active job already exists for this candidate,
+    // simply resume polling instead of starting a new one (no duplicate debit).
+    if (getActiveJob("screen_resume", candidateId)) {
+      // Active polling effect is already running; just give visual feedback.
+      alert("Анализ уже выполняется. Подождите, результат сохранится автоматически.");
+      return;
+    }
     setBusy(true);
     try {
-      const r = await aiWaitRun<any>({
-        title: "Оценка резюме",
-        task: () => call("ai-interview-screen-resume", { project_id: projectId, candidate_id: candidateId, resume_text: resumeText }),
-        fallback: {
-          viewerAllowed: true,
-          onSuccess: async (data) => {
-            // RR Pro Max возвращает result в том же формате, что и основной
-            // путь, а также уже сохранил оценку в candidate_scores.
-            if (data?.result) setResumeResult(data.result);
-          },
+      // Phase 3B-2A: switch resume screening to the async v2 lifecycle.
+      // The HTTP request returns a job_id quickly; the wait overlay only
+      // bridges the polling phase. Closing tab / reloading is safe — the
+      // mount effect above re-attaches polling.
+      await aiWaitRun<any>({
+        title: "Анализ резюме",
+        task: async () => {
+          const start = await startResumeScreenV2({ candidateId, resumeText });
+          // If the function reused a terminal job, just fetch results.
+          if (start.terminal) {
+            await refetchCandidateScores();
+            clearActiveJob("screen_resume", candidateId);
+            return { ok: true };
+          }
+          const row = await pollJobUntilTerminal({ jobId: start.job_id });
+          clearActiveJob("screen_resume", candidateId);
+          if (!isSuccess(row.status)) {
+            const friendly = row.status === "save_failed"
+              ? "Не удалось сохранить результат. Попробуйте позже."
+              : row.status === "validation_failed"
+                ? "Нейросеть вернула неполный ответ. Повторите попытку."
+                : "Нейросеть временно недоступна. Повторите попытку.";
+            throw new Error(friendly);
+          }
+          await refetchCandidateScores();
+          return { ok: true };
         },
       });
-      if (!r) return;
-      setResumeResult(r.result);
     } catch (e: any) {
       if (isVacancyPausedError(e)) { setPausedOpen(true); }
       else { alert(formatUserError(toUserError(e))); }
