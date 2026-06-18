@@ -423,6 +423,38 @@ export type Database = {
           },
         ]
       }
+      candidate_checklist_answers_v2: {
+        Row: {
+          answers: Json
+          answers_hash: string
+          candidate_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          answers_hash?: string
+          candidate_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          answers_hash?: string
+          candidate_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_checklist_answers_v2_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: true
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_scores: {
         Row: {
           ai_fit_score: number | null
@@ -3106,6 +3138,15 @@ export type Database = {
           _candidate_situations_feedback: Json
           _situations_feedback: Json
           _situations_score: number
+        }
+        Returns: Json
+      }
+      save_checklist_answers_v2: {
+        Args: {
+          _answers: Json
+          _answers_hash: string
+          _candidate: string
+          _project: string
         }
         Returns: Json
       }
