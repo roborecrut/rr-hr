@@ -26,14 +26,32 @@ import { supabase } from "@/integrations/supabase/client";
 /* ------------------------------------------------------------------ */
 
 const GLOBAL_KEY = "global";
-const LS_KEY = "rr_welcome_tour_v1";
+const LS_KEY_LEGACY = "rr_welcome_tour_v1";
+const LS_KEY_PREFIX = "rr_employer_tour_completed:";
+const LS_KEY_VERSION = "v1";
+
+/** Per-employer LS key — survives logout/login on the same browser. */
+function lsKeyFor(employerId: string | null): string {
+  const eid = employerId || "anon";
+  return `${LS_KEY_PREFIX}${eid}:${LS_KEY_VERSION}`;
+}
 
 async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismissed"> {
-  // LocalStorage fallback: гарантированно не показываем тур повторно,
-  // даже если запись в БД не дошла (RLS, оффлайн, гонка вкладок).
+  // LocalStorage is the source of truth — guarantees we never re-show the tour
+  // after completion/dismiss, regardless of DB write success, OAuth redirect
+  // or vacuumed session. Key is scoped to the employer public id from the URL
+  // so different employers on the same browser have independent state, and a
+  // legacy global key from prior versions is also honoured.
+  const empId = currentEmployerId();
   try {
-    const v = window.localStorage.getItem(LS_KEY);
-    if (v === "completed" || v === "dismissed") return v;
+    const perEmp = window.localStorage.getItem(lsKeyFor(empId));
+    if (perEmp === "completed" || perEmp === "dismissed") return perEmp;
+    const legacy = window.localStorage.getItem(LS_KEY_LEGACY);
+    if (legacy === "completed" || legacy === "dismissed") {
+      // Migrate legacy global flag to the per-employer key.
+      try { window.localStorage.setItem(lsKeyFor(empId), legacy); } catch { /* ignore */ }
+      return legacy;
+    }
   } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return "completed";
@@ -45,13 +63,20 @@ async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismiss
     .maybeSingle();
   const status = ((data as any)?.status as any) || "pending";
   if (status === "completed" || status === "dismissed") {
-    try { window.localStorage.setItem(LS_KEY, status); } catch { /* ignore */ }
+    try { window.localStorage.setItem(lsKeyFor(empId), status); } catch { /* ignore */ }
   }
   return status;
 }
 
 async function setGlobalTourStatus(status: "completed" | "dismissed") {
-  try { window.localStorage.setItem(LS_KEY, status); } catch { /* ignore */ }
+  // Always persist the per-employer key FIRST so reload/login is safe even
+  // if the DB upsert fails (RLS, offline, race). Also keep the legacy
+  // global key for backward compatibility with older builds.
+  const empId = currentEmployerId();
+  try {
+    window.localStorage.setItem(lsKeyFor(empId), status);
+    window.localStorage.setItem(LS_KEY_LEGACY, status);
+  } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return;
   await supabase.from("employer_tour_state" as any).upsert(
@@ -269,12 +294,20 @@ export default function OnboardingHost({ autoStart = true, buttonOnly = false }:
   useEffect(() => {
     if (buttonOnly || !autoStart) return;
     let cancelled = false;
+    // Guard against duplicate auto-mounts firing the tour twice (StrictMode,
+    // remounts on navigation, etc.) — once started, never auto-start again
+    // in the same tab session.
+    try {
+      if (window.sessionStorage.getItem("rr_tour_autostarted") === "1") return;
+    } catch { /* ignore */ }
     (async () => {
       const status = await getGlobalTourStatus();
       if (cancelled || status !== "pending") return;
       // Ждём, пока сайдбар отрендерится
       await new Promise((r) => setTimeout(r, 700));
-      if (!cancelled) runTour();
+      if (cancelled) return;
+      try { window.sessionStorage.setItem("rr_tour_autostarted", "1"); } catch { /* ignore */ }
+      runTour();
     })();
     return () => { cancelled = true; };
   }, [autoStart, buttonOnly, runTour]);
