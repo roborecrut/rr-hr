@@ -112,6 +112,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [sitAnswers, setSitAnswers] = useState<Record<string, string>>({});
   const [situationsScore, setSituationsScore] = useState<number | null>(null);
   const [situationsFeedback, setSituationsFeedback] = useState<{ id: string; feedback: string; score: number }[]>([]);
+  // Raw structured object (prefers `candidate_situations_feedback`; falls back
+  // to legacy `situations_feedback` only as a SAFE TEXT path through the
+  // adapter — employer-only fields are stripped before reaching the UI).
+  const [situationsFeedbackRaw, setSituationsFeedbackRaw] = useState<any>(null);
 
   const [finalScore, setFinalScore] = useState<number | null>(null);
 
