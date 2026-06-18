@@ -1177,6 +1177,7 @@ export default function CandidateDetailsModal({
               </div>
             )}
           </div>
+          </CandidateBodyErrorBoundary>
         )}
       </div>
     </div>
