@@ -9,7 +9,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin" }, 500);
-  const { data, error } = await admin.rpc("_test_advance_stage_v2_run");
+  const url = new URL(req.url);
+  const which = url.searchParams.get("which") === "debug"
+    ? "_test_advance_stage_v2_debug_dump"
+    : "_test_advance_stage_v2_run";
+  const { data, error } = await admin.rpc(which);
   if (error) return jsonResponse({ error: error.message }, 500);
   return jsonResponse(data, 200);
 });
