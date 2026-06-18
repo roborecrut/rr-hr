@@ -22,6 +22,45 @@ import {
   isTerminal, isSuccess,
 } from "@/lib/aiJobs";
 
+/**
+ * Local error boundary around the candidate card body. A render error in one
+ * report component (e.g. legacy candidate with unexpected feedback shape) must
+ * NOT take down the whole EmployerPanel and turn the page white. We show a
+ * compact fallback inside the modal so the employer can close and try again.
+ */
+class CandidateBodyErrorBoundary extends React.Component<
+  { children: React.ReactNode; onClose: () => void },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error, info: any) {
+    // eslint-disable-next-line no-console
+    console.error("[CandidateDetailsModal] render error:", error, info?.componentStack);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-8 text-center space-y-3">
+          <div className="text-4xl">🤖</div>
+          <div className="text-sm text-rose-200">
+            Не удалось загрузить часть данных кандидата.
+            Закройте карточку и попробуйте снова.
+          </div>
+          <button
+            type="button"
+            onClick={this.props.onClose}
+            className="inline-flex items-center px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs"
+          >
+            Закрыть
+          </button>
+        </div>
+      );
+    }
+    return this.props.children as any;
+  }
+}
+
 /** Map raw job status / thrown error codes to user-facing copy. */
 function humanizeAiError(code: string | null | undefined): string {
   const s = String(code || "").toLowerCase();
