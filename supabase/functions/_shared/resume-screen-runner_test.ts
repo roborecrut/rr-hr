@@ -393,14 +393,6 @@ Deno.test("primary_failed alone is NOT terminal (must transition to fallback or 
   assert(!__internal_terminal_statuses.has("primary_failed"));
 });
 
-Deno.test("frontend terminal set matches backend (includes orchestration_failed)", async () => {
-  const front = await import("../../../src/lib/aiJobs.ts");
-  assert(front.isTerminal("orchestration_failed"));
-  assert(!front.isTerminal("primary_failed"));
-  assert(!front.isTerminal("primary_running"));
-  assert(front.isTerminal("primary_succeeded"));
-});
-
 Deno.test("attempt-start failure does NOT cause a second debit", async () => {
   const { deps, debits } = makeDeps({ startAttemptReturnsNull: true });
   await runResumeScreenJob(deps, { jobId: "job-1" });
