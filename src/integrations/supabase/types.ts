@@ -570,6 +570,45 @@ export type Database = {
           },
         ]
       }
+      candidate_situations_answers_v2: {
+        Row: {
+          answers: Json
+          answers_hash: string
+          candidate_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers: Json
+          answers_hash: string
+          candidate_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          answers_hash?: string
+          candidate_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_situations_answers_v2_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_situations_answers_v2_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_stage_progress: {
         Row: {
           attempts: number
@@ -3142,6 +3181,15 @@ export type Database = {
         Returns: Json
       }
       save_checklist_answers_v2: {
+        Args: {
+          _answers: Json
+          _answers_hash: string
+          _candidate: string
+          _project: string
+        }
+        Returns: Json
+      }
+      save_situations_answers_v2: {
         Args: {
           _answers: Json
           _answers_hash: string
