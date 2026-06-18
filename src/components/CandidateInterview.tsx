@@ -21,6 +21,7 @@ import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
 import { adaptCandidateChecklist, adaptCandidateSituations } from "@/lib/feedbackAdapters";
 import CandidateChecklistReport from "@/components/reports/CandidateChecklistReport";
 import CandidateSituationsReport from "@/components/reports/CandidateSituationsReport";
+import CandidateOverallReport from "@/components/reports/CandidateOverallReport";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
