@@ -714,20 +714,17 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </div>
           ) : situationsScore != null ? (
             <div className="space-y-3">
-              <div className="text-3xl font-extrabold text-emerald-300">{situationsScore}/100</div>
-              {situationsFeedback.map(f => (
-                <div key={f.id} className="bg-black/30 border border-white/10 rounded-xl p-3">
-                  <div className="text-xs text-[#E7C768] font-bold">{f.id}: {f.score}/100</div>
-                  <div className="text-sm text-slate-200">{f.feedback}</div>
-                </div>
-              ))}
+              <CandidateSituationsReport
+                view={adaptCandidateSituations(situationsFeedbackRaw)}
+                score={situationsScore}
+              />
               <div className="flex flex-wrap gap-2">
                 {finalScore != null && (
                   <button onClick={() => setStage("done")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl flex items-center gap-1">
                     <Award className="w-4 h-4"/> Показать итоговую оценку →
                   </button>
                 )}
-                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+                <button onClick={() => { setSituationsScore(null); setSitAnswers({}); setSituationsFeedback([]); setSituationsFeedbackRaw(null); setFinalScore(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
               </div>
             </div>
           ) : situations.length === 0 ? (
