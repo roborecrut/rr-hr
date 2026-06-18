@@ -2637,7 +2637,12 @@ export default function EmployerPanel() {
             )}
             <div className="text-right hidden sm:block">
               <span className="text-xs block text-[#E7C768] font-bold">{googleName || profileName}</span>
-              <span className="text-[10px] block text-slate-300">№ {employerId}</span>
+              <span
+                className="text-[12px] block text-slate-200 font-mono"
+                title="Уникальный идентификатор работодателя"
+              >
+                ID работодателя: <strong className="text-white">{employerId}</strong>
+              </span>
             </div>
             <button onClick={handleLogout} className="cursor-pointer bg-white/10 hover:bg-white/20 text-white rounded-xl px-3 py-2 text-xs font-bold transition flex items-center gap-1 border border-white/10">
               <LogOut className="w-3.5 h-3.5" /> Выйти
@@ -2840,9 +2845,7 @@ export default function EmployerPanel() {
                   </div>
                   <h3 className="text-base font-black text-white">Пройдите 3 простых шага, чтобы запустить ИИ рекрутинг под ключ</h3>
                 </div>
-                <span className="bg-[#E7C768]/10 text-[#E7C768] text-[10px] font-mono border border-[#E7C768]/30 px-2 py-0.5 rounded">
-                  ID ЛК: {employerId}
-                </span>
+                {/* ID работодателя отображается только в правом верхнем блоке профиля (см. header). */}
               </div>
 
               {/* Progress Stepper row */}
@@ -4179,7 +4182,10 @@ export default function EmployerPanel() {
                   const compVacancies = projects.filter(p => p.companyName?.toLowerCase() === comp.name?.toLowerCase());
 
                   return (
-                    <div key={idx} className="bg-[#1E4468]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 cursor-pointer hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]" onClick={() => openEditCompanyWizard(comp)} title="Открыть карточку компании для редактирования">
+                    <div
+                      key={idx}
+                      className="bg-[#1E4468]/95 border-2 border-[#E7C768]/40 p-5 rounded-3xl space-y-3 hover:border-[#E7C768] transition shadow-[0_8px_28px_-12px_rgba(231,199,104,0.35)]"
+                    >
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-3">
                           {comp.logoUrl ? (
