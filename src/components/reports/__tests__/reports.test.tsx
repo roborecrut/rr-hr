@@ -88,7 +88,10 @@ describe("EmployerChecklistReport", () => {
 });
 
 describe("EmployerSituationsReport", () => {
-  const v = adaptEmployerSituations(fullRaw);
+  const v = adaptEmployerSituations({
+    ...fullRaw,
+    items: [{ situation_id: "s1", title: "ST", score: 5, employer_feedback: "EMP_S_FB", evidence: "EVIDENCE_TXT" }],
+  });
   it("renders risks/red_flags and evidence", () => {
     render(<EmployerSituationsReport view={v} score={60} />);
     expect(screen.getByText("RISK_TITLE")).toBeInTheDocument();
