@@ -900,7 +900,7 @@ export function validateOverallCandidateReport(raw: unknown): V<OverallCandidate
 }
 
 /** Forbidden keys in candidate object — must never leak from employer side. */
-const TRAINING_CANDIDATE_FORBIDDEN_KEYS = new Set([
+const CANDIDATE_FORBIDDEN_KEYS = new Set([
   "risks", "red_flags", "gaps", "matches", "verdict",
   "questions_to_verify", "employer_feedback", "employer_wishes",
   "evidence", "expected", "expected_answer", "correct",
