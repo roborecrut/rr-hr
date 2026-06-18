@@ -17,42 +17,57 @@ export type Database = {
       ai_job_attempts: {
         Row: {
           attempt_number: number
+          chat_id: string | null
           completed_at: string | null
           created_at: string
           duration_ms: number | null
+          http_status: number | null
           id: string
           job_id: string
+          operation_part: string | null
           provider: Database["public"]["Enums"]["ai_job_provider"]
+          response_meta: Json | null
           response_validation_status: string | null
           safe_error_code: string | null
           started_at: string
           status: Database["public"]["Enums"]["ai_job_attempt_status"]
+          validation_ok: boolean | null
         }
         Insert: {
           attempt_number: number
+          chat_id?: string | null
           completed_at?: string | null
           created_at?: string
           duration_ms?: number | null
+          http_status?: number | null
           id?: string
           job_id: string
+          operation_part?: string | null
           provider: Database["public"]["Enums"]["ai_job_provider"]
+          response_meta?: Json | null
           response_validation_status?: string | null
           safe_error_code?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["ai_job_attempt_status"]
+          validation_ok?: boolean | null
         }
         Update: {
           attempt_number?: number
+          chat_id?: string | null
           completed_at?: string | null
           created_at?: string
           duration_ms?: number | null
+          http_status?: number | null
           id?: string
           job_id?: string
+          operation_part?: string | null
           provider?: Database["public"]["Enums"]["ai_job_provider"]
+          response_meta?: Json | null
           response_validation_status?: string | null
           safe_error_code?: string | null
           started_at?: string
           status?: Database["public"]["Enums"]["ai_job_attempt_status"]
+          validation_ok?: boolean | null
         }
         Relationships: [
           {
@@ -64,6 +79,42 @@ export type Database = {
           },
           {
             foreignKeyName: "ai_job_attempts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs_safe_status"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_job_debits: {
+        Row: {
+          charge_kind: string
+          created_at: string
+          job_id: string
+          outcome: Json
+        }
+        Insert: {
+          charge_kind: string
+          created_at?: string
+          job_id: string
+          outcome: Json
+        }
+        Update: {
+          charge_kind?: string
+          created_at?: string
+          job_id?: string
+          outcome?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_job_debits_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_job_debits_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "ai_jobs_safe_status"
@@ -2880,6 +2931,10 @@ export type Database = {
       company_update: { Args: { _id: string; _patch: Json }; Returns: Json }
       current_candidate_id: { Args: never; Returns: string }
       current_candidate_project_id: { Args: never; Returns: string }
+      debit_ai_job_once: {
+        Args: { _candidate: string; _charge_kind: string; _job_id: string }
+        Returns: Json
+      }
       employer_list_candidates: {
         Args: never
         Returns: {

@@ -199,8 +199,9 @@ export async function markValidationFailed(jobId: string, _safeCode: string) {
 }
 
 /**
- * Atomic upsert of an interview_block row. Returns ok=false on DB error
- * WITHOUT deleting any existing row. Callers must surface this as
+ * Atomic upsert of an interview_block row via a single SQL statement using
+ * the existing UNIQUE(project_id, kind) constraint. Returns ok=false on DB
+ * error WITHOUT touching any existing row. Callers must surface this as
  * save_failed and MUST NOT pretend success.
  */
 export async function saveInterviewBlockStrict(
@@ -210,27 +211,66 @@ export async function saveInterviewBlockStrict(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = getAdminClient();
   if (!admin) return { ok: false, error: "no_admin_client" };
-  const sel = await admin
-    .from("interview_blocks")
-    .select("id")
-    .eq("project_id", projectId)
-    .eq("kind", kind)
-    .maybeSingle();
-  if (sel.error) return { ok: false, error: `select:${sel.error.message}` };
   const ts = new Date().toISOString();
-  if (sel.data?.id) {
-    const upd = await admin
-      .from("interview_blocks")
-      .update({ payload, ai_generated_at: ts })
-      .eq("id", sel.data.id);
-    if (upd.error) return { ok: false, error: `update:${upd.error.message}` };
-  } else {
-    const ins = await admin
-      .from("interview_blocks")
-      .insert({ project_id: projectId, kind, payload, ai_generated_at: ts });
-    if (ins.error) return { ok: false, error: `insert:${ins.error.message}` };
-  }
+  const up = await admin
+    .from("interview_blocks")
+    .upsert(
+      { project_id: projectId, kind, payload, ai_generated_at: ts },
+      { onConflict: "project_id,kind" },
+    );
+  if (up.error) return { ok: false, error: `upsert:${up.error.message}` };
   return { ok: true };
+}
+
+/**
+ * Record diagnostics on an ai_job_attempts row. Stores only safe metadata —
+ * never the raw prompt, full AI response text, resume, secrets or PII.
+ */
+export async function recordAttemptDiagnostics(
+  attemptId: string | null,
+  diag: {
+    chatId?: string | null;
+    operationPart?: string | null;
+    httpStatus?: number | null;
+    validationOk?: boolean | null;
+    durationMs?: number | null;
+    responseMeta?: Record<string, unknown> | null;
+  },
+): Promise<void> {
+  if (!attemptId) return;
+  const admin = getAdminClient();
+  if (!admin) return;
+  const patch: Record<string, unknown> = {};
+  if (diag.chatId !== undefined) patch.chat_id = diag.chatId;
+  if (diag.operationPart !== undefined) patch.operation_part = diag.operationPart;
+  if (diag.httpStatus !== undefined) patch.http_status = diag.httpStatus;
+  if (diag.validationOk !== undefined) patch.validation_ok = diag.validationOk;
+  if (diag.durationMs !== undefined) patch.duration_ms = diag.durationMs;
+  if (diag.responseMeta !== undefined) patch.response_meta = diag.responseMeta;
+  if (Object.keys(patch).length === 0) return;
+  const r = await admin.from("ai_job_attempts").update(patch).eq("id", attemptId);
+  if (r.error) console.error("recordAttemptDiagnostics failed", r.error.message);
+}
+
+/**
+ * Idempotent RR debit for a logical AI job. Wraps spend_pack via
+ * debit_ai_job_once RPC keyed by (job_id, charge_kind). Retries/fallbacks/
+ * duplicate request_ids never double-charge: subsequent calls return the
+ * cached outcome with already=true.
+ */
+export async function debitAiJobOnce(
+  jobId: string,
+  candidateId: string,
+  chargeKind: "resume_screen" | "checklist_grade" | "situations_grade",
+): Promise<{ ok: true; already: boolean; outcome: unknown } | { ok: false; error: string }> {
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "no_admin_client" };
+  const { data, error } = await admin.rpc("debit_ai_job_once", {
+    _job_id: jobId, _candidate: candidateId, _charge_kind: chargeKind,
+  });
+  if (error) return { ok: false, error: error.message };
+  const row = (data as any) || {};
+  return { ok: true, already: !!row.already, outcome: row.outcome };
 }
 
 export async function sha256Hex(s: string): Promise<string> {
