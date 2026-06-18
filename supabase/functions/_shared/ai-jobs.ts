@@ -33,12 +33,29 @@ const TERMINAL_STATUSES = new Set([
   "fallback_failed",
 ]);
 
-export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: string; reused: boolean; status?: string } | { error: string }> {
+export function isTerminalStatus(status: string | null | undefined): boolean {
+  return !!status && TERMINAL_STATUSES.has(status);
+}
+
+/**
+ * Idempotent job creation/reuse keyed by `idempotencyKey` (recommended:
+ * `${jobType}:${project_id}:${request_id}`).
+ *
+ * Semantics:
+ *   - new key → new job, reused=false, status="created"
+ *   - existing key (active OR terminal) → return SAME job, reused=true,
+ *     plus current status. Terminal jobs are NEVER reanimated; the caller
+ *     can detect terminal via `isTerminalStatus(status)` and short-circuit
+ *     the background work so a duplicate HTTP retry simply gets the same
+ *     terminal status back without re-running AI or re-charging RR.
+ */
+export async function createOrReuseAiJob(
+  input: CreateJobInput,
+): Promise<{ id: string; reused: boolean; status: string } | { error: string }> {
   const admin = getAdminClient();
   if (!admin) return { error: "no_admin_client" };
   const snapshot = input.requestSnapshot;
   const hash = await sha256Hex(canonicalJsonStringify(snapshot));
-  // Try fetch existing by idempotency_key + owner.
   const ownerCol = input.userId ? "user_id" : "candidate_id";
   const ownerVal = input.userId || input.candidateId;
   if (!ownerVal) return { error: "no_owner" };
@@ -50,16 +67,15 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
     .maybeSingle();
   if (existing.error) return { error: existing.error.message };
   if (existing.data?.id) {
-    // Only reuse non-terminal jobs. Terminal jobs are sealed; a new explicit
-    // request_id from the client will produce a fresh idempotency_key and
-    // therefore a brand-new job here.
-    const st = String(existing.data.status || "");
-    if (!TERMINAL_STATUSES.has(st)) {
-      return { id: existing.data.id, reused: true, status: st };
-    }
-    // If client somehow reuses an idempotency key after terminal status, do
-    // not reanimate — return error so caller can surface a clear message.
-    return { error: `terminal_job_exists:${st}` };
+    // Return the existing job regardless of status. Terminal status is NOT
+    // an error: it lets a duplicate HTTP request (network retry, double
+    // click after success) get the same outcome without any new AI work
+    // or RR charge. Only a NEW request_id may produce a new job.
+    return {
+      id: existing.data.id,
+      reused: true,
+      status: String(existing.data.status || "created"),
+    };
   }
   const ins = await admin.from("ai_jobs").insert({
     user_id: input.userId,
@@ -74,7 +90,7 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
     request_hash: hash,
   }).select("id").single();
   if (ins.error || !ins.data) return { error: ins.error?.message || "insert_failed" };
-  return { id: ins.data.id, reused: false };
+  return { id: ins.data.id, reused: false, status: "created" };
 }
 
 /**
@@ -150,6 +166,28 @@ export async function markJobStatus(jobId: string, status: string, completed = f
   if (r.error) console.error("markJobStatus update failed", r.error.message, { jobId, status });
 }
 
+/**
+ * STRICT variant of markJobStatus — returns true on success, false on failure.
+ * Use this for terminal transitions (success/save_failed/validation_failed).
+ * Caller must NOT return ok:true to the client if this returns false.
+ */
+export async function markJobStatusStrict(
+  jobId: string,
+  status: string,
+  completed = false,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "no_admin_client" };
+  const patch: Record<string, unknown> = { status };
+  if (completed) patch.completed_at = new Date().toISOString();
+  const r = await admin.from("ai_jobs").update(patch).eq("id", jobId);
+  if (r.error) {
+    console.error("markJobStatusStrict failed", r.error.message, { jobId, status });
+    return { ok: false, error: r.error.message };
+  }
+  return { ok: true };
+}
+
 /** Mark job as save_failed without losing existing successful generation. */
 export async function markSaveFailed(jobId: string, _safeCode: string) {
   await markJobStatus(jobId, "save_failed", true);
@@ -158,6 +196,41 @@ export async function markSaveFailed(jobId: string, _safeCode: string) {
 /** Mark job as validation_failed when AI output (and repair) cannot satisfy schema. */
 export async function markValidationFailed(jobId: string, _safeCode: string) {
   await markJobStatus(jobId, "validation_failed", true);
+}
+
+/**
+ * Atomic upsert of an interview_block row. Returns ok=false on DB error
+ * WITHOUT deleting any existing row. Callers must surface this as
+ * save_failed and MUST NOT pretend success.
+ */
+export async function saveInterviewBlockStrict(
+  projectId: string | number,
+  kind: string,
+  payload: Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "no_admin_client" };
+  const sel = await admin
+    .from("interview_blocks")
+    .select("id")
+    .eq("project_id", projectId)
+    .eq("kind", kind)
+    .maybeSingle();
+  if (sel.error) return { ok: false, error: `select:${sel.error.message}` };
+  const ts = new Date().toISOString();
+  if (sel.data?.id) {
+    const upd = await admin
+      .from("interview_blocks")
+      .update({ payload, ai_generated_at: ts })
+      .eq("id", sel.data.id);
+    if (upd.error) return { ok: false, error: `update:${upd.error.message}` };
+  } else {
+    const ins = await admin
+      .from("interview_blocks")
+      .insert({ project_id: projectId, kind, payload, ai_generated_at: ts });
+    if (ins.error) return { ok: false, error: `insert:${ins.error.message}` };
+  }
+  return { ok: true };
 }
 
 export async function sha256Hex(s: string): Promise<string> {
