@@ -472,6 +472,7 @@ export type Database = {
           interview_score: number | null
           overall_generated_at: string | null
           overall_score: number | null
+          overall_source_hash: string | null
           resume_feedback: Json | null
           resume_score: number | null
           roleplay_points: number | null
@@ -497,6 +498,7 @@ export type Database = {
           interview_score?: number | null
           overall_generated_at?: string | null
           overall_score?: number | null
+          overall_source_hash?: string | null
           resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
@@ -522,6 +524,7 @@ export type Database = {
           interview_score?: number | null
           overall_generated_at?: string | null
           overall_score?: number | null
+          overall_source_hash?: string | null
           resume_feedback?: Json | null
           resume_score?: number | null
           roleplay_points?: number | null
@@ -3168,6 +3171,17 @@ export type Database = {
           _candidate_checklist_feedback: Json
           _checklist_feedback: Json
           _checklist_score: number
+        }
+        Returns: Json
+      }
+      save_candidate_overall_evaluation_v2: {
+        Args: {
+          _ai_fit_score: number
+          _candidate: string
+          _candidate_feedback: Json
+          _employer_feedback: Json
+          _expected_prev_hash?: string
+          _source_hash: string
         }
         Returns: Json
       }
