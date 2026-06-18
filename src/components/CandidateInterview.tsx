@@ -15,9 +15,9 @@ import { toUserError, formatUserError } from "@/lib/userError";
 import {
   startResumeScreenV2, pollJobUntilTerminal,
   getActiveJob, clearActiveJob, isSuccess, isTerminal,
-  startChecklistGradeV2, startSituationsGradeV2,
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
+import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
