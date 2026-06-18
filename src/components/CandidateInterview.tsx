@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { getCandidateSession } from "@/lib/candidateSession";
-import { aiRestart } from "@/lib/aiClient";
-import { useAIReady, waitForAIReady } from "@/lib/aiReady";
+import { useAIReady } from "@/lib/aiReady";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import RichMarkdown from "@/components/RichMarkdown";
 import ResumeDropzone from "@/components/ResumeDropzone";
@@ -75,7 +74,6 @@ async function call(fn: string, body: any) {
 export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
-  const restartFiredRef = useRef(false);
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
   // Vacancy paused (no employer funds)
@@ -128,12 +126,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   useEffect(() => {
     (async () => {
-      // Reset RR dialog context for this candidate before any AI calls.
-      // Overlay (AIRestartGate) is driven by beginAIRestart() inside aiRestart().
-      if (!restartFiredRef.current) {
-        restartFiredRef.current = true;
-        try { await aiRestart(); } catch { /* overlay closes on its own */ }
-      }
+      // NOTE (Pass A): /restart is NOT fired on page open. It produced a
+      // visible "AI restart" overlay before the candidate even submitted a
+      // resume and reset the AI context for nothing. The actual provider
+      // reset (RR Pro Max fallback) happens server-side inside the AI
+      // attempt — ProTalk primary uses a per-job chatId so no restart is
+      // required. See ai-interview-screen-resume-v2 / RrProMaxProvider.restart.
       // Gate 1: can this candidate actually start an interview right now?
       try {
         const { data: gate } = await (supabase as any).rpc("can_start_interview", { _candidate: candidateId });
