@@ -22,8 +22,10 @@ export type CreateJobInput = {
   fallbackAllowed?: boolean;
 };
 
-/** Statuses that mean the job is over for good — must NOT be reused / restarted. */
-const TERMINAL_STATUSES = new Set([
+/** Statuses that mean the job is over for good — must NOT be reused / restarted.
+ *  Single source of truth for both backend helpers and the orchestrator.
+ */
+export const TERMINAL_STATUSES = new Set([
   "primary_succeeded",
   "fallback_succeeded",
   "cancelled",
@@ -31,6 +33,8 @@ const TERMINAL_STATUSES = new Set([
   "save_failed",
   "validation_failed",
   "fallback_failed",
+  "fallback_unavailable",
+  "orchestration_failed",
 ]);
 
 export function isTerminalStatus(status: string | null | undefined): boolean {
@@ -157,11 +161,18 @@ export async function finishAttempt(
   if (r.error) console.error("finishAttempt update failed", r.error.message);
 }
 
-export async function markJobStatus(jobId: string, status: string, completed = false) {
+/**
+ * `completed_at` is derived from the status — callers cannot mark a
+ * transitional status as "completed", and any terminal status always
+ * gets `completed_at` set. This keeps the terminal state machine in
+ * one place and prevents the bug where `primary_failed` was written
+ * with `completed_at` set but the frontend kept polling forever.
+ */
+export async function markJobStatus(jobId: string, status: string, _completed = false) {
   const admin = getAdminClient();
   if (!admin) return;
   const patch: Record<string, unknown> = { status };
-  if (completed) patch.completed_at = new Date().toISOString();
+  if (isTerminalStatus(status)) patch.completed_at = new Date().toISOString();
   const r = await admin.from("ai_jobs").update(patch).eq("id", jobId);
   if (r.error) console.error("markJobStatus update failed", r.error.message, { jobId, status });
 }
@@ -174,12 +185,12 @@ export async function markJobStatus(jobId: string, status: string, completed = f
 export async function markJobStatusStrict(
   jobId: string,
   status: string,
-  completed = false,
+  _completed = false,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const admin = getAdminClient();
   if (!admin) return { ok: false, error: "no_admin_client" };
   const patch: Record<string, unknown> = { status };
-  if (completed) patch.completed_at = new Date().toISOString();
+  if (isTerminalStatus(status)) patch.completed_at = new Date().toISOString();
   const r = await admin.from("ai_jobs").update(patch).eq("id", jobId);
   if (r.error) {
     console.error("markJobStatusStrict failed", r.error.message, { jobId, status });

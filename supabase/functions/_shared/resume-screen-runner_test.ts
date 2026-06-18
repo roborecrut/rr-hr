@@ -316,14 +316,17 @@ Deno.test("retry/fallback do NOT trigger a second debit", async () => {
   assertEquals(debits.length, 1);
 });
 
-Deno.test("startAttempt returns null → primary_failed without provider call or false success", async () => {
+Deno.test("startAttempt returns null → orchestration_failed (terminal) without provider call", async () => {
   let provCalled = false;
   const { deps, statusHistory } = makeDeps({ startAttemptReturnsNull: true });
   deps.provider.callPrimary = async () => { provCalled = true; return { ok: true, reportJson: makeReport() }; };
   const out = await runResumeScreenJob(deps, { jobId: "job-1" });
-  assertEquals(out.kind, "primary_failed");
+  assertEquals(out.kind, "orchestration_failed");
+  if (out.kind === "orchestration_failed") assertEquals(out.code, "attempt_start_failed");
   assertEquals(provCalled, false);
-  assert(statusHistory.includes("primary_failed"));
+  assert(statusHistory.includes("orchestration_failed"));
+  // primary_failed (transitional) must NOT be set when no attempt could start
+  assert(!statusHistory.includes("primary_failed"));
 });
 
 Deno.test("diagnostics are recorded for primary attempt (chatId + duration + provider tag)", async () => {
@@ -378,4 +381,21 @@ Deno.test("strict validator rejects red_flag without evidence (re-export check)"
   const v = validateResumeScreenReport(bad);
   assertEquals(v.ok, false);
   if (!v.ok) assertEquals(v.code, "red_flag_without_evidence");
+});
+
+Deno.test("orchestration_failed is in TERMINAL set (no further polling)", async () => {
+  const { __internal_terminal_statuses } = await import("./resume-screen-runner.ts");
+  assert(__internal_terminal_statuses.has("orchestration_failed"));
+});
+
+Deno.test("primary_failed alone is NOT terminal (must transition to fallback or terminal failure)", async () => {
+  const { __internal_terminal_statuses } = await import("./resume-screen-runner.ts");
+  assert(!__internal_terminal_statuses.has("primary_failed"));
+});
+
+Deno.test("attempt-start failure does NOT cause a second debit", async () => {
+  const { deps, debits } = makeDeps({ startAttemptReturnsNull: true });
+  await runResumeScreenJob(deps, { jobId: "job-1" });
+  // Debit is recorded once before startAttempt; no retry path runs after.
+  assertEquals(debits.length, 1);
 });

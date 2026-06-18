@@ -22,12 +22,14 @@ export type AiJobStatus =
   | "fallback_available" | "fallback_running"
   | "primary_succeeded" | "fallback_succeeded"
   | "save_failed" | "validation_failed" | "fallback_failed"
-  | "fallback_unavailable" | "cancelled" | "timed_out";
+  | "fallback_unavailable" | "cancelled" | "timed_out"
+  | "orchestration_failed";
 
 const TERMINAL_STATUSES: AiJobStatus[] = [
   "primary_succeeded", "fallback_succeeded",
   "save_failed", "validation_failed", "fallback_failed",
   "fallback_unavailable", "cancelled", "timed_out",
+  "orchestration_failed",
 ];
 const SUCCESS_STATUSES: AiJobStatus[] = ["primary_succeeded", "fallback_succeeded"];
 
