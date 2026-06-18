@@ -101,6 +101,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const fileRef = useRef<HTMLInputElement>(null);
   const [resumeEditMode, setResumeEditMode] = useState(false);
   const [pausedOpen, setPausedOpen] = useState(false);
+  const [resumeTooShortOpen, setResumeTooShortOpen] = useState(false);
+  const resumeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -266,7 +268,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const submitResume = async () => {
-    if (!resumeText.trim() || resumeText.length < 50) { alert("Введите резюме (минимум 50 символов)"); return; }
+    if (!resumeText.trim() || resumeText.length < 50) {
+      // Branded popup instead of a native alert. Keep textarea open, do not
+      // switch to preview, do not call AI, do not create a job/debit.
+      setResumeEditMode(true);
+      setResumeTooShortOpen(true);
+      // Restore focus to textarea so the candidate can keep typing.
+      setTimeout(() => { try { resumeTextareaRef.current?.focus(); } catch { /* ignore */ } }, 0);
+      return;
+    }
     // Double-click guard: if an active job already exists for this candidate,
     // simply resume polling instead of starting a new one (no duplicate debit).
     if (getActiveJob("screen_resume", candidateId)) {
