@@ -769,6 +769,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           )}
         </div>
       )}
+      {stage === "done" && candOverallFeedback && (
+        <CandidateOverallReport feedback={candOverallFeedback} />
+      )}
       <VacancyPausedDialog open={pausedOpen} projectId={projectId} onClose={() => setPausedOpen(false)} />
     </div>
   );
