@@ -118,6 +118,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [situationsFeedbackRaw, setSituationsFeedbackRaw] = useState<any>(null);
 
   const [finalScore, setFinalScore] = useState<number | null>(null);
+  // Optional combined-feedback (Phase 4). Shown ONLY if the employer ran the
+  // overall AI evaluation; otherwise the block stays hidden. Strictly the
+  // candidate-facing object — no employer-only keys.
+  const [candOverallFeedback, setCandOverallFeedback] = useState<any>(null);
 
   useEffect(() => {
     (async () => {
