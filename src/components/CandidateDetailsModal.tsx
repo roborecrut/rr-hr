@@ -23,20 +23,60 @@ import {
 } from "@/lib/aiJobs";
 
 /**
+ * Compact, non-PII diagnostics object passed into the Error Boundary.
+ * Built by the modal body and rebuilt on every render so the boundary
+ * always has a fresh snapshot of what was on screen when the crash hit.
+ *
+ * NEVER include: full public_id (masked only), name, email, phone,
+ * resume text, raw feedback objects, AI prompts.
+ */
+type CandidateBoundaryDiag = {
+  pid_masked: string;
+  has_resume_score: boolean;
+  resume_feedback_type: string;
+  checklist_feedback_type: string;
+  situations_feedback_type: string;
+  overall_feedback_type: string;
+  training_feedback_type: string;
+  arrays_empty: boolean;
+};
+
+function describeFeedbackShape(v: unknown): string {
+  if (v === null || v === undefined) return "null";
+  if (Array.isArray(v)) return `array(${v.length})`;
+  const t = typeof v;
+  if (t !== "object") return t;
+  return `object(${Object.keys(v as Record<string, unknown>).length})`;
+}
+
+function maskPublicId(pid: unknown): string {
+  const s = String(pid ?? "").trim();
+  if (!s) return "?";
+  if (s.length <= 3) return "***";
+  return `***${s.slice(-3)}`;
+}
+
+/**
  * Local error boundary around the candidate card body. A render error in one
  * report component (e.g. legacy candidate with unexpected feedback shape) must
  * NOT take down the whole EmployerPanel and turn the page white. We show a
  * compact fallback inside the modal so the employer can close and try again.
  */
 class CandidateBodyErrorBoundary extends React.Component<
-  { children: React.ReactNode; onClose: () => void },
+  { children: React.ReactNode; onClose: () => void; diag?: CandidateBoundaryDiag },
   { error: Error | null }
 > {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) { return { error }; }
   componentDidCatch(error: Error, info: any) {
+    // Safe diagnostics — never logs PII or raw feedback content.
     // eslint-disable-next-line no-console
-    console.error("[CandidateDetailsModal] render error:", error, info?.componentStack);
+    console.error("[CandidateDetailsModal] render error", {
+      message: String(error?.message || "").slice(0, 200),
+      name: String(error?.name || ""),
+      component_stack: String(info?.componentStack || "").slice(0, 1500),
+      diag: this.props.diag || null,
+    });
   }
   render() {
     if (this.state.error) {
@@ -621,7 +661,21 @@ export default function CandidateDetailsModal({
         ) : !data ? (
           <div className="p-12 text-center text-slate-300">Нет данных</div>
         ) : (
-          <CandidateBodyErrorBoundary onClose={onClose}>
+          <CandidateBodyErrorBoundary
+            onClose={onClose}
+            diag={{
+              pid_masked: maskPublicId((data as any)?.public_id),
+              has_resume_score: (data as any)?.resume_score != null,
+              resume_feedback_type: describeFeedbackShape((data as any)?.resume_feedback),
+              checklist_feedback_type: describeFeedbackShape((data as any)?.checklist_feedback),
+              situations_feedback_type: describeFeedbackShape((data as any)?.situations_feedback),
+              overall_feedback_type: describeFeedbackShape((data as any)?.overall_feedback),
+              training_feedback_type: describeFeedbackShape((data as any)?.training_summary_feedback),
+              arrays_empty:
+                (Array.isArray((data as any)?.training_stages) && (data as any).training_stages.length === 0) ||
+                false,
+            }}
+          >
           <div className="p-6 md:p-8 space-y-6 text-left">
             {/* Header / profile */}
             <div className="flex flex-col md:flex-row gap-5 items-start">

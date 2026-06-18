@@ -4,8 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { getCandidateSession } from "@/lib/candidateSession";
-import { aiRestart } from "@/lib/aiClient";
-import { useAIReady, waitForAIReady } from "@/lib/aiReady";
+import { useAIReady } from "@/lib/aiReady";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import RichMarkdown from "@/components/RichMarkdown";
 import ResumeDropzone from "@/components/ResumeDropzone";
@@ -24,6 +23,42 @@ import CandidateSituationsReport from "@/components/reports/CandidateSituationsR
 import CandidateOverallReport from "@/components/reports/CandidateOverallReport";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
+
+/**
+ * Safe diagnostic logger for the resume-submit pipeline. We log ONLY short
+ * status tags + safe codes — never the resume text, candidate token, email
+ * or full URL with parameters. Lands in browser console; the lovable error
+ * reporter forwards selected entries to client_errors.
+ */
+function rrLog(event: string, extra?: Record<string, unknown>) {
+  try {
+    // eslint-disable-next-line no-console
+    console.info(`[rr_resume] ${event}`, extra || {});
+  } catch { /* ignore */ }
+}
+
+/** Map a safe error code (from edge function or pre-invoke throw) to RU copy. */
+function describeResumeSubmitError(code: string): string {
+  const s = String(code || "").toLowerCase();
+  if (s === "candidate_session_missing" || s === "candidate_token_required" || s === "bad_token") {
+    return "Сессия кандидата истекла. Войдите снова, чтобы продолжить.";
+  }
+  if (s === "no_resume") return "Резюме слишком короткое или не сохранилось. Добавьте больше текста и повторите.";
+  if (s === "no_project") return "Вакансия не привязана к вашему профилю. Откройте ссылку вакансии заново.";
+  if (s === "no_credits") return "У работодателя закончились средства на ИИ-собеседование. Свяжитесь с ним напрямую.";
+  if (s === "resume_save_failed") return "Не удалось сохранить резюме. Повторите попытку через минуту.";
+  if (s === "runtime_no_background") return "Сервер ИИ временно недоступен. Повторите попытку чуть позже.";
+  if (s === "bad_request_id" || s === "bad_async_version" || s === "bad_body") {
+    return "Не удалось отправить запрос. Перезагрузите страницу и повторите.";
+  }
+  if (s === "job_create_failed") return "Не удалось создать задание. Попробуйте ещё раз через минуту.";
+  if (s === "failed to fetch" || s === "networkerror" || s.includes("network")) {
+    return "Нет связи с сервером. Проверьте интернет и повторите.";
+  }
+  // Fall through to the generic AI-job describer for terminal statuses.
+  const generic = describeJobError(s);
+  return generic || "Не удалось отправить резюме на оценку. Повторите попытку.";
+}
 
 type Question = { id: string; kind: "choice" | "text"; question: string; options?: string[] | null };
 type Situation = { id: string; title: string; brief: string };
@@ -75,7 +110,6 @@ async function call(fn: string, body: any) {
 export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
-  const restartFiredRef = useRef(false);
   const [stage, setStage] = useState<Stage>("resume");
   const [passScore, setPassScore] = useState(75);
   // Vacancy paused (no employer funds)
@@ -128,12 +162,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   useEffect(() => {
     (async () => {
-      // Reset RR dialog context for this candidate before any AI calls.
-      // Overlay (AIRestartGate) is driven by beginAIRestart() inside aiRestart().
-      if (!restartFiredRef.current) {
-        restartFiredRef.current = true;
-        try { await aiRestart(); } catch { /* overlay closes on its own */ }
-      }
+      // NOTE (Pass A): /restart is NOT fired on page open. It produced a
+      // visible "AI restart" overlay before the candidate even submitted a
+      // resume and reset the AI context for nothing. The actual provider
+      // reset (RR Pro Max fallback) happens server-side inside the AI
+      // attempt — ProTalk primary uses a per-job chatId so no restart is
+      // required. See ai-interview-screen-resume-v2 / RrProMaxProvider.restart.
       // Gate 1: can this candidate actually start an interview right now?
       try {
         const { data: gate } = await (supabase as any).rpc("can_start_interview", { _candidate: candidateId });
@@ -268,18 +302,31 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const submitResume = async () => {
+    rrLog("submit_started", { len: resumeText.length });
     if (!resumeText.trim() || resumeText.length < 50) {
       // Branded popup instead of a native alert. Keep textarea open, do not
       // switch to preview, do not call AI, do not create a job/debit.
       setResumeEditMode(true);
       setResumeTooShortOpen(true);
+      rrLog("validation_failed", { reason: "too_short" });
       // Restore focus to textarea so the candidate can keep typing.
       setTimeout(() => { try { resumeTextareaRef.current?.focus(); } catch { /* ignore */ } }, 0);
       return;
     }
+    rrLog("validation_passed");
+    // Token presence check (boolean only — never log the token itself).
+    let tokenPresent = false;
+    try { tokenPresent = !!(JSON.parse(localStorage.getItem("cand_session") || "null") as any)?.token; } catch { /* ignore */ }
+    rrLog("token_present", { ok: tokenPresent });
+    if (!tokenPresent) {
+      alert(describeResumeSubmitError("candidate_session_missing"));
+      return;
+    }
     // Double-click guard: if an active job already exists for this candidate,
     // simply resume polling instead of starting a new one (no duplicate debit).
-    if (getActiveJob("screen_resume", candidateId)) {
+    const existingActive = getActiveJob("screen_resume", candidateId);
+    rrLog("active_job_found", { ok: !!existingActive });
+    if (existingActive) {
       // Active polling effect is already running; just give visual feedback.
       alert("Анализ уже выполняется. Подождите, результат сохранится автоматически.");
       return;
@@ -293,7 +340,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       await aiWaitRun<any>({
         title: "Анализ резюме",
         task: async () => {
+          rrLog("invoke_started");
           const start = await startResumeScreenV2({ candidateId, resumeText });
+          rrLog("invoke_http_status", { ok: true, reused: start.reused, terminal: start.terminal, status: start.status });
           // If the function reused a terminal job, just fetch results.
           if (start.terminal) {
             await refetchCandidateScores();
@@ -303,12 +352,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           const row = await pollJobUntilTerminal({ jobId: start.job_id });
           clearActiveJob("screen_resume", candidateId);
           if (!isSuccess(row.status)) {
-            const friendly = row.status === "save_failed"
-              ? "Не удалось сохранить результат. Попробуйте позже."
-              : row.status === "validation_failed"
-                ? "Нейросеть вернула неполный ответ. Повторите попытку."
-                : "Нейросеть временно недоступна. Повторите попытку.";
-            throw new Error(friendly);
+            rrLog("invoke_error_code", { code: row.status, phase: "terminal" });
+            throw new Error(describeResumeSubmitError(row.status));
           }
           await refetchCandidateScores();
           return { ok: true };
@@ -316,7 +361,18 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       });
     } catch (e: any) {
       if (isVacancyPausedError(e)) { setPausedOpen(true); }
-      else { alert(formatUserError(toUserError(e))); }
+      else {
+        const rawCode = String(e?.message || "").slice(0, 96);
+        rrLog("invoke_error_code", { code: rawCode, phase: "client" });
+        // Map known pre-invoke / safe codes; fall back to userError formatter.
+        const isSafeCode = /^[a-z0-9_:-]{1,64}$/i.test(rawCode);
+        const friendly = isSafeCode
+          ? describeResumeSubmitError(rawCode)
+          : formatUserError(toUserError(e));
+        // Clear any stale active-job pointer so the candidate can retry.
+        try { clearActiveJob("screen_resume", candidateId); } catch { /* ignore */ }
+        alert(friendly);
+      }
     }
     finally { setBusy(false); }
   };
@@ -351,9 +407,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const sendResumeToRR = async () => {
     if (!uploadedResume) return;
-    // Make sure /restart finished before we hit the neural network,
-    // otherwise we get two parallel responses and the parser breaks.
-    await waitForAIReady();
+    // Resume recognition uses ai-ingest-document — provider reset (if any)
+    // is handled server-side per attempt. No client-side restart wait.
     setParsing(true);
     try {
       const r = await aiWaitRun<any>({
