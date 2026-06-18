@@ -313,3 +313,426 @@ export function validateResumeScreenReport(raw: unknown): V<ResumeScreenReport> 
     },
   };
 }
+
+// =============================================================================
+// Checklist Grade Report v2 — strict schema with separated employer / candidate
+// outputs. Used by ai-interview-grade-checklist-v2.
+// =============================================================================
+
+export type ChecklistGradeRisk = {
+  title: string; evidence: string; severity: string; how_to_verify: string;
+};
+export type ChecklistGradeRedFlag = {
+  title: string; evidence: string; severity: string;
+};
+export type ChecklistGradeGap = {
+  criterion: string; finding: string; impact: string;
+};
+export type ChecklistEmployerItem = {
+  question_id: string; score: number; employer_feedback: string; evidence: string;
+};
+export type ChecklistCandidateItem = {
+  question_id: string; score: number; feedback: string; recommendation: string;
+};
+export type EmployerChecklistReport = {
+  summary: string;
+  strengths: string[];
+  gaps: ChecklistGradeGap[];
+  risks: ChecklistGradeRisk[];
+  red_flags: ChecklistGradeRedFlag[];
+  items: ChecklistEmployerItem[];
+};
+export type CandidateChecklistReport = {
+  summary: string;
+  strengths: string[];
+  areas_to_improve: string[];
+  items: ChecklistCandidateItem[];
+};
+export type ChecklistGradeReport = {
+  total: number;
+  employer: EmployerChecklistReport;
+  candidate: CandidateChecklistReport;
+};
+
+/** Forbidden keys in candidate object — must never leak from employer side. */
+const CANDIDATE_FORBIDDEN_KEYS = new Set([
+  "risks", "red_flags", "gaps", "matches", "verdict",
+  "questions_to_verify", "employer_feedback", "employer_wishes",
+  "evidence", "expected", "expected_answer", "correct",
+]);
+
+function hasForbiddenCandidateKey(obj: unknown): string | null {
+  if (!obj || typeof obj !== "object") return null;
+  for (const k of Object.keys(obj as Record<string, unknown>)) {
+    if (CANDIDATE_FORBIDDEN_KEYS.has(k)) return k;
+  }
+  // items[*]
+  const items = (obj as any).items;
+  if (Array.isArray(items)) {
+    for (const it of items) {
+      if (it && typeof it === "object") {
+        for (const k of Object.keys(it)) {
+          if (CANDIDATE_FORBIDDEN_KEYS.has(k)) return `items.${k}`;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+export type ValidateChecklistOpts = {
+  /** Allowed question ids from the current checklist block. */
+  allowedQuestionIds: string[];
+  /** Expected answers / correct options to detect leakage into candidate text. */
+  expectedAnswers?: Record<string, string>;
+};
+
+/** Strict validator for the checklist grade report. */
+export function validateChecklistGradeReport(
+  raw: unknown,
+  opts: ValidateChecklistOpts,
+): V<ChecklistGradeReport> {
+  if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
+  const o = raw as Record<string, any>;
+
+  const total = Number(o.total);
+  if (!Number.isFinite(total) || total < 0 || total > 100) {
+    return { ok: false, code: "bad_total" };
+  }
+  const totalInt = Math.round(total);
+
+  const emp = o.employer;
+  if (!emp || typeof emp !== "object") return { ok: false, code: "missing_employer" };
+  const empSummary = nonEmpty(emp.summary);
+  if (!empSummary || empSummary.length < 20) return { ok: false, code: "empty_employer_summary" };
+
+  const strengths = arrOfStr(emp.strengths ?? [], 12, 500) ?? [];
+  if (!strengths && emp.strengths !== undefined) return { ok: false, code: "bad_strengths" };
+
+  const gapsRaw = Array.isArray(emp.gaps) ? emp.gaps : [];
+  const gaps: ChecklistGradeGap[] = [];
+  for (const g of gapsRaw.slice(0, 20)) {
+    const criterion = nonEmpty(g?.criterion);
+    const finding = nonEmpty(g?.finding);
+    const impact = nonEmpty(g?.impact);
+    if (!criterion || !finding) return { ok: false, code: "bad_gap" };
+    gaps.push({
+      criterion: criterion.slice(0, 500),
+      finding: finding.slice(0, 600),
+      impact: (impact || "").slice(0, 600),
+    });
+  }
+
+  const risksRaw = Array.isArray(emp.risks) ? emp.risks : [];
+  const risks: ChecklistGradeRisk[] = [];
+  for (const r of risksRaw.slice(0, 12)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    const how = nonEmpty(r?.how_to_verify);
+    if (!title) return { ok: false, code: "bad_risk" };
+    if (!evidence) return { ok: false, code: "risk_without_evidence" };
+    if (!SEVERITY_RISK_ENUM.has(severity)) return { ok: false, code: "bad_risk_severity" };
+    risks.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      severity,
+      how_to_verify: (how || "").slice(0, 400),
+    });
+  }
+
+  const redRaw = Array.isArray(emp.red_flags) ? emp.red_flags : [];
+  const red_flags: ChecklistGradeRedFlag[] = [];
+  for (const r of redRaw.slice(0, 8)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    if (!title) return { ok: false, code: "bad_red_flag" };
+    if (!evidence) return { ok: false, code: "red_flag_without_evidence" };
+    if (!SEVERITY_RED_FLAG_ENUM.has(severity)) return { ok: false, code: "bad_red_flag_severity" };
+    red_flags.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      severity,
+    });
+  }
+
+  // employer items: one per question_id, score 0..100, ids in allowed set, no dups
+  const allowed = new Set(opts.allowedQuestionIds.map(String));
+  const empItemsRaw = Array.isArray(emp.items) ? emp.items : [];
+  if (empItemsRaw.length === 0) return { ok: false, code: "empty_employer_items" };
+  const empItems: ChecklistEmployerItem[] = [];
+  const seenEmp = new Set<string>();
+  for (const it of empItemsRaw) {
+    const qid = nonEmpty(it?.question_id);
+    if (!qid) return { ok: false, code: "bad_question_id" };
+    if (!allowed.has(qid)) return { ok: false, code: `unknown_question_id_${qid}` };
+    if (seenEmp.has(qid)) return { ok: false, code: `dup_question_id_${qid}` };
+    seenEmp.add(qid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_item_score_${qid}` };
+    const fb = nonEmpty(it?.employer_feedback);
+    if (!fb) return { ok: false, code: `empty_employer_feedback_${qid}` };
+    empItems.push({
+      question_id: qid,
+      score: Math.round(sc),
+      employer_feedback: fb.slice(0, 1200),
+      evidence: nonEmpty(it?.evidence).slice(0, 800),
+    });
+  }
+
+  // candidate block
+  const cand = o.candidate;
+  if (!cand || typeof cand !== "object") return { ok: false, code: "missing_candidate" };
+  const candForbid = hasForbiddenCandidateKey(cand);
+  if (candForbid) return { ok: false, code: `candidate_has_employer_field_${candForbid}` };
+  const candSummary = nonEmpty(cand.summary);
+  if (!candSummary || candSummary.length < 20) return { ok: false, code: "empty_candidate_summary" };
+  const cStrengths = arrOfStr(cand.strengths ?? [], 10, 400) ?? [];
+  const cAreas = arrOfStr(cand.areas_to_improve ?? [], 10, 400) ?? [];
+
+  const candItemsRaw = Array.isArray(cand.items) ? cand.items : [];
+  const candItems: ChecklistCandidateItem[] = [];
+  const seenCand = new Set<string>();
+  for (const it of candItemsRaw) {
+    const qid = nonEmpty(it?.question_id);
+    if (!qid) return { ok: false, code: "bad_candidate_question_id" };
+    if (!allowed.has(qid)) return { ok: false, code: `unknown_candidate_question_id_${qid}` };
+    if (seenCand.has(qid)) return { ok: false, code: `dup_candidate_question_id_${qid}` };
+    seenCand.add(qid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_candidate_item_score_${qid}` };
+    const fb = nonEmpty(it?.feedback);
+    if (!fb) return { ok: false, code: `empty_candidate_feedback_${qid}` };
+    candItems.push({
+      question_id: qid,
+      score: Math.round(sc),
+      feedback: fb.slice(0, 1000),
+      recommendation: nonEmpty(it?.recommendation).slice(0, 800),
+    });
+  }
+
+  // Expected-answer leakage guard: reject if candidate-visible text quotes the
+  // hidden expected_answer / correct value verbatim.
+  if (opts.expectedAnswers) {
+    const candBlob = [
+      candSummary,
+      ...cStrengths, ...cAreas,
+      ...candItems.map((it) => `${it.feedback} ${it.recommendation}`),
+    ].join(" \n ");
+    for (const [, expected] of Object.entries(opts.expectedAnswers)) {
+      const e = (expected || "").trim();
+      if (e && e.length >= 12 && candBlob.includes(e)) {
+        return { ok: false, code: "expected_answer_leak" };
+      }
+    }
+  }
+
+  // Protected-characteristic guard on employer-visible text.
+  const guardBlob = [
+    empSummary,
+    ...gaps.map((g) => `${g.finding} ${g.impact}`),
+    ...risks.map((r) => `${r.title} ${r.evidence}`),
+    ...red_flags.map((r) => `${r.title} ${r.evidence}`),
+    ...empItems.map((it) => `${it.employer_feedback} ${it.evidence}`),
+  ].join(" \n ");
+  const protectedHit = detectProtectedCharacteristic(guardBlob);
+  if (protectedHit) return { ok: false, code: "protected_characteristic" };
+
+  return {
+    ok: true,
+    value: {
+      total: totalInt,
+      employer: {
+        summary: empSummary.slice(0, 4000),
+        strengths,
+        gaps,
+        risks,
+        red_flags,
+        items: empItems,
+      },
+      candidate: {
+        summary: candSummary.slice(0, 4000),
+        strengths: cStrengths,
+        areas_to_improve: cAreas,
+        items: candItems,
+      },
+    },
+  };
+}
+
+// =============================================================================
+// Situations Grade Report v2 — strict schema. Used by
+// ai-interview-grade-situations-v2.
+// =============================================================================
+
+export type SituationsEmployerItem = {
+  situation_id: string; score: number; employer_feedback: string; evidence: string;
+};
+export type SituationsCandidateItem = {
+  situation_id: string; score: number; feedback: string; recommendation: string;
+};
+export type EmployerSituationsReport = {
+  summary: string;
+  demonstrated_competencies: string[];
+  weak_competencies: string[];
+  risks: ChecklistGradeRisk[];
+  red_flags: ChecklistGradeRedFlag[];
+  items: SituationsEmployerItem[];
+};
+export type CandidateSituationsReport = {
+  summary: string;
+  strengths: string[];
+  areas_to_improve: string[];
+  items: SituationsCandidateItem[];
+};
+export type SituationsGradeReport = {
+  total: number;
+  employer: EmployerSituationsReport;
+  candidate: CandidateSituationsReport;
+};
+
+export type ValidateSituationsOpts = {
+  allowedSituationIds: string[];
+};
+
+export function validateSituationsGradeReport(
+  raw: unknown,
+  opts: ValidateSituationsOpts,
+): V<SituationsGradeReport> {
+  if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
+  const o = raw as Record<string, any>;
+
+  const total = Number(o.total);
+  if (!Number.isFinite(total) || total < 0 || total > 100) {
+    return { ok: false, code: "bad_total" };
+  }
+  const totalInt = Math.round(total);
+
+  const emp = o.employer;
+  if (!emp || typeof emp !== "object") return { ok: false, code: "missing_employer" };
+  const empSummary = nonEmpty(emp.summary);
+  if (!empSummary || empSummary.length < 20) return { ok: false, code: "empty_employer_summary" };
+
+  const demonstrated = arrOfStr(emp.demonstrated_competencies ?? [], 12, 500) ?? [];
+  const weak = arrOfStr(emp.weak_competencies ?? [], 12, 500) ?? [];
+
+  const risksRaw = Array.isArray(emp.risks) ? emp.risks : [];
+  const risks: ChecklistGradeRisk[] = [];
+  for (const r of risksRaw.slice(0, 12)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    const how = nonEmpty(r?.how_to_verify);
+    if (!title) return { ok: false, code: "bad_risk" };
+    if (!evidence) return { ok: false, code: "risk_without_evidence" };
+    if (!SEVERITY_RISK_ENUM.has(severity)) return { ok: false, code: "bad_risk_severity" };
+    risks.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      severity,
+      how_to_verify: (how || "").slice(0, 400),
+    });
+  }
+
+  const redRaw = Array.isArray(emp.red_flags) ? emp.red_flags : [];
+  const red_flags: ChecklistGradeRedFlag[] = [];
+  for (const r of redRaw.slice(0, 8)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    if (!title) return { ok: false, code: "bad_red_flag" };
+    if (!evidence) return { ok: false, code: "red_flag_without_evidence" };
+    if (!SEVERITY_RED_FLAG_ENUM.has(severity)) return { ok: false, code: "bad_red_flag_severity" };
+    red_flags.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      severity,
+    });
+  }
+
+  const allowed = new Set(opts.allowedSituationIds.map(String));
+  const empItemsRaw = Array.isArray(emp.items) ? emp.items : [];
+  if (empItemsRaw.length === 0) return { ok: false, code: "empty_employer_items" };
+  const empItems: SituationsEmployerItem[] = [];
+  const seenEmp = new Set<string>();
+  for (const it of empItemsRaw) {
+    const sid = nonEmpty(it?.situation_id);
+    if (!sid) return { ok: false, code: "bad_situation_id" };
+    if (!allowed.has(sid)) return { ok: false, code: `unknown_situation_id_${sid}` };
+    if (seenEmp.has(sid)) return { ok: false, code: `dup_situation_id_${sid}` };
+    seenEmp.add(sid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_item_score_${sid}` };
+    const fb = nonEmpty(it?.employer_feedback);
+    if (!fb) return { ok: false, code: `empty_employer_feedback_${sid}` };
+    empItems.push({
+      situation_id: sid,
+      score: Math.round(sc),
+      employer_feedback: fb.slice(0, 1200),
+      evidence: nonEmpty(it?.evidence).slice(0, 800),
+    });
+  }
+
+  // candidate block
+  const cand = o.candidate;
+  if (!cand || typeof cand !== "object") return { ok: false, code: "missing_candidate" };
+  const candForbid = hasForbiddenCandidateKey(cand);
+  if (candForbid) return { ok: false, code: `candidate_has_employer_field_${candForbid}` };
+  const candSummary = nonEmpty(cand.summary);
+  if (!candSummary || candSummary.length < 20) return { ok: false, code: "empty_candidate_summary" };
+  const cStrengths = arrOfStr(cand.strengths ?? [], 10, 400) ?? [];
+  const cAreas = arrOfStr(cand.areas_to_improve ?? [], 10, 400) ?? [];
+
+  const candItemsRaw = Array.isArray(cand.items) ? cand.items : [];
+  const candItems: SituationsCandidateItem[] = [];
+  const seenCand = new Set<string>();
+  for (const it of candItemsRaw) {
+    const sid = nonEmpty(it?.situation_id);
+    if (!sid) return { ok: false, code: "bad_candidate_situation_id" };
+    if (!allowed.has(sid)) return { ok: false, code: `unknown_candidate_situation_id_${sid}` };
+    if (seenCand.has(sid)) return { ok: false, code: `dup_candidate_situation_id_${sid}` };
+    seenCand.add(sid);
+    const sc = Number(it?.score);
+    if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_candidate_item_score_${sid}` };
+    const fb = nonEmpty(it?.feedback);
+    if (!fb) return { ok: false, code: `empty_candidate_feedback_${sid}` };
+    candItems.push({
+      situation_id: sid,
+      score: Math.round(sc),
+      feedback: fb.slice(0, 1000),
+      recommendation: nonEmpty(it?.recommendation).slice(0, 800),
+    });
+  }
+
+  const guardBlob = [
+    empSummary,
+    ...demonstrated, ...weak,
+    ...risks.map((r) => `${r.title} ${r.evidence}`),
+    ...red_flags.map((r) => `${r.title} ${r.evidence}`),
+    ...empItems.map((it) => `${it.employer_feedback} ${it.evidence}`),
+  ].join(" \n ");
+  const protectedHit = detectProtectedCharacteristic(guardBlob);
+  if (protectedHit) return { ok: false, code: "protected_characteristic" };
+
+  return {
+    ok: true,
+    value: {
+      total: totalInt,
+      employer: {
+        summary: empSummary.slice(0, 4000),
+        demonstrated_competencies: demonstrated,
+        weak_competencies: weak,
+        risks,
+        red_flags,
+        items: empItems,
+      },
+      candidate: {
+        summary: candSummary.slice(0, 4000),
+        strengths: cStrengths,
+        areas_to_improve: cAreas,
+        items: candItems,
+      },
+    },
+  };
+}
