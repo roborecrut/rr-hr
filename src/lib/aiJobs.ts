@@ -121,10 +121,31 @@ export type JobStatusRow = {
 };
 
 export async function fetchJobStatus(jobId: string): Promise<JobStatusRow | null> {
-  const { data, error } = await supabase.rpc("get_ai_job_safe_status", { _job_id: jobId });
+  // Candidates have NO Supabase Auth session — only the opaque candidate
+  // token in localStorage (`cand_session.token`). The RPC
+  // `get_ai_job_safe_status` is GRANT'd to `authenticated`, so a direct
+  // `supabase.rpc(...)` call from the candidate cabinet is rejected. Poll
+  // through the dedicated edge function which validates the candidate
+  // token server-side and enforces ownership without touching anon grants.
+  const token = getCandidateToken();
+  if (!token) return null;
+  const { data, error } = await supabase.functions.invoke(
+    "ai-job-status-candidate-v2",
+    { body: { job_id: jobId }, headers: { "x-candidate-token": token } },
+  );
   if (error) return null;
-  const row = Array.isArray(data) ? data[0] : data;
-  return (row as any) || null;
+  const d = data as any;
+  if (!d?.ok) return null;
+  return {
+    job_id: d.job_id,
+    job_type: d.job_type,
+    status: d.status,
+    fallback_used: !!d.fallback_used,
+    attempts_count: d.attempts_count || 0,
+    created_at: d.created_at,
+    updated_at: d.updated_at,
+    completed_at: d.finished_at ?? null,
+  };
 }
 
 /**
