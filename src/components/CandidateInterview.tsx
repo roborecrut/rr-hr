@@ -18,6 +18,9 @@ import {
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
 import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
+import { adaptCandidateChecklist, adaptCandidateSituations } from "@/lib/feedbackAdapters";
+import CandidateChecklistReport from "@/components/reports/CandidateChecklistReport";
+import CandidateSituationsReport from "@/components/reports/CandidateSituationsReport";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
