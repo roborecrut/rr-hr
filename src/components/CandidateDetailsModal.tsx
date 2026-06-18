@@ -892,74 +892,39 @@ export default function CandidateDetailsModal({
               </TabsContent>
 
               <TabsContent value="overall" className="space-y-6 mt-0">
-                <div className={`rounded-2xl p-5 border ${toneBg(overallTone.label)}`}>
-                  <div className="flex items-center justify-between gap-4 mb-3">
-                    <div>
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Итоговая оценка ИИ</div>
-                      <div className="text-[13px] text-white/80 mt-0.5">Соответствие должности, задачам и параметрам оценки</div>
-                    </div>
-                    <div className={`text-4xl font-mono font-black ${overallTone.cls}`}>
-                      {s.overall_score !== null && s.overall_score !== undefined
-                        ? `${Math.round(Number(s.overall_score))}/100`
-                        : "—"}
-                    </div>
-                  </div>
-                  {overallBadge && (
-                    <div className={`inline-block px-3 py-1 rounded-full text-[12px] font-bold border ${overallBadge.cls}`}>
-                      {overallBadge.text}
-                    </div>
-                  )}
-                </div>
+                <EmployerOverallReport
+                  fitScore={(s as any).ai_fit_score}
+                  overallScore={s.overall_score}
+                  employerFeedback={(s as any).employer_overall_feedback}
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.resume_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Резюме</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.resume_score).cls}`}>
-                      {s.resume_score != null ? `${Math.round(Number(s.resume_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.checklist_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Анкета (чек-лист)</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.checklist_score).cls}`}>
-                      {s.checklist_score != null ? `${Math.round(Number(s.checklist_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.situations_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Ситуации</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.situations_score).cls}`}>
-                      {s.situations_score != null ? `${Math.round(Number(s.situations_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(overallTone.label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Средний балл</div>
-                    <div className={`text-2xl font-mono font-black ${overallTone.cls}`}>
-                      {s.overall_score != null ? `${Math.round(Number(s.overall_score))}/100` : "—"}
-                    </div>
-                  </div>
-                </div>
-
-                {s.assessment_summary && (
-                  <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Award className="w-4 h-4" /> Рекомендация ИИ</h3>
-                    <div className="text-[14px] text-white/95 leading-relaxed whitespace-pre-wrap">
-                      {s.assessment_summary}
-                    </div>
-                  </div>
-                )}
                 <div className="bg-black/20 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Экспертная совокупная оценка</h3>
-                    <p className="text-[12px] text-slate-300 mt-1">ИИ учтёт резюме, анкету, ситуации, оценки и требования вакансии.</p>
-                    {overallErr && <div className="text-rose-300 text-xs mt-2">{overallErr}</div>}
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" /> Совокупная AI-оценка соответствия
+                    </h3>
+                    <p className="text-[12px] text-slate-300 mt-1">
+                      ИИ перечитает резюме, анкету, ситуации, обучение и пожелания работодателя.
+                      Средний балл этапов и stage-feedback не перезаписываются.
+                    </p>
+                    {overallSaving && (
+                      <div className="text-[12px] text-slate-300 mt-2" data-testid="overall-status">
+                        Идёт анализ… {overallStatus ? `(${overallStatus})` : ""}
+                      </div>
+                    )}
+                    {overallErr && (
+                      <div className="text-rose-300 text-xs mt-2" data-testid="overall-error">{overallErr}</div>
+                    )}
                   </div>
                   <button
                     type="button"
+                    data-testid="recalc-overall-btn"
                     disabled={overallSaving}
-                    onClick={generateOverallAssessment}
+                    onClick={runOverallEvaluation}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
                   >
                     {overallSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Пересчитать ИИ-оценку
+                    Пересчитать AI-оценку
                   </button>
                 </div>
               </TabsContent>
