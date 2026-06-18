@@ -710,8 +710,10 @@ export type Database = {
           registered_via:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          resume_hash: string | null
           resume_name: string | null
           resume_text: string | null
+          resume_updated_at: string | null
           resume_url: string | null
           role_name: string | null
           social_github: string | null
@@ -750,8 +752,10 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          resume_hash?: string | null
           resume_name?: string | null
           resume_text?: string | null
+          resume_updated_at?: string | null
           resume_url?: string | null
           role_name?: string | null
           social_github?: string | null
@@ -790,8 +794,10 @@ export type Database = {
           registered_via?:
             | Database["public"]["Enums"]["registration_method"]
             | null
+          resume_hash?: string | null
           resume_name?: string | null
           resume_text?: string | null
+          resume_updated_at?: string | null
           resume_url?: string | null
           role_name?: string | null
           social_github?: string | null
@@ -3079,6 +3085,10 @@ export type Database = {
           _resume_feedback: Json
           _resume_score: number
         }
+        Returns: Json
+      }
+      save_candidate_resume_text: {
+        Args: { _candidate: string; _resume_text: string }
         Returns: Json
       }
       search_vacancies: {
