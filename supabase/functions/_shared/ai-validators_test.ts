@@ -6,6 +6,8 @@ import {
   validateSituations3,
   validateResumeScreenReport,
   detectProtectedCharacteristic,
+  validateChecklistGradeReport,
+  validateSituationsGradeReport,
 } from "./ai-validators.ts";
 import { canonicalJsonStringify, isTerminalStatus } from "./ai-jobs.ts";
 
@@ -229,4 +231,177 @@ Deno.test("resume v2: candidate report has no employer-only fields after validat
   assertEquals("red_flags" in c, false);
   assertEquals("questions_to_verify" in c, false);
   assertEquals("matches" in c, false);
+});
+
+// =============================================================================
+// Checklist Grade Report v2 validator tests
+// =============================================================================
+
+const CK_ALLOWED = ["q1","q2","q3"];
+function validChecklist(): any {
+  return {
+    total: 72,
+    employer: {
+      summary: "Кандидат показал уверенное знание процесса продаж и работу с возражениями.",
+      strengths: ["структурное мышление"],
+      gaps: [{ criterion: "CRM", finding: "не упомянул HubSpot", impact: "средний" }],
+      risks: [{ title: "Опыт холодных звонков", evidence: "ответ обтекаемый", severity: "средний", how_to_verify: "ролевая ситуация" }],
+      red_flags: [{ title: "Противоречие в стаже", evidence: "сначала 2 года, потом 4", severity: "средний" }],
+      items: [
+        { question_id: "q1", score: 80, employer_feedback: "Развёрнутый ответ по этапам воронки.", evidence: "перечислил 5 этапов" },
+        { question_id: "q2", score: 60, employer_feedback: "Поверхностный ответ.", evidence: "одно предложение" },
+        { question_id: "q3", score: 90, employer_feedback: "Чёткий ответ с примером.", evidence: "пример из практики" },
+      ],
+    },
+    candidate: {
+      summary: "Вы хорошо описали воронку продаж и привели пример работы с возражениями.",
+      strengths: ["структурное мышление"],
+      areas_to_improve: ["глубже раскрывать второй вопрос"],
+      items: [
+        { question_id: "q1", score: 80, feedback: "Хороший развёрнутый ответ.", recommendation: "добавить метрики" },
+        { question_id: "q2", score: 60, feedback: "Слишком кратко.", recommendation: "приведите 2-3 примера" },
+        { question_id: "q3", score: 90, feedback: "Отличный пример.", recommendation: "сохранить такой подход" },
+      ],
+    },
+  };
+}
+
+Deno.test("checklist v2: valid report passes", () => {
+  const r = validateChecklistGradeReport(validChecklist(), { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, true);
+});
+Deno.test("checklist v2: total out of range rejected", () => {
+  const o = validChecklist(); o.total = 150;
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: unknown question_id rejected", () => {
+  const o = validChecklist(); o.employer.items[0].question_id = "qXX";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: duplicate question_id rejected", () => {
+  const o = validChecklist(); o.employer.items[1].question_id = "q1";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: risk without evidence rejected", () => {
+  const o = validChecklist(); o.employer.risks[0].evidence = "";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: red_flag without evidence rejected", () => {
+  const o = validChecklist(); o.employer.red_flags[0].evidence = "";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: candidate with employer-only field rejected", () => {
+  const o = validChecklist(); o.candidate.risks = [{ title: "x" }];
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: protected characteristic rejected", () => {
+  const o = validChecklist();
+  o.employer.summary = "Кандидат — женщина, поэтому будут сложности с командировками. Полная характеристика.";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: expected_answer leak to candidate rejected", () => {
+  const o = validChecklist();
+  const expected = "пять этапов воронки: квалификация лид пресейл коммерция закрытие";
+  o.candidate.items[0].feedback = `Правильный ответ: ${expected}. Старайтесь так же.`;
+  const r = validateChecklistGradeReport(o, {
+    allowedQuestionIds: CK_ALLOWED,
+    expectedAnswers: { q1: expected },
+  });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: missing employer summary rejected", () => {
+  const o = validChecklist(); o.employer.summary = "";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("checklist v2: missing candidate summary rejected", () => {
+  const o = validChecklist(); o.candidate.summary = "";
+  const r = validateChecklistGradeReport(o, { allowedQuestionIds: CK_ALLOWED });
+  assertEquals(r.ok, false);
+});
+
+// =============================================================================
+// Situations Grade Report v2 validator tests
+// =============================================================================
+
+const SIT_ALLOWED = ["s1","s2","s3"];
+function validSituations(): any {
+  return {
+    total: 65,
+    employer: {
+      summary: "Кандидат демонстрирует базовые навыки переговоров и эмпатию в сложных ситуациях.",
+      demonstrated_competencies: ["эмпатия", "структурный диалог"],
+      weak_competencies: ["работа с эскалацией"],
+      risks: [{ title: "Эскалация", evidence: "не предложил руководителя", severity: "средний", how_to_verify: "повторная роль" }],
+      red_flags: [{ title: "Конфликтность", evidence: "повышение тона в ответе s2", severity: "средний" }],
+      items: [
+        { situation_id: "s1", score: 70, employer_feedback: "Адекватная реакция на возражение.", evidence: "сослался на условия" },
+        { situation_id: "s2", score: 50, employer_feedback: "Слабая эскалация.", evidence: "не передал руководителю" },
+        { situation_id: "s3", score: 75, employer_feedback: "Хорошо удержал клиента.", evidence: "предложил скидку" },
+      ],
+    },
+    candidate: {
+      summary: "Вы хорошо справились с двумя ситуациями, в третьей стоит чётче управлять эскалацией.",
+      strengths: ["эмпатия"],
+      areas_to_improve: ["управление эскалацией"],
+      items: [
+        { situation_id: "s1", score: 70, feedback: "Хорошая реакция.", recommendation: "добавить сверку фактов" },
+        { situation_id: "s2", score: 50, feedback: "Не хватило структуры.", recommendation: "используйте SLA" },
+        { situation_id: "s3", score: 75, feedback: "Удержали клиента.", recommendation: "проговорите риски" },
+      ],
+    },
+  };
+}
+
+Deno.test("situations v2: valid report passes", () => {
+  const r = validateSituationsGradeReport(validSituations(), { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, true);
+});
+Deno.test("situations v2: total out of range rejected", () => {
+  const o = validSituations(); o.total = -5;
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: unknown situation_id rejected", () => {
+  const o = validSituations(); o.employer.items[0].situation_id = "sX";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: duplicate situation_id rejected", () => {
+  const o = validSituations(); o.employer.items[1].situation_id = "s1";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: risk without evidence rejected", () => {
+  const o = validSituations(); o.employer.risks[0].evidence = "";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: red_flag without evidence rejected", () => {
+  const o = validSituations(); o.employer.red_flags[0].evidence = "";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: candidate with employer-only field rejected", () => {
+  const o = validSituations(); o.candidate.red_flags = [{ title: "x" }];
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: protected characteristic rejected", () => {
+  const o = validSituations();
+  o.employer.summary = "Кандидату 55 лет и это сильно мешает гибкости. Полная характеристика для отчёта.";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
+});
+Deno.test("situations v2: missing summary rejected", () => {
+  const o = validSituations(); o.employer.summary = "";
+  const r = validateSituationsGradeReport(o, { allowedSituationIds: SIT_ALLOWED });
+  assertEquals(r.ok, false);
 });

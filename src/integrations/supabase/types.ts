@@ -3077,6 +3077,15 @@ export type Database = {
         Args: { _amount: number; _inv_id: number; _payload: Json }
         Returns: Json
       }
+      save_candidate_checklist_evaluation_v2: {
+        Args: {
+          _candidate: string
+          _candidate_checklist_feedback: Json
+          _checklist_feedback: Json
+          _checklist_score: number
+        }
+        Returns: Json
+      }
       save_candidate_resume_evaluation_v2: {
         Args: {
           _assessment_summary: string
@@ -3089,6 +3098,15 @@ export type Database = {
       }
       save_candidate_resume_text: {
         Args: { _candidate: string; _resume_text: string }
+        Returns: Json
+      }
+      save_candidate_situations_evaluation_v2: {
+        Args: {
+          _candidate: string
+          _candidate_situations_feedback: Json
+          _situations_feedback: Json
+          _situations_score: number
+        }
         Returns: Json
       }
       search_vacancies: {
