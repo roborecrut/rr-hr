@@ -14,6 +14,8 @@ import { adaptEmployerChecklist, adaptEmployerSituations } from "@/lib/feedbackA
 import EmployerChecklistReport from "@/components/reports/EmployerChecklistReport";
 import EmployerSituationsReport from "@/components/reports/EmployerSituationsReport";
 import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
+import EmployerTrainingStageReport from "@/components/reports/EmployerTrainingStageReport";
+import EmployerTrainingSummaryReport from "@/components/reports/EmployerTrainingSummaryReport";
 import {
   startOverallCandidateV2, pollEmployerJobUntilTerminal,
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
@@ -284,6 +286,45 @@ export default function CandidateDetailsModal({
   const [overallSaving, setOverallSaving] = useState(false);
   const [overallErr, setOverallErr] = useState<string | null>(null);
   const [overallStatus, setOverallStatus] = useState<string>("");
+  const [trainingSummary, setTrainingSummary] = useState<any>(null);
+  const [trainingSummaryLoading, setTrainingSummaryLoading] = useState(false);
+  const [trainingSummaryErr, setTrainingSummaryErr] = useState<string | null>(null);
+
+  const loadTrainingSummary = React.useCallback(async () => {
+    if (!candidateId) return;
+    const { data: row } = await supabase
+      .from("candidate_scores")
+      .select("training_employer_feedback,training_candidate_feedback,training_summary_score,training_summary_generated_at,training_summary_source_hash")
+      .eq("candidate_id", candidateId).maybeSingle();
+    setTrainingSummary(row || null);
+  }, [candidateId]);
+
+  useEffect(() => { loadTrainingSummary(); }, [loadTrainingSummary]);
+
+  const recomputeTrainingSummary = async () => {
+    if (!candidateId) return;
+    setTrainingSummaryLoading(true);
+    setTrainingSummaryErr(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-evaluate-training-summary-v2", {
+        body: { candidate_id: candidateId },
+      });
+      if (error) {
+        let body: any = null;
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === "function") body = await ctx.json();
+        } catch { /* ignore */ }
+        throw new Error(body?.error || (error as any)?.message || "summary_failed");
+      }
+      if ((data as any)?.error) throw new Error((data as any).error);
+      await loadTrainingSummary();
+    } catch (e: any) {
+      setTrainingSummaryErr(e?.message || "Не удалось сформировать итог");
+    } finally {
+      setTrainingSummaryLoading(false);
+    }
+  };
 
   const markReview = async () => {
     if (!candidateId) return;
@@ -943,81 +984,34 @@ export default function CandidateDetailsModal({
                     );
                   };
                   const total = stageProgress.length;
-                  if (total === 0) {
-                    return (
-                      <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
-                        Кандидат ещё не проходил этапы обучения (Профессия / Продукт / Система).
-                      </div>
-                    );
-                  }
                   const renderStage = (def: { key: string; title: string; icon: string }) => {
                         const sp: any = findFor(def.key);
-                        const passed = !!sp?.passed_at;
-                        const score = sp?.last_score ?? sp?.best_score ?? null;
-                        const tone = scoreTone(score);
-                        return (
-                          <div className={`rounded-2xl p-4 border ${toneBg(tone.label)}`}>
-                            <div className="flex items-center justify-between gap-3 mb-3">
-                              <div className="flex items-center gap-2">
-                                <span className="text-lg">{def.icon}</span>
-                                <h3 className="text-sm font-bold text-white">{def.title}</h3>
-                                <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
-                                  passed ? "bg-emerald-500/20 text-emerald-300"
-                                    : sp ? "bg-amber-500/20 text-amber-300"
-                                    : "bg-white/10 text-slate-300"
-                                }`}>
-                                  {passed ? "Сдан" : sp ? "В процессе" : "Не начат"}
-                                </span>
-                              </div>
-                              <div className={`text-base font-mono font-black ${tone.cls}`}>
-                                {score != null ? `${Math.round(Number(score))}/100` : "—"}
-                              </div>
+                        if (!sp) {
+                          return (
+                            <div className="bg-black/20 border border-white/10 rounded-2xl p-6 text-center text-sm text-slate-400">
+                              <span className="text-lg mr-1">{def.icon}</span> Кандидат ещё не приступал к этапу «{def.title}».
                             </div>
-                            {sp ? (
-                              <>
-                                <div className="text-[11px] text-slate-300 mb-2">
-                                  Попыток: {sp.attempts || 0} · Лучший: {sp.best_score ?? "—"} · Последний: {sp.last_score ?? "—"}
-                                </div>
-                                {Array.isArray(sp.last_feedback) && sp.last_feedback.length > 0 ? (
-                                  <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
-                                    {sp.last_feedback.map((pq: any, idx: number) => {
-                                      const ans = Array.isArray(sp.last_answers)
-                                        ? sp.last_answers.find((a: any) => a.question_id === pq.id) : null;
-                                      const qTone = scoreTone(pq.score, pq.max ?? 10);
-                                      return (
-                                        <div key={pq.id || idx} className={`rounded-xl p-3 border-l-4 ${toneBg(qTone.label)}`}>
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="text-[12px] font-semibold text-white">
-                                              Вопрос {idx + 1}
-                                              {pq.question && <span className="text-slate-300 font-normal"> — {pq.question}</span>}
-                                            </div>
-                                            <span className={`text-[12px] font-mono font-black shrink-0 ${qTone.cls}`}>
-                                              {pq.score}/{pq.max}
-                                            </span>
-                                          </div>
-                                          {ans?.value && (
-                                            <div className="mt-2 text-[12px] text-slate-100">
-                                              <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Ответ кандидата</div>
-                                              {ans.value}
-                                            </div>
-                                          )}
-                                          {pq.comment && (
-                                            <div className={`text-[11px] mt-1.5 italic ${qTone.cls}`}>
-                                              <span className="font-bold">Оценка ИИ:</span> {pq.comment}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <div className="text-[12px] text-slate-400 italic">Детальной обратной связи по вопросам пока нет.</div>
-                                )}
-                              </>
-                            ) : (
-                              <div className="text-[12px] text-slate-400 italic">Кандидат ещё не приступал к этому этапу.</div>
-                            )}
-                          </div>
+                          );
+                        }
+                        const passed = !!sp.passed_at;
+                        const status: "passed" | "in_progress" | "not_started" = passed ? "passed" : "in_progress";
+                        const score = sp.last_score ?? sp.best_score ?? null;
+                        const max = 100; // training stage scoring is normalized to 100
+                        const passScore = 70;
+                        const summary = (sp.employer_summary && typeof sp.employer_summary === "object") ? sp.employer_summary : null;
+                        return (
+                          <EmployerTrainingStageReport
+                            status={status}
+                            score={score}
+                            max={max}
+                            passScore={passScore}
+                            summary={summary}
+                            perQuestionLegacy={Array.isArray(sp.last_feedback) ? sp.last_feedback.map((pq: any) => ({
+                              ...pq,
+                              question: pq.question || (sp.last_answers || []).find((a: any) => a.question_id === pq.id)?.question_text,
+                            })) : []}
+                            lastAnswers={Array.isArray(sp.last_answers) ? sp.last_answers : []}
+                          />
                         );
                   };
                   return (
@@ -1032,12 +1026,46 @@ export default function CandidateDetailsModal({
                             {d.icon} {d.title}
                           </TabsTrigger>
                         ))}
+                        <TabsTrigger
+                          value="__summary"
+                          data-testid="training-summary-tab"
+                          className="data-[state=active]:bg-[#1E4468] data-[state=active]:text-[#E7C768] text-slate-300 font-bold text-xs px-4 py-2 rounded-xl"
+                        >
+                          🏆 Итого
+                        </TabsTrigger>
                       </TabsList>
                       {STAGE_DEFS.map(d => (
                         <TabsContent key={d.key} value={d.key} className="mt-0">
                           {renderStage(d)}
                         </TabsContent>
                       ))}
+                      <TabsContent value="__summary" className="mt-0 space-y-3">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-xs text-slate-400">
+                            {trainingSummary?.training_summary_generated_at
+                              ? <>Сформирован: {new Date(trainingSummary.training_summary_generated_at).toLocaleString()}</>
+                              : <>Итог обучения ещё не сформирован.</>}
+                          </div>
+                          <button
+                            type="button"
+                            data-testid="recalc-training-summary-btn"
+                            disabled={trainingSummaryLoading}
+                            onClick={recomputeTrainingSummary}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
+                          >
+                            {trainingSummaryLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                            Сформировать итог
+                          </button>
+                        </div>
+                        {trainingSummaryErr && (
+                          <div className="text-[12px] text-rose-200 bg-rose-500/10 border border-rose-500/30 rounded-lg p-2">
+                            {trainingSummaryErr}
+                          </div>
+                        )}
+                        <EmployerTrainingSummaryReport
+                          report={trainingSummary?.training_employer_feedback || null}
+                        />
+                      </TabsContent>
                     </Tabs>
                   );
                 })()}

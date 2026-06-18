@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { RichTrainingMaterialCard } from "@/components/RichTrainingMarkdown";
-import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap, AlertTriangle } from "lucide-react";
+import { BookOpen, CheckCircle2, Lock, RefreshCw, Sparkles, GraduationCap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import Reveal from "@/components/Reveal";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
 import { toUserError, formatUserError } from "@/lib/userError";
+import CandidateTrainingStageReport from "@/components/reports/CandidateTrainingStageReport";
 
 type Stage = "professional" | "product" | "system";
 const STAGES: { key: Stage; title: string; icon: string }[] = [
@@ -47,6 +48,7 @@ export default function CandidateStageTraining({
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [lastResult, setLastResult] = useState<{ score: number; passed: boolean; per_question: any[] } | null>(null);
+  const [candidateSummary, setCandidateSummary] = useState<any>(null);
   const [pausedOpen, setPausedOpen] = useState(false);
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
@@ -139,6 +141,7 @@ export default function CandidateStageTraining({
             passed: !!prog.passed_at,
             per_question: Array.isArray(prog.last_feedback) ? prog.last_feedback : [],
           });
+          setCandidateSummary((prog as any).candidate_summary || null);
         }
       } finally { if (!cancelled) setLoading(false); }
     })();
@@ -189,6 +192,12 @@ export default function CandidateStageTraining({
         }
       }
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
+      // Refresh candidate-facing summary from DB (saved by edge function).
+      try {
+        const { data: prog } = await supabase.from("candidate_stage_progress")
+          .select("candidate_summary").eq("candidate_id", candidateId).eq("stage", active).maybeSingle();
+        setCandidateSummary((prog as any)?.candidate_summary || null);
+      } catch { /* ignore */ }
       setProgress(p => ({ ...p, [active]: { passed: r.passed || p[active].passed, best: Math.max(p[active].best, r.score), attempts: r.attempts } }));
       // Re-sync FULL progress from DB so locked/unlocked state of next stages
       // refreshes immediately without page reload.
@@ -352,29 +361,17 @@ export default function CandidateStageTraining({
         </Reveal>
       ) : (
         <Reveal direction="scale" className="bg-[#1E4468]/20 border border-white/10 rounded-3xl p-6 space-y-4">
-          <div className={`p-4 rounded-2xl flex items-center gap-3 ${lastResult?.passed ? "bg-emerald-900/30 border border-emerald-500/40" : "bg-amber-900/30 border border-amber-500/40"}`}>
-            {lastResult?.passed ? <CheckCircle2 className="w-8 h-8 text-emerald-400" /> : <AlertTriangle className="w-8 h-8 text-amber-400" />}
-            <div className="flex-1">
-              <div className="text-base font-bold text-white">
-                {lastResult?.passed ? "Этап сдан!" : "Не сдан — попробуйте ещё раз"}
-              </div>
-              <div className="text-xs text-slate-300">Ваш балл: {lastResult?.score} / {totalScore} (проходной {passScore})</div>
-            </div>
-          </div>
-          <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {(lastResult?.per_question || []).map((pq: any, i: number) => {
-              const q = questions.find(qq => qq.id === pq.id);
-              return (
-                <div key={pq.id} className="bg-black/20 border border-white/5 rounded-lg p-3 text-xs">
-                  <div className="flex justify-between text-[10px] text-slate-400">
-                    <span>Вопрос {i + 1}</span><span className={pq.score === pq.max ? "text-emerald-400" : pq.score > 0 ? "text-amber-300" : "text-rose-400"}>{pq.score}/{pq.max}</span>
-                  </div>
-                  <div className="text-white mt-1">{q?.question}</div>
-                  {pq.comment && <div className="text-slate-400 mt-1 italic">{pq.comment}</div>}
-                </div>
-              );
-            })}
-          </div>
+          <CandidateTrainingStageReport
+            passed={!!lastResult?.passed}
+            score={Number(lastResult?.score || 0)}
+            max={totalScore}
+            passScore={passScore}
+            summary={candidateSummary}
+            perQuestionLegacy={(lastResult?.per_question || []).map((pq: any) => ({
+              ...pq,
+              question: questions.find((qq) => qq.id === pq.id)?.question,
+            }))}
+          />
           <div className="flex gap-2">
             {!lastResult?.passed && (
               <button type="button" onClick={() => { setLastResult(null); startExam(); }}

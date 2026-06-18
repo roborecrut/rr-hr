@@ -480,6 +480,9 @@ export type Database = {
           situations_score: number | null
           training_candidate_feedback: Json | null
           training_employer_feedback: Json | null
+          training_summary_generated_at: string | null
+          training_summary_score: number | null
+          training_summary_source_hash: string | null
           updated_at: string
         }
         Insert: {
@@ -506,6 +509,9 @@ export type Database = {
           situations_score?: number | null
           training_candidate_feedback?: Json | null
           training_employer_feedback?: Json | null
+          training_summary_generated_at?: string | null
+          training_summary_score?: number | null
+          training_summary_source_hash?: string | null
           updated_at?: string
         }
         Update: {
@@ -532,6 +538,9 @@ export type Database = {
           situations_score?: number | null
           training_candidate_feedback?: Json | null
           training_employer_feedback?: Json | null
+          training_summary_generated_at?: string | null
+          training_summary_score?: number | null
+          training_summary_source_hash?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3205,6 +3214,17 @@ export type Database = {
           _candidate_situations_feedback: Json
           _situations_feedback: Json
           _situations_score: number
+        }
+        Returns: Json
+      }
+      save_candidate_training_summary_v2: {
+        Args: {
+          _candidate_feedback: Json
+          _candidate_id: string
+          _employer_feedback: Json
+          _expected_prev_hash: string
+          _source_hash: string
+          _summary_score: number
         }
         Returns: Json
       }
