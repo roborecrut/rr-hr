@@ -191,6 +191,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         if (candSit) setSituationsFeedbackRaw(candSit);
         else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+        const candOverall = (sc as any).candidate_overall_feedback;
+        if (candOverall && typeof candOverall === "object") setCandOverallFeedback(candOverall);
         // Восстанавливаем итоговый балл, чтобы вкладка «4. Итог» открывалась
         // при возврате на страницу собеседования после прохождения всех этапов.
         const { data: scFull } = await (supabase as any)
