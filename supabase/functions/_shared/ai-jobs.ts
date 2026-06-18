@@ -81,28 +81,48 @@ export async function createOrReuseAiJob(input: CreateJobInput): Promise<{ id: s
  * Atomic primary attempt start. Uses SECURITY DEFINER RPC `start_ai_job_attempt`
  * which locks the ai_jobs row, refuses a second active attempt of the same
  * provider, and computes the next attempt_number across all providers.
+ *
+ * Signature preserved (string | null) for backward-compat with existing edge
+ * functions. The richer info is available via `startAttempt({ provider })`.
  */
-export async function startPrimaryAttempt(jobId: string): Promise<{ attemptId: string; attemptNumber: number } | { error: string }> {
-  const admin = getAdminClient();
-  if (!admin) return { error: "no_admin_client" };
-  const upd = await admin.from("ai_jobs").update({ status: "primary_running" }).eq("id", jobId);
-  if (upd.error) return { error: `update_status_failed:${upd.error.message}` };
-  const { data, error } = await admin.rpc("start_ai_job_attempt", { _job_id: jobId, _provider: "primary" });
-  if (error) return { error: `rpc_start_attempt_failed:${error.message}` };
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row?.attempt_id) return { error: "rpc_no_attempt_returned" };
-  return { attemptId: row.attempt_id as string, attemptNumber: row.attempt_number as number };
+export async function startPrimaryAttempt(jobId: string): Promise<string | null> {
+  const r = await startAttempt(jobId, "primary", { jobStatus: "primary_running" });
+  return r?.attemptId ?? null;
 }
 
-export async function startFallbackAttempt(jobId: string): Promise<{ attemptId: string; attemptNumber: number } | { error: string }> {
+export async function startFallbackAttempt(jobId: string): Promise<string | null> {
+  const r = await startAttempt(jobId, "rr_pro_max", {
+    jobStatus: "fallback_running",
+    extraJobPatch: { fallback_used: true },
+  });
+  return r?.attemptId ?? null;
+}
+
+export async function startAttempt(
+  jobId: string,
+  provider: "primary" | "rr_pro_max",
+  opts: { jobStatus?: string; extraJobPatch?: Record<string, unknown> } = {},
+): Promise<{ attemptId: string; attemptNumber: number } | null> {
   const admin = getAdminClient();
-  if (!admin) return { error: "no_admin_client" };
-  const upd = await admin.from("ai_jobs").update({ status: "fallback_running", fallback_used: true }).eq("id", jobId);
-  if (upd.error) return { error: `update_status_failed:${upd.error.message}` };
-  const { data, error } = await admin.rpc("start_ai_job_attempt", { _job_id: jobId, _provider: "rr_pro_max" });
-  if (error) return { error: `rpc_start_attempt_failed:${error.message}` };
+  if (!admin) return null;
+  if (opts.jobStatus) {
+    const patch: Record<string, unknown> = { status: opts.jobStatus, ...(opts.extraJobPatch || {}) };
+    const upd = await admin.from("ai_jobs").update(patch).eq("id", jobId);
+    if (upd.error) {
+      console.error("startAttempt: ai_jobs status update failed", upd.error.message, { jobId, provider });
+      return null;
+    }
+  }
+  const { data, error } = await admin.rpc("start_ai_job_attempt", { _job_id: jobId, _provider: provider });
+  if (error) {
+    console.error("startAttempt: RPC failed", error.message, { jobId, provider });
+    return null;
+  }
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row?.attempt_id) return { error: "rpc_no_attempt_returned" };
+  if (!row?.attempt_id) {
+    console.error("startAttempt: no attempt returned", { jobId, provider });
+    return null;
+  }
   return { attemptId: row.attempt_id as string, attemptNumber: row.attempt_number as number };
 }
 
@@ -131,21 +151,13 @@ export async function markJobStatus(jobId: string, status: string, completed = f
 }
 
 /** Mark job as save_failed without losing existing successful generation. */
-export async function markSaveFailed(jobId: string, safeCode: string) {
+export async function markSaveFailed(jobId: string, _safeCode: string) {
   await markJobStatus(jobId, "save_failed", true);
-  const admin = getAdminClient();
-  if (admin) {
-    await admin.from("ai_jobs").update({ last_error_code: safeCode }).eq("id", jobId).then(() => {}, () => {});
-  }
 }
 
 /** Mark job as validation_failed when AI output (and repair) cannot satisfy schema. */
-export async function markValidationFailed(jobId: string, safeCode: string) {
+export async function markValidationFailed(jobId: string, _safeCode: string) {
   await markJobStatus(jobId, "validation_failed", true);
-  const admin = getAdminClient();
-  if (admin) {
-    await admin.from("ai_jobs").update({ last_error_code: safeCode }).eq("id", jobId).then(() => {}, () => {});
-  }
 }
 
 export async function sha256Hex(s: string): Promise<string> {
