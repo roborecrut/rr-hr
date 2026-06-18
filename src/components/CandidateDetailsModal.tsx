@@ -402,77 +402,88 @@ export default function CandidateDetailsModal({
         is_correct: undefined,
       }));
 
-  const generateOverallAssessment = async () => {
-    if (!candidateId) return;
+  /**
+   * Phase 4 — overall AI candidate evaluation via the async v2 lifecycle.
+   *
+   * The button:
+   *  - mints ONE request_id per click (`crypto.randomUUID`);
+   *  - blocks double-click via `overallSaving`;
+   *  - calls `ai-evaluate-overall-candidate-v2` (employer JWT);
+   *  - polls `get_ai_job_safe_status` RPC until terminal;
+   *  - re-reads candidate_full_details on success;
+   *  - shows safe error on failure (terminal failures need a NEW request_id
+   *    to retry, which means another button click).
+   *
+   * No RR billing, no overwrite of `overall_score`, no overwrite of
+   * `assessment_summary` — the v2 RPC only touches the new fit fields.
+   */
+  const runOverallEvaluation = async () => {
+    if (!candidateId || overallSaving) return;
     setOverallSaving(true);
     setOverallErr(null);
+    setOverallStatus("primary_running");
     try {
-      const candName = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
-      const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "overall_candidate" as any,
-        candidate_id: candidateId,
-        project_id: c.project_id || pr.id,
-        payload: {
-          candidate: {
-            name: candName,
-            role: c.role_name || pr.role_name,
-            resume_text: c.resume_text || "",
-          },
-          vacancy: {
-            role_name: pr.role_name || c.role_name || "",
-            vacancy_text: pr.vacancy_text || "",
-            tasks_activity_text: pr.tasks_activity_text || "",
-            motivation_text: pr.motivation_text || "",
-            payouts_text: pr.payouts_text || "",
-            schedule_text: pr.schedule_text || "",
-            team_text: pr.team_text || "",
-            system_text: pr.system_text || "",
-          },
-          scores: {
-            resume_score: s.resume_score,
-            checklist_score: s.checklist_score,
-            situations_score: s.situations_score,
-            overall_score: s.overall_score,
-          },
-          resume_ai: s.resume_feedback || s.assessment_summary || "",
-          checklist: checklistAnswersView.map((x: any) => ({
-            question: x.question_text,
-            answer: x.answer_text,
-            score: x.score,
-            feedback: x.feedback,
-          })),
-          situations: situationAnswersView.map((x: any) => ({
-            case: x.case_text || x.question_text,
-            criteria: x.criteria,
-            answer: x.answer_text,
-            score: x.score,
-            feedback: x.feedback,
-          })),
-        },
-      });
-      const summary = String(result?.summary || result?.recommendation || "").trim();
-      if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
-      // overall_score = среднее из под-оценок (резюме / анкета / ситуации / интервью).
-      // ИИ-вердикт сохраняем только в текст (assessment_summary), чтобы не обнулять средний балл.
-      const parts = [s.resume_score, s.checklist_score, s.situations_score, (s as any).interview_score]
-        .filter((v: any) => v !== null && v !== undefined && Number.isFinite(Number(v)))
-        .map(Number);
-      const avg = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
-      const { error } = await (supabase as any).from("candidate_scores").upsert({
-        candidate_id: candidateId,
-        assessment_summary: summary,
-        ...(avg !== null ? { overall_score: avg } : {}),
-      }, { onConflict: "candidate_id" });
-      if (error) throw error;
+      const started = await startOverallCandidateV2({ candidateId });
+      if (started.terminal) {
+        // Reused terminal — just refetch and surface the state.
+        if (!isSuccess(started.status)) {
+          setOverallErr(humanizeAiError(started.status));
+        }
+        clearEmployerActiveJob("overall_candidate", candidateId);
+      } else {
+        const final = await pollEmployerJobUntilTerminal({
+          jobId: started.job_id,
+          onTick: (row) => setOverallStatus(row.status),
+        });
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        if (!isSuccess(final.status)) {
+          setOverallErr(humanizeAiError(final.status));
+        }
+      }
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
       setData(fresh);
     } catch (e: any) {
-      setOverallErr(e?.message || "Не удалось сформировать итоговую оценку");
+      setOverallErr(humanizeAiError(e?.message || "Не удалось сформировать общую AI-оценку"));
     } finally {
       setOverallSaving(false);
+      setOverallStatus("");
     }
   };
+
+  // Restore an in-flight overall job if the modal was closed while polling.
+  useEffect(() => {
+    if (!candidateId) return;
+    const rec = getEmployerActiveJob("overall_candidate", candidateId);
+    if (!rec) return;
+    let cancelled = false;
+    (async () => {
+      const row = await fetchEmployerJobStatus(rec.job_id);
+      if (cancelled) return;
+      if (!row) { clearEmployerActiveJob("overall_candidate", candidateId); return; }
+      if (isTerminal(row.status)) {
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        return;
+      }
+      setOverallSaving(true);
+      setOverallStatus(row.status);
+      try {
+        const final = await pollEmployerJobUntilTerminal({
+          jobId: rec.job_id,
+          onTick: (r) => !cancelled && setOverallStatus(r.status),
+        });
+        if (cancelled) return;
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        if (!isSuccess(final.status)) setOverallErr(humanizeAiError(final.status));
+        const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+        if (!cancelled) setData(fresh);
+      } catch (e: any) {
+        if (!cancelled) setOverallErr(humanizeAiError(e?.message || "poll_failed"));
+      } finally {
+        if (!cancelled) { setOverallSaving(false); setOverallStatus(""); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidateId]);
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
