@@ -2024,11 +2024,7 @@ export default function CandidateFlow() {
                     {[
                       ["social_telegram", "Telegram"],
                       ["social_whatsapp", "WhatsApp"],
-                      ["social_instagram", "Instagram"],
                       ["social_vk", "ВКонтакте"],
-                      ["social_max", "MAX"],
-                      ["social_setka", "Сетка"],
-                      ["social_github", "GitHub"],
                     ].map(([k, label]) => (
                       <div key={k} className="space-y-1">
                         <label className="text-[10px] font-bold text-slate-400">{label}</label>
@@ -2078,20 +2074,34 @@ export default function CandidateFlow() {
                       📄 Ссылка на резюме <ExternalLink className="w-3 h-3"/>
                     </a>
                   )}
-                  <div className="pt-2 border-t border-white/5 space-y-1.5">
-                    <div className="text-[10px] uppercase text-slate-400 font-bold">Соцсети</div>
-                    {[
-                      ["social_telegram","Telegram"],["social_whatsapp","WhatsApp"],["social_instagram","Instagram"],
-                      ["social_vk","ВКонтакте"],["social_max","MAX"],["social_setka","Сетка"],["social_github","GitHub"],
-                    ].map(([k,label]) => {
-                      const v = profSocials[k];
-                      return v ? (
-                        <a key={k} href={v} target="_blank" rel="noreferrer" className="block text-xs text-slate-200 hover:text-[#E7C768] truncate">{label}: <span className="text-[#E7C768] underline">{v}</span></a>
-                      ) : (
-                        <div key={k} className="text-[10px] text-slate-500">{label}: <span className="italic">не указано</span></div>
-                      );
-                    })}
-                  </div>
+                  {(() => {
+                    const socialList: Array<[string, string]> = [
+                      ["social_telegram", "Telegram"],
+                      ["social_whatsapp", "WhatsApp"],
+                      ["social_vk", "ВКонтакте"],
+                    ];
+                    const filled = socialList.filter(([k]) => (profSocials[k] || "").trim() !== "");
+                    if (filled.length === 0) return null;
+                    return (
+                      <div className="pt-2 border-t border-white/5 space-y-1.5">
+                        <div className="text-[10px] uppercase text-slate-400 font-bold">Соцсети</div>
+                        {filled.map(([k, label]) => {
+                          const v = profSocials[k];
+                          return (
+                            <a
+                              key={k}
+                              href={v}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block text-xs text-slate-200 hover:text-[#E7C768] truncate"
+                            >
+                              {label}: <span className="text-[#E7C768] underline">{v}</span>
+                            </a>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 2. Onboarding map Checklist progression */}
@@ -2133,135 +2143,9 @@ export default function CandidateFlow() {
                 </div>
               </div>
 
-              {/* 3. Active Job context card & Multi-vacancy system */}
-                <div className="bg-black/25 p-5 rounded-2xl border border-white/5 space-y-4 text-left">
-                  <div className="flex items-center justify-between gap-3 border-b border-white/5 pb-2">
-                    <h3 className="font-bold text-xs text-[#E7C768] uppercase">📂 Выберите Компанию & Вакансию</h3>
-                    {(companyFull?.public_id || (project as any)?.companyPublicId) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const cpid = companyFull?.public_id || (project as any)?.companyPublicId;
-                          if (cpid) navigate(`/com${cpid}`);
-                        }}
-                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-[#E7C768] border border-[#E7C768]/30 transition whitespace-nowrap"
-                        title="Все активные вакансии компании"
-                      >
-                        Все вакансии компании →
-                      </button>
-                    )}
-                  </div>
-                  
-                  {!(path.split("/").filter(Boolean).length >= 4 && path.split("/").filter(Boolean).findIndex(p => p.startsWith("candidate")) >= 2) && (
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-[11px] text-amber-200 leading-normal mb-2">
-                      ⚠️ Пожалуйста, <strong>выберите одну из ваших вакансий ниже</strong>, чтобы продолжить прохождение ИИ-отбора.
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                    {(() => {
-                      const regIds = new Set(applications.map(a => a.project_id).filter(Boolean) as string[]);
-                      const list = allProjects.filter((p: any) => p.id === project?.id || regIds.has(p.id));
-                      if (!list.length && project) list.push(project as any);
-                      return list;
-                    })().map((proj: any) => {
-                      const slug = proj.companySlug || "";
-                      const candidateId = candidate?.id || "";
-                      const companyPub = (proj as any).companyPublicId || (proj as any).companySlug || "";
-                      const projectPub = (proj as any).publicId || (proj as any).slug || "";
-                      const candPub = candidate?.publicId || "";
-                      const isSelected = project?.id === proj.id;
-
-                      // Canonical URL — only use the new schema so the page survives a reload.
-                      const canonicalProfile = companyPub && projectPub && candPub
-                        ? `/com${companyPub}/vac${projectPub}/cand${candPub}/profile`
-                        : `/${slug}/${proj.id}/${candidateId}/profile`;
-                      const canonicalTerms = companyPub && projectPub && candPub
-                        ? `/com${companyPub}/vac${projectPub}/cand${candPub}/terms/vacancy`
-                        : `/${slug}/${proj.id}/${candidateId}/terms/vacancy`;
-                      const targetPathOfThisProj = isSelected ? canonicalTerms : canonicalProfile;
-
-                      return (
-                        <div 
-                          key={proj.id} 
-                          className={`p-3.5 rounded-xl border transition-all duration-300 ${
-                            isSelected 
-                              ? "bg-[#E7C768]/15 border-[#E7C768] shadow-sm" 
-                              : "bg-[#1E4468]/20 border-white/5 hover:border-[#E7C768]/40 hover:bg-[#1E4468]/35"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start gap-2">
-                            <div className="min-w-0">
-                              {(() => {
-                                const cpid = (proj as any).companyPublicId;
-                                const label = proj.companyName || "ООО РобоРекрут";
-                                return cpid ? (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/com${cpid}`); }}
-                                    className="text-[10px] text-[#E7C768] font-bold block uppercase tracking-wide truncate hover:underline text-left"
-                                    title="Открыть страницу компании"
-                                  >
-                                    {label}
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-300 font-bold block uppercase tracking-wide truncate">{label}</span>
-                                );
-                              })()}
-                              <strong className={`${isSelected ? "text-[#E7C768]" : "text-white"} font-extrabold text-xs block mt-0.5`}>{proj.roleName}</strong>
-                            </div>
-                            {isSelected && (
-                              <span className="text-[8px] bg-[#E7C768] text-[#17344F] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider whitespace-nowrap">Активна</span>
-                            )}
-                          </div>
-                          
-                          <div className="mt-3 pt-2.5 border-t border-white/5 space-y-2">
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                if (!candidate) return;
-                                try {
-                                  // 1. PATCH backend candidate projectId
-                                  await fetch(`/api/candidates/${candidate.id}`, {
-                                    method: "PATCH",
-                                    headers: { "Content-Type": "application/json" },
-                                    body: JSON.stringify({
-                                      projectId: proj.id,
-                                      roleName: proj.roleName
-                                    })
-                                  });
-                                  // 2. Local state update
-                                  setProject(proj);
-                                  // 3. Move to high-fidelity /{companySlug}/{id}/{candidateId}/profile url format
-                                  navigate(targetPathOfThisProj);
-                                } catch (e) {
-                                  console.error("Error patching project selection:", e);
-                                }
-                              }}
-                              className={`cursor-pointer text-[10px] w-full font-bold px-3 py-2 rounded-xl text-center transition-all duration-200 flex items-center justify-center gap-1.5 ${
-                                isSelected 
-                                  ? "bg-[#E7C768] text-[#17344F] hover:bg-[#f3ea8b]" 
-                                  : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white border border-white/10"
-                              }`}
-                            >
-                              <span>{isSelected ? "Перейти к условиям вакансии" : "Выбрать и Активировать"}</span>
-                              <ArrowRight className="w-3 h-3 shrink-0" />
-                            </button>
-                            
-                            {isSelected && (
-                              <div className="pt-1.5">
-                                <span className="text-[9px] text-slate-400 block font-mono">Адрес страницы кандидата:</span>
-                                <div className="bg-black/35 p-2 rounded-lg border border-white/5 overflow-x-auto text-[9px] text-[#E7C768] font-mono whitespace-nowrap scrollbar-thin mt-1">
-                                  {canonicalProfile}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+              {/* «Выбор компании/вакансии» удалён — кандидат уже находится внутри
+                  конкретной вакансии, выбирать ничего не нужно. Связь с
+                  candidate.project_id сохраняется в БД и не меняется UI. */}
               </div>
             )}
 

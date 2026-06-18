@@ -183,36 +183,6 @@ export default function HiringCalculator() {
         </div>
       </div>
 
-      {/* Pricing tiers */}
-      <div className="bg-[#17344F]/60 border border-white/10 rounded-2xl p-5 space-y-3">
-        <div className="text-sm font-bold text-[#E7C768] uppercase tracking-wider">
-          Тарифы — цена за каждое интервью или обучение
-        </div>
-        <p className="text-xs text-slate-300">
-          Цена за единицу зависит от количества: чем больше пакет интервью или обучений — тем дешевле каждая штука.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
-          {[
-            { range: "1–9", price: 200 },
-            { range: "10–49", price: 150 },
-            { range: "50–199", price: 100 },
-            { range: "200+", price: 50 },
-          ].map((t) => (
-            <div key={t.range} className="bg-black/30 rounded-xl p-3 border border-white/10 text-center">
-              <div className="text-slate-300">{t.range} шт</div>
-              <div className="text-lg font-bold font-mono text-[#E7C768]">{t.price} RR</div>
-              <div className="text-[10px] text-slate-400">за единицу</div>
-            </div>
-          ))}
-        </div>
-        <p className="text-[11px] text-slate-400">1 RR = 1 ₽. Списание происходит при старте интервью или старте обучения. Лимиты задаются в настройках вакансии.</p>
-        <div className="pt-2 border-t border-white/10 space-y-1 text-xs text-slate-300">
-          <div className="font-bold text-white mb-1">Разовые услуги при создании вакансии:</div>
-          <div className="flex justify-between"><span>🌐 ИИ-Лендинг вакансии</span><span className="font-mono text-white">500 RR</span></div>
-          <div className="flex justify-between"><span>⚙️ ИИ-Система Интервью</span><span className="font-mono text-white">200 RR</span></div>
-          <div className="flex justify-between"><span>🎓 ИИ-Система Обучения</span><span className="font-mono text-white">300 RR</span></div>
-        </div>
-      </div>
     </div>
   );
 }

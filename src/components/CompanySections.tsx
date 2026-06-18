@@ -332,10 +332,11 @@ export default function CompanySections({
           eyebrow="Открытые позиции"
           title={`Вакансии · ${vacancies.length}`}
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="flex flex-col gap-3 md:gap-4">
             {vacancies.map((v) => (
               <VacancyCard
                 key={v.id}
+                layout="horizontal"
                 vacancy={{
                   id: v.id,
                   roleName: v.roleName,

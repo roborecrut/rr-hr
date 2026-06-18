@@ -748,10 +748,11 @@ export default function CompanyLanding() {
                     Другие открытые вакансии компании ({others.length})
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5 items-stretch">
+                <div className="flex flex-col gap-4 md:gap-5">
                   {others.map((v) => (
                     <VacancyCard
                       key={v.id}
+                      layout="horizontal"
                       vacancy={{
                         id: v.id,
                         roleName: v.roleName,
@@ -763,7 +764,6 @@ export default function CompanyLanding() {
                         vacancyText: v.vacancyText || null,
                       }}
                       showCompany={false}
-                      className="h-full"
                       onOpen={() => navigate(`/com${companySlug}/vac${(v as any).slug || v.id}/vacancy`)}
                     />
                   ))}
