@@ -1,7 +1,11 @@
 // =============================================================================
 // ai-interview-screen-resume-v2
 //
-// Phase 3B-2A — first vertical slice of the new async AI-job architecture.
+// Phase 3B-2A.1 — crash-safe variant: the background worker reloads the
+// resume text from the DB by job_id only and never closes over the HTTP
+// request body. The full lifecycle is delegated to the pure orchestrator
+// in _shared/resume-screen-runner.ts so it can be tested without burning
+// real credits.
 //
 // Contract:
 //   POST { request_id: uuid, resume_text?: string, async_version: 2 }
@@ -9,14 +13,17 @@
 //
 // Response (fast, <2s):
 //   200 { ok:true, job_id, status, reused, terminal }
-//   400 bad_body | no_resume
+//   400 bad_body | no_resume | no_project | resume_save_failed
 //   401 candidate_token_required | bad_token
 //   402 no_credits
 //   500 internal | runtime_no_background
 //
-// Background work (EdgeRuntime.waitUntil): primary ProTalk (3 retries),
-// optional RR Pro Max fallback (2 retries), strict validation, atomic
-// stage-specific save via save_candidate_resume_evaluation_v2 RPC.
+// Background work (EdgeRuntime.waitUntil): runResumeScreenJob(prodDeps, {jobId}).
+// Worker reloads candidate.resume_text + resume_hash + resume_updated_at
+// from DB, recomputes hash, refuses to call the provider on a version
+// mismatch (preserves the old report), runs primary (ProTalk) with retries,
+// optional RR Pro Max fallback, strict validation, atomic stage-specific
+// save via save_candidate_resume_evaluation_v2 RPC.
 //
 // Live rollback: the original synchronous ai-interview-screen-resume function
 // is left UNTOUCHED and still serves the existing frontend until polling is
@@ -29,13 +36,18 @@ import {
 } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import {
-  createOrReuseAiJob, debitAiJobOnce, finishAttempt, isTerminalStatus,
-  markJobStatus, markJobStatusStrict, markSaveFailed, markValidationFailed,
-  recordAttemptDiagnostics, sha256Hex, startFallbackAttempt, startPrimaryAttempt,
+  createOrReuseAiJob, debitAiJobOnce, finishAttempt as ajFinishAttempt,
+  isTerminalStatus, markJobStatusStrict, recordAttemptDiagnostics,
+  sha256Hex, startAttempt as ajStartAttempt,
 } from "../_shared/ai-jobs.ts";
 import { runInBackground } from "../_shared/ai-runner.ts";
 import { RrProMaxProvider } from "../_shared/rr-pro-max.ts";
 import { validateResumeScreenReport, type ResumeScreenReport } from "../_shared/ai-validators.ts";
+import {
+  runResumeScreenJob,
+  type ResumeRunnerDeps, type ResumeJob, type ResumeInput,
+  type ProviderResult, type JobStatus,
+} from "../_shared/resume-screen-runner.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -86,6 +98,163 @@ ${opts.resumeText.slice(0, 10000)}
 }`;
 }
 
+// ---------------------------------------------------------------------------
+// Production adapters for runResumeScreenJob.
+// ---------------------------------------------------------------------------
+function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunnerDeps {
+  const admin = adminAny!;
+  return {
+    jobs: {
+      async getJob(jobId): Promise<ResumeJob | null> {
+        const { data } = await admin.from("ai_jobs")
+          .select("id, candidate_id, status, fallback_allowed, request_snapshot")
+          .eq("id", jobId).maybeSingle();
+        if (!data) return null;
+        const snap = (data as any).request_snapshot || {};
+        return {
+          id: (data as any).id,
+          candidateId: (data as any).candidate_id,
+          projectId: String(snap.project_id || ""),
+          status: (data as any).status as JobStatus,
+          fallbackAllowed: !!(data as any).fallback_allowed,
+          snapshot: {
+            resume_hash: String(snap.resume_hash || ""),
+            resume_updated_at: String(snap.resume_updated_at || ""),
+            criteria_hash: String(snap.criteria_hash || ""),
+            project_id: String(snap.project_id || ""),
+          },
+        };
+      },
+      async markStatus(jobId, status, completed) {
+        const r = await markJobStatusStrict(jobId, status, completed);
+        return r as { ok: boolean; error?: string };
+      },
+    },
+    inputs: {
+      async loadResumeInput(job) {
+        const { data: cand } = await admin
+          .from("candidates")
+          .select("id, project_id, resume_text, resume_updated_at, updated_at")
+          .eq("id", job.candidateId).maybeSingle();
+        if (!cand) return { ok: false, error: "candidate_not_found" };
+        const resumeText = String((cand as any).resume_text || "");
+        if (!resumeText || resumeText.length < 50) return { ok: false, error: "resume_text_missing" };
+        const { data: proj } = await admin
+          .from("projects").select("role_name, vacancy_text")
+          .eq("id", job.projectId).maybeSingle();
+        if (!proj) return { ok: false, error: "project_not_found" };
+        const { data: blk } = await admin
+          .from("interview_blocks").select("payload")
+          .eq("project_id", job.projectId).eq("kind", "resume").maybeSingle();
+        const criteria = String(((blk as any)?.payload?.criteria_md) || "");
+        const criteriaHash = await sha256Hex(criteria);
+        const resumeHash = await sha256Hex(resumeText);
+        return {
+          ok: true,
+          input: {
+            candidateId: job.candidateId, projectId: job.projectId,
+            resumeText, resumeHash,
+            resumeUpdatedAt: String((cand as any).resume_updated_at || (cand as any).updated_at || ""),
+            criteria, criteriaHash,
+            roleName: String((proj as any).role_name || ""),
+            vacancyText: String((proj as any).vacancy_text || ""),
+          },
+        };
+      },
+      async computeResumeHash(text) { return await sha256Hex(text); },
+    },
+    attempts: {
+      async startAttempt(jobId, provider) {
+        const r = await ajStartAttempt(jobId, provider, {
+          jobStatus: provider === "primary" ? "primary_running" : "fallback_running",
+          extraJobPatch: provider === "rr_pro_max" ? { fallback_used: true } : undefined,
+        });
+        return r?.attemptId ?? null;
+      },
+      async finishAttempt(attemptId, patch) {
+        await ajFinishAttempt(attemptId, { status: patch.status, safe_error_code: patch.safe_error_code ?? null });
+      },
+      async saveDiagnostics(attemptId, diag) {
+        await recordAttemptDiagnostics(attemptId, {
+          chatId: diag.chatId ?? null,
+          operationPart: diag.operationPart ?? null,
+          validationOk: diag.validationOk ?? null,
+          durationMs: diag.durationMs ?? null,
+          responseMeta: diag.responseMeta ?? null,
+        });
+      },
+    },
+    billing: {
+      async debitOnce(jobId, candidateId) {
+        const r = await debitAiJobOnce(jobId, candidateId, "resume_screen");
+        if (!r.ok) return { ok: false, error: r.error };
+        const outcome = (r.outcome as any) || {};
+        const hasCredits = !(outcome && outcome.ok === false);
+        return { ok: true, already: !!r.already, hasCredits };
+      },
+    },
+    provider: {
+      fallbackConfigured: () => RrProMaxProvider.isConfigured(),
+      async callPrimary({ jobId, candidateId, prompt }): Promise<ProviderResult> {
+        const seed = `ai_${jobId}_primary`;
+        const startedAt = Date.now();
+        try {
+          const r = await callProTalkWithRetry({
+            message: prompt, chatIdSeed: seed,
+            socialId: buildSocialId({ user_id: candidateId }),
+            timeoutMs: 120_000, attempts: 3,
+            validate: (text) => {
+              const obj = tryParseJson<unknown>(text);
+              const v = validateResumeScreenReport(obj);
+              return v.ok ? { ok: true } : { ok: false, code: v.code };
+            },
+          });
+          return {
+            ok: true, reportJson: tryParseJson<unknown>(r.text),
+            chatId: `${seed}_a${r.attempts}`, attempts: r.attempts,
+            durationMs: Date.now() - startedAt,
+          };
+        } catch (e) {
+          return { ok: false, errorCode: String((e as Error).message || "primary_failed").slice(0, 64), durationMs: Date.now() - startedAt };
+        }
+      },
+      async callFallback({ jobId, candidateId, prompt, attempt }): Promise<ProviderResult> {
+        const chat = `ai_${jobId}_fallback_a${attempt}`;
+        const social = buildSocialId({ user_id: candidateId });
+        const startedAt = Date.now();
+        try {
+          await RrProMaxProvider.restart(chat, social);
+          const r = await RrProMaxProvider.run(prompt, chat, social, 120_000);
+          if (!r.ok) return { ok: false, errorCode: r.safeErrorCode, chatId: chat, durationMs: Date.now() - startedAt };
+          return { ok: true, reportJson: tryParseJson<unknown>(r.text), chatId: chat, durationMs: Date.now() - startedAt };
+        } catch (e) {
+          return { ok: false, errorCode: String((e as Error).message || "fallback_failed").slice(0, 64), chatId: chat, durationMs: Date.now() - startedAt };
+        }
+      },
+    },
+    results: {
+      async saveResumeEvaluation({ candidateId, report }) {
+        const r = await admin.rpc("save_candidate_resume_evaluation_v2", {
+          _candidate: candidateId,
+          _resume_score: report.score,
+          _resume_feedback: report.employer as unknown as Record<string, unknown>,
+          _candidate_resume_feedback: report.candidate as unknown as Record<string, unknown>,
+          _assessment_summary: report.candidate.summary.slice(0, 4000),
+        });
+        if (r.error) return { ok: false, error: r.error.message };
+        return { ok: true };
+      },
+    },
+    validator: { validate: (raw) => validateResumeScreenReport(raw) },
+    clock: { now: () => Date.now() },
+    buildPrompt: (input) => buildPrompt({
+      roleName: input.roleName, vacancyText: input.vacancyText,
+      criteria: input.criteria, resumeText: input.resumeText,
+    }),
+    fallbackAttempts: 2,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
@@ -116,39 +285,43 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "runtime_no_background" }, 500);
   }
 
-  // ---- load candidate + project; persist resume_text BEFORE creating job
+  // ---- load candidate (for project_id) and resolve resume_text
   const { data: cand } = await admin
     .from("candidates")
-    .select("id, project_id, resume_text")
+    .select("id, project_id, resume_text, resume_hash, resume_updated_at")
     .eq("id", candidateId)
     .maybeSingle();
   if (!cand?.project_id) return jsonResponse({ error: "no_project" }, 400);
 
-  // resume_text: prefer caller body, fall back to DB. Always persist a clean
-  // copy in candidates. Never store it in ai_jobs.request_snapshot.
-  let resumeText = String(body.resume_text || cand.resume_text || "").trim();
-  if (!resumeText || resumeText.length < 50) {
-    return jsonResponse({ error: "no_resume" }, 400);
-  }
-  resumeText = resumeText.slice(0, 20000);
-  if (resumeText !== (cand.resume_text || "")) {
-    await admin.from("candidates").update({ resume_text: resumeText }).eq("id", candidateId);
-  }
-  const resumeHash = (await sha256Hex(resumeText)).slice(0, 32);
+  // resume_text: prefer caller body, fall back to DB.
+  const incoming = String(body.resume_text || "").trim().slice(0, 20000);
+  const existing = String((cand as any).resume_text || "").trim();
+  const finalText = (incoming && incoming.length >= 50) ? incoming : existing;
+  if (!finalText || finalText.length < 50) return jsonResponse({ error: "no_resume" }, 400);
 
-  const { data: proj } = await admin
-    .from("projects")
-    .select("role_name, vacancy_text")
-    .eq("id", cand.project_id)
-    .maybeSingle();
+  // Atomic save of resume_text + resume_hash + resume_updated_at via
+  // server-only RPC, so the version timestamp and the content fingerprint
+  // can never drift apart. Only touches resume fields.
+  let resumeHash: string;
+  let resumeUpdatedAt: string;
+  if (finalText !== existing || !(cand as any).resume_hash) {
+    const saved = await admin.rpc("save_candidate_resume_text", {
+      _candidate: candidateId, _resume_text: finalText,
+    });
+    if (saved.error) return jsonResponse({ error: "resume_save_failed", detail: saved.error.message.slice(0, 80) }, 500);
+    const row = saved.data as { resume_hash: string; resume_updated_at: string };
+    resumeHash = row.resume_hash;
+    resumeUpdatedAt = row.resume_updated_at;
+  } else {
+    resumeHash = String((cand as any).resume_hash || (await sha256Hex(finalText)));
+    resumeUpdatedAt = String((cand as any).resume_updated_at || "");
+  }
+
+  // Compute criteria hash from current interview_blocks (full sha256).
   const { data: blk } = await admin
-    .from("interview_blocks")
-    .select("payload")
-    .eq("project_id", cand.project_id)
-    .eq("kind", "resume")
-    .maybeSingle();
-  const criteria = ((blk as any)?.payload?.criteria_md || "").toString();
-  const criteriaHash = (await sha256Hex(criteria)).slice(0, 16);
+    .from("interview_blocks").select("payload")
+    .eq("project_id", cand.project_id).eq("kind", "resume").maybeSingle();
+  const criteriaHash = await sha256Hex(String(((blk as any)?.payload?.criteria_md) || ""));
 
   // ---- idempotent job creation
   const idem = `screen_resume_v2:${candidateId}:${requestId}`;
@@ -161,6 +334,7 @@ Deno.serve(async (req) => {
       candidate_id: candidateId,
       project_id: cand.project_id,
       resume_hash: resumeHash,
+      resume_updated_at: resumeUpdatedAt,
       criteria_hash: criteriaHash,
       requested_at: new Date().toISOString(),
     },
@@ -179,166 +353,28 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ---- one-time RR debit for this NEW job. Idempotent at the spend_pack
-  // level (key pack:interview:{candidate}) — second AI stage for the same
-  // candidate returns already=true and does NOT consume another credit.
-  const debit = await debitAiJobOnce(created.id, candidateId, "resume_screen");
-  if (!debit.ok) {
-    await markJobStatus(created.id, "cancelled", true);
-    return jsonResponse({ error: "billing_failed", detail: debit.error }, 402);
-  }
-  const outcome = (debit.outcome as any) || {};
-  if (outcome && outcome.ok === false) {
-    await markJobStatus(created.id, "cancelled", true);
-    return jsonResponse({ error: "no_credits" }, 402);
-  }
-
-  // ---- background lifecycle: primary → fallback → validate → atomic save
-  const projectId = cand.project_id as string;
-  const roleName = String((proj as any)?.role_name || "");
-  const vacancyText = String((proj as any)?.vacancy_text || "");
+  // ---- background lifecycle is the pure orchestrator (DI). It performs
+  // its OWN debit so we never charge twice on a duplicate request. The
+  // worker receives ONLY the job_id — it reloads everything from the DB.
   const jobId = created.id;
-
-  const work = async () => {
-    const prompt = buildPrompt({ roleName, vacancyText, criteria, resumeText });
-    let report: ResumeScreenReport | null = null;
-    let primaryDone = false;
-
-    // ---- PRIMARY (ProTalk) up to 3 attempts via callProTalkWithRetry
-    const primaryAttemptId = await startPrimaryAttempt(jobId);
-    if (!primaryAttemptId) {
-      await markJobStatus(jobId, "primary_failed", true);
-      return;
-    }
-    const startedAt = Date.now();
+  const prodDeps = buildProdDeps(admin);
+  runInBackground((async () => {
     try {
-      const seed = `ai_${jobId}_primary`;
-      const r = await callProTalkWithRetry({
-        message: prompt,
-        chatIdSeed: seed,
-        socialId: buildSocialId({ user_id: candidateId }),
-        timeoutMs: 120_000,
-        attempts: 3,
-        validate: (text) => {
-          const obj = tryParseJson<unknown>(text);
-          const v = validateResumeScreenReport(obj);
-          return v.ok ? { ok: true } : { ok: false, code: v.code };
-        },
-      });
-      const obj = tryParseJson<unknown>(r.text);
-      const v = validateResumeScreenReport(obj);
-      if (v.ok) { report = v.value; primaryDone = true; }
-      await recordAttemptDiagnostics(primaryAttemptId, {
-        chatId: `${seed}_a${r.attempts}`,
-        operationPart: "resume_screen",
-        validationOk: v.ok,
-        durationMs: Date.now() - startedAt,
-        responseMeta: { attempts: r.attempts, provider: "primary", schema_code: v.ok ? null : v.code },
-      });
-      await finishAttempt(primaryAttemptId, { status: "succeeded" });
-    } catch (e) {
-      const safe = String((e as Error).message || "primary_failed").slice(0, 64);
-      await recordAttemptDiagnostics(primaryAttemptId, {
-        operationPart: "resume_screen",
-        validationOk: false,
-        durationMs: Date.now() - startedAt,
-        responseMeta: { provider: "primary", error_code: safe.slice(0, 32) },
-      });
-      await finishAttempt(primaryAttemptId, { status: "failed", safe_error_code: safe });
-    }
-
-    // ---- FALLBACK (RR Pro Max) only if primary failed AND configured
-    if (!report) {
-      await markJobStatus(jobId, "primary_failed");
-      if (!RrProMaxProvider.isConfigured()) {
-        await markJobStatus(jobId, "fallback_unavailable" as any, true).catch(async () => {
-          // Some deployments may not have this enum value; degrade safely.
-          await markJobStatus(jobId, "fallback_failed", true);
-        });
-        return;
-      }
-      await markJobStatus(jobId, "fallback_available");
-      const maxFb = 2;
-      for (let attempt = 1; attempt <= maxFb && !report; attempt++) {
-        const fbId = await startFallbackAttempt(jobId);
-        if (!fbId) break;
-        const fbChat = `ai_${jobId}_fallback_a${attempt}`;
-        const fbSocial = buildSocialId({ user_id: candidateId });
-        const fbStart = Date.now();
-        try {
-          await RrProMaxProvider.restart(fbChat, fbSocial);
-          const r = await RrProMaxProvider.run(prompt, fbChat, fbSocial, 120_000);
-          if (!r.ok) throw new Error(r.safeErrorCode);
-          const obj = tryParseJson<unknown>(r.text);
-          const v = validateResumeScreenReport(obj);
-          if (v.ok) { report = v.value; }
-          await recordAttemptDiagnostics(fbId, {
-            chatId: fbChat,
-            operationPart: "resume_screen",
-            validationOk: v.ok,
-            durationMs: Date.now() - fbStart,
-            responseMeta: { provider: "rr_pro_max", attempt, schema_code: v.ok ? null : v.code },
-          });
-          await finishAttempt(fbId, { status: v.ok ? "succeeded" : "failed", safe_error_code: v.ok ? null : `schema_invalid:${v.code}`.slice(0, 64) });
-        } catch (e) {
-          const safe = String((e as Error).message || "fallback_failed").slice(0, 64);
-          await recordAttemptDiagnostics(fbId, {
-            chatId: fbChat,
-            operationPart: "resume_screen",
-            validationOk: false,
-            durationMs: Date.now() - fbStart,
-            responseMeta: { provider: "rr_pro_max", attempt, error_code: safe.slice(0, 32) },
-          });
-          await finishAttempt(fbId, { status: "failed", safe_error_code: safe });
-        }
-      }
-    }
-
-    if (!report) {
-      // No usable result. Distinguish save_failed vs validation_failed vs generic.
-      await markJobStatus(jobId, primaryDone ? "save_failed" : "fallback_failed", true);
-      return;
-    }
-
-    // ---- ATOMIC stage-specific save (does not touch checklist/situations/etc.)
-    const saveRes = await admin.rpc("save_candidate_resume_evaluation_v2", {
-      _candidate: candidateId,
-      _resume_score: report.score,
-      _resume_feedback: report.employer as unknown as Record<string, unknown>,
-      _candidate_resume_feedback: report.candidate as unknown as Record<string, unknown>,
-      _assessment_summary: report.candidate.summary.slice(0, 4000),
-    });
-    if (saveRes.error) {
-      await markSaveFailed(jobId, `save:${saveRes.error.message}`.slice(0, 64));
-      try {
-        await logToDb({
+      const outcome = await runResumeScreenJob(prodDeps, { jobId });
+      if (outcome.kind === "save_failed") {
+        try { await logToDb({
           user_message: "[v2 resume save failed]",
-          bot_reply: saveRes.error.message.slice(0, 400),
+          bot_reply: outcome.code,
           channel_id: `job_${jobId}`,
           user_social_id: candidateId,
           channel_name: "ai-interview:screen-resume-v2",
           server_name: "ai-interview-screen-resume-v2",
-          function_error: saveRes.error.message.slice(0, 400),
-        });
-      } catch { /* ignore */ }
-      return;
-    }
-
-    const finalStatus = primaryDone ? "primary_succeeded" : "fallback_succeeded";
-    const ok = await markJobStatusStrict(jobId, finalStatus, true);
-    if (!ok.ok) {
-      // Save succeeded but status update failed. Mark save_failed for safety
-      // — client polling will surface a clear failure and the saved row is
-      // discoverable; old result remains intact.
-      await markSaveFailed(jobId, `status:${ok.error}`.slice(0, 64));
-    }
-  };
-
-  runInBackground((async () => {
-    try { await work(); }
-    catch (e) {
-      console.error("[screen-resume-v2] background work crashed", (e as Error)?.message);
-      await markJobStatus(jobId, "primary_failed", true);
+          function_error: outcome.code,
+        }); } catch { /* ignore */ }
+      }
+    } catch (e) {
+      console.error("[screen-resume-v2] background crashed", (e as Error)?.message);
+      await markJobStatusStrict(jobId, "primary_failed", true);
     }
   })());
 
