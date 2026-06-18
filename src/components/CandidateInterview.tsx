@@ -148,7 +148,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setSituations(r.situations || []);
       // try fetch existing scores
       const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback,candidate_overall_feedback")
         .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
         if (sc.resume_score != null) {
