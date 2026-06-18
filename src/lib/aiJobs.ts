@@ -113,6 +113,75 @@ export async function startResumeScreenV2(opts: {
   return { ...d, request_id: requestId };
 }
 
+/**
+ * Start a NEW checklist-grade v2 job (Phase 3B-2B Step D1) or reuse an
+ * existing one for the same request_id. NEVER stores `answers`, candidate
+ * token, project context or AI output in localStorage — only the minimal
+ * {job_id, request_id, candidate_id, created_at} active-job record.
+ */
+export async function startChecklistGradeV2(opts: {
+  candidateId: string;
+  answers: Record<string, string>;
+  requestId?: string;
+}): Promise<{ job_id: string; status: string; reused: boolean; terminal: boolean; request_id: string }> {
+  const requestId = opts.requestId || crypto.randomUUID();
+  const token = getCandidateToken();
+  if (!token) throw new Error("candidate_session_missing");
+  const { data, error } = await supabase.functions.invoke("ai-interview-grade-checklist-v2", {
+    body: {
+      request_id: requestId,
+      answers: opts.answers,
+      async_version: 2,
+      candidate_token: token,
+    },
+    headers: { "x-candidate-token": token },
+  });
+  const errCode = (data as any)?.error || (error as any)?.message;
+  if (errCode) throw new Error(String(errCode));
+  const d = data as { job_id: string; status: string; reused: boolean; terminal: boolean };
+  if (!d?.job_id) throw new Error("no_job_id");
+  setActiveJob("checklist_grade", {
+    job_id: d.job_id, request_id: requestId,
+    candidate_id: opts.candidateId,
+    created_at: new Date().toISOString(),
+  });
+  return { ...d, request_id: requestId };
+}
+
+/**
+ * Start a NEW situations-grade v2 job (Phase 3B-2B Step D1) or reuse an
+ * existing one for the same request_id. Same localStorage hygiene as
+ * checklist v2 — answers and token live only in the request body.
+ */
+export async function startSituationsGradeV2(opts: {
+  candidateId: string;
+  answers: Record<string, string>;
+  requestId?: string;
+}): Promise<{ job_id: string; status: string; reused: boolean; terminal: boolean; request_id: string }> {
+  const requestId = opts.requestId || crypto.randomUUID();
+  const token = getCandidateToken();
+  if (!token) throw new Error("candidate_session_missing");
+  const { data, error } = await supabase.functions.invoke("ai-interview-grade-situations-v2", {
+    body: {
+      request_id: requestId,
+      answers: opts.answers,
+      async_version: 2,
+      candidate_token: token,
+    },
+    headers: { "x-candidate-token": token },
+  });
+  const errCode = (data as any)?.error || (error as any)?.message;
+  if (errCode) throw new Error(String(errCode));
+  const d = data as { job_id: string; status: string; reused: boolean; terminal: boolean };
+  if (!d?.job_id) throw new Error("no_job_id");
+  setActiveJob("situations_grade", {
+    job_id: d.job_id, request_id: requestId,
+    candidate_id: opts.candidateId,
+    created_at: new Date().toISOString(),
+  });
+  return { ...d, request_id: requestId };
+}
+
 export type JobStatusRow = {
   job_id: string;
   job_type: string;
