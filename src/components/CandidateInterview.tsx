@@ -473,7 +473,24 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               <div className="text-3xl font-extrabold text-emerald-300">{resumeResult.score}/100</div>
               <div className="text-sm text-white"><RichMarkdown tone="resume">{resumeResult.summary || ""}</RichMarkdown></div>
               {resumeResult.strengths?.length > 0 && (<div><div className="text-xs text-emerald-300 font-bold uppercase">Сильные стороны</div><ul className="text-sm text-slate-200 list-disc pl-5">{resumeResult.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul></div>)}
-              {resumeResult.gaps?.length > 0 && (<div><div className="text-xs text-amber-300 font-bold uppercase">Что улучшить</div><ul className="text-sm text-slate-200 list-disc pl-5">{resumeResult.gaps.map((s, i) => <li key={i}>{s}</li>)}</ul></div>)}
+              {(resumeResult.areas_to_clarify?.length ?? 0) > 0 && (
+                <div><div className="text-xs text-amber-300 font-bold uppercase">Что стоит уточнить</div>
+                  <ul className="text-sm text-slate-200 list-disc pl-5">
+                    {resumeResult.areas_to_clarify!.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul></div>
+              )}
+              {(resumeResult.recommendations?.length ?? 0) > 0 && (
+                <div><div className="text-xs text-sky-300 font-bold uppercase">Рекомендации</div>
+                  <ul className="text-sm text-slate-200 list-disc pl-5">
+                    {resumeResult.recommendations!.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul></div>
+              )}
+              {resumeResult.gaps?.length > 0 && (
+                <div><div className="text-xs text-amber-300 font-bold uppercase">Что улучшить</div>
+                  <ul className="text-sm text-slate-200 list-disc pl-5">
+                    {resumeResult.gaps.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul></div>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setStage("checklist")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к чек-листу →</button>
                 <button onClick={() => { setResumeResult(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
