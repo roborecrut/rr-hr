@@ -19,6 +19,24 @@ import {
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
   isTerminal, isSuccess,
 } from "@/lib/aiJobs";
+
+/** Map raw job status / thrown error codes to user-facing copy. */
+function humanizeAiError(code: string | null | undefined): string {
+  const s = String(code || "").toLowerCase();
+  if (!s) return "";
+  if (s.includes("source_data_changed"))
+    return "Данные кандидата изменились во время анализа. Запустите пересчёт ещё раз.";
+  if (s === "validation_failed" || s.startsWith("schema_invalid"))
+    return "ИИ вернул некорректный отчёт. Запустите пересчёт ещё раз.";
+  if (s === "save_failed") return "Не удалось сохранить отчёт. Попробуйте позже.";
+  if (s === "fallback_failed" || s === "primary_failed")
+    return "ИИ-провайдеры временно недоступны. Повторите попытку чуть позже.";
+  if (s === "orchestration_failed") return "Внутренняя ошибка. Попробуйте позже.";
+  if (s === "runtime_no_background") return "Среда временно недоступна. Попробуйте позже.";
+  if (s === "forbidden" || s === "candidate_not_found")
+    return "Нет доступа к этому кандидату.";
+  return "Не удалось сформировать общую AI-оценку.";
+}
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
