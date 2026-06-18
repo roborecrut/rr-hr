@@ -51,6 +51,9 @@ verify_jwt = false
 [functions.ai-interview-screen-resume]
 verify_jwt = false
 
+[functions.ai-job-status-candidate-v2]
+verify_jwt = false
+
 [functions.ai-interview-grade-checklist]
 verify_jwt = false
 
