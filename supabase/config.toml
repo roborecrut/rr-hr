@@ -57,7 +57,13 @@ verify_jwt = false
 [functions.ai-interview-grade-checklist]
 verify_jwt = false
 
+[functions.ai-interview-grade-checklist-v2]
+verify_jwt = false
+
 [functions.ai-interview-grade-situations]
+verify_jwt = false
+
+[functions.ai-interview-grade-situations-v2]
 verify_jwt = false
 
 [functions.ai-list-interview-checklist]
