@@ -162,7 +162,9 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ChecklistRu
         const { data: ansRow } = await admin
           .from("candidate_checklist_answers_v2")
           .select("answers, answers_hash, updated_at")
-          .eq("candidate_id", job.candidateId).maybeSingle();
+          .eq("candidate_id", job.candidateId)
+          .eq("project_id", job.projectId)
+          .maybeSingle();
         if (!ansRow) return { ok: false, error: "answers_missing" };
         const answers = (ansRow as any).answers as Record<string, string> || {};
         return {
@@ -337,7 +339,10 @@ Deno.serve(async (req) => {
   } else {
     const { data: ansRow } = await admin
       .from("candidate_checklist_answers_v2")
-      .select("answers").eq("candidate_id", candidateId).maybeSingle();
+      .select("answers")
+      .eq("candidate_id", candidateId)
+      .eq("project_id", cand.project_id)
+      .maybeSingle();
     answers = ((ansRow as any)?.answers || null) as Record<string, string> | null;
   }
   if (!answers || Object.keys(answers).length === 0) {
