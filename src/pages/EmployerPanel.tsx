@@ -4780,12 +4780,6 @@ export default function EmployerPanel() {
                   <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
                     <Chrome className="w-4 h-4 text-sky-400" /> Аккаунт Google
                   </h3>
-                  <div className="flex items-center gap-2">
-                    <span className="bg-emerald-950/40 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                      № {employerId}
-                    </span>
-                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-4 bg-black/20 p-4 rounded-2xl border border-white/5">

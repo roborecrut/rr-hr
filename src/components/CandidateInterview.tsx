@@ -101,6 +101,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const fileRef = useRef<HTMLInputElement>(null);
   const [resumeEditMode, setResumeEditMode] = useState(false);
   const [pausedOpen, setPausedOpen] = useState(false);
+  const [resumeTooShortOpen, setResumeTooShortOpen] = useState(false);
+  const resumeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -266,7 +268,15 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const submitResume = async () => {
-    if (!resumeText.trim() || resumeText.length < 50) { alert("Введите резюме (минимум 50 символов)"); return; }
+    if (!resumeText.trim() || resumeText.length < 50) {
+      // Branded popup instead of a native alert. Keep textarea open, do not
+      // switch to preview, do not call AI, do not create a job/debit.
+      setResumeEditMode(true);
+      setResumeTooShortOpen(true);
+      // Restore focus to textarea so the candidate can keep typing.
+      setTimeout(() => { try { resumeTextareaRef.current?.focus(); } catch { /* ignore */ } }, 0);
+      return;
+    }
     // Double-click guard: if an active job already exists for this candidate,
     // simply resume polling instead of starting a new one (no duplicate debit).
     if (getActiveJob("screen_resume", candidateId)) {
@@ -634,7 +644,21 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                 </div>
               ) : (
                 <>
-                  <textarea value={resumeText} onChange={e => setResumeText(e.target.value)} rows={12} maxLength={20000} placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически. Поддерживается Markdown." className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono" />
+                  <textarea
+                    ref={resumeTextareaRef}
+                    value={resumeText}
+                    onChange={e => setResumeText(e.target.value)}
+                    rows={12}
+                    maxLength={20000}
+                    placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически. Поддерживается Markdown."
+                    className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+                  />
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className={resumeText.length < 50 ? "text-amber-300" : "text-emerald-300"}>
+                      {resumeText.length} / 50 символов
+                      {resumeText.length < 50 && " — нужно больше деталей для AI-оценки"}
+                    </span>
+                  </div>
                   {resumeText && (
                     <button
                       type="button"
@@ -647,9 +671,44 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                 </>
               )}
               {busy && <LoadingPhrase entity="interview" />}
-              <button disabled={busy} onClick={submitResume} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 disabled:opacity-60">
+              <button
+                disabled={busy || resumeText.trim().length < 50}
+                onClick={submitResume}
+                className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                title={resumeText.trim().length < 50 ? "Минимум 50 символов" : undefined}
+              >
                 {busy ? <Loader className="w-4 h-4 animate-spin"/> : <FileText className="w-4 h-4"/>} Отправить на оценку
               </button>
+              {resumeTooShortOpen && (
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                  onClick={() => setResumeTooShortOpen(false)}
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full max-w-sm rounded-3xl bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 shadow-2xl p-6 text-center"
+                  >
+                    <div className="text-4xl mb-2">🤖</div>
+                    <h4 className="text-lg font-bold text-white mb-2">Резюме пока слишком короткое</h4>
+                    <p className="text-sm text-slate-200 leading-relaxed">
+                      Добавьте больше информации об опыте, навыках и результатах.
+                      Для отправки на AI-оценку нужно минимум 50 символов.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResumeTooShortOpen(false);
+                        setTimeout(() => { try { resumeTextareaRef.current?.focus(); } catch { /* ignore */ } }, 0);
+                      }}
+                      className="mt-5 inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-sm shadow"
+                    >
+                      Продолжить редактирование
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
