@@ -1,14 +1,52 @@
 // Generate 3 role-play situations for a vacancy.
+// Phase 3A: background job contract — see resume-criteria for shape details.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import {
+  buildSocialId,
+  callProTalkWithRetry,
+  getAdminClient,
+  getUserFromAuthHeader,
+  logToDb,
+  tryParseJson,
+} from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
-import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
+import {
+  createOrReuseAiJob,
+  isTerminalStatus,
+  saveInterviewBlockStrict,
+} from "../_shared/ai-jobs.ts";
+import { runInBackground, runJobLifecycle, tryAttempt } from "../_shared/ai-runner.ts";
+import { validateSituations3, type Situation } from "../_shared/ai-validators.ts";
+
+const KIND = "situations";
+const JOB_TYPE = "interview_situations";
+
+/** Pre-parse + structural validator, used by the retry loop. */
+function validateSituationsText(text: string): { ok: true } | { ok: false; code: string } {
+  if (/\[server error/i.test(text)) return { ok: false, code: "server_error" };
+  const arr = tryParseJson<any[]>(text);
+  const v = validateSituations3(arr);
+  return v.ok ? { ok: true } : { ok: false, code: v.code };
+}
+
+function parseSituations(text: string): Situation[] | null {
+  const arr = tryParseJson<any[]>(text);
+  const v = validateSituations3(arr);
+  return v.ok ? v.value : null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-  const body = await req.json().catch(() => null) as null | { project_id: string; wishes?: string };
+
+  const body = (await req.json().catch(() => null)) as null | {
+    project_id: string;
+    request_id?: string;
+    force_new_generation?: boolean;
+    wishes?: string;
+  };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
+  const requestId = (body.request_id || "").trim() || `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const guard = await requireEmployerForProject(req, body.project_id);
   if (guard instanceof Response) return guard;
@@ -16,16 +54,22 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
-  const { data: proj } = await admin.from("projects").select("role_name,vacancy_text,company_id").eq("id", body.project_id).maybeSingle();
-  if (!proj) return jsonResponse({ error: "no_project" }, 404);
+  const projRes = await admin
+    .from("projects")
+    .select("role_name,vacancy_text,company_id")
+    .eq("id", body.project_id)
+    .maybeSingle();
+  if (projRes.error) return jsonResponse({ error: "project_load_failed" }, 500);
+  if (!projRes.data) return jsonResponse({ error: "no_project" }, 404);
+  const proj = projRes.data;
   let companyName = "";
   if ((proj as any).company_id) {
-    const { data: co } = await admin.from("companies").select("name").eq("id", (proj as any).company_id).maybeSingle();
+    const { data: co } = await admin
+      .from("companies").select("name").eq("id", (proj as any).company_id).maybeSingle();
     companyName = (co as any)?.name || "";
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
   const socialId = buildSocialId({ user_id: user?.id });
 
   const SCHEMA = `JSON-массив РОВНО из 3 элементов: {"id":"s1"|"s2"|"s3","title":string,"brief":string,"criteria":string}
@@ -35,7 +79,7 @@ Deno.serve(async (req) => {
 Без markdown.`;
 
   const wishes = (body.wishes || "").trim().slice(0, 1000);
-  const msg = `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
+  const prompt = `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
 
 Подготовь 3 ролевые ситуации для оценки кандидата на вакансию.
 ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${wishes}\n` : ""}
@@ -45,48 +89,83 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
 Ситуации должны быть реалистичными и типовыми для этой должности.
 Верни СТРОГО ${SCHEMA}`;
 
-  // Register job for RR Pro Max fallback (no RR is charged here).
-  const idem = `interview_situations:${body.project_id}`;
+  const idempotencyKey = `${JOB_TYPE}:${body.project_id}:${requestId}`;
   const job = await createOrReuseAiJob({
     userId: user?.id || null,
-    jobType: "interview_situations",
-    idempotencyKey: idem,
-    requestSnapshot: { message: msg, project_id: body.project_id, timeout_ms: 120_000 },
+    jobType: JOB_TYPE,
+    idempotencyKey,
+    requestSnapshot: { project_id: body.project_id, prompt_len: prompt.length },
     fallbackAllowed: true,
   });
-  const jobId = "id" in job ? job.id : null;
-  const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
-
-  try {
-    const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 120_000 });
-    const arr = tryParseJson<any[]>(r.text);
-    if (!Array.isArray(arr) || arr.length === 0) throw new Error("bad_json");
-    const situations = arr.slice(0, 3).map((s, i) => ({
-      id: String(s.id || `s${i+1}`),
-      title: String(s.title || "").slice(0, 200),
-      brief: String(s.brief || "").slice(0, 1500),
-      criteria: String(s.criteria || "").slice(0, 1000),
-    }));
-
-    const { data: existing } = await admin.from("interview_blocks").select("id").eq("project_id", body.project_id).eq("kind","situations").maybeSingle();
-    const payload = { situations };
-    if (existing?.id) {
-      await admin.from("interview_blocks").update({ payload, ai_generated_at: new Date().toISOString() }).eq("id", existing.id);
-    } else {
-      await admin.from("interview_blocks").insert({ project_id: body.project_id, kind: "situations", payload, ai_generated_at: new Date().toISOString() });
-    }
-    await logToDb({ user_message: msg, bot_reply: r.text, channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:situations", server_name: "ai-generate-interview-situations" });
-    if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: `interview_blocks:${body.project_id}:situations` });
-    if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
-    return jsonResponse({ ok: true, situations, job_id: jobId });
-  } catch (e) {
-    const err = String((e as Error).message);
-    await logToDb({ user_message: msg, bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-interview:situations", server_name: "ai-generate-interview-situations", function_error: err });
-    if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: err.slice(0, 64) });
-    if (jobId) {
-      await markJobStatus(jobId, "primary_failed");
-      await markJobStatus(jobId, "fallback_available");
-    }
-    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
+  if (!("id" in job)) return jsonResponse({ error: "job_create_failed", detail: (job as any).error }, 500);
+  if (job.reused) {
+    return jsonResponse({
+      ok: true,
+      job_id: job.id,
+      status: job.status,
+      reused: true,
+      terminal: isTerminalStatus(job.status),
+    });
   }
+
+  const jobId = job.id;
+  runInBackground(
+    runJobLifecycle<Situation[]>({
+      jobId,
+      primary: () =>
+        tryAttempt(async () => {
+          const r = await callProTalkWithRetry({
+            messages: [{ role: "user", content: prompt }],
+            chatIdSeed: `ai_${jobId}_p`,
+            socialId,
+            timeoutMs: 120_000,
+            attempts: 3,
+            validate: validateSituationsText,
+          });
+          const parsed = parseSituations(r.text);
+          if (!parsed) throw new Error("schema_invalid:post_parse");
+          await logToDb({
+            user_message: `[prompt:${prompt.length}b]`,
+            bot_reply: `[reply:${r.text.length}b:${parsed.length}s]`,
+            channel_id: `ai_${jobId}_p`,
+            user_social_id: socialId,
+            channel_name: "ai-interview:situations",
+            server_name: "ai-generate-interview-situations",
+          });
+          return parsed;
+        }, (err) => {
+          const msg = String((err as Error)?.message || "");
+          const retryable = !/(bad_body|no_project|no_credits|payment_required|401|403)/i.test(msg);
+          return { safeCode: msg.slice(0, 64), retryable };
+        }),
+      fallback: () =>
+        tryAttempt(async () => {
+          const r = await callProTalkWithRetry({
+            messages: [{ role: "user", content: prompt }],
+            chatIdSeed: `ai_${jobId}_fb`,
+            socialId,
+            timeoutMs: 120_000,
+            attempts: 2,
+            validate: validateSituationsText,
+          });
+          const parsed = parseSituations(r.text);
+          if (!parsed) throw new Error("schema_invalid:fb_post_parse");
+          return parsed;
+        }),
+      save: async (situations) => {
+        const payload = { situations, employer_wishes: wishes };
+        const r = await saveInterviewBlockStrict(body.project_id, KIND, payload);
+        if (!r.ok) return { ok: false, safeCode: `save:${r.error.slice(0, 32)}` };
+        return { ok: true };
+      },
+    }).catch((e) => console.error("situations lifecycle error", (e as Error)?.message)),
+  );
+
+  return jsonResponse({
+    ok: true,
+    job_id: jobId,
+    status: "primary_running",
+    reused: false,
+    terminal: false,
+  });
 });

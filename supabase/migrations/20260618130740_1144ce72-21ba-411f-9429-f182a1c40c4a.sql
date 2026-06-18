@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.start_ai_job_attempt(uuid, public.ai_job_provider) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.start_ai_job_attempt(uuid, public.ai_job_provider) TO service_role;
