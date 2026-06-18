@@ -13,6 +13,30 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { adaptEmployerChecklist, adaptEmployerSituations } from "@/lib/feedbackAdapters";
 import EmployerChecklistReport from "@/components/reports/EmployerChecklistReport";
 import EmployerSituationsReport from "@/components/reports/EmployerSituationsReport";
+import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
+import {
+  startOverallCandidateV2, pollEmployerJobUntilTerminal,
+  getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
+  isTerminal, isSuccess,
+} from "@/lib/aiJobs";
+
+/** Map raw job status / thrown error codes to user-facing copy. */
+function humanizeAiError(code: string | null | undefined): string {
+  const s = String(code || "").toLowerCase();
+  if (!s) return "";
+  if (s.includes("source_data_changed"))
+    return "Данные кандидата изменились во время анализа. Запустите пересчёт ещё раз.";
+  if (s === "validation_failed" || s.startsWith("schema_invalid"))
+    return "ИИ вернул некорректный отчёт. Запустите пересчёт ещё раз.";
+  if (s === "save_failed") return "Не удалось сохранить отчёт. Попробуйте позже.";
+  if (s === "fallback_failed" || s === "primary_failed")
+    return "ИИ-провайдеры временно недоступны. Повторите попытку чуть позже.";
+  if (s === "orchestration_failed") return "Внутренняя ошибка. Попробуйте позже.";
+  if (s === "runtime_no_background") return "Среда временно недоступна. Попробуйте позже.";
+  if (s === "forbidden" || s === "candidate_not_found")
+    return "Нет доступа к этому кандидату.";
+  return "Не удалось сформировать общую AI-оценку.";
+}
 import {
   X, User as UserIcon, Mail, Phone, MessageSquare, FileText,
   CheckSquare, Briefcase, GraduationCap, Loader2, ExternalLink, Award,
@@ -259,6 +283,7 @@ export default function CandidateDetailsModal({
   const [reviewSaving, setReviewSaving] = useState(false);
   const [overallSaving, setOverallSaving] = useState(false);
   const [overallErr, setOverallErr] = useState<string | null>(null);
+  const [overallStatus, setOverallStatus] = useState<string>("");
 
   const markReview = async () => {
     if (!candidateId) return;
@@ -395,77 +420,88 @@ export default function CandidateDetailsModal({
         is_correct: undefined,
       }));
 
-  const generateOverallAssessment = async () => {
-    if (!candidateId) return;
+  /**
+   * Phase 4 — overall AI candidate evaluation via the async v2 lifecycle.
+   *
+   * The button:
+   *  - mints ONE request_id per click (`crypto.randomUUID`);
+   *  - blocks double-click via `overallSaving`;
+   *  - calls `ai-evaluate-overall-candidate-v2` (employer JWT);
+   *  - polls `get_ai_job_safe_status` RPC until terminal;
+   *  - re-reads candidate_full_details on success;
+   *  - shows safe error on failure (terminal failures need a NEW request_id
+   *    to retry, which means another button click).
+   *
+   * No RR billing, no overwrite of `overall_score`, no overwrite of
+   * `assessment_summary` — the v2 RPC only touches the new fit fields.
+   */
+  const runOverallEvaluation = async () => {
+    if (!candidateId || overallSaving) return;
     setOverallSaving(true);
     setOverallErr(null);
+    setOverallStatus("primary_running");
     try {
-      const candName = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
-      const { aiEvaluate } = await import("@/lib/aiClient");
-      const result: any = await aiEvaluate({
-        mode: "overall_candidate" as any,
-        candidate_id: candidateId,
-        project_id: c.project_id || pr.id,
-        payload: {
-          candidate: {
-            name: candName,
-            role: c.role_name || pr.role_name,
-            resume_text: c.resume_text || "",
-          },
-          vacancy: {
-            role_name: pr.role_name || c.role_name || "",
-            vacancy_text: pr.vacancy_text || "",
-            tasks_activity_text: pr.tasks_activity_text || "",
-            motivation_text: pr.motivation_text || "",
-            payouts_text: pr.payouts_text || "",
-            schedule_text: pr.schedule_text || "",
-            team_text: pr.team_text || "",
-            system_text: pr.system_text || "",
-          },
-          scores: {
-            resume_score: s.resume_score,
-            checklist_score: s.checklist_score,
-            situations_score: s.situations_score,
-            overall_score: s.overall_score,
-          },
-          resume_ai: s.resume_feedback || s.assessment_summary || "",
-          checklist: checklistAnswersView.map((x: any) => ({
-            question: x.question_text,
-            answer: x.answer_text,
-            score: x.score,
-            feedback: x.feedback,
-          })),
-          situations: situationAnswersView.map((x: any) => ({
-            case: x.case_text || x.question_text,
-            criteria: x.criteria,
-            answer: x.answer_text,
-            score: x.score,
-            feedback: x.feedback,
-          })),
-        },
-      });
-      const summary = String(result?.summary || result?.recommendation || "").trim();
-      if (!summary) throw new Error("ИИ не вернул итоговую рекомендацию");
-      // overall_score = среднее из под-оценок (резюме / анкета / ситуации / интервью).
-      // ИИ-вердикт сохраняем только в текст (assessment_summary), чтобы не обнулять средний балл.
-      const parts = [s.resume_score, s.checklist_score, s.situations_score, (s as any).interview_score]
-        .filter((v: any) => v !== null && v !== undefined && Number.isFinite(Number(v)))
-        .map(Number);
-      const avg = parts.length ? Math.round(parts.reduce((a, b) => a + b, 0) / parts.length) : null;
-      const { error } = await (supabase as any).from("candidate_scores").upsert({
-        candidate_id: candidateId,
-        assessment_summary: summary,
-        ...(avg !== null ? { overall_score: avg } : {}),
-      }, { onConflict: "candidate_id" });
-      if (error) throw error;
+      const started = await startOverallCandidateV2({ candidateId });
+      if (started.terminal) {
+        // Reused terminal — just refetch and surface the state.
+        if (!isSuccess(started.status)) {
+          setOverallErr(humanizeAiError(started.status));
+        }
+        clearEmployerActiveJob("overall_candidate", candidateId);
+      } else {
+        const final = await pollEmployerJobUntilTerminal({
+          jobId: started.job_id,
+          onTick: (row) => setOverallStatus(row.status),
+        });
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        if (!isSuccess(final.status)) {
+          setOverallErr(humanizeAiError(final.status));
+        }
+      }
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
       setData(fresh);
     } catch (e: any) {
-      setOverallErr(e?.message || "Не удалось сформировать итоговую оценку");
+      setOverallErr(humanizeAiError(e?.message || "Не удалось сформировать общую AI-оценку"));
     } finally {
       setOverallSaving(false);
+      setOverallStatus("");
     }
   };
+
+  // Restore an in-flight overall job if the modal was closed while polling.
+  useEffect(() => {
+    if (!candidateId) return;
+    const rec = getEmployerActiveJob("overall_candidate", candidateId);
+    if (!rec) return;
+    let cancelled = false;
+    (async () => {
+      const row = await fetchEmployerJobStatus(rec.job_id);
+      if (cancelled) return;
+      if (!row) { clearEmployerActiveJob("overall_candidate", candidateId); return; }
+      if (isTerminal(row.status)) {
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        return;
+      }
+      setOverallSaving(true);
+      setOverallStatus(row.status);
+      try {
+        const final = await pollEmployerJobUntilTerminal({
+          jobId: rec.job_id,
+          onTick: (r) => !cancelled && setOverallStatus(r.status),
+        });
+        if (cancelled) return;
+        clearEmployerActiveJob("overall_candidate", candidateId);
+        if (!isSuccess(final.status)) setOverallErr(humanizeAiError(final.status));
+        const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
+        if (!cancelled) setData(fresh);
+      } catch (e: any) {
+        if (!cancelled) setOverallErr(humanizeAiError(e?.message || "poll_failed"));
+      } finally {
+        if (!cancelled) { setOverallSaving(false); setOverallStatus(""); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [candidateId]);
 
   const name = c.full_name || c.resume_name || p.display_name || c.email || `Кандидат #${c.public_id || ""}`;
   const photo = p.avatar_url;
@@ -856,74 +892,39 @@ export default function CandidateDetailsModal({
               </TabsContent>
 
               <TabsContent value="overall" className="space-y-6 mt-0">
-                <div className={`rounded-2xl p-5 border ${toneBg(overallTone.label)}`}>
-                  <div className="flex items-center justify-between gap-4 mb-3">
-                    <div>
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300">Итоговая оценка ИИ</div>
-                      <div className="text-[13px] text-white/80 mt-0.5">Соответствие должности, задачам и параметрам оценки</div>
-                    </div>
-                    <div className={`text-4xl font-mono font-black ${overallTone.cls}`}>
-                      {s.overall_score !== null && s.overall_score !== undefined
-                        ? `${Math.round(Number(s.overall_score))}/100`
-                        : "—"}
-                    </div>
-                  </div>
-                  {overallBadge && (
-                    <div className={`inline-block px-3 py-1 rounded-full text-[12px] font-bold border ${overallBadge.cls}`}>
-                      {overallBadge.text}
-                    </div>
-                  )}
-                </div>
+                <EmployerOverallReport
+                  fitScore={(s as any).ai_fit_score}
+                  overallScore={s.overall_score}
+                  employerFeedback={(s as any).employer_overall_feedback}
+                />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.resume_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Резюме</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.resume_score).cls}`}>
-                      {s.resume_score != null ? `${Math.round(Number(s.resume_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.checklist_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Анкета (чек-лист)</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.checklist_score).cls}`}>
-                      {s.checklist_score != null ? `${Math.round(Number(s.checklist_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(scoreTone(s.situations_score).label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Ситуации</div>
-                    <div className={`text-2xl font-mono font-black ${scoreTone(s.situations_score).cls}`}>
-                      {s.situations_score != null ? `${Math.round(Number(s.situations_score))}/100` : "—"}
-                    </div>
-                  </div>
-                  <div className={`rounded-xl p-3 border ${toneBg(overallTone.label)}`}>
-                    <div className="text-[10px] font-mono uppercase text-slate-300">Средний балл</div>
-                    <div className={`text-2xl font-mono font-black ${overallTone.cls}`}>
-                      {s.overall_score != null ? `${Math.round(Number(s.overall_score))}/100` : "—"}
-                    </div>
-                  </div>
-                </div>
-
-                {s.assessment_summary && (
-                  <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-2">
-                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><Award className="w-4 h-4" /> Рекомендация ИИ</h3>
-                    <div className="text-[14px] text-white/95 leading-relaxed whitespace-pre-wrap">
-                      {s.assessment_summary}
-                    </div>
-                  </div>
-                )}
                 <div className="bg-black/20 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><RefreshCw className="w-4 h-4" /> Экспертная совокупная оценка</h3>
-                    <p className="text-[12px] text-slate-300 mt-1">ИИ учтёт резюме, анкету, ситуации, оценки и требования вакансии.</p>
-                    {overallErr && <div className="text-rose-300 text-xs mt-2">{overallErr}</div>}
+                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4" /> Совокупная AI-оценка соответствия
+                    </h3>
+                    <p className="text-[12px] text-slate-300 mt-1">
+                      ИИ перечитает резюме, анкету, ситуации, обучение и пожелания работодателя.
+                      Средний балл этапов и stage-feedback не перезаписываются.
+                    </p>
+                    {overallSaving && (
+                      <div className="text-[12px] text-slate-300 mt-2" data-testid="overall-status">
+                        Идёт анализ… {overallStatus ? `(${overallStatus})` : ""}
+                      </div>
+                    )}
+                    {overallErr && (
+                      <div className="text-rose-300 text-xs mt-2" data-testid="overall-error">{overallErr}</div>
+                    )}
                   </div>
                   <button
                     type="button"
+                    data-testid="recalc-overall-btn"
                     disabled={overallSaving}
-                    onClick={generateOverallAssessment}
+                    onClick={runOverallEvaluation}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
                   >
                     {overallSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Пересчитать ИИ-оценку
+                    Пересчитать AI-оценку
                   </button>
                 </div>
               </TabsContent>

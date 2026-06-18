@@ -48,6 +48,7 @@ export type ActiveJobRecord = {
 };
 
 export type AiJobKind = "screen_resume" | "checklist_grade" | "situations_grade";
+export type EmployerAiJobKind = "overall_candidate";
 
 export function activeJobKey(kind: AiJobKind, candidateId: string): string {
   return `rr_active_ai_job:${kind}:${candidateId}`;
@@ -70,6 +71,106 @@ export function setActiveJob(kind: AiJobKind, rec: ActiveJobRecord): void {
 
 export function clearActiveJob(kind: AiJobKind, candidateId: string): void {
   try { localStorage.removeItem(activeJobKey(kind, candidateId)); } catch { /* ignore */ }
+}
+
+// -----------------------------------------------------------------
+// Employer-side AI job helpers (Phase 4 — overall candidate eval).
+// Employers DO have a Supabase Auth session, so polling uses the
+// `get_ai_job_safe_status` RPC directly. LocalStorage stores ONLY
+// {job_id, request_id, candidate_id, created_at} per the spec.
+// -----------------------------------------------------------------
+export function employerJobKey(kind: EmployerAiJobKind, candidateId: string): string {
+  return `rr_active_ai_job:${kind}:${candidateId}`;
+}
+export function getEmployerActiveJob(kind: EmployerAiJobKind, candidateId: string): ActiveJobRecord | null {
+  try {
+    const raw = localStorage.getItem(employerJobKey(kind, candidateId));
+    if (!raw) return null;
+    const o = JSON.parse(raw) as ActiveJobRecord;
+    if (!o?.job_id || !o?.request_id) return null;
+    return o;
+  } catch { return null; }
+}
+export function setEmployerActiveJob(kind: EmployerAiJobKind, rec: ActiveJobRecord): void {
+  try { localStorage.setItem(employerJobKey(kind, rec.candidate_id), JSON.stringify(rec)); }
+  catch { /* ignore */ }
+}
+export function clearEmployerActiveJob(kind: EmployerAiJobKind, candidateId: string): void {
+  try { localStorage.removeItem(employerJobKey(kind, candidateId)); } catch { /* ignore */ }
+}
+
+/** Start (or reuse) the v2 overall-candidate AI evaluation as employer. */
+export async function startOverallCandidateV2(opts: {
+  candidateId: string;
+  requestId?: string;
+}): Promise<{ job_id: string; status: string; reused: boolean; terminal: boolean; request_id: string }> {
+  const requestId = opts.requestId || crypto.randomUUID();
+  const { data, error } = await supabase.functions.invoke("ai-evaluate-overall-candidate-v2", {
+    body: { candidate_id: opts.candidateId, request_id: requestId },
+  });
+  const errCode = (data as any)?.error || (error as any)?.message;
+  if (errCode) throw new Error(String(errCode));
+  const d = data as { job_id: string; status: string; reused: boolean; terminal: boolean };
+  if (!d?.job_id) throw new Error("no_job_id");
+  setEmployerActiveJob("overall_candidate", {
+    job_id: d.job_id, request_id: requestId,
+    candidate_id: opts.candidateId,
+    created_at: new Date().toISOString(),
+  });
+  return { ...d, request_id: requestId };
+}
+
+/** Employer-side polling via the SECURITY DEFINER RPC. Employer is auth'd. */
+export async function fetchEmployerJobStatus(jobId: string): Promise<JobStatusRow | null> {
+  const { data, error } = await (supabase as any).rpc("get_ai_job_safe_status", { _job_id: jobId });
+  if (error || !data) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    job_id: row.job_id, job_type: row.job_type, status: row.status,
+    fallback_used: !!row.fallback_used,
+    attempts_count: row.attempts_count || 0,
+    created_at: row.created_at, updated_at: row.updated_at,
+    completed_at: row.completed_at ?? null,
+  };
+}
+
+/** Poll employer-side job until terminal (uses RPC, not the candidate edge). */
+export async function pollEmployerJobUntilTerminal(opts: {
+  jobId: string;
+  signal?: AbortSignal;
+  onTick?: (row: JobStatusRow) => void;
+  maxMs?: number;
+}): Promise<JobStatusRow> {
+  const startedAt = Date.now();
+  const maxMs = opts.maxMs ?? 10 * 60_000;
+  let lastStatus = "";
+  let delay = 2000;
+  const wakeups: Array<() => void> = [];
+  const wake = () => { const f = wakeups.shift(); if (f) f(); };
+  const onFocus = () => wake();
+  const onVis = () => { if (document.visibilityState === "visible") wake(); };
+  window.addEventListener("focus", onFocus);
+  document.addEventListener("visibilitychange", onVis);
+  try {
+    while (true) {
+      if (opts.signal?.aborted) throw new Error("aborted");
+      if (Date.now() - startedAt > maxMs) throw new Error("client_poll_timeout");
+      const row = await fetchEmployerJobStatus(opts.jobId);
+      if (row) {
+        if (row.status !== lastStatus) { lastStatus = row.status; opts.onTick?.(row); }
+        if (isTerminal(row.status)) return row;
+      }
+      await new Promise<void>((resolve) => {
+        const id = setTimeout(resolve, delay);
+        wakeups.push(() => { clearTimeout(id); resolve(); });
+      });
+      delay = Math.min(delay * 1.5, 8000);
+    }
+  } finally {
+    window.removeEventListener("focus", onFocus);
+    document.removeEventListener("visibilitychange", onVis);
+  }
 }
 
 function getCandidateToken(): string | null {

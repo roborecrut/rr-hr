@@ -354,6 +354,285 @@ export type ChecklistGradeReport = {
   candidate: CandidateChecklistReport;
 };
 
+// =============================================================================
+// Overall Candidate Report v2 — combined AI fit evaluation. Used by
+// ai-evaluate-overall-candidate-v2. The employer block reasons about fit to
+// the vacancy; the candidate block is soft and stripped of employer-only
+// signals. NEVER persisted into overall_score; only into ai_fit_score.
+// =============================================================================
+
+const OVERALL_VERDICT_ENUM = new Set([
+  "высокое соответствие",
+  "частичное соответствие",
+  "низкое соответствие",
+  "недостаточно данных",
+]);
+const OVERALL_STAGE_ENUM = new Set(["resume", "checklist", "situations", "training"]);
+const OVERALL_DEGREE_ENUM = new Set(["полностью", "частично", "не подтверждено"]);
+const OVERALL_RISK_SEV_ENUM = new Set(["низкий", "средний", "высокий"]);
+const OVERALL_RED_SEV_ENUM = new Set(["средний", "высокий"]);
+const OVERALL_WISH_STATUS_ENUM = new Set([
+  "соответствует", "частично", "не соответствует", "нет данных",
+]);
+
+export type OverallStageSummary = {
+  stage: string; score: number | null; conclusion: string; key_evidence: string[];
+};
+export type OverallMatch = { criterion: string; degree: string; evidence: string; source: string };
+export type OverallGap = { criterion: string; finding: string; impact: string; source: string };
+export type OverallRisk = {
+  title: string; evidence: string; impact: string; severity: string; how_to_verify: string;
+};
+export type OverallRedFlag = {
+  title: string; evidence: string; source: string; severity: string;
+};
+export type OverallWishAlignment = {
+  wish: string; status: string; evidence: string;
+};
+export type EmployerOverallReport = {
+  fit_score: number;
+  confidence: number;
+  data_completeness: number;
+  verdict: string;
+  executive_summary: string;
+  stage_summary: OverallStageSummary[];
+  matches: OverallMatch[];
+  gaps: OverallGap[];
+  risks: OverallRisk[];
+  red_flags: OverallRedFlag[];
+  employer_wishes_alignment: OverallWishAlignment[];
+  strengths: string[];
+  interview_focus: string[];
+  missing_sections: string[];
+  recommendation: string;
+};
+export type CandidateOverallStageFeedback = { stage: string; conclusion: string };
+export type CandidateOverallReport = {
+  summary: string;
+  strengths: string[];
+  areas_to_improve: string[];
+  stage_feedback: CandidateOverallStageFeedback[];
+  next_steps: string[];
+  missing_sections: string[];
+};
+export type OverallCandidateReport = {
+  employer: EmployerOverallReport;
+  candidate: CandidateOverallReport;
+};
+
+/** Keys that must NEVER appear in candidate block — employer-only data. */
+const OVERALL_CANDIDATE_FORBIDDEN_KEYS = new Set([
+  "risks", "red_flags", "gaps", "matches", "verdict", "fit_score",
+  "confidence", "recommendation", "employer_wishes_alignment",
+  "employer_wishes", "interview_focus", "executive_summary",
+]);
+
+function arrStrLoose(v: unknown, max = 12, maxLen = 600): string[] {
+  if (!Array.isArray(v)) return [];
+  const out: string[] = [];
+  for (const it of v.slice(0, max)) {
+    const s = nonEmpty(it);
+    if (s) out.push(s.slice(0, maxLen));
+  }
+  return out;
+}
+
+function int0to100(v: unknown): number | null {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+  return Math.round(n);
+}
+
+/** Strict validator for the overall (combined) candidate report. */
+export function validateOverallCandidateReport(raw: unknown): V<OverallCandidateReport> {
+  if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
+  const o = raw as Record<string, any>;
+
+  const emp = o.employer;
+  if (!emp || typeof emp !== "object") return { ok: false, code: "missing_employer" };
+  const cand = o.candidate;
+  if (!cand || typeof cand !== "object") return { ok: false, code: "missing_candidate" };
+
+  const fit = int0to100(emp.fit_score);
+  if (fit === null) return { ok: false, code: "bad_fit_score" };
+  const confidence = int0to100(emp.confidence);
+  if (confidence === null) return { ok: false, code: "bad_confidence" };
+  const completeness = int0to100(emp.data_completeness);
+  if (completeness === null) return { ok: false, code: "bad_data_completeness" };
+
+  const verdict = nonEmpty(emp.verdict);
+  if (!OVERALL_VERDICT_ENUM.has(verdict)) return { ok: false, code: "bad_verdict" };
+
+  const execSummary = nonEmpty(emp.executive_summary);
+  if (!execSummary || execSummary.length < 20) return { ok: false, code: "empty_executive_summary" };
+
+  // stage_summary
+  const stageSummary: OverallStageSummary[] = [];
+  for (const it of (Array.isArray(emp.stage_summary) ? emp.stage_summary : []).slice(0, 8)) {
+    const stage = nonEmpty(it?.stage);
+    if (!OVERALL_STAGE_ENUM.has(stage)) return { ok: false, code: "bad_stage" };
+    const conclusion = nonEmpty(it?.conclusion);
+    if (!conclusion) return { ok: false, code: "empty_stage_conclusion" };
+    const score = it?.score == null ? null : int0to100(it.score);
+    if (it?.score != null && score === null) return { ok: false, code: "bad_stage_score" };
+    stageSummary.push({
+      stage, score, conclusion: conclusion.slice(0, 1200),
+      key_evidence: arrStrLoose(it?.key_evidence, 8, 500),
+    });
+  }
+
+  // matches
+  const matches: OverallMatch[] = [];
+  for (const m of (Array.isArray(emp.matches) ? emp.matches : []).slice(0, 30)) {
+    const criterion = nonEmpty(m?.criterion);
+    const degree = nonEmpty(m?.degree);
+    if (!criterion || !OVERALL_DEGREE_ENUM.has(degree)) return { ok: false, code: "bad_match" };
+    const source = nonEmpty(m?.source);
+    if (source && !OVERALL_STAGE_ENUM.has(source)) return { ok: false, code: "bad_match_source" };
+    matches.push({
+      criterion: criterion.slice(0, 500),
+      degree,
+      evidence: nonEmpty(m?.evidence).slice(0, 700),
+      source: source || "resume",
+    });
+  }
+
+  // gaps
+  const gaps: OverallGap[] = [];
+  for (const g of (Array.isArray(emp.gaps) ? emp.gaps : []).slice(0, 20)) {
+    const criterion = nonEmpty(g?.criterion);
+    const finding = nonEmpty(g?.finding);
+    if (!criterion || !finding) return { ok: false, code: "bad_gap" };
+    const source = nonEmpty(g?.source);
+    gaps.push({
+      criterion: criterion.slice(0, 500),
+      finding: finding.slice(0, 700),
+      impact: nonEmpty(g?.impact).slice(0, 600),
+      source: source.slice(0, 80),
+    });
+  }
+
+  // risks (evidence REQUIRED)
+  const risks: OverallRisk[] = [];
+  for (const r of (Array.isArray(emp.risks) ? emp.risks : []).slice(0, 15)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    if (!title) return { ok: false, code: "bad_risk" };
+    if (!evidence) return { ok: false, code: "risk_without_evidence" };
+    if (!OVERALL_RISK_SEV_ENUM.has(severity)) return { ok: false, code: "bad_risk_severity" };
+    risks.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      impact: nonEmpty(r?.impact).slice(0, 500),
+      severity,
+      how_to_verify: nonEmpty(r?.how_to_verify).slice(0, 400),
+    });
+  }
+
+  // red flags (evidence REQUIRED)
+  const redFlags: OverallRedFlag[] = [];
+  for (const r of (Array.isArray(emp.red_flags) ? emp.red_flags : []).slice(0, 10)) {
+    const title = nonEmpty(r?.title);
+    const evidence = nonEmpty(r?.evidence);
+    const severity = nonEmpty(r?.severity);
+    if (!title) return { ok: false, code: "bad_red_flag" };
+    if (!evidence) return { ok: false, code: "red_flag_without_evidence" };
+    if (!OVERALL_RED_SEV_ENUM.has(severity)) return { ok: false, code: "bad_red_flag_severity" };
+    redFlags.push({
+      title: title.slice(0, 300),
+      evidence: evidence.slice(0, 700),
+      source: nonEmpty(r?.source).slice(0, 80),
+      severity,
+    });
+  }
+
+  // wishes alignment
+  const wishes: OverallWishAlignment[] = [];
+  for (const w of (Array.isArray(emp.employer_wishes_alignment) ? emp.employer_wishes_alignment : []).slice(0, 20)) {
+    const wish = nonEmpty(w?.wish);
+    const status = nonEmpty(w?.status);
+    if (!wish) return { ok: false, code: "bad_wish" };
+    if (!OVERALL_WISH_STATUS_ENUM.has(status)) return { ok: false, code: "bad_wish_status" };
+    wishes.push({
+      wish: wish.slice(0, 400),
+      status,
+      evidence: nonEmpty(w?.evidence).slice(0, 500),
+    });
+  }
+
+  const strengths = arrStrLoose(emp.strengths, 12, 500);
+  const interviewFocus = arrStrLoose(emp.interview_focus, 12, 500);
+  const missingSections = arrStrLoose(emp.missing_sections, 8, 200);
+  const recommendation = nonEmpty(emp.recommendation).slice(0, 2000);
+
+  // candidate block validations
+  for (const k of Object.keys(cand)) {
+    if (OVERALL_CANDIDATE_FORBIDDEN_KEYS.has(k)) {
+      return { ok: false, code: `candidate_forbidden_${k}` };
+    }
+  }
+  const candSummary = nonEmpty(cand.summary);
+  if (!candSummary || candSummary.length < 20) return { ok: false, code: "empty_candidate_summary" };
+  const candStrengths = arrStrLoose(cand.strengths, 10, 400);
+  const candAreas = arrStrLoose(cand.areas_to_improve, 10, 400);
+  const candNext = arrStrLoose(cand.next_steps, 10, 400);
+  const candMissing = arrStrLoose(cand.missing_sections, 8, 200);
+  const candStageFb: CandidateOverallStageFeedback[] = [];
+  for (const it of (Array.isArray(cand.stage_feedback) ? cand.stage_feedback : []).slice(0, 8)) {
+    const stage = nonEmpty(it?.stage);
+    const conclusion = nonEmpty(it?.conclusion);
+    if (!OVERALL_STAGE_ENUM.has(stage)) return { ok: false, code: "bad_candidate_stage" };
+    if (!conclusion) return { ok: false, code: "empty_candidate_stage_conclusion" };
+    candStageFb.push({ stage, conclusion: conclusion.slice(0, 1000) });
+  }
+
+  // Protected-characteristic guard on all employer-visible AND candidate-visible text.
+  const guardBlob = [
+    execSummary, recommendation, candSummary,
+    ...stageSummary.map((s) => `${s.conclusion} ${s.key_evidence.join(" ")}`),
+    ...matches.map((m) => `${m.criterion} ${m.evidence}`),
+    ...gaps.map((g) => `${g.finding} ${g.impact}`),
+    ...risks.map((r) => `${r.title} ${r.evidence} ${r.how_to_verify}`),
+    ...redFlags.map((r) => `${r.title} ${r.evidence}`),
+    ...wishes.map((w) => `${w.wish} ${w.evidence}`),
+    ...strengths, ...interviewFocus,
+    ...candStrengths, ...candAreas, ...candNext,
+    ...candStageFb.map((s) => s.conclusion),
+  ].join(" \n ");
+  const protectedHit = detectProtectedCharacteristic(guardBlob);
+  if (protectedHit) return { ok: false, code: "protected_characteristic" };
+
+  return {
+    ok: true,
+    value: {
+      employer: {
+        fit_score: fit,
+        confidence,
+        data_completeness: completeness,
+        verdict,
+        executive_summary: execSummary.slice(0, 4000),
+        stage_summary: stageSummary,
+        matches, gaps, risks,
+        red_flags: redFlags,
+        employer_wishes_alignment: wishes,
+        strengths,
+        interview_focus: interviewFocus,
+        missing_sections: missingSections,
+        recommendation,
+      },
+      candidate: {
+        summary: candSummary.slice(0, 4000),
+        strengths: candStrengths,
+        areas_to_improve: candAreas,
+        stage_feedback: candStageFb,
+        next_steps: candNext,
+        missing_sections: candMissing,
+      },
+    },
+  };
+}
+
 /** Forbidden keys in candidate object — must never leak from employer side. */
 const CANDIDATE_FORBIDDEN_KEYS = new Set([
   "risks", "red_flags", "gaps", "matches", "verdict",

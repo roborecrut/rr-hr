@@ -21,6 +21,7 @@ import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
 import { adaptCandidateChecklist, adaptCandidateSituations } from "@/lib/feedbackAdapters";
 import CandidateChecklistReport from "@/components/reports/CandidateChecklistReport";
 import CandidateSituationsReport from "@/components/reports/CandidateSituationsReport";
+import CandidateOverallReport from "@/components/reports/CandidateOverallReport";
 
 type Stage = "resume" | "checklist" | "situations" | "done";
 
@@ -118,6 +119,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [situationsFeedbackRaw, setSituationsFeedbackRaw] = useState<any>(null);
 
   const [finalScore, setFinalScore] = useState<number | null>(null);
+  // Optional combined-feedback (Phase 4). Shown ONLY if the employer ran the
+  // overall AI evaluation; otherwise the block stays hidden. Strictly the
+  // candidate-facing object — no employer-only keys.
+  const [candOverallFeedback, setCandOverallFeedback] = useState<any>(null);
 
   useEffect(() => {
     (async () => {
@@ -148,7 +153,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setSituations(r.situations || []);
       // try fetch existing scores
       const { data: sc } = await (supabase as any).from("candidate_scores")
-        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback")
+        .select("resume_score,checklist_score,situations_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback,candidate_overall_feedback")
         .eq("candidate_id", candidateId).maybeSingle();
       if (sc) {
         if (sc.resume_score != null) {
@@ -187,6 +192,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         if (candSit) setSituationsFeedbackRaw(candSit);
         else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
+        const candOverall = (sc as any).candidate_overall_feedback;
+        if (candOverall && typeof candOverall === "object") setCandOverallFeedback(candOverall);
         // Восстанавливаем итоговый балл, чтобы вкладка «4. Итог» открывалась
         // при возврате на страницу собеседования после прохождения всех этапов.
         const { data: scFull } = await (supabase as any)
@@ -761,6 +768,9 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             </>
           )}
         </div>
+      )}
+      {stage === "done" && candOverallFeedback && (
+        <CandidateOverallReport feedback={candOverallFeedback} />
       )}
       <VacancyPausedDialog open={pausedOpen} projectId={projectId} onClose={() => setPausedOpen(false)} />
     </div>
