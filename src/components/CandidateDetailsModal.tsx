@@ -347,7 +347,42 @@ function Field({ label, value }: { label: string; value: any }) {
   );
 }
 
-export default function CandidateDetailsModal({
+/**
+ * Default export wraps the inner modal in an outer error boundary so a
+ * render error in ANY part of the modal (including pre-JSX destructuring
+ * of candidate_full_details, scores, or per-report adapters) cannot escape
+ * into the parent EmployerPanel / AdminPanel and produce a white screen.
+ *
+ * Why this exists (root cause Phase A-3):
+ *  - The previous inner `CandidateBodyErrorBoundary` sat INSIDE the modal
+ *    component's own return tree, so any throw during the modal body's
+ *    execution (e.g. legacy `employer_summary` with non-array `risks`,
+ *    legacy `training_employer_feedback` shaped as a string, or
+ *    `chkFbItems.map(...)` over a malformed jsonb cell) propagated PAST it
+ *    to React root, unmounting EmployerPanel into a blank screen.
+ *  - Wrapping at the OUTER boundary via this default export makes the
+ *    boundary a true parent of every render path in the modal.
+ *  - `key={candidateId ?? "none"}` resets the boundary state when the
+ *    employer opens a different candidate so the fallback never sticks
+ *    after switching cards.
+ */
+export default function CandidateDetailsModal(props: {
+  candidateId: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <CandidateBodyErrorBoundary
+      key={props.candidateId ?? "none"}
+      onClose={props.onClose}
+    >
+      <CandidateDetailsModalInner {...props} />
+    </CandidateBodyErrorBoundary>
+  );
+}
+
+export { CandidateBodyErrorBoundary };
+
+function CandidateDetailsModalInner({
   candidateId,
   onClose,
 }: {
