@@ -92,4 +92,20 @@ describe("adaptEmployerSituations", () => {
     expect(v.redFlags).toHaveLength(1);
     expect(v.items[0].evidence).toBe("ev");
   });
+
+  it("falls back to `advice` / `overall` when summary is missing (legacy v1)", () => {
+    const v1 = adaptEmployerSituations({
+      advice: "ADVICE_TEXT",
+      total: 85,
+      items: [{ situation_id: "s1", score: 28, feedback: "fb1" }],
+    });
+    expect(v1.kind).toBe("structured");
+    if (v1.kind === "structured") expect(v1.summary).toBe("ADVICE_TEXT");
+
+    const v2 = adaptEmployerSituations({
+      overall: "OVERALL_TEXT",
+      items: [{ situation_id: "s1", score: 50, feedback: "fb" }],
+    });
+    if (v2.kind === "structured") expect(v2.summary).toBe("OVERALL_TEXT");
+  });
 });
