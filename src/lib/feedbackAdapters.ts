@@ -16,6 +16,7 @@ export type CandidateItem = {
   questionId: string;
   question?: string;
   score?: number;
+  max?: number;
   feedback?: string;
   recommendation?: string;
 };
@@ -34,6 +35,7 @@ export type CandidateSituationItem = {
   situationId: string;
   title?: string;
   score?: number;
+  max?: number;
   feedback?: string;
   recommendation?: string;
 };
@@ -65,6 +67,8 @@ export type EmployerChecklistItem = {
   questionId: string;
   question?: string;
   score?: number;
+  /** Per-item maximum (e.g. 5 for v2 quiz items, 100 for percent-scored items). */
+  max?: number;
   /** Candidate's answer, when persisted on the feedback item. */
   answer?: string;
   employerFeedback?: string;
@@ -92,6 +96,8 @@ export type EmployerSituationItem = {
   situationId: string;
   title?: string;
   score?: number;
+  /** Per-item maximum (defaults to 100 — situations are scored as percentages). */
+  max?: number;
   /** Full case prompt shown to the candidate, when present. */
   prompt?: string;
   /** Candidate's answer, when persisted on the feedback item. */
@@ -156,6 +162,7 @@ export function adaptCandidateChecklist(raw: unknown): CandidateChecklistView {
       questionId: String(o.question_id ?? o.id ?? ""),
       question: asStr(o.question),
       score: asNum(o.score),
+      max: asNum(o.max),
       feedback: asStr(o.feedback),
       recommendation: asStr(o.recommendation),
       // expected_answer / correct / employer_feedback / evidence — DROPPED
@@ -209,6 +216,7 @@ export function adaptCandidateSituations(raw: unknown): CandidateSituationsView 
       situationId: String(o.situation_id ?? o.id ?? ""),
       title: asStr(o.title),
       score: asNum(o.score),
+      max: asNum(o.max),
       feedback: asStr(o.feedback),
       recommendation: asStr(o.recommendation),
       // criteria / employer_feedback / risks / red_flags — DROPPED
@@ -283,6 +291,7 @@ export function adaptEmployerChecklist(raw: unknown): EmployerChecklistView {
       questionId: String(o.question_id ?? o.id ?? ""),
       question: asStr(o.question),
       score: asNum(o.score),
+      max: asNum(o.max),
       answer: asStr(o.answer ?? o.candidate_answer ?? o.answer_text),
       employerFeedback: asStr(o.employer_feedback ?? o.feedback),
       evidence: asStr(o.evidence),
@@ -344,6 +353,7 @@ export function adaptEmployerSituations(raw: unknown): EmployerSituationsView {
       situationId: String(o.situation_id ?? o.id ?? ""),
       title: asStr(o.title),
       score: asNum(o.score),
+      max: asNum(o.max),
       prompt: asStr(o.brief ?? o.prompt ?? o.case_text ?? o.question),
       answer: asStr(o.answer ?? o.candidate_answer ?? o.answer_text),
       employerFeedback: asStr(o.employer_feedback ?? o.feedback),
