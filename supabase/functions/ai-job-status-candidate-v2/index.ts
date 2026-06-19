@@ -86,6 +86,10 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   if (!admin) return reply(req, { error: "internal" }, 500);
 
+  // Watchdog: surface stale workers as terminal so the client stops polling
+  // forever when the background instance was killed mid-flight.
+  await admin.rpc("reap_stale_ai_job", { _job_id: jobId });
+
   const { data: job, error: jobErr } = await admin
     .from("ai_jobs")
     .select("id, candidate_id, job_type, status, fallback_used, created_at, updated_at, completed_at")

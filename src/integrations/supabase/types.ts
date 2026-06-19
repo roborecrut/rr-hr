@@ -3162,6 +3162,7 @@ export type Database = {
         Args: { _qty_int: number; _qty_train: number }
         Returns: Json
       }
+      reap_stale_ai_job: { Args: { _job_id: string }; Returns: undefined }
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }
         Returns: boolean
