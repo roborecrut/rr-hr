@@ -1,5 +1,6 @@
 import { AlertTriangle, ShieldAlert, Check, ListChecks } from "lucide-react";
 import { toStrArr, toObjArr } from "@/lib/normalizeArrays";
+import { scoreTone, formatScore } from "@/lib/scoreTone";
 
 type Item = { question_id: string; score: number; feedback?: string; evidence?: string };
 type Risk = { title: string; evidence: string; severity?: string; how_to_verify?: string };
@@ -128,22 +129,69 @@ export default function EmployerTrainingStageReport({
 
       {Array.isArray(perQuestionLegacy) && perQuestionLegacy.length > 0 && (
         <Section title="Детальный разбор вопросов">
-          <div className="space-y-1.5 max-h-[24rem] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[28rem] overflow-y-auto pr-1">
             {perQuestionLegacy.map((pq: any, idx: number) => {
               const ans = Array.isArray(lastAnswers)
                 ? lastAnswers.find((a: any) => a.question_id === pq.id) : null;
-              const tone = pq.score === pq.max ? "text-emerald-300" : pq.score > 0 ? "text-amber-300" : "text-rose-300";
+              const itemMax = Number(pq.max) || 1;
+              const tone = scoreTone(pq.score, itemMax);
+              const qText = typeof pq.question === "string" ? pq.question : "";
+              const short = qText && qText.length > 80 ? qText.slice(0, 80).trimEnd() + "…" : qText;
+              const answerText = typeof ans?.value === "string"
+                ? ans.value
+                : (ans?.value != null ? String(ans.value) : "");
               return (
-                <div key={pq.id || idx} className="bg-black/20 border border-white/5 rounded-lg p-2.5 text-[12px]">
-                  <div className="flex justify-between text-[11px] text-slate-300">
-                    <span><ListChecks className="w-3 h-3 inline mr-1" />Вопрос {idx + 1}</span>
-                    <span className={`font-mono font-bold ${tone}`}>{pq.score}/{pq.max}</span>
+                <details
+                  key={pq.id || idx}
+                  className={`group rounded-lg border border-l-4 bg-black/20 ${tone.bg} ${tone.border} overflow-hidden`}
+                >
+                  <summary className="cursor-pointer list-none px-2.5 py-2 flex items-center gap-2 select-none">
+                    <span className="text-[11px] font-mono text-slate-400 shrink-0">
+                      <ListChecks className="w-3 h-3 inline mr-1" />{idx + 1}.
+                    </span>
+                    <span className="text-[12px] font-semibold text-white leading-[1.4] flex-1 truncate">
+                      {short || `Вопрос ${idx + 1}`}
+                    </span>
+                    <span className={`text-[11px] font-mono font-bold shrink-0 px-1.5 py-0.5 rounded ${tone.badge}`}>
+                      {pq.score != null ? formatScore(pq.score, itemMax) : "—"}
+                    </span>
+                    <span className="text-slate-400 text-[10px] shrink-0 transition-transform group-open:rotate-180" aria-hidden>▾</span>
+                  </summary>
+                  <div className="px-2.5 pb-2.5 pt-1 space-y-1.5 border-t border-white/5 text-[12px]">
+                    {qText && (
+                      <div className="text-white leading-[1.5]">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mr-1">Вопрос:</span>
+                        {qText}
+                      </div>
+                    )}
+                    {answerText && (
+                      <div className="text-slate-100 leading-[1.5] bg-black/25 rounded p-2 border border-white/5">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mr-1">Ответ:</span>
+                        <span className="whitespace-pre-wrap">{answerText}</span>
+                      </div>
+                    )}
+                    {pq.comment && (
+                      <div className={`italic ${tone.text} leading-[1.5]`}>
+                        <span className="not-italic text-[10px] font-mono uppercase tracking-wider mr-1">Оценка ИИ:</span>
+                        {pq.comment}
+                      </div>
+                    )}
+                    {pq.recommendation && (
+                      <div className="text-sky-100 bg-sky-500/10 border border-sky-400/30 rounded p-1.5 leading-[1.5]">
+                        <span className="font-bold text-sky-200">Рекомендация: </span>{pq.recommendation}
+                      </div>
+                    )}
                   </div>
-                  {pq.question && <div className="text-white mt-0.5">{pq.question}</div>}
-                  {ans?.value && (
-                    <div className="mt-1 text-slate-200">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mr-1">Ответ:</span>
-                      {ans.value}
+                </details>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
                     </div>
                   )}
                   {pq.comment && <div className={`mt-1 italic ${tone}`}>Оценка ИИ: {pq.comment}</div>}
