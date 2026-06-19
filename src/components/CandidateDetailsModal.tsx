@@ -696,21 +696,6 @@ function CandidateDetailsModalInner({
         ) : !data ? (
           <div className="p-12 text-center text-slate-300">Нет данных</div>
         ) : (
-          <CandidateBodyErrorBoundary
-            onClose={onClose}
-            diag={{
-              pid_masked: maskPublicId((data as any)?.public_id),
-              has_resume_score: (data as any)?.resume_score != null,
-              resume_feedback_type: describeFeedbackShape((data as any)?.resume_feedback),
-              checklist_feedback_type: describeFeedbackShape((data as any)?.checklist_feedback),
-              situations_feedback_type: describeFeedbackShape((data as any)?.situations_feedback),
-              overall_feedback_type: describeFeedbackShape((data as any)?.overall_feedback),
-              training_feedback_type: describeFeedbackShape((data as any)?.training_summary_feedback),
-              arrays_empty:
-                (Array.isArray((data as any)?.training_stages) && (data as any).training_stages.length === 0) ||
-                false,
-            }}
-          >
           <div className="p-6 md:p-8 space-y-6 text-left">
             {/* Header / profile */}
             <div className="flex flex-col md:flex-row gap-5 items-start">
