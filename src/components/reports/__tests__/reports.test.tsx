@@ -104,4 +104,52 @@ describe("EmployerSituationsReport", () => {
     expect(container.textContent).not.toContain("Риски");
     expect(container.textContent).not.toContain("Красные флаги");
   });
+
+  it("shows the top-level DB score as-is (does NOT replace with item average)", () => {
+    // Semantic invariant (A1 audit): `situations_score` and per-item
+    // `score` are independent AI percentages 0–100; we MUST NOT recompute
+    // the headline from items.
+    const v3 = adaptEmployerSituations({
+      summary: "S", items: [
+        { situation_id: "s1", title: "T1", score: 28, employer_feedback: "ef1" },
+        { situation_id: "s2", title: "T2", score: 22, employer_feedback: "ef2" },
+        { situation_id: "s3", title: "T3", score: 62, employer_feedback: "ef3" },
+      ],
+    });
+    const { container } = render(<EmployerSituationsReport view={v3} score={85} />);
+    expect(container.textContent).toContain("85");   // top-level shown
+    expect(container.textContent).not.toContain("37"); // average NOT shown
+  });
+
+  it("merges situation defs and answers by stable id, not by array order", () => {
+    // Feedback arrives with items in s3, s1, s2 order. Defs and answers
+    // are passed in a DIFFERENT order. Each card must still show its own
+    // prompt and answer — never a neighbour's.
+    const v4 = adaptEmployerSituations({
+      summary: "S", items: [
+        { situation_id: "s3", title: "", score: 62, employer_feedback: "FB3" },
+        { situation_id: "s1", title: "", score: 28, employer_feedback: "FB1" },
+        { situation_id: "s2", title: "", score: 22, employer_feedback: "FB2" },
+      ],
+    });
+    const { container } = render(
+      <EmployerSituationsReport
+        view={v4}
+        score={85}
+        situationDefs={[
+          { id: "s1", title: "TITLE_ONE", brief: "BRIEF_ONE" },
+          { id: "s2", title: "TITLE_TWO", brief: "BRIEF_TWO" },
+          { id: "s3", title: "TITLE_THREE", brief: "BRIEF_THREE" },
+        ]}
+        situationAnswers={{ s1: "ANSWER_ONE", s2: "ANSWER_TWO", s3: "ANSWER_THREE" }}
+      />,
+    );
+    const html = container.innerHTML;
+    expect(html).toContain("TITLE_ONE");
+    expect(html).toContain("TITLE_TWO");
+    expect(html).toContain("TITLE_THREE");
+    expect(html).toContain("BRIEF_ONE");
+    expect(html).toContain("ANSWER_TWO");
+    expect(html).toContain("ANSWER_THREE");
+  });
 });
