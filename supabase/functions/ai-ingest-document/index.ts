@@ -280,5 +280,32 @@ Deno.serve(async (req) => {
   }
   if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: "ingest_resume:text_returned" });
   if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+  // Persist the recognised resume text to candidates.resume_text via the
+  // server-only RPC so it survives reloads / navigation away from the page.
+  // Without this the next screen_resume_v2 call sees an empty DB row and
+  // returns no_resume even though ingest_resume reported success.
+  if (body.entity === "resume") {
+    try {
+      const token = (
+        req.headers.get("x-candidate-token") ||
+        req.headers.get("X-Candidate-Token") ||
+        ""
+      ).trim();
+      if (token) {
+        const sess = await admin
+          .from("candidate_sessions")
+          .select("candidate_id")
+          .eq("token", token)
+          .maybeSingle();
+        const candId = (sess.data as any)?.candidate_id || null;
+        if (candId && text && text.trim().length >= 50) {
+          await admin.rpc("save_candidate_resume_text", {
+            _candidate: candId,
+            _resume_text: text,
+          });
+        }
+      }
+    } catch (_) { /* best-effort: do not fail the response on persist error */ }
+  }
   return jsonResponse({ ok: true, text });
 });
