@@ -1,6 +1,7 @@
 import { AlertTriangle, ShieldAlert, Check, ListChecks } from "lucide-react";
 import { toStrArr, toObjArr } from "@/lib/normalizeArrays";
 import { scoreTone, formatScore } from "@/lib/scoreTone";
+import { mergeStageItems, deriveStageSummary, type StageQuestionMap } from "@/lib/trainingStageMerge";
 
 type Item = { question_id: string; score: number; feedback?: string; evidence?: string };
 type Risk = { title: string; evidence: string; severity?: string; how_to_verify?: string };
@@ -24,17 +25,83 @@ function Section({ title, children }: { title: string; children: any }) {
   );
 }
 
-export default function EmployerTrainingStageReport({
-  status, score, max, passScore, summary, perQuestionLegacy, lastAnswers,
-}: {
+type LegacyProps = {
   status: "passed" | "in_progress" | "not_started";
   score: number | null;
   max: number;
   passScore: number;
-  summary: EmployerStageSummary | null;
+  /** Back-compat: pre-built per-question list. New code passes feedback+answers instead. */
+  summary?: EmployerStageSummary | null;
   perQuestionLegacy?: any[];
   lastAnswers?: any[];
-}) {
+};
+
+type MergeProps = {
+  status: "passed" | "in_progress" | "not_started";
+  score: number | null;
+  max: number;
+  passScore: number;
+  /** Stage key (`professional` | `product` | `system` | aliases). */
+  stage: string;
+  /** Raw `candidate_stage_progress.employer_summary` jsonb, or null. */
+  employerSummary?: unknown;
+  /** Raw `candidate_stage_progress.last_feedback` jsonb (array of items). */
+  feedback?: unknown;
+  /** Raw `candidate_stage_progress.last_answers` jsonb (array of items). */
+  answers?: unknown;
+  /** Map produced by buildStageQuestionMap (training_stage_tests rows). */
+  questionsMap?: StageQuestionMap | null;
+};
+
+export default function EmployerTrainingStageReport(props: LegacyProps | MergeProps) {
+  const { status, score, max, passScore } = props;
+  const isMerge = "stage" in props;
+
+  // Build per-question list & summary either from new merge inputs or from
+  // legacy props passed by older call sites.
+  const merged = isMerge
+    ? mergeStageItems({
+        stage: (props as MergeProps).stage,
+        feedback: (props as MergeProps).feedback,
+        answers: (props as MergeProps).answers,
+        questionsMap: (props as MergeProps).questionsMap || null,
+      })
+    : [];
+
+  const perQuestionLegacy = isMerge
+    ? merged.map(it => ({
+        id: it.id,
+        question: it.question,
+        score: it.score,
+        max: it.max,
+        comment: it.comment,
+        recommendation: it.recommendation,
+      }))
+    : ((props as LegacyProps).perQuestionLegacy || []);
+
+  const lastAnswers = isMerge
+    ? merged.map(it => ({ question_id: it.id, value: it.answer }))
+    : ((props as LegacyProps).lastAnswers || []);
+
+  const rawSummary = isMerge
+    ? (props as MergeProps).employerSummary
+    : (props as LegacyProps).summary;
+  const hasStructuredSummary =
+    rawSummary && typeof rawSummary === "object" && !Array.isArray(rawSummary) &&
+    (
+      typeof (rawSummary as any).summary === "string" ||
+      Array.isArray((rawSummary as any).strengths) ||
+      Array.isArray((rawSummary as any).gaps) ||
+      Array.isArray((rawSummary as any).risks) ||
+      Array.isArray((rawSummary as any).red_flags)
+    );
+
+  // Deterministic fallback: legacy rows without employer_summary still get
+  // a structured stage summary derived from the per-item feedback. No AI.
+  const summary: EmployerStageSummary | null = hasStructuredSummary
+    ? (rawSummary as EmployerStageSummary)
+    : (isMerge ? deriveStageSummary(merged) : null);
+
   const statusBadge = status === "passed"
     ? "bg-emerald-500/20 text-emerald-300"
     : status === "in_progress" ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300";

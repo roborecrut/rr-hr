@@ -17,6 +17,7 @@ import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
 import EmployerTrainingStageReport from "@/components/reports/EmployerTrainingStageReport";
 import EmployerTrainingSummaryReport from "@/components/reports/EmployerTrainingSummaryReport";
 import { scoreTone as toneFor, formatScore as toneFormat, type Tone } from "@/lib/scoreTone";
+import { buildStageQuestionMap, type StageQuestionMap } from "@/lib/trainingStageMerge";
 import {
   startOverallCandidateV2, pollEmployerJobUntilTerminal,
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
@@ -401,6 +402,7 @@ function CandidateDetailsModalInner({
   const [trainingSummary, setTrainingSummary] = useState<any>(null);
   const [trainingSummaryLoading, setTrainingSummaryLoading] = useState(false);
   const [trainingSummaryErr, setTrainingSummaryErr] = useState<string | null>(null);
+  const [stageQuestionMap, setStageQuestionMap] = useState<StageQuestionMap | null>(null);
 
   const loadTrainingSummary = React.useCallback(async () => {
     if (!candidateId) return;
@@ -412,6 +414,27 @@ function CandidateDetailsModalInner({
   }, [candidateId]);
 
   useEffect(() => { loadTrainingSummary(); }, [loadTrainingSummary]);
+
+  // Fetch training_stage_tests for this project so per-question feedback can
+  // be merged with real question text by stable `question_id`. Without this
+  // the report falls back to "Вопрос N" placeholders even when the test
+  // definition contains the actual question. Read-only, RLS-safe.
+  const projectIdForTests: string | null =
+    (data?.project as any)?.id || (data?.candidate as any)?.project_id || null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!projectIdForTests) { setStageQuestionMap(null); return; }
+    (async () => {
+      const { data: rows, error } = await supabase
+        .from("training_stage_tests")
+        .select("stage,questions")
+        .eq("project_id", projectIdForTests);
+      if (cancelled) return;
+      if (error || !Array.isArray(rows)) { setStageQuestionMap(null); return; }
+      setStageQuestionMap(buildStageQuestionMap(rows as any[]));
+    })();
+    return () => { cancelled = true; };
+  }, [projectIdForTests]);
 
   const recomputeTrainingSummary = async () => {
     if (!candidateId) return;
@@ -1137,19 +1160,17 @@ function CandidateDetailsModalInner({
                         const score = sp.last_score ?? sp.best_score ?? null;
                         const max = 100; // training stage scoring is normalized to 100
                         const passScore = 70;
-                        const summary = (sp.employer_summary && typeof sp.employer_summary === "object") ? sp.employer_summary : null;
                         return (
                           <EmployerTrainingStageReport
                             status={status}
                             score={score}
                             max={max}
                             passScore={passScore}
-                            summary={summary}
-                            perQuestionLegacy={Array.isArray(sp.last_feedback) ? sp.last_feedback.map((pq: any) => ({
-                              ...pq,
-                              question: pq.question || (sp.last_answers || []).find((a: any) => a.question_id === pq.id)?.question_text,
-                            })) : []}
-                            lastAnswers={Array.isArray(sp.last_answers) ? sp.last_answers : []}
+                            stage={String(sp.stage || def.key)}
+                            employerSummary={(sp.employer_summary && typeof sp.employer_summary === "object") ? sp.employer_summary : null}
+                            feedback={sp.last_feedback}
+                            answers={sp.last_answers}
+                            questionsMap={stageQuestionMap}
                           />
                         );
                   };
