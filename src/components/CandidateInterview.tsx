@@ -179,6 +179,19 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
       const { data: pr } = await (supabase as any).from("projects").select("interview_pass_score").eq("id", projectId).maybeSingle();
       setPassScore((pr as any)?.interview_pass_score ?? 75);
+      // Re-hydrate the previously recognised resume text from DB so a reload
+      // (or any state wipe) never loses it. Without this, ai-ingest-document
+      // saves the text server-side but the submit button would still send an
+      // empty body and the screen function would fail with no_resume.
+      try {
+        const { data: candRow } = await (supabase as any)
+          .from("candidates")
+          .select("resume_text")
+          .eq("id", candidateId)
+          .maybeSingle();
+        const txt = String((candRow as any)?.resume_text || "");
+        if (txt.trim().length >= 1) setResumeText(txt);
+      } catch { /* ignore */ }
       const r = await call("ai-list-interview-checklist", { project_id: projectId });
       const qs: Question[] = r.questions || [];
       const doShuffle = r.shuffle !== false;
