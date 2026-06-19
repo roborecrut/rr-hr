@@ -23,6 +23,7 @@ import {
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
   isTerminal, isSuccess,
 } from "@/lib/aiJobs";
+import { diagLog, extractInvokeError, tail } from "@/lib/diagLog";
 
 /**
  * Compact, non-PII diagnostics object passed into the Error Boundary.
