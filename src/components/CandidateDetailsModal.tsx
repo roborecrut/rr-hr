@@ -1160,19 +1160,17 @@ function CandidateDetailsModalInner({
                         const score = sp.last_score ?? sp.best_score ?? null;
                         const max = 100; // training stage scoring is normalized to 100
                         const passScore = 70;
-                        const summary = (sp.employer_summary && typeof sp.employer_summary === "object") ? sp.employer_summary : null;
                         return (
                           <EmployerTrainingStageReport
                             status={status}
                             score={score}
                             max={max}
                             passScore={passScore}
-                            summary={summary}
-                            perQuestionLegacy={Array.isArray(sp.last_feedback) ? sp.last_feedback.map((pq: any) => ({
-                              ...pq,
-                              question: pq.question || (sp.last_answers || []).find((a: any) => a.question_id === pq.id)?.question_text,
-                            })) : []}
-                            lastAnswers={Array.isArray(sp.last_answers) ? sp.last_answers : []}
+                            stage={String(sp.stage || def.key)}
+                            employerSummary={(sp.employer_summary && typeof sp.employer_summary === "object") ? sp.employer_summary : null}
+                            feedback={sp.last_feedback}
+                            answers={sp.last_answers}
+                            questionsMap={stageQuestionMap}
                           />
                         );
                   };
