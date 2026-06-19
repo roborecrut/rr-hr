@@ -65,8 +65,15 @@ export type EmployerChecklistItem = {
   questionId: string;
   question?: string;
   score?: number;
+  /** Candidate's answer, when persisted on the feedback item. */
+  answer?: string;
   employerFeedback?: string;
   evidence?: string;
+  /** Optional AI recommendation for this question. */
+  recommendation?: string;
+  /** Optional per-item strengths / improvements lists, when present. */
+  strengths?: string[];
+  improvements?: string[];
 };
 
 export type EmployerChecklistView = {
@@ -85,8 +92,15 @@ export type EmployerSituationItem = {
   situationId: string;
   title?: string;
   score?: number;
+  /** Full case prompt shown to the candidate, when present. */
+  prompt?: string;
+  /** Candidate's answer, when persisted on the feedback item. */
+  answer?: string;
   employerFeedback?: string;
   evidence?: string;
+  recommendation?: string;
+  strengths?: string[];
+  improvements?: string[];
 };
 
 export type EmployerSituationsView = {
@@ -269,8 +283,12 @@ export function adaptEmployerChecklist(raw: unknown): EmployerChecklistView {
       questionId: String(o.question_id ?? o.id ?? ""),
       question: asStr(o.question),
       score: asNum(o.score),
+      answer: asStr(o.answer ?? o.candidate_answer ?? o.answer_text),
       employerFeedback: asStr(o.employer_feedback ?? o.feedback),
       evidence: asStr(o.evidence),
+      recommendation: asStr(o.recommendation),
+      strengths: asStrArray(o.strengths),
+      improvements: asStrArray(o.areas_to_improve ?? o.improvements),
     };
   }).filter((x): x is EmployerChecklistItem => !!x && !!x.questionId);
 
@@ -326,8 +344,13 @@ export function adaptEmployerSituations(raw: unknown): EmployerSituationsView {
       situationId: String(o.situation_id ?? o.id ?? ""),
       title: asStr(o.title),
       score: asNum(o.score),
+      prompt: asStr(o.brief ?? o.prompt ?? o.case_text ?? o.question),
+      answer: asStr(o.answer ?? o.candidate_answer ?? o.answer_text),
       employerFeedback: asStr(o.employer_feedback ?? o.feedback),
       evidence: asStr(o.evidence),
+      recommendation: asStr(o.recommendation),
+      strengths: asStrArray(o.strengths),
+      improvements: asStrArray(o.areas_to_improve ?? o.improvements),
     };
   }).filter((x): x is EmployerSituationItem => !!x && !!x.situationId);
 
