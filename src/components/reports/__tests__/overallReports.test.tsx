@@ -117,15 +117,21 @@ describe("EmployerOverallReport — compact summary UX", () => {
 
   it("hides full executive_summary by default; reveals it only after expanding", () => {
     const longTail = "финальной мыслью, которую обязательно нужно скрыть";
-    const { getByTestId, queryByText } = render(
+    const { getByTestId, container } = render(
       <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
     );
-    // The exact tail string is part of the long summary and must NOT be in DOM.
-    expect(queryByText(new RegExp(longTail))).toBeNull();
+    // The full summary is rendered in the DOM but must live INSIDE a closed
+    // <details> (visually hidden by default).
+    const top = getByTestId("overall-details") as HTMLDetailsElement;
+    const exec = getByTestId("full-exec-summary") as HTMLDetailsElement;
+    expect(top.open).toBe(false);
+    expect(exec.open).toBe(false);
+    // And nothing outside the top accordion contains the long tail.
+    const openPart = container.cloneNode(true) as HTMLElement;
+    openPart.querySelector('[data-testid="overall-details"]')?.remove();
+    expect(openPart.textContent || "").not.toMatch(new RegExp(longTail));
     // After expanding the top accordion AND the inner one — text becomes available.
-    const top = getByTestId("overall-details");
     fireEvent.click(top.querySelector("summary")!);
-    const exec = getByTestId("full-exec-summary");
     fireEvent.click(exec.querySelector("summary")!);
     expect(exec.textContent || "").toMatch(new RegExp(longTail));
   });
