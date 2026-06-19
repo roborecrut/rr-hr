@@ -1038,6 +1038,14 @@ function CandidateDetailsModalInner({
                 <EmployerSituationsReport
                   view={adaptEmployerSituations((s as any)?.situations_feedback)}
                   score={(s as any)?.situations_score ?? null}
+                  situationDefs={situationCases.map((x: any, i: number) => ({
+                    id: String(x.id || `s${i + 1}`),
+                    title: x.title,
+                    brief: x.brief,
+                  }))}
+                  situationAnswers={Object.fromEntries(
+                    (situationAnswers || []).map((a: any) => [String(a.question_id || a.id), a.answer_text || ""]),
+                  )}
                 />
               </div>
             ) : situationAnswersView.length > 0 ? (

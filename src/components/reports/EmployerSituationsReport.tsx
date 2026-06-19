@@ -9,9 +9,36 @@
 import { type EmployerSituationsView } from "@/lib/feedbackAdapters";
 import { scoreTone, formatScore } from "@/lib/scoreTone";
 
+/**
+ * External enrichment for the situations report.
+ *
+ * Semantics audit (Phase R3 A1):
+ *   - `situations_score` (top-level DB column) is the AI's own overall
+ *     percentage 0–100. It is emitted independently by the grader and is
+ *     NOT a mathematical aggregate of per-item scores. See
+ *     `validateSituationsGradeReport` — `total` and `items[].score` are
+ *     each validated to [0,100] and saved as-is.
+ *   - `items[].score` is the AI's per-item percentage 0–100.
+ *   - Do NOT replace the top-level score with an average of items — those
+ *     two numbers can legitimately disagree (e.g. AI gives 85 overall while
+ *     execution per case scored low because the prompt rewards potential).
+ *
+ * `situationDefs` is the list of situations from `interview_blocks` so we
+ * can show the real prompt/title even for legacy feedback blobs that store
+ * only `{id, score, feedback}`. `situationAnswers` map keyed by situation_id
+ * supplies the candidate's text when available.
+ */
+export type SituationDef = {
+  id: string;
+  title?: string;
+  brief?: string;
+};
+
 type Props = {
   view: EmployerSituationsView;
   score?: number | null;
+  situationDefs?: SituationDef[];
+  situationAnswers?: Record<string, string>;
 };
 
 function SituationCard({
@@ -88,23 +115,23 @@ function SituationCard({
   );
 }
 
-export default function EmployerSituationsReport({ view, score }: Props) {
+export default function EmployerSituationsReport({ view, score, situationDefs, situationAnswers }: Props) {
   if (view.kind === "empty") {
     return <div className="text-sm text-slate-300 italic">Разбор ситуаций ещё не готов.</div>;
   }
 
-  // Derive the section score from items when possible — protects against
-  // legacy `situations_score` that disagrees with the saved per-item scores
-  // (we showed sums like 85 while items totalled to 37). Items are percentages.
-  const itemScores = view.kind === "structured"
-    ? view.items.map((it) => (typeof it.score === "number"
-        ? (it.max && it.max > 0 ? (it.score / it.max) * 100 : it.score)
-        : NaN)).filter((n) => Number.isFinite(n))
-    : [];
-  const derived = itemScores.length > 0
-    ? Math.round(itemScores.reduce((s, n) => s + n, 0) / itemScores.length)
-    : (typeof score === "number" ? score : undefined);
-  const headTone = scoreTone(derived, 100);
+  // Trust top-level `situations_score` from DB — it is the AI's own overall
+  // percentage, not a function of items. See header comment.
+  const topScore = typeof score === "number" ? score : undefined;
+  const headTone = scoreTone(topScore, 100);
+
+  // Build a lookup so per-item cards can show the real prompt + answer when
+  // the feedback blob only carries `{id, score, feedback}` (legacy v1 shape).
+  const defsById = new Map<string, SituationDef>();
+  for (const d of situationDefs || []) {
+    if (d && d.id) defsById.set(String(d.id), d);
+  }
+  const ansById = situationAnswers || {};
 
   if (view.kind === "legacy") {
     const text = typeof view.legacyRaw === "string"
@@ -124,8 +151,8 @@ export default function EmployerSituationsReport({ view, score }: Props) {
 
   return (
     <div className="space-y-4" data-testid="employer-situations-report">
-      {typeof derived === "number" && (
-        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(derived, 100)}</div>
+      {typeof topScore === "number" && (
+        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(topScore, 100)}</div>
       )}
 
       {/* Overall AI conclusion for the whole situations section. */}
@@ -193,11 +220,11 @@ export default function EmployerSituationsReport({ view, score }: Props) {
               <SituationCard
                 key={it.situationId}
                 index={idx}
-                title={it.title}
+                title={it.title || defsById.get(it.situationId)?.title}
                 score={it.score}
                 max={it.max}
-                prompt={it.prompt}
-                answer={it.answer}
+                prompt={it.prompt || defsById.get(it.situationId)?.brief}
+                answer={it.answer || ansById[it.situationId]}
                 employerFeedback={it.employerFeedback}
                 evidence={it.evidence}
                 recommendation={it.recommendation}
