@@ -48,15 +48,20 @@ const fullEmployer = {
 };
 
 describe("EmployerOverallReport — compact summary UX", () => {
-  it("shows the compact top metrics (AI fit, avg, verdict, confidence, completeness)", () => {
-    const { getByTestId, getByText } = render(
+  it("top row contains EXACTLY 3 metrics (AI fit, avg, verdict) — no confidence / completeness", () => {
+    const { getByTestId, queryByText, container } = render(
       <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
     );
+    const row = getByTestId("overall-metrics-row");
+    // exactly 3 chips
+    expect(row.children.length).toBe(3);
     expect(getByTestId("ai-fit-score-card").textContent).toMatch(/78/);
     expect(getByTestId("avg-stage-score-card").textContent).toMatch(/64/);
-    expect(getByText(/Вердикт/)).toBeTruthy();
-    expect(getByText(/Уверенность AI/)).toBeTruthy();
-    expect(getByText(/Полнота оценки/)).toBeTruthy();
+    expect(getByTestId("verdict-card")).toBeTruthy();
+    // Confidence / completeness must NOT appear anywhere in the UI.
+    expect(queryByText(/Уверенность AI/)).toBeNull();
+    expect(queryByText(/Полнота оценки/)).toBeNull();
+    expect(container.textContent || "").not.toMatch(/Полнота данных/);
   });
 
   it("renders a compact 'Вывод по кандидату' card (short text)", () => {
@@ -66,7 +71,18 @@ describe("EmployerOverallReport — compact summary UX", () => {
     const card = getByTestId("overall-verdict-card");
     expect(within(card).getByText(/Вывод по кандидату/)).toBeTruthy();
     // The card must stay short — ~one paragraph, not the whole executive summary.
-    expect(card.textContent!.length).toBeLessThan(700);
+    expect(card.textContent!.length).toBeLessThan(600);
+  });
+
+  it("verdict text is ≤280 chars, has no ellipsis, and ends on a sentence boundary", () => {
+    const { getByTestId } = render(
+      <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
+    );
+    const t = (getByTestId("overall-verdict-text").textContent || "").trim();
+    expect(t.length).toBeGreaterThan(0);
+    expect(t.length).toBeLessThanOrEqual(280);
+    expect(t).not.toMatch(/…|\.\.\./);
+    expect(t).toMatch(/[.!?]$/);
   });
 
   it("limits the open part to ≤3 strengths and ≤3 risks", () => {
@@ -79,18 +95,56 @@ describe("EmployerOverallReport — compact summary UX", () => {
     expect(risks.length).toBeLessThanOrEqual(3);
   });
 
-  it("renames the intake block to «Что уточнить при знакомстве»", () => {
+  it("renames the intake block to «Что уточнить при знакомстве» (organisational only, ≤3 items)", () => {
     const { getByTestId } = render(
       <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
     );
-    expect(within(getByTestId("block-intake")).getByText(/Что уточнить при знакомстве/)).toBeTruthy();
+    const intake = getByTestId("block-intake");
+    expect(within(intake).getByText(/Что уточнить при знакомстве/)).toBeTruthy();
+    const items = intake.querySelectorAll("li");
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.length).toBeLessThanOrEqual(3);
+    const text = intake.textContent || "";
+    expect(text).not.toMatch(/ролев\w*\s+игр/i);
+    expect(text).not.toMatch(/холодн\w*\s+звон/i);
+    expect(text).not.toMatch(/проверк\w*\s+компетенц/i);
+    expect(text).not.toMatch(/тест(овое)?\s+задани/i);
   });
 
-  it("never shows re-interview / re-verification phrasing anywhere in the open part", () => {
+  it("requirements coverage is shown as a single compact stats line (numbers only)", () => {
+    const { getByTestId, queryByTestId } = render(
+      <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
+    );
+    const stats = getByTestId("match-stats");
+    expect(stats).toBeTruthy();
+    expect(within(stats).getByTestId("match-stats-full").textContent).toMatch(/4/);
+    expect(within(stats).getByTestId("match-stats-partial").textContent).toMatch(/2/);
+    expect(within(stats).getByTestId("match-stats-gaps").textContent).toMatch(/1/);
+    // No criterion texts in the open part.
+    expect(stats.textContent).not.toMatch(/Python|SQL|ML|DevOps|Лидерство|Менторство|Английский/);
+    // No big match cards.
+    expect(queryByTestId("match-full")).toBeNull();
+    expect(queryByTestId("match-partial")).toBeNull();
+    expect(queryByTestId("match-gaps")).toBeNull();
+  });
+
+  it("the open part uses no truncate / line-clamp / ellipsis classes for semantic texts", () => {
     const { container, getByTestId } = render(
       <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
     );
-    // Walk only the open part (everything BEFORE the collapsed details).
+    const openPart = container.cloneNode(true) as HTMLElement;
+    openPart.querySelector('[data-testid="overall-details"]')?.remove();
+    expect(openPart.querySelector('.truncate')).toBeNull();
+    expect(openPart.querySelector('[class*="line-clamp"]')).toBeNull();
+    expect(openPart.querySelector('[class*="text-ellipsis"]')).toBeNull();
+    expect(openPart.textContent || "").not.toMatch(/…/);
+    expect(getByTestId("overall-verdict-text").textContent || "").not.toMatch(/…/);
+  });
+
+  it("never shows re-interview / role-play / cold-call phrasing in the open part", () => {
+    const { container, getByTestId } = render(
+      <EmployerOverallReport fitScore={78} overallScore={64} employerFeedback={fullEmployer} />,
+    );
     const details = getByTestId("overall-details");
     const openPart = container.cloneNode(true) as HTMLElement;
     const detailsClone = openPart.querySelector('[data-testid="overall-details"]');
@@ -100,7 +154,9 @@ describe("EmployerOverallReport — compact summary UX", () => {
     expect(text).not.toMatch(/повторн\w*\s+интервью/i);
     expect(text).not.toMatch(/дополнительн\w*\s+интервью/i);
     expect(text).not.toMatch(/перепровер/i);
-    // The closed accordion still exists.
+    expect(text).not.toMatch(/ролев\w*\s+игр/i);
+    expect(text).not.toMatch(/холодн\w*\s+звон/i);
+    expect(text).not.toMatch(/проверк\w*\s+компетенц/i);
     expect(details).toBeTruthy();
   });
 
