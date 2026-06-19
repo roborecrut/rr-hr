@@ -15,15 +15,18 @@ type Props = {
 };
 
 function SituationCard({
-  index, title, score, prompt, answer, employerFeedback, evidence,
+  index, title, score, max, prompt, answer, employerFeedback, evidence,
   recommendation, strengths, improvements,
 }: {
-  index: number; title?: string; score?: number;
+  index: number; title?: string; score?: number; max?: number;
   prompt?: string; answer?: string; employerFeedback?: string; evidence?: string;
   recommendation?: string; strengths?: string[]; improvements?: string[];
 }) {
-  // Situations are scored on a 0–10 scale by default (v2 schema).
-  const tone = scoreTone(score, 10);
+  // Situations are scored as a percentage (0–100) unless the item carries its
+  // own `max`. The legacy /10 denominator produced impossible values like
+  // "28/10". Trust per-item `max` when present, otherwise default to 100.
+  const itemMax = typeof max === "number" && max > 0 ? max : 100;
+  const tone = scoreTone(score, itemMax);
   const headline = (title || "Ситуация").trim();
   const short = headline.length > 80 ? headline.slice(0, 80).trimEnd() + "…" : headline;
 
@@ -34,7 +37,7 @@ function SituationCard({
         <span className="text-[13px] font-semibold text-white leading-[1.4] flex-1">{short}</span>
         {typeof score === "number" && (
           <span className={`text-[11px] font-mono font-bold shrink-0 px-2 py-0.5 rounded ${tone.badge}`}>
-            {formatScore(score, 10)}
+            {formatScore(score, itemMax)}
           </span>
         )}
         <span className="text-slate-400 text-xs shrink-0 transition-transform group-open:rotate-180" aria-hidden>▾</span>
@@ -90,7 +93,18 @@ export default function EmployerSituationsReport({ view, score }: Props) {
     return <div className="text-sm text-slate-300 italic">Разбор ситуаций ещё не готов.</div>;
   }
 
-  const headTone = scoreTone(score, 100);
+  // Derive the section score from items when possible — protects against
+  // legacy `situations_score` that disagrees with the saved per-item scores
+  // (we showed sums like 85 while items totalled to 37). Items are percentages.
+  const itemScores = view.kind === "structured"
+    ? view.items.map((it) => (typeof it.score === "number"
+        ? (it.max && it.max > 0 ? (it.score / it.max) * 100 : it.score)
+        : NaN)).filter((n) => Number.isFinite(n))
+    : [];
+  const derived = itemScores.length > 0
+    ? Math.round(itemScores.reduce((s, n) => s + n, 0) / itemScores.length)
+    : (typeof score === "number" ? score : undefined);
+  const headTone = scoreTone(derived, 100);
 
   if (view.kind === "legacy") {
     const text = typeof view.legacyRaw === "string"
@@ -110,8 +124,8 @@ export default function EmployerSituationsReport({ view, score }: Props) {
 
   return (
     <div className="space-y-4" data-testid="employer-situations-report">
-      {typeof score === "number" && (
-        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(score, 100)}</div>
+      {typeof derived === "number" && (
+        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(derived, 100)}</div>
       )}
 
       {/* Overall AI conclusion for the whole situations section. */}
@@ -181,6 +195,7 @@ export default function EmployerSituationsReport({ view, score }: Props) {
                 index={idx}
                 title={it.title}
                 score={it.score}
+                max={it.max}
                 prompt={it.prompt}
                 answer={it.answer}
                 employerFeedback={it.employerFeedback}

@@ -33,10 +33,22 @@ export default function CandidateChecklistReport({ view, score }: Props) {
     );
   }
 
+  // Derive top-level score from items so the headline matches the detail.
+  let derived: number | undefined = typeof score === "number" ? score : undefined;
+  if (view.items.length > 0) {
+    let sum = 0; let maxSum = 0;
+    for (const it of view.items) {
+      if (typeof it.score !== "number") continue;
+      const m = it.max && it.max > 0 ? it.max : 5;
+      sum += it.score; maxSum += m;
+    }
+    if (maxSum > 0) derived = Math.round((sum / maxSum) * 100);
+  }
+
   return (
     <div className="space-y-4" data-testid="candidate-checklist-report">
-      {typeof score === "number" && (
-        <div className="text-3xl font-extrabold text-emerald-300">{score}/100</div>
+      {typeof derived === "number" && (
+        <div className="text-3xl font-extrabold text-emerald-300">{derived}/100</div>
       )}
       {view.summary && (
         <div className="bg-black/20 border border-white/10 rounded-xl p-4 text-[14px] leading-[1.6] text-white/95">
