@@ -370,7 +370,7 @@ export function adaptEmployerSituations(raw: unknown): EmployerSituationsView {
   const weak = asStrArray(obj.competencies_weak ?? obj.areas_to_improve);
 
   const hasStructured = items.length || risks.length || redFlags.length
-    || demonstrated.length || weak.length || asStr(obj.summary);
+    || demonstrated.length || weak.length || asStr(obj.summary) || asStr(obj.advice) || asStr(obj.overall);
   if (!hasStructured) {
     return { kind: "legacy", competenciesDemonstrated: [], competenciesWeak: [], risks: [], redFlags: [], items: [], legacyRaw: obj };
   }
@@ -378,7 +378,11 @@ export function adaptEmployerSituations(raw: unknown): EmployerSituationsView {
   return {
     kind: "structured",
     total: asNum(obj.total),
-    summary: asStr(obj.summary),
+    // Legacy situations v1 records emit the section-wide conclusion under
+    // `advice` (or, in some early drafts, `overall`). Fall back to those so
+    // the "Общий вывод по ситуациям" block actually renders for historic
+    // candidates instead of silently disappearing.
+    summary: asStr(obj.summary) || asStr(obj.advice) || asStr(obj.overall),
     competenciesDemonstrated: demonstrated,
     competenciesWeak: weak,
     risks, redFlags, items,
