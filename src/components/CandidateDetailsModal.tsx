@@ -17,6 +17,7 @@ import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
 import EmployerTrainingStageReport from "@/components/reports/EmployerTrainingStageReport";
 import EmployerTrainingSummaryReport from "@/components/reports/EmployerTrainingSummaryReport";
 import { scoreTone as toneFor, formatScore as toneFormat, type Tone } from "@/lib/scoreTone";
+import { buildStageQuestionMap, type StageQuestionMap } from "@/lib/trainingStageMerge";
 import {
   startOverallCandidateV2, pollEmployerJobUntilTerminal,
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
@@ -401,6 +402,7 @@ function CandidateDetailsModalInner({
   const [trainingSummary, setTrainingSummary] = useState<any>(null);
   const [trainingSummaryLoading, setTrainingSummaryLoading] = useState(false);
   const [trainingSummaryErr, setTrainingSummaryErr] = useState<string | null>(null);
+  const [stageQuestionMap, setStageQuestionMap] = useState<StageQuestionMap | null>(null);
 
   const loadTrainingSummary = React.useCallback(async () => {
     if (!candidateId) return;
