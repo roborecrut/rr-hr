@@ -191,16 +191,3 @@ export default function EmployerTrainingStageReport({
     </div>
   );
 }
-
-                    </div>
-                  )}
-                  {pq.comment && <div className={`mt-1 italic ${tone}`}>Оценка ИИ: {pq.comment}</div>}
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-    </div>
-  );
-}
