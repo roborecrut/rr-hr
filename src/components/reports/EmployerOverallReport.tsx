@@ -1,19 +1,18 @@
 /**
- * Employer-facing OVERALL evaluation — compact "management summary" surface.
+ * Employer-facing OVERALL evaluation — compact one-screen management summary.
  *
- * Renders ONLY a tight one-screen summary in the open part. Full evidence
- * (matches, gaps, risks, red flags, executive summary, per-stage) is reachable
- * only via the single bottom accordion "Подробный AI-разбор".
+ * Open part shows ONLY: 3 metric chips, a short verdict card, top-3 strengths,
+ * top-3 risks, a small intake-questions card, and a 3-number requirements bar.
+ * Everything else (full matches, gaps, evidence, executive summary, per-stage)
+ * lives inside the single collapsed «Подробный AI-разбор» accordion.
  *
- * This file is presentation-only. It does NOT mutate the saved JSON, never
- * triggers an AI call, and tolerates malformed / legacy payloads (renders
- * an empty-but-safe state instead of crashing).
+ * Presentation-only. Never mutates the saved JSON, never triggers an AI call,
+ * and tolerates malformed / legacy payloads with a safe empty state.
  */
 import React, { useMemo } from "react";
 
 type AnyObj = Record<string, any>;
 
-// Stage labels — Russian only. English keys are normalised before display.
 const STAGE_LABEL: Record<string, string> = {
   resume: "Резюме",
   checklist: "Анкета",
@@ -38,30 +37,72 @@ function tone(score: number | null | undefined): { cls: string; bg: string } {
 function asArr(v: unknown): any[] { return Array.isArray(v) ? v : []; }
 function asStr(v: unknown): string { return typeof v === "string" ? v : (v == null ? "" : String(v)); }
 
-/** UI-only safe truncation. The full text remains available inside the
- *  collapsed "Подробный AI-разбор" accordion. */
-function truncate(s: string, max: number): string {
-  const t = (s || "").trim();
+/** Sentence-aware shortener. Returns a fully formed sentence (or set of
+ *  sentences) whose total length is ≤ max. Never appends ellipsis and never
+ *  cuts mid-word. The full text remains available inside the collapsed
+ *  «Подробный AI-разбор» accordion. */
+function shortenToSentence(s: string, max: number): string {
+  const t = (s || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
   if (t.length <= max) return t;
-  const cut = t.slice(0, max);
-  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
-  return (stop > max * 0.5 ? cut.slice(0, stop + 1) : cut.replace(/[ ,;:.\-]+$/, "")) + "…";
+  const sentences = t.match(/[^.!?…]+[.!?…]+/g) || [];
+  if (sentences.length > 0) {
+    let out = "";
+    for (const raw of sentences) {
+      const sent = raw.trim();
+      const next = out ? out + " " + sent : sent;
+      if (next.length > max) break;
+      out = next;
+    }
+    if (out) return out;
+    // First sentence already > max: fall through to word-boundary shrink.
+  }
+  // No sentence punctuation at all — keep whole words, end on a period.
+  const words = t.split(" ");
+  let acc = "";
+  for (const w of words) {
+    const next = acc ? acc + " " + w : w;
+    if (next.length > max - 1) break;
+    acc = next;
+  }
+  if (!acc) acc = words[0].slice(0, Math.max(1, max - 1));
+  return acc.replace(/[ ,;:\-–—]+$/, "") + ".";
 }
 
-// Filter: drop any AI-generated interview item that suggests a "повторное"
-// or "финальное" интервью / re-verification of competencies. Product
-// positions itself such that no second interview is needed.
-const REINTERVIEW_RE = /(финальн\w*\s+интервью|повторн\w*\s+интервью|дополнительн\w*\s+интервью|перепровер|повторн\w*\s+оценк)/i;
-function isPracticalIntake(s: unknown): boolean {
+/** Short single-line shaper for list items (strengths / risks). */
+function shortLine(s: string, max: number): string {
+  const t = asStr(s).replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  if (t.length <= max) return t;
+  // Cut at last sentence end inside the budget…
+  const cut = t.slice(0, max);
+  const stop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("! "), cut.lastIndexOf("? "));
+  if (stop > max * 0.4) return cut.slice(0, stop + 1).trim();
+  // …otherwise keep whole words and end on a period (no ellipsis).
+  const words = cut.split(" ");
+  words.pop();
+  return words.join(" ").replace(/[ ,;:\-–—]+$/, "") + ".";
+}
+
+// Reject any intake item that is NOT an organisational onboarding question:
+// no re-interview, no role-plays, no cold calls, no competence re-checks.
+const FORBIDDEN_INTAKE_RE =
+  /(финальн\w*\s+интервью|повторн\w*\s+интервью|дополнительн\w*\s+интервью|перепровер|повторн\w*\s+оценк|ролев\w*\s+игр|холодн\w*\s+звон|кейс-?интервью|тест(овое)?\s+задани|проверк\w*\s+компетенц|переоцен)/i;
+// Keep ONLY organisational onboarding questions.
+const ORG_INTAKE_RE =
+  /(мотивац|выход|оффер|оклад|зарплат|финанс|вознагражд|компенсац|график|формат|удал[её]н|гибрид|офис|переезд|релокац|услови|контракт|оформл|испытательн|бенефит|соц-?пакет)/i;
+
+function isOrgIntake(s: unknown): boolean {
   const t = asStr(s).trim();
   if (!t) return false;
-  return !REINTERVIEW_RE.test(t);
+  if (FORBIDDEN_INTAKE_RE.test(t)) return false;
+  return ORG_INTAKE_RE.test(t);
 }
 
 const PRACTICAL_DEFAULT = [
-  "Ожидаемая дата возможного выхода и условия перехода с текущего места.",
-  "Финансовые ожидания и формат вознаграждения.",
-  "Готовность к графику, формату и месту работы.",
+  "Мотивация перехода и ожидания от роли.",
+  "Дата возможного выхода и финансовые ожидания.",
+  "График, формат работы и организационные условия.",
 ];
 
 const SubTitle = ({ children, color = "text-[#E7C768]" }: { children: React.ReactNode; color?: string }) => (
@@ -72,8 +113,8 @@ const MetricChip = ({ label, value, toneCls = "text-white", testId }: {
   label: string; value: React.ReactNode; toneCls?: string; testId?: string;
 }) => (
   <div data-testid={testId} className="rounded-xl px-3 py-2 bg-black/25 border border-white/10 min-w-0">
-    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300 truncate">{label}</div>
-    <div className={`text-base font-mono font-black ${toneCls} truncate`}>{value}</div>
+    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-300">{label}</div>
+    <div className={`text-base font-mono font-black ${toneCls}`}>{value}</div>
   </div>
 );
 
@@ -91,7 +132,6 @@ function pickMainReason(f: AnyObj): string | null {
   const gaps = asArr(f.gaps);
   const strengths = asArr(f.strengths);
   const matches = asArr(f.matches).filter((m) => m && m.degree === "полностью");
-  // Critical risks first.
   const high = risks.find((r) => asStr(r?.severity).toLowerCase().includes("высок"));
   if (high?.title) return `Критический риск: ${asStr(high.title)}`;
   if (risks[0]?.title) return `Ключевой риск: ${asStr(risks[0].title)}`;
@@ -138,24 +178,26 @@ export default function EmployerOverallReport({
     const fullMatches = matches.filter((m) => m && m.degree === "полностью");
     const partial = matches.filter((m) => m && m.degree === "частично");
     const recRaw = asStr(f.recommendation) || asStr(f.executive_summary);
-    const intakePractical = interviewFocus.filter(isPracticalIntake);
-    const topIntake = (intakePractical.length > 0 ? intakePractical : PRACTICAL_DEFAULT).slice(0, 3);
+    const intakeOrg = interviewFocus.filter(isOrgIntake);
+    const topIntake = (intakeOrg.length > 0 ? intakeOrg : PRACTICAL_DEFAULT).slice(0, 3);
     return {
       stageSummary, fullMatches, partial, gaps, risks, redFlags, strengths,
-      interviewFocus, intakePractical,
-      recommendationShort: truncate(recRaw, 380),
+      interviewFocus, intakeOrg,
+      // Semantic shortening — full sentence(s), ≤ 280 chars, no ellipsis.
+      recommendationShort: shortenToSentence(recRaw, 280),
       executiveSummary: asStr(f.executive_summary),
       recommendationFull: asStr(f.recommendation),
       verdict: asStr(f.verdict).trim(),
-      confidence: f.confidence,
-      dataCompleteness: f.data_completeness,
       mainReason: pickMainReason(f),
-      topStrengths: strengths.slice(0, 3),
+      topStrengths: strengths.slice(0, 3).map((s) => shortLine(s, 140)),
       topRisks: risks.slice(0, 3),
-      topIntake,
+      topIntake: topIntake.map((s) => shortLine(s, 140)),
       topFull: fullMatches.slice(0, 3),
       topPartial: partial.slice(0, 3),
       topGaps: gaps.slice(0, 3),
+      countFull: fullMatches.length,
+      countPartial: partial.length,
+      countGaps: gaps.length,
       wishes: asArr(f.employer_wishes_alignment),
     };
   }, [f]);
@@ -165,10 +207,12 @@ export default function EmployerOverallReport({
   const fitNum = fitScore != null && Number.isFinite(Number(fitScore)) ? Math.round(Number(fitScore)) : null;
   const avgNum = overallScore != null && Number.isFinite(Number(overallScore)) ? Math.round(Number(overallScore)) : null;
 
+  const hasReqStats = view.countFull + view.countPartial + view.countGaps > 0;
+
   return (
     <div data-testid="overall-employer-report" className="space-y-4">
-      {/* 1. Compact top metrics — single row of small chips. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      {/* 1. Top row — exactly 3 metric chips: fit, avg, verdict. */}
+      <div data-testid="overall-metrics-row" className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <MetricChip
           testId="ai-fit-score-card"
           label="AI-оценка"
@@ -181,35 +225,26 @@ export default function EmployerOverallReport({
           value={avgNum != null ? `${avgNum}/100` : "—"}
           toneCls={avgTone.cls}
         />
-        <MetricChip label="Вердикт" value={view.verdict || "—"} toneCls={verdictTone(view.verdict)} />
         <MetricChip
-          label="Уверенность AI"
-          value={view.confidence != null ? `${Math.round(Number(view.confidence))}/100` : "—"}
+          testId="verdict-card"
+          label="Вердикт"
+          value={view.verdict || "—"}
+          toneCls={verdictTone(view.verdict)}
         />
-        <div
-          title="Показывает, какой объём доступной информации учтён при формировании оценки"
-          className="contents"
-        >
-          <MetricChip
-            label="Полнота оценки"
-            value={view.dataCompleteness != null ? `${Math.round(Number(view.dataCompleteness))}/100` : "—"}
-          />
-        </div>
       </div>
 
-      {/* 2. Вывод по кандидату — short. */}
+      {/* 2. Вывод по кандидату — verdict + ≤280-char sentence + 1-line main reason. */}
       <div data-testid="overall-verdict-card" className="bg-black/25 border border-[#E7C768]/30 rounded-2xl p-4">
         <SubTitle>Вывод по кандидату</SubTitle>
-        <div className="flex flex-wrap items-baseline gap-2 mb-2">
+        <div className="mb-2">
           <span className={`text-sm font-extrabold ${verdictTone(view.verdict)}`}>
             {view.verdict || "Вердикт не сформулирован"}
           </span>
-          {fitNum != null && (
-            <span className={`text-xs font-mono ${fitTone.cls}`}>· AI-оценка {fitNum}/100</span>
-          )}
         </div>
         {view.recommendationShort && (
-          <p className="text-[13px] text-white/95 leading-relaxed">{view.recommendationShort}</p>
+          <p data-testid="overall-verdict-text" className="text-[13px] text-white/95 leading-relaxed">
+            {view.recommendationShort}
+          </p>
         )}
         {view.mainReason && (
           <div className="text-[12px] text-slate-300 mt-2">
@@ -218,82 +253,59 @@ export default function EmployerOverallReport({
         )}
       </div>
 
-      {/* 3. Three compact blocks: strengths / risks / intake questions. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {view.topStrengths.length > 0 && (
-          <div data-testid="block-strengths" className="bg-emerald-500/5 border border-emerald-400/20 rounded-xl p-3">
-            <SubTitle color="text-emerald-300">Сильные стороны</SubTitle>
-            <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
-              {view.topStrengths.map((s, i) => <li key={i}>{s}</li>)}
-            </ul>
-          </div>
-        )}
-        {view.topRisks.length > 0 && (
-          <div data-testid="block-risks" className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
-            <SubTitle color="text-amber-300">Основные риски</SubTitle>
-            <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
-              {view.topRisks.map((r, i) => (
-                <li key={i}><b>{asStr(r?.title) || "Риск"}</b></li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div data-testid="block-intake" className="bg-black/25 border border-white/10 rounded-xl p-3">
-          <SubTitle>Что уточнить при знакомстве</SubTitle>
-          <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
-            {view.topIntake.map((s, i) => <li key={i}>{s}</li>)}
-          </ul>
+      {/* 3. Главное — 2 columns: strengths + risks. */}
+      {(view.topStrengths.length > 0 || view.topRisks.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {view.topStrengths.length > 0 && (
+            <div data-testid="block-strengths" className="bg-emerald-500/5 border border-emerald-400/20 rounded-xl p-3">
+              <SubTitle color="text-emerald-300">Сильные стороны</SubTitle>
+              <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
+                {view.topStrengths.map((s, i) => <li key={i}>{s}</li>)}
+              </ul>
+            </div>
+          )}
+          {view.topRisks.length > 0 && (
+            <div data-testid="block-risks" className="bg-amber-500/10 border border-amber-400/30 rounded-xl p-3">
+              <SubTitle color="text-amber-300">Основные риски</SubTitle>
+              <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
+                {view.topRisks.map((r, i) => (
+                  <li key={i}>{shortLine(asStr(r?.title) || "Риск", 140)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* 4. «Что уточнить при знакомстве» — compact card BELOW, not a 3rd column. */}
+      <div data-testid="block-intake" className="bg-black/25 border border-white/10 rounded-xl p-3">
+        <SubTitle>Что уточнить при знакомстве</SubTitle>
+        <ul className="text-[13px] text-white list-disc pl-5 space-y-1">
+          {view.topIntake.map((s, i) => <li key={i}>{s}</li>)}
+        </ul>
       </div>
 
-      {/* 4. Соответствие требованиям — 3 + 3 + 3, single line each. */}
-      {(view.topFull.length + view.topPartial.length + view.topGaps.length) > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {view.topFull.length > 0 && (
-            <div data-testid="match-full" className="bg-emerald-500/5 border border-emerald-400/20 rounded-xl p-3">
-              <SubTitle color="text-emerald-300">Подтверждено</SubTitle>
-              <ul className="text-[13px] text-white space-y-1">
-                {view.topFull.map((m, i) => (
-                  <li key={i}>
-                    <b>{asStr(m?.criterion) || "—"}</b>
-                    {m?.evidence && (
-                      <span className="text-slate-300 block text-[12px] truncate">{truncate(asStr(m.evidence), 90)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {view.topPartial.length > 0 && (
-            <div data-testid="match-partial" className="bg-amber-500/5 border border-amber-400/20 rounded-xl p-3">
-              <SubTitle color="text-amber-300">Частично</SubTitle>
-              <ul className="text-[13px] text-white space-y-1">
-                {view.topPartial.map((m, i) => (
-                  <li key={i}>
-                    <b>{asStr(m?.criterion) || "—"}</b>
-                    {m?.evidence && (
-                      <span className="text-slate-300 block text-[12px] truncate">{truncate(asStr(m.evidence), 90)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {view.topGaps.length > 0 && (
-            <div data-testid="match-gaps" className="bg-rose-500/5 border border-rose-400/20 rounded-xl p-3">
-              <SubTitle color="text-rose-300">Не подтверждено</SubTitle>
-              <ul className="text-[13px] text-white space-y-1">
-                {view.topGaps.map((g, i) => (
-                  <li key={i}>
-                    <b>{asStr(g?.criterion) || "—"}</b>
-                    {g?.finding && (
-                      <span className="text-slate-300 block text-[12px] truncate">{truncate(asStr(g.finding), 90)}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+      {/* 5. Соответствие требованиям — single compact stats line (numbers only). */}
+      {hasReqStats && (
+        <div data-testid="match-stats" className="bg-black/25 border border-white/10 rounded-xl p-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <SubTitle>Соответствие требованиям</SubTitle>
+            <span data-testid="match-stats-full" className="inline-flex items-center gap-1.5 text-[13px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden />
+              <span className="text-slate-300">подтверждено:</span>
+              <b className="text-emerald-300 font-mono">{view.countFull}</b>
+            </span>
+            <span data-testid="match-stats-partial" className="inline-flex items-center gap-1.5 text-[13px]">
+              <span className="w-2 h-2 rounded-full bg-amber-400" aria-hidden />
+              <span className="text-slate-300">частично:</span>
+              <b className="text-amber-300 font-mono">{view.countPartial}</b>
+            </span>
+            <span data-testid="match-stats-gaps" className="inline-flex items-center gap-1.5 text-[13px]">
+              <span className="w-2 h-2 rounded-full bg-rose-400" aria-hidden />
+              <span className="text-slate-300">не подтверждено:</span>
+              <b className="text-rose-300 font-mono">{view.countGaps}</b>
+            </span>
+          </div>
         </div>
       )}
 
