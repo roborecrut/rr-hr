@@ -191,7 +191,15 @@ Deno.serve(async (req) => {
   const lastUser = [...trimmedMessages].reverse().find((m) => m.role === "user")?.content || "";
 
   try {
-    const { text, raw } = await callProTalk({ messages, chatId, socialId });
+    const { text, raw } = await callProTalk({
+      messages,
+      chatId,
+      socialId,
+      // Лендинговый ИИ-консультант — единственный кейс, где «пустое
+      // приветствие» от ProTalk считается допустимым ответом и не
+      // должно автоматически перепосылать запрос.
+      allowEmptyReply: body.kind === "vacancy_consultant",
+    });
     await logToDb({
       user_message: lastUser,
       bot_reply: text,
