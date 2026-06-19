@@ -23,6 +23,7 @@ import {
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
   isTerminal, isSuccess,
 } from "@/lib/aiJobs";
+import { diagLog, extractInvokeError, tail } from "@/lib/diagLog";
 
 /**
  * Compact, non-PII diagnostics object passed into the Error Boundary.
@@ -438,24 +439,43 @@ function CandidateDetailsModalInner({
 
   const recomputeTrainingSummary = async () => {
     if (!candidateId) return;
+    const ctail = tail(candidateId);
+    diagLog("training_summary_btn", "click_started", { candidate_id_tail: ctail });
     setTrainingSummaryLoading(true);
     setTrainingSummaryErr(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      diagLog("training_summary_btn", "session_present", { session: session?.access_token ? "yes" : "no", candidate_id_tail: ctail });
+      if (!session?.access_token) {
+        const code = "summary_no_session";
+        diagLog("training_summary_btn", "invoke_error", { code, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Войдите заново. Код: ${code}`);
+        return;
+      }
+      diagLog("training_summary_btn", "invoke_started", { candidate_id_tail: ctail });
       const { data, error } = await supabase.functions.invoke("ai-evaluate-training-summary-v2", {
         body: { candidate_id: candidateId },
       });
       if (error) {
-        let body: any = null;
-        try {
-          const ctx: any = (error as any).context;
-          if (ctx && typeof ctx.json === "function") body = await ctx.json();
-        } catch { /* ignore */ }
-        throw new Error(body?.error || (error as any)?.message || "summary_failed");
+        const { code, http_status } = await extractInvokeError(error);
+        diagLog("training_summary_btn", "invoke_error", { code, http_status, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_invoke_${http_status ?? code}`);
+        return;
       }
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const dataErr = (data as any)?.error;
+      if (dataErr) {
+        const code = String(dataErr).slice(0, 64);
+        diagLog("training_summary_btn", "invoke_error", { code, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_${code}`);
+        return;
+      }
+      diagLog("training_summary_btn", "invoke_success", { candidate_id_tail: ctail });
       await loadTrainingSummary();
+      diagLog("training_summary_btn", "terminal", { terminal_status: "ok", candidate_id_tail: ctail });
     } catch (e: any) {
-      setTrainingSummaryErr(e?.message || "Не удалось сформировать итог");
+      const code = String(e?.message || "unknown").slice(0, 64);
+      diagLog("training_summary_btn", "unhandled_error", { code, candidate_id_tail: ctail });
+      setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_${code}`);
     } finally {
       setTrainingSummaryLoading(false);
     }
@@ -613,31 +633,70 @@ function CandidateDetailsModalInner({
    */
   const runOverallEvaluation = async () => {
     if (!candidateId || overallSaving) return;
+    const ctail = tail(candidateId);
+    diagLog("overall_btn", "click_started", { candidate_id_tail: ctail });
     setOverallSaving(true);
     setOverallErr(null);
     setOverallStatus("primary_running");
+    let requestId = "";
+    let jobId = "";
+    let firstStatus = "";
+    let lastStatus = "";
     try {
-      const started = await startOverallCandidateV2({ candidateId });
+      // Pre-check Supabase auth session (employer JWT).
+      const { data: { session } } = await supabase.auth.getSession();
+      diagLog("overall_btn", "session_present", { session: session?.access_token ? "yes" : "no", candidate_id_tail: ctail });
+      if (!session?.access_token) {
+        const code = "overall_no_session";
+        diagLog("overall_btn", "invoke_error", { code, candidate_id_tail: ctail });
+        setOverallErr(`Не удалось запустить анализ. Войдите заново. Код: ${code}`);
+        return;
+      }
+      diagLog("overall_btn", "invoke_started", { candidate_id_tail: ctail });
+      let started;
+      try {
+        started = await startOverallCandidateV2({ candidateId });
+      } catch (invokeErr: any) {
+        const { code, http_status } = await extractInvokeError(invokeErr);
+        diagLog("overall_btn", "invoke_error", { code, http_status, candidate_id_tail: ctail });
+        setOverallErr(`Не удалось запустить анализ. Код: overall_invoke_${http_status ?? code}`);
+        return;
+      }
+      requestId = started.request_id;
+      jobId = started.job_id;
+      firstStatus = started.status;
+      lastStatus = started.status;
+      diagLog("overall_btn", "invoke_success", {
+        request_id: requestId, job_id: jobId, first_status: firstStatus,
+        candidate_id_tail: ctail,
+      });
       if (started.terminal) {
         // Reused terminal — just refetch and surface the state.
         if (!isSuccess(started.status)) {
           setOverallErr(humanizeAiError(started.status));
         }
         clearEmployerActiveJob("overall_candidate", candidateId);
+        diagLog("overall_btn", "terminal", { job_id: jobId, terminal_status: started.status, candidate_id_tail: ctail });
       } else {
         const final = await pollEmployerJobUntilTerminal({
           jobId: started.job_id,
-          onTick: (row) => setOverallStatus(row.status),
+          onTick: (row) => { lastStatus = row.status; setOverallStatus(row.status); },
         });
         clearEmployerActiveJob("overall_candidate", candidateId);
+        diagLog("overall_btn", "terminal", {
+          job_id: jobId, terminal_status: final.status, last_status: lastStatus,
+          candidate_id_tail: ctail,
+        });
         if (!isSuccess(final.status)) {
-          setOverallErr(humanizeAiError(final.status));
+          setOverallErr(`${humanizeAiError(final.status)} Код: overall_${final.status}`);
         }
       }
       const { data: fresh } = await supabase.rpc("candidate_full_details" as any, { _candidate: candidateId });
       setData(fresh);
     } catch (e: any) {
-      setOverallErr(humanizeAiError(e?.message || "Не удалось сформировать общую AI-оценку"));
+      const code = String(e?.message || "unknown").slice(0, 64);
+      diagLog("overall_btn", "unhandled_error", { code, job_id: jobId, candidate_id_tail: ctail });
+      setOverallErr(`Не удалось запустить анализ. Код: overall_${code}`);
     } finally {
       setOverallSaving(false);
       setOverallStatus("");
