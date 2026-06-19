@@ -52,9 +52,9 @@ export function diagLog(source: string, message: string, meta: Record<string, un
     const payload = {
       source: safeStr(source) || "diag",
       message: safeStr(message) || "unknown",
-      meta: safeMeta(meta),
+      meta: safeMeta(meta) as unknown as Record<string, string | number | boolean>,
     };
-    void supabase.from("client_errors").insert(payload).then(() => undefined, () => undefined);
+    void (supabase.from("client_errors") as any).insert(payload).then(() => undefined, () => undefined);
   } catch { /* swallow */ }
 }
 
