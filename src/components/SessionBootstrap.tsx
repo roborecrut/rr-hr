@@ -21,13 +21,12 @@ const REF_KEY = "rr_ref";
 const DONE_KEY = "rr_bootstrap_done";
 
 function shouldAutoRedirectFrom(pathname: string): boolean {
-  return (
-    pathname === "/" ||
-    pathname === "/main" ||
-    pathname === "/auth" ||
-    pathname === "/setup" ||
-    pathname.startsWith("/employer")
-  );
+  // Авто-редирект в кабинет работодателя — только сразу после OAuth-флоу
+  // (страницы /auth и /setup). С лендинга `/`, `/main` и публичных страниц
+  // НЕ редиректим: пользователь должен сам нажать «Войти» и при необходимости
+  // выбрать другой Google-аккаунт. Иначе в браузерах с несколькими аккаунтами
+  // приложение «залипает» на последнем входе.
+  return pathname === "/auth" || pathname === "/setup";
 }
 
 export default function SessionBootstrap() {
