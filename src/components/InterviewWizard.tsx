@@ -6,6 +6,8 @@ import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
 import FieldHelp from "@/components/FieldHelp";
 import type { JobProject } from "../types";
+import { diagLog, tail } from "@/lib/diagLog";
+import { pollEmployerJobUntilTerminal, isSuccess } from "@/lib/aiJobs";
 
 type Kind = "resume" | "checklist" | "situations";
 type AuditFn = (level: "success" | "warning" | "info", title: string, msg: string) => void;
@@ -198,12 +200,73 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     setBusy(true);
     try {
       if (kind === "resume") {
+        const requestId =
+          (typeof crypto !== "undefined" && (crypto as any).randomUUID)
+            ? (crypto as any).randomUUID()
+            : `rq-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        diagLog("resume_criteria_generate", "click_started", {
+          request_id: requestId,
+          candidate_id_tail: tail(projectId),
+        });
         const r = await aiWaitRun({
-          title: "Генерация критериев резюме",
-          task: () => callEdge("ai-generate-interview-resume-criteria", { project_id: projectId, wishes: wishes.resume || undefined }),
+          title: "Формируем критерии…",
+          task: async () => {
+            const started = Date.now();
+            const resp = await callEdge("ai-generate-interview-resume-criteria", {
+              project_id: projectId,
+              request_id: requestId,
+              wishes: wishes.resume || undefined,
+            });
+            diagLog("resume_criteria_generate", "invoke_success", {
+              request_id: requestId,
+              job_id: resp?.job_id || null,
+              first_status: resp?.status || null,
+              ms: Date.now() - started,
+            });
+            // New async contract: edge returns immediately with job_id.
+            // If already terminal (reused success), skip polling.
+            let finalStatus: string = resp?.status || "";
+            if (resp?.job_id && !resp?.terminal) {
+              const row = await pollEmployerJobUntilTerminal({
+                jobId: resp.job_id,
+                maxMs: 6 * 60_000,
+              });
+              finalStatus = row.status;
+              diagLog("resume_criteria_generate", "response_parsed", {
+                request_id: requestId,
+                job_id: resp.job_id,
+                terminal_status: finalStatus,
+              });
+            }
+            if (!isSuccess(finalStatus)) {
+              const err: any = new Error(finalStatus || "ai_failed");
+              err.safeCode = finalStatus || "ai_failed";
+              throw err;
+            }
+            // Read the saved criteria back from the block (single source of truth).
+            const { data: blk } = await (supabase as any)
+              .from("interview_blocks")
+              .select("payload")
+              .eq("project_id", projectId)
+              .eq("kind", "resume")
+              .maybeSingle();
+            return { criteria_md: String((blk as any)?.payload?.criteria_md || "") };
+          },
         });
         if (!r) return;
-        setResumeMd(r.criteria_md || "");
+        if (r.criteria_md) {
+          setResumeMd(r.criteria_md);
+          diagLog("resume_criteria_generate", "result_rendered", {
+            request_id: requestId,
+          });
+        } else {
+          diagLog("resume_criteria_generate", "invoke_error", {
+            request_id: requestId,
+            code: "empty_criteria",
+          });
+          addAuditEvent("warning", "Не удалось сформировать критерии", "Попробуйте ещё раз. Код: empty_criteria");
+          return;
+        }
       } else if (kind === "checklist") {
         const r = await aiWaitRun({
           title: "Генерация чек-листа интервью",
