@@ -27,15 +27,18 @@ function severityCls(sev?: string): string {
  * remain in the DOM regardless of open state).
  */
 function QuestionCard({
-  index, question, score, employerFeedback, evidence, answer,
+  index, question, score, max, employerFeedback, evidence, answer,
   recommendation, strengths, improvements,
 }: {
-  index: number; question?: string; score?: number;
+  index: number; question?: string; score?: number; max?: number;
   employerFeedback?: string; evidence?: string; answer?: string;
   recommendation?: string; strengths?: string[]; improvements?: string[];
 }) {
-  // Checklist items are scored on a 0–10 scale by default (v2 schema).
-  const tone = scoreTone(score, 10);
+  // Per-item max is honoured when present (v2 stores e.g. `max: 5`).
+  // Falling back to /5 keeps existing v2 payloads correct; the legacy /10
+  // denominator silently mis-rendered scores like "5/10".
+  const itemMax = typeof max === "number" && max > 0 ? max : 5;
+  const tone = scoreTone(score, itemMax);
   const headline = (question || "Вопрос").trim();
   const short = headline.length > 80 ? headline.slice(0, 80).trimEnd() + "…" : headline;
 
@@ -46,7 +49,7 @@ function QuestionCard({
         <span className="text-[13px] font-semibold text-white leading-[1.4] flex-1">{short}</span>
         {typeof score === "number" && (
           <span className={`text-[11px] font-mono font-bold shrink-0 px-2 py-0.5 rounded ${tone.badge}`}>
-            {formatScore(score, 10)}
+            {formatScore(score, itemMax)}
           </span>
         )}
         <span className="text-slate-400 text-xs shrink-0 transition-transform group-open:rotate-180" aria-hidden>▾</span>
@@ -102,7 +105,20 @@ export default function EmployerChecklistReport({ view, score }: Props) {
     return <div className="text-sm text-slate-300 italic">Разбор анкеты ещё не готов.</div>;
   }
 
-  const headTone = scoreTone(score, 100);
+  // Derive the top-level score from items so the headline never disagrees with
+  // the per-question detail (DB sometimes carries a stale `checklist_score`
+  // from an older attempt — e.g. 100 while items only sum to 10/100 = 10%).
+  let derived: number | undefined = typeof score === "number" ? score : undefined;
+  if (view.kind === "structured" && view.items.length > 0) {
+    let sum = 0; let maxSum = 0;
+    for (const it of view.items) {
+      if (typeof it.score !== "number") continue;
+      const m = it.max && it.max > 0 ? it.max : 5;
+      sum += it.score; maxSum += m;
+    }
+    if (maxSum > 0) derived = Math.round((sum / maxSum) * 100);
+  }
+  const headTone = scoreTone(derived, 100);
 
   if (view.kind === "legacy") {
     const text = typeof view.legacyRaw === "string"
@@ -122,8 +138,8 @@ export default function EmployerChecklistReport({ view, score }: Props) {
 
   return (
     <div className="space-y-4" data-testid="employer-checklist-report">
-      {typeof score === "number" && (
-        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(score, 100)}</div>
+      {typeof derived === "number" && (
+        <div className={`text-3xl font-extrabold ${headTone.text}`}>{formatScore(derived, 100)}</div>
       )}
       {view.summary && (
         <div className="bg-black/20 border border-white/10 rounded-xl p-4 text-[14px] leading-[1.6] text-white/95">
@@ -190,6 +206,7 @@ export default function EmployerChecklistReport({ view, score }: Props) {
                 index={idx}
                 question={it.question}
                 score={it.score}
+                max={it.max}
                 employerFeedback={it.employerFeedback}
                 evidence={it.evidence}
                 answer={it.answer}
