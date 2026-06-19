@@ -21,11 +21,11 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CandidateBodyErrorBoundary } from "@/components/CandidateDetailsModal";
 
-function Boom() {
+function Boom(): React.ReactElement {
   throw new Error("simulated render error from a report component");
 }
 
-function Healthy() {
+function Healthy(): React.ReactElement {
   return <div data-testid="healthy">card body</div>;
 }
 
