@@ -1251,7 +1251,6 @@ function CandidateDetailsModalInner({
               </div>
             )}
           </div>
-          </CandidateBodyErrorBoundary>
         )}
       </div>
     </div>
