@@ -17,6 +17,7 @@
  *   3. Changing `key` (i.e. switching candidate) resets the boundary so
  *      a healthy child renders again instead of the stuck fallback.
  */
+import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { CandidateBodyErrorBoundary } from "@/components/CandidateDetailsModal";
