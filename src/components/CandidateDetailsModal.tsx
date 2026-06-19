@@ -415,6 +415,27 @@ function CandidateDetailsModalInner({
 
   useEffect(() => { loadTrainingSummary(); }, [loadTrainingSummary]);
 
+  // Fetch training_stage_tests for this project so per-question feedback can
+  // be merged with real question text by stable `question_id`. Without this
+  // the report falls back to "Вопрос N" placeholders even when the test
+  // definition contains the actual question. Read-only, RLS-safe.
+  const projectIdForTests: string | null =
+    (data?.project as any)?.id || (data?.candidate as any)?.project_id || null;
+  useEffect(() => {
+    let cancelled = false;
+    if (!projectIdForTests) { setStageQuestionMap(null); return; }
+    (async () => {
+      const { data: rows, error } = await supabase
+        .from("training_stage_tests")
+        .select("stage,questions")
+        .eq("project_id", projectIdForTests);
+      if (cancelled) return;
+      if (error || !Array.isArray(rows)) { setStageQuestionMap(null); return; }
+      setStageQuestionMap(buildStageQuestionMap(rows as any[]));
+    })();
+    return () => { cancelled = true; };
+  }, [projectIdForTests]);
+
   const recomputeTrainingSummary = async () => {
     if (!candidateId) return;
     setTrainingSummaryLoading(true);
