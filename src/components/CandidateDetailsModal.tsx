@@ -347,7 +347,42 @@ function Field({ label, value }: { label: string; value: any }) {
   );
 }
 
-export default function CandidateDetailsModal({
+/**
+ * Default export wraps the inner modal in an outer error boundary so a
+ * render error in ANY part of the modal (including pre-JSX destructuring
+ * of candidate_full_details, scores, or per-report adapters) cannot escape
+ * into the parent EmployerPanel / AdminPanel and produce a white screen.
+ *
+ * Why this exists (root cause Phase A-3):
+ *  - The previous inner `CandidateBodyErrorBoundary` sat INSIDE the modal
+ *    component's own return tree, so any throw during the modal body's
+ *    execution (e.g. legacy `employer_summary` with non-array `risks`,
+ *    legacy `training_employer_feedback` shaped as a string, or
+ *    `chkFbItems.map(...)` over a malformed jsonb cell) propagated PAST it
+ *    to React root, unmounting EmployerPanel into a blank screen.
+ *  - Wrapping at the OUTER boundary via this default export makes the
+ *    boundary a true parent of every render path in the modal.
+ *  - `key={candidateId ?? "none"}` resets the boundary state when the
+ *    employer opens a different candidate so the fallback never sticks
+ *    after switching cards.
+ */
+export default function CandidateDetailsModal(props: {
+  candidateId: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <CandidateBodyErrorBoundary
+      key={props.candidateId ?? "none"}
+      onClose={props.onClose}
+    >
+      <CandidateDetailsModalInner {...props} />
+    </CandidateBodyErrorBoundary>
+  );
+}
+
+export { CandidateBodyErrorBoundary };
+
+function CandidateDetailsModalInner({
   candidateId,
   onClose,
 }: {
@@ -661,21 +696,6 @@ export default function CandidateDetailsModal({
         ) : !data ? (
           <div className="p-12 text-center text-slate-300">Нет данных</div>
         ) : (
-          <CandidateBodyErrorBoundary
-            onClose={onClose}
-            diag={{
-              pid_masked: maskPublicId((data as any)?.public_id),
-              has_resume_score: (data as any)?.resume_score != null,
-              resume_feedback_type: describeFeedbackShape((data as any)?.resume_feedback),
-              checklist_feedback_type: describeFeedbackShape((data as any)?.checklist_feedback),
-              situations_feedback_type: describeFeedbackShape((data as any)?.situations_feedback),
-              overall_feedback_type: describeFeedbackShape((data as any)?.overall_feedback),
-              training_feedback_type: describeFeedbackShape((data as any)?.training_summary_feedback),
-              arrays_empty:
-                (Array.isArray((data as any)?.training_stages) && (data as any).training_stages.length === 0) ||
-                false,
-            }}
-          >
           <div className="p-6 md:p-8 space-y-6 text-left">
             {/* Header / profile */}
             <div className="flex flex-col md:flex-row gap-5 items-start">
@@ -1231,7 +1251,6 @@ export default function CandidateDetailsModal({
               </div>
             )}
           </div>
-          </CandidateBodyErrorBoundary>
         )}
       </div>
     </div>
