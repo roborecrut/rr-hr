@@ -29,6 +29,13 @@ const GLOBAL_KEY = "global";
 const LS_KEY_LEGACY = "rr_welcome_tour_v1";
 const LS_KEY_PREFIX = "rr_employer_tour_completed:";
 const LS_KEY_VERSION = "v1";
+const LS_KEY_USER_PREFIX = "rr_tour_user:";
+// Marker that the autostart has already fired for this auth user, ever.
+// Once set, the autostart never fires again — closing with X, completing,
+// or even crashing mid-tour all count as "we've shown it to this user".
+function lsKeyForUser(userId: string | null): string {
+  return `${LS_KEY_USER_PREFIX}${userId || "anon"}:${LS_KEY_VERSION}`;
+}
 
 /** Per-employer LS key — survives logout/login on the same browser. */
 function lsKeyFor(employerId: string | null): string {
@@ -55,6 +62,13 @@ async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismiss
   } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return "completed";
+  // Per-user LS marker — survives different employer URLs and works even
+  // when the DB row for section='global' was never created (legacy users
+  // only have per-section rows).
+  try {
+    const perUser = window.localStorage.getItem(lsKeyForUser(u.user.id));
+    if (perUser === "completed" || perUser === "dismissed") return perUser;
+  } catch { /* ignore */ }
   const { data } = await supabase
     .from("employer_tour_state" as any)
     .select("status")
@@ -64,6 +78,22 @@ async function getGlobalTourStatus(): Promise<"pending" | "completed" | "dismiss
   const status = ((data as any)?.status as any) || "pending";
   if (status === "completed" || status === "dismissed") {
     try { window.localStorage.setItem(lsKeyFor(empId), status); } catch { /* ignore */ }
+    try { window.localStorage.setItem(lsKeyForUser(u.user.id), status); } catch { /* ignore */ }
+  }
+  // Legacy fallback: if this user already has ANY completed/dismissed row in
+  // employer_tour_state (the old per-section tour), treat them as a returning
+  // user and never auto-launch the new global tour.
+  if (status === "pending") {
+    const { data: any2 } = await supabase
+      .from("employer_tour_state" as any)
+      .select("status")
+      .eq("user_id", u.user.id)
+      .in("status", ["completed", "dismissed"])
+      .limit(1);
+    if (Array.isArray(any2) && any2.length > 0) {
+      try { window.localStorage.setItem(lsKeyForUser(u.user.id), "completed"); } catch { /* ignore */ }
+      return "completed";
+    }
   }
   return status;
 }
@@ -79,6 +109,7 @@ async function setGlobalTourStatus(status: "completed" | "dismissed") {
   } catch { /* ignore */ }
   const { data: u } = await supabase.auth.getUser();
   if (!u?.user) return;
+  try { window.localStorage.setItem(lsKeyForUser(u.user.id), status); } catch { /* ignore */ }
   await supabase.from("employer_tour_state" as any).upsert(
     {
       user_id: u.user.id,
@@ -301,12 +332,30 @@ export default function OnboardingHost({ autoStart = true, buttonOnly = false }:
       if (window.sessionStorage.getItem("rr_tour_autostarted") === "1") return;
     } catch { /* ignore */ }
     (async () => {
+      // Wait for a stable employer id from the URL before deciding. Without
+      // this we'd compute the per-employer LS key with "anon" on the very
+      // first render and ignore the real per-employer marker.
+      let empId = currentEmployerId();
+      const tStart = Date.now();
+      while (!empId && Date.now() - tStart < 1500) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (cancelled) return;
+        empId = currentEmployerId();
+      }
       const status = await getGlobalTourStatus();
       if (cancelled || status !== "pending") return;
       // Ждём, пока сайдбар отрендерится
       await new Promise((r) => setTimeout(r, 700));
       if (cancelled) return;
       try { window.sessionStorage.setItem("rr_tour_autostarted", "1"); } catch { /* ignore */ }
+      // Hard one-time gate: even if the user closes the browser instantly,
+      // we never auto-launch again for this auth user.
+      try {
+        const { data: u } = await supabase.auth.getUser();
+        if (u?.user) {
+          window.localStorage.setItem(lsKeyForUser(u.user.id), "dismissed");
+        }
+      } catch { /* ignore */ }
       runTour();
     })();
     return () => { cancelled = true; };
