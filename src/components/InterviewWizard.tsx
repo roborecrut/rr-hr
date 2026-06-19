@@ -296,7 +296,13 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       }
       addAuditEvent("success", "ИИ сгенерировал", `${kind}`);
     } catch (e: any) {
-      addAuditEvent("warning", "Ошибка ИИ", e?.message || "failed");
+      const code = e?.safeCode || e?.message || "failed";
+      if (kind === "resume") {
+        diagLog("resume_criteria_generate", "invoke_error", { code: String(code).slice(0, 64) });
+        addAuditEvent("warning", "Не удалось сформировать критерии", `Попробуйте ещё раз. Код: ${String(code).slice(0, 48)}`);
+      } else {
+        addAuditEvent("warning", "Ошибка ИИ", e?.message || "failed");
+      }
     } finally { setBusy(false); }
   };
 
