@@ -13,6 +13,14 @@ export type CallOpts = {
   chatId?: string;
   socialId?: string;
   timeoutMs?: number;
+  /**
+   * ProTalk часто возвращает пустую строку как первый ответ (служебное
+   * «приветствие» при инициализации диалога), а реальный ответ приходит
+   * только со второго запроса в том же chat_id. По умолчанию мы это
+   * игнорируем и автоматически повторяем запрос. Установите `true` для
+   * чат-консультантов на лендингах, где пустой ответ — валидное событие.
+   */
+  allowEmptyReply?: boolean;
 };
 
 function botToken(): string {
@@ -79,6 +87,37 @@ export async function callProTalk(opts: CallOpts): Promise<{ text: string; raw: 
   if (data?.error) throw new Error(`protalk_error: ${String(data.error).slice(0, 300)}`);
   // Detect ProTalk's "soft" server errors embedded in the text body.
   if (/^\s*\[Server Error:/i.test(text)) throw new Error(`protalk_server_error: ${text.slice(0, 300)}`);
+  // Первый ответ в свежем диалоге у ProTalk бывает пустым «приветствием».
+  // По умолчанию автоматически повторяем тот же запрос с тем же chat_id —
+  // второй ответ уже содержательный. Для чат-консультантов на лендингах
+  // можно отключить через allowEmptyReply.
+  if (!opts.allowEmptyReply && !text.trim()) {
+    const ctrl2 = new AbortController();
+    const to2 = setTimeout(() => ctrl2.abort(), opts.timeoutMs ?? 110_000);
+    try {
+      const res2 = await fetch(`${PROTALK_BASE}/${botToken()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(body),
+        signal: ctrl2.signal,
+      });
+      clearTimeout(to2);
+      if (res2.ok) {
+        const data2 = await res2.json().catch(async () => ({ done: await res2.text().catch(() => "") })) as any;
+        const text2: string = (data2?.done ?? data2?.text ?? data2?.message ?? "").toString();
+        if (data2?.error) throw new Error(`protalk_error: ${String(data2.error).slice(0, 300)}`);
+        if (/^\s*\[Server Error:/i.test(text2)) throw new Error(`protalk_server_error: ${text2.slice(0, 300)}`);
+        return { text: text2, raw: data2 };
+      }
+      if (res2.status === 429) throw new Error("protalk_rate_limited");
+      if (res2.status === 402) throw new Error("protalk_payment_required");
+      const t2 = await res2.text().catch(() => "");
+      throw new Error(`protalk_${res2.status}: ${t2.slice(0, 400)}`);
+    } catch (e) {
+      clearTimeout(to2);
+      throw e instanceof Error ? e : new Error("protalk_retry_failed");
+    }
+  }
   return { text, raw: data };
 }
 
