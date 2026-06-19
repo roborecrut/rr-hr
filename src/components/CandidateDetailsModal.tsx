@@ -964,23 +964,40 @@ function CandidateDetailsModalInner({
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><CheckSquare className="w-4 h-4" /> Ответы на анкету (чек-лист)</h3>
                 <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">
-                  {checklistAnswersView.map((a: any) => {
-                    const tone = scoreTone(a.score, a.max ?? 10);
+                  {checklistAnswersView.map((a: any, idx: number) => {
+                    const max = a.max ?? 10;
+                    const tone = scoreTone(a.score, max);
+                    const qText = a.question_text || (a.question_id ? a.question_id.slice(0, 8) + "…" : `Вопрос ${idx + 1}`);
+                    const short = qText.length > 80 ? qText.slice(0, 80).trimEnd() + "…" : qText;
                     return (
-                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                      <details key={a.id} className={`group rounded-xl border border-l-4 bg-black/20 ${toneBg(tone.label)} ${tone.border} overflow-hidden`}>
+                        <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center gap-3 select-none">
+                          <span className="text-[11px] font-mono text-slate-400 shrink-0 w-6">{idx + 1}.</span>
+                          <span className="text-[13px] font-semibold text-white leading-[1.4] flex-1">{short}</span>
+                          <span className={`text-[11px] font-mono font-bold shrink-0 px-2 py-0.5 rounded ${tone.badge}`}>
                             {a.score !== null && a.score !== undefined
-                              ? `${Math.round(Number(a.score))}/${a.max ?? 10}`
-                              : (a.is_correct ? "✓" : "·")}
+                              ? `${Math.round(Number(a.score))}/${max}`
+                              : (a.is_correct ? "✓" : "—")}
                           </span>
+                          <span className="text-slate-400 text-xs shrink-0 transition-transform group-open:rotate-180" aria-hidden>▾</span>
+                        </summary>
+                        <div className="px-3 pb-3 pt-1 space-y-2 border-t border-white/5">
+                          {qText && short !== qText && (
+                            <div className="text-[12.5px] text-white/90 leading-[1.6]">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mr-1">Вопрос:</span>{qText}
+                            </div>
+                          )}
+                          <div className="text-[13px] text-slate-100 leading-relaxed bg-black/25 border border-white/10 rounded-lg p-2.5">
+                            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Ответ кандидата</div>
+                            {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                          </div>
+                          {a.feedback && (
+                            <div className={`text-[12px] italic ${tone.text} leading-[1.6]`}>
+                              <span className="not-italic text-[10px] font-mono uppercase tracking-wider mr-1">Комментарий ИИ:</span>{a.feedback}
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
-                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
-                        </div>
-                        {a.feedback && <div className={`text-[12px] mt-1.5 italic ${tone.cls}`}>{a.feedback}</div>}
-                      </div>
+                      </details>
                     );
                   })}
                 </div>
@@ -1004,35 +1021,45 @@ function CandidateDetailsModalInner({
               <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-3">
                 <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2"><MessageSquare className="w-4 h-4" /> Ответы по ситуациям</h3>
                 <div className="space-y-2 max-h-[40rem] overflow-y-auto pr-1">
-                  {situationAnswersView.map((a: any) => {
-                    const tone = scoreTone(a.score);
+                  {situationAnswersView.map((a: any, idx: number) => {
+                    const tone = scoreTone(a.score, 100);
+                    const qText = a.question_text || `Ситуация ${idx + 1}`;
+                    const short = qText.length > 80 ? qText.slice(0, 80).trimEnd() + "…" : qText;
                     return (
-                      <div key={a.id} className={`rounded-xl p-3 border-l-4 ${toneBg(tone.label)}`}>
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13px] font-semibold text-white">{a.question_text || a.question_id?.slice(0, 8) + "…"}</div>
-                          <span className={`text-[12px] font-mono font-black shrink-0 ${tone.cls}`}>
+                      <details key={a.id} className={`group rounded-xl border border-l-4 bg-black/20 ${toneBg(tone.label)} ${tone.border} overflow-hidden`}>
+                        <summary className="cursor-pointer list-none px-3 py-2.5 flex items-center gap-3 select-none">
+                          <span className="text-[11px] font-mono text-slate-400 shrink-0 w-6">{idx + 1}.</span>
+                          <span className="text-[13px] font-semibold text-white leading-[1.4] flex-1">{short}</span>
+                          <span className={`text-[11px] font-mono font-bold shrink-0 px-2 py-0.5 rounded ${tone.badge}`}>
                             {a.score !== null && a.score !== undefined
                               ? `${Math.round(Number(a.score))}/100`
-                              : (a.is_correct ? "✓" : "·")}
+                              : (a.is_correct ? "✓" : "—")}
                           </span>
-                        </div>
-                        {a.case_text && a.case_text !== a.question_text && (
-                          <div className="mt-2 rounded-lg bg-black/25 border border-white/10 p-3 text-[12px] text-slate-200 leading-relaxed">
-                            <div className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] mb-1">Кейс работодателя</div>
-                            <RichMarkdown tone="chat">{a.case_text}</RichMarkdown>
+                          <span className="text-slate-400 text-xs shrink-0 transition-transform group-open:rotate-180" aria-hidden>▾</span>
+                        </summary>
+                        <div className="px-3 pb-3 pt-1 space-y-2 border-t border-white/5">
+                          {a.case_text && a.case_text !== a.question_text && (
+                            <div className="rounded-lg bg-black/25 border border-white/10 p-3 text-[12px] text-slate-200 leading-relaxed">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-[#E7C768] mb-1">Ситуация / кейс</div>
+                              <RichMarkdown tone="chat">{a.case_text}</RichMarkdown>
+                            </div>
+                          )}
+                          {a.criteria && (
+                            <div className="text-[11px] text-slate-300 leading-relaxed">
+                              <span className="text-[#E7C768] font-bold">Критерии оценки:</span> {a.criteria}
+                            </div>
+                          )}
+                          <div className="text-[13px] text-slate-100 leading-relaxed bg-black/25 border border-white/10 rounded-lg p-2.5">
+                            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 mb-1">Ответ кандидата</div>
+                            {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
                           </div>
-                        )}
-                        {a.criteria && (
-                          <div className="mt-2 text-[11px] text-slate-300 leading-relaxed">
-                            <span className="text-[#E7C768] font-bold">Критерии оценки:</span> {a.criteria}
-                          </div>
-                        )}
-                        <div className="mt-2 text-[10px] font-mono uppercase tracking-wider text-slate-400">Ответ кандидата</div>
-                        <div className="text-[13px] text-slate-100 mt-1.5 leading-relaxed">
-                          {a.answer_text ? <RichMarkdown tone="chat">{a.answer_text}</RichMarkdown> : <span className="italic text-slate-500">(пусто)</span>}
+                          {a.feedback && (
+                            <div className={`text-[12px] italic ${tone.text} leading-[1.6]`}>
+                              <span className="not-italic text-[10px] font-mono uppercase tracking-wider mr-1">Комментарий ИИ:</span>{a.feedback}
+                            </div>
+                          )}
                         </div>
-                        {a.feedback && <div className={`text-[12px] mt-2 italic ${tone.cls}`}><span className="font-bold">Оценка ИИ:</span> {a.feedback}</div>}
-                      </div>
+                      </details>
                     );
                   })}
                 </div>
