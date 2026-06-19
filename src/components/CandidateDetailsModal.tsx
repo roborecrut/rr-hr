@@ -439,24 +439,43 @@ function CandidateDetailsModalInner({
 
   const recomputeTrainingSummary = async () => {
     if (!candidateId) return;
+    const ctail = tail(candidateId);
+    diagLog("training_summary_btn", "click_started", { candidate_id_tail: ctail });
     setTrainingSummaryLoading(true);
     setTrainingSummaryErr(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      diagLog("training_summary_btn", "session_present", { session: session?.access_token ? "yes" : "no", candidate_id_tail: ctail });
+      if (!session?.access_token) {
+        const code = "summary_no_session";
+        diagLog("training_summary_btn", "invoke_error", { code, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Войдите заново. Код: ${code}`);
+        return;
+      }
+      diagLog("training_summary_btn", "invoke_started", { candidate_id_tail: ctail });
       const { data, error } = await supabase.functions.invoke("ai-evaluate-training-summary-v2", {
         body: { candidate_id: candidateId },
       });
       if (error) {
-        let body: any = null;
-        try {
-          const ctx: any = (error as any).context;
-          if (ctx && typeof ctx.json === "function") body = await ctx.json();
-        } catch { /* ignore */ }
-        throw new Error(body?.error || (error as any)?.message || "summary_failed");
+        const { code, http_status } = await extractInvokeError(error);
+        diagLog("training_summary_btn", "invoke_error", { code, http_status, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_invoke_${http_status ?? code}`);
+        return;
       }
-      if ((data as any)?.error) throw new Error((data as any).error);
+      const dataErr = (data as any)?.error;
+      if (dataErr) {
+        const code = String(dataErr).slice(0, 64);
+        diagLog("training_summary_btn", "invoke_error", { code, candidate_id_tail: ctail });
+        setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_${code}`);
+        return;
+      }
+      diagLog("training_summary_btn", "invoke_success", { candidate_id_tail: ctail });
       await loadTrainingSummary();
+      diagLog("training_summary_btn", "terminal", { terminal_status: "ok", candidate_id_tail: ctail });
     } catch (e: any) {
-      setTrainingSummaryErr(e?.message || "Не удалось сформировать итог");
+      const code = String(e?.message || "unknown").slice(0, 64);
+      diagLog("training_summary_btn", "unhandled_error", { code, candidate_id_tail: ctail });
+      setTrainingSummaryErr(`Не удалось сформировать итог. Код: summary_${code}`);
     } finally {
       setTrainingSummaryLoading(false);
     }
