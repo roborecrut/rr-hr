@@ -1,4 +1,5 @@
 import { AlertTriangle, ShieldAlert, Check, ListChecks } from "lucide-react";
+import { toStrArr, toObjArr } from "@/lib/normalizeArrays";
 
 type Item = { question_id: string; score: number; feedback?: string; evidence?: string };
 type Risk = { title: string; evidence: string; severity?: string; how_to_verify?: string };
@@ -38,6 +39,21 @@ export default function EmployerTrainingStageReport({
     : status === "in_progress" ? "bg-amber-500/20 text-amber-300" : "bg-white/10 text-slate-300";
   const statusText = status === "passed" ? "Сдан" : status === "in_progress" ? "В процессе" : "Не начат";
 
+  // Normalize legacy/malformed jsonb cells: each field may be array | string |
+  // object | null. Direct `.map` on those previously produced a white screen.
+  const summaryText =
+    summary && typeof summary === "object" && typeof (summary as any).summary === "string"
+      ? (summary as any).summary
+      : "";
+  const strengths = toStrArr(summary?.strengths);
+  const gaps = toStrArr(summary?.gaps);
+  const risks = toObjArr<Risk>(summary?.risks, (s) => ({ title: s, evidence: "" }));
+  const redFlags = toObjArr<Risk>(summary?.red_flags, (s) => ({ title: s, evidence: "" }));
+  const recommendation =
+    summary && typeof (summary as any).recommendation === "string"
+      ? (summary as any).recommendation
+      : "";
+
   return (
     <div className="bg-black/20 border border-white/10 rounded-2xl p-4 space-y-4" data-testid="emp-training-stage">
       <div className="flex items-center justify-between gap-3">
@@ -48,32 +64,32 @@ export default function EmployerTrainingStageReport({
         </div>
       </div>
 
-      {summary?.summary && (
+      {summaryText && (
         <Section title="Общий вывод">
-          <p className="text-[12.5px] text-slate-100">{summary.summary}</p>
+          <p className="text-[12.5px] text-slate-100">{summaryText}</p>
         </Section>
       )}
 
-      {!!summary?.strengths?.length && (
+      {strengths.length > 0 && (
         <Section title="Сильные стороны">
           <ul className="text-[12px] text-slate-200 space-y-1 list-disc list-inside">
-            {summary.strengths!.map((s, i) => <li key={i}>{s}</li>)}
+            {strengths.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
         </Section>
       )}
 
-      {!!summary?.gaps?.length && (
+      {gaps.length > 0 && (
         <Section title="Пробелы в знаниях">
           <ul className="text-[12px] text-slate-200 space-y-1 list-disc list-inside">
-            {summary.gaps!.map((s, i) => <li key={i}>{s}</li>)}
+            {gaps.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
         </Section>
       )}
 
-      {!!summary?.risks?.length && (
+      {risks.length > 0 && (
         <Section title="Профессиональные риски">
           <div className="space-y-1.5">
-            {summary.risks!.map((r, i) => (
+            {risks.map((r, i) => (
               <div key={i} className="text-[12px] bg-amber-500/10 border border-amber-500/30 rounded-lg p-2">
                 <div className="flex items-center gap-1.5 text-amber-200 font-semibold">
                   <AlertTriangle className="w-3.5 h-3.5" />{r.title}
@@ -87,10 +103,10 @@ export default function EmployerTrainingStageReport({
         </Section>
       )}
 
-      {!!summary?.red_flags?.length && (
+      {redFlags.length > 0 && (
         <Section title="Красные флаги">
           <div className="space-y-1.5">
-            {summary.red_flags!.map((r, i) => (
+            {redFlags.map((r, i) => (
               <div key={i} className="text-[12px] bg-rose-500/10 border border-rose-500/30 rounded-lg p-2">
                 <div className="flex items-center gap-1.5 text-rose-200 font-semibold">
                   <ShieldAlert className="w-3.5 h-3.5" />{r.title}
@@ -102,10 +118,10 @@ export default function EmployerTrainingStageReport({
         </Section>
       )}
 
-      {summary?.recommendation && (
+      {recommendation && (
         <Section title="Рекомендация">
           <div className="text-[12px] text-emerald-200 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-2 flex items-start gap-1.5">
-            <Check className="w-3.5 h-3.5 mt-0.5" /><span>{summary.recommendation}</span>
+            <Check className="w-3.5 h-3.5 mt-0.5" /><span>{recommendation}</span>
           </div>
         </Section>
       )}
