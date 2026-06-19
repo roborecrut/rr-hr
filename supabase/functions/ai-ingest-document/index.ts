@@ -280,32 +280,75 @@ Deno.serve(async (req) => {
   }
   if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: "ingest_resume:text_returned" });
   if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
-  // Persist the recognised resume text to candidates.resume_text via the
-  // server-only RPC so it survives reloads / navigation away from the page.
-  // Without this the next screen_resume_v2 call sees an empty DB row and
-  // returns no_resume even though ingest_resume reported success.
+  // STRICT persistence (R2 Block 1): we MUST not return ok:true unless the
+  // recognised text actually lives in candidates.resume_text. Otherwise
+  // ai-interview-screen-resume-v2 later sees an empty DB row and returns
+  // no_resume («Я сломался»), but the client believes ingest succeeded.
+  //
+  // Flow:
+  //   1) save via RPC + check error
+  //   2) re-read length / hash / updated_at from the row
+  //   3) only if both succeed → ok:true (with resume metadata)
+  //   4) on failure → mark job save_failed, return resume_save_failed (500)
   if (body.entity === "resume") {
-    try {
-      const token = (
-        req.headers.get("x-candidate-token") ||
-        req.headers.get("X-Candidate-Token") ||
-        ""
-      ).trim();
-      if (token) {
-        const sess = await admin
-          .from("candidate_sessions")
-          .select("candidate_id")
-          .eq("token", token)
-          .maybeSingle();
-        const candId = (sess.data as any)?.candidate_id || null;
-        if (candId && text && text.trim().length >= 50) {
-          await admin.rpc("save_candidate_resume_text", {
-            _candidate: candId,
-            _resume_text: text,
-          });
-        }
-      }
-    } catch (_) { /* best-effort: do not fail the response on persist error */ }
+    const token = (
+      req.headers.get("x-candidate-token") ||
+      req.headers.get("X-Candidate-Token") ||
+      ""
+    ).trim();
+    let candId: string | null = null;
+    if (token) {
+      const sess = await admin
+        .from("candidate_sessions")
+        .select("candidate_id")
+        .eq("token", token)
+        .maybeSingle();
+      candId = (sess.data as any)?.candidate_id || null;
+    }
+    if (!candId) {
+      if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: "resume_save_failed" });
+      if (jobId) await markJobStatus(jobId, "primary_failed");
+      return jsonResponse({ error: "resume_save_failed", detail: "no_candidate_for_token" }, 500);
+    }
+    if (!text || text.trim().length < 50) {
+      if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: "resume_save_failed" });
+      if (jobId) await markJobStatus(jobId, "primary_failed");
+      return jsonResponse({ error: "resume_save_failed", detail: "text_too_short" }, 500);
+    }
+    const { error: rpcErr } = await admin.rpc("save_candidate_resume_text", {
+      _candidate: candId,
+      _resume_text: text,
+    });
+    if (rpcErr) {
+      // eslint-disable-next-line no-console
+      console.error("[ai-ingest-document] save_candidate_resume_text failed", String(rpcErr.message || rpcErr));
+      if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: "resume_save_failed" });
+      if (jobId) await markJobStatus(jobId, "primary_failed");
+      return jsonResponse({ error: "resume_save_failed", detail: String(rpcErr.message || "rpc_error").slice(0, 160) }, 500);
+    }
+    // Read-back to confirm persistence (avoid trusting RPC return alone).
+    const { data: cand, error: readErr } = await admin
+      .from("candidates")
+      .select("resume_text,resume_hash,resume_updated_at")
+      .eq("id", candId)
+      .maybeSingle();
+    const rlen = String((cand as any)?.resume_text || "").length;
+    if (readErr || rlen < 50) {
+      if (attemptId) await finishAttempt(attemptId, { status: "failed", safe_error_code: "resume_save_failed" });
+      if (jobId) await markJobStatus(jobId, "primary_failed");
+      return jsonResponse({
+        error: "resume_save_failed",
+        detail: readErr ? String(readErr.message).slice(0, 160) : `readback_len=${rlen}`,
+      }, 500);
+    }
+    return jsonResponse({
+      ok: true,
+      text,
+      saved: true,
+      resume_len: rlen,
+      resume_hash: (cand as any)?.resume_hash || null,
+      resume_updated_at: (cand as any)?.resume_updated_at || null,
+    });
   }
   return jsonResponse({ ok: true, text });
 });
