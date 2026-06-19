@@ -16,6 +16,7 @@ import EmployerSituationsReport from "@/components/reports/EmployerSituationsRep
 import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
 import EmployerTrainingStageReport from "@/components/reports/EmployerTrainingStageReport";
 import EmployerTrainingSummaryReport from "@/components/reports/EmployerTrainingSummaryReport";
+import { scoreTone as toneFor, formatScore as toneFormat, type Tone } from "@/lib/scoreTone";
 import {
   startOverallCandidateV2, pollEmployerJobUntilTerminal,
   getEmployerActiveJob, clearEmployerActiveJob, fetchEmployerJobStatus,
@@ -305,20 +306,17 @@ const STAGE_LABELS: Record<string, string> = {
   certified: "Сертификат",
 };
 
-/** Цветовая разметка ИИ-оценок: green ≥70, yellow 40-69, red <40. */
-function scoreTone(value: any, max = 100): { cls: string; label: "good" | "mid" | "bad" | "none" } {
-  const n = value === null || value === undefined ? NaN : Number(value);
-  if (!Number.isFinite(n)) return { cls: "text-slate-400", label: "none" };
-  const pct = max === 100 ? n : (n / max) * 100;
-  if (pct >= 70) return { cls: "text-emerald-300", label: "good" };
-  if (pct >= 40) return { cls: "text-amber-300", label: "mid" };
-  return { cls: "text-rose-300", label: "bad" };
+/**
+ * Backwards-compatible wrappers around the shared scoreTone helper so the
+ * existing call sites (`scoreTone(v).cls`, `toneBg(tone.label)`) keep working
+ * after we centralised the colour rules in `@/lib/scoreTone`.
+ */
+function scoreTone(value: any, max: number = 100): Tone & { cls: string } {
+  const t = toneFor(value, max);
+  return { ...t, cls: t.text };
 }
-function toneBg(label: ReturnType<typeof scoreTone>["label"]): string {
-  if (label === "good") return "bg-emerald-500/15 border-emerald-400/40";
-  if (label === "mid") return "bg-amber-500/15 border-amber-400/40";
-  if (label === "bad") return "bg-rose-500/15 border-rose-400/40";
-  return "bg-black/30 border-white/10";
+function toneBg(label: Tone["label"]): string {
+  return toneFor(label === "good" ? 100 : label === "mid" ? 50 : label === "bad" ? 10 : NaN).bg;
 }
 
 function Score({ label, value }: { label: string; value: any }) {
