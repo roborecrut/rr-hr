@@ -440,13 +440,13 @@ export default function EmployerOverallReport({
             </details>
           )}
 
-          {view.intakePractical.length > 0 && (
+          {view.intakeOrg.length > 0 && (
             <details className="bg-black/25 border border-white/10 rounded-xl">
               <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-slate-200 uppercase tracking-wider">
                 Что уточнить при знакомстве
               </summary>
               <ul className="px-4 pb-3 text-[13px] text-white list-disc pl-5 space-y-1">
-                {view.intakePractical.map((s, i) => <li key={i}>{s}</li>)}
+                {view.intakeOrg.map((s: string, i: number) => <li key={i}>{s}</li>)}
               </ul>
             </details>
           )}
