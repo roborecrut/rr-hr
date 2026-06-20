@@ -148,9 +148,10 @@ export function closeAIFallback(reason: "dismiss" | "success" = "dismiss"): void
 /** Internal — drive the request lifecycle from inside the gate component. */
 export async function _runFallbackForGate(): Promise<void> {
   if (!state.open || !state.jobId) return;
+  const jobId = state.jobId;
   state = { ...state, phase: "running", errorCode: null };
   emit();
-  const res = await invokeFallback(state.jobId);
+  const res = await invokeFallback(jobId);
   if (res.ok) {
     const onSuccess = state.onSuccess;
     state = { ...state, phase: "succeeded" };
