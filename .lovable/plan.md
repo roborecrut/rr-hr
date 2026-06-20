@@ -1,87 +1,78 @@
-# Phase 3B-2B — Step D1 plan
+# План: единая AI-оркестрация (overlay /restart + RR Pro Max + стабильные ID)
 
-## Preflight (done)
-- `bunx tsc --noEmit`: 0 errors
-- `bun run build`: OK (existing dynamic/static import warning, no new)
-- `supabase test edge-functions`: exit 0, 155 tests (46 validators + 25 resume + 41 checklist + 43 situations)
+Объём большой и затрагивает чувствительные edge-функции. Прошу подтверждение прежде, чем коммитить код.
 
-## 1. Backend — checklist composite key parity
-Audit existing rows in `candidate_checklist_answers_v2` to confirm no `candidate_id` appears with two different `project_id`s; if clean, migrate.
+## 1. Стабильные ProTalk ID (frontend)
 
-Migration (additive, no data loss):
-- Drop existing PK `candidate_checklist_answers_v2_pkey` (PK only `candidate_id`).
-- Add composite PK `(candidate_id, project_id)`.
-- Recreate `save_checklist_answers_v2` RPC to upsert on the composite key, keep `SECURITY DEFINER`, `SET search_path=public`, `REVOKE ALL`, `GRANT EXECUTE` only to `service_role`.
+Файл: новый `src/lib/protalkSession.ts`.
 
-Update:
-- `_shared/checklist-grade-runner.ts`: snapshot reload now keyed by `(candidate_id, project_id)`.
-- `ai-interview-grade-checklist-v2/index.ts`: pass `project_id` to RPC.
-- `_shared/checklist-grade-runner_test.ts`: existing fakes parameterized.
-- New test: same `candidate_id`, two `project_id`s, hashes/answers isolated; project-A worker never reads project-B answers.
+- `getProtalkChatId(role: "employer"|"candidate", userKey: string)` — формат `100001` / `200001` + хэш userKey, инкремент через `localStorage` ключ `rr.protalk.idmap`.
+- Значение живёт пока не очистится localStorage. Не меняется между шагами демо, редакторами и т.д.
+- Используется на всех точках входа в AI: VacancyEditor, CompanyEditor, InterviewWizard, TrainingWizard, CandidateInterview (скрининг/чеклист/ситуации/тесты), DemoInterviewPage.
+- Передаётся в edge через body как `chat_id` и `social_id`; edge перестаёт сам мутить ID, если поле пришло.
 
-## 2. Frontend — `src/lib/aiJobs.ts`
-- Widen `kind` union: `"screen_resume" | "checklist_grade" | "situations_grade"`.
-- Add `startChecklistGradeV2({ candidateId, answers, requestId? })` → `ai-interview-grade-checklist-v2`.
-- Add `startSituationsGradeV2({ candidateId, answers, requestId? })` → `ai-interview-grade-situations-v2`.
-- `activeJobKey` already namespaces by kind — extend tests.
-- Only `{job_id, request_id, candidate_id, created_at}` in localStorage; never answers, token, project, score.
-- Token continues to be passed via `x-candidate-token` header only.
+## 2. /restart оверлей на всех точках входа
 
-## 3. Frontend — generic job hook
-New `src/hooks/useCandidateAiJob.ts`:
-- Reads/writes localStorage by kind.
-- Restores active job on mount, starts polling via existing `pollJobUntilTerminal` (which already handles focus/visibility wake-up).
-- In-memory ref guard against double-click start.
-- Terminal-only localStorage cleanup; `primary_failed` does NOT clear.
-- Returns `{ status, isRunning, isTerminal, start, lastError, jobId }`.
-- Cleanup on unmount (AbortController).
+Использовать существующий `AIRestartGate` + `beginAIRestart/endAIRestart` + `waitForAIReady`.
 
-## 4. CandidateInterview wiring
-- Replace direct invoke of `ai-interview-grade-checklist` / `ai-interview-grade-situations` with the new hook for v2 endpoints, gated by feature flag `useV2 = true` (kept simple — old call paths removed only for these two ops, resume v2 untouched).
-- On terminal success: refetch candidate row from DB to read fresh `checklist_score`/`candidate_checklist_feedback` (situations analogous). Do NOT use start response payload.
-- Stage progression audit + idempotency: existing flow advances stage via candidate row update on success; wrap in guard `if (candidate.current_stage === expectedStage) advance`. Reload/reused-terminal path won't re-advance.
+Добавить вызов `aiRestart()` (расширенный — см. §3) в `useEffect` при монтировании:
+- `VacancyEditor` (создание + редактор)
+- `CompanySections`/редактор компании
+- `InterviewWizard` (создание + редактор)
+- `TrainingWizard` (создание + редактор)
+- `CandidateInterview` — отдельные оверлеи на вход в скрининг резюме, чеклист, ситуации
+- `CandidateStageTraining` — оверлей на вход в тест профессионального/продуктового/системного обучения
+- `DemoInterviewPage` — оверлей сразу после выбора должности
 
-## 5. AIWaitProvider
-Extend the job-based mode (currently resume v2) to accept `kind: 'checklist_grade' | 'situations_grade'` with the specified Russian copy. Overlay dismissible; dismiss does NOT cancel job.
+Кнопки генерации AI блокируются через `useAIReady()` до завершения /restart (этот gate уже есть).
 
-## 6. Error mapping
-New `src/lib/aiJobErrors.ts` mapping safe codes (`answers_missing`, `answers_version_changed`, `checklist_version_changed`, `situations_version_changed`, `orchestration_failed`, `save_failed`, `fallback_failed`, `fallback_unavailable`, `no_credits`) to the exact Russian copy from the spec. Used by hook + overlay.
+## 3. Резервный RR Pro Max (готовые секреты: bot id 67370, токен, api key)
 
-## 7. Report renderers
-New presentation components (no logic in CandidateDetailsModal beyond mounting):
-- `src/components/reports/CandidateChecklistReport.tsx`
-- `src/components/reports/CandidateSituationsReport.tsx`
-- `src/components/reports/EmployerChecklistReport.tsx`
-- `src/components/reports/EmployerSituationsReport.tsx`
+Backend:
+- Расширить `_shared/protalk.ts`: новая обёртка `callAI({ message, chatId, socialId, useFallback })`. По умолчанию primary; при `safeErrorCode` (timeout/server/empty-after-retry) поднимает `AIPrimaryFailedError` с `request_id`.
+- Frontend ловит ошибку → показывает оверлей «Ещё раз с RR Pro Max» (новый компонент `AIFallbackGate`) с пояснением.
+- По клику: edge `ai-fallback-rr-pro-max` (уже существует) дополняется тем же payload, что и primary вызов; сначала шлёт `/restart` через `RrProMaxProvider.restart`, затем повторяет исходный prompt автоматически (без второй кнопки), показывает оверлей ожидания.
+- При успехе: фоном вызывается `aiRestart()` для primary, чтобы вернуть основную модель.
+- При повторной неудаче: оверлей «Не удалось» с кнопкой-ссылкой `https://t.me/+Qr9hu55w7tEwNjZi`, без «повторить».
 
-Each accepts a single typed prop derived through adapters:
-- `src/lib/feedbackAdapters.ts`:
-  - `adaptCandidateChecklist(raw)` — strips `expected_answer`, `gaps`, `risks`, `red_flags`, `employer_*`.
-  - `adaptCandidateSituations(raw)` — strips `criteria`, employer fields.
-  - `adaptEmployerChecklist(raw)` / `adaptEmployerSituations(raw)` — preserves risks/red_flags.
-  - Legacy string/JSON inputs → safe text-only path for candidate; raw legacy preserved for employer.
+Frontend изменения:
+- Новый `src/lib/aiFallback.ts` — хранит «последний AI-вызов» в памяти (payload + edge fn name + retry callback) и оркестрирует UI.
+- Новый компонент `src/components/AIFallbackGate.tsx` (по аналогии с AIRestartGate, но с маскотом Pro Max и состояниями: error / pro-max-restart / pro-max-running / pro-max-error).
+- `src/lib/aiClient.ts.invoke()` после получения серверного `safeErrorCode in {timeout, server_error, empty_response, provider_unavailable}` НЕ кидает Error сразу, а регистрирует попытку в `aiFallback` и возвращает специальный reject.
 
-CandidateDetailsModal: replace existing `pre-wrap` blob for checklist/situations tabs with the employer renderers, keeping the v1 fallback path for legacy candidates.
+## 4. Игнор пустых приветствий ProTalk
 
-CandidateInterview report view (post-success): uses candidate renderers.
+Уже частично сделано в `_shared/protalk.ts` (`allowEmptyReply`). Расширить:
+- Один авто-retry с тем же chat_id (есть).
+- Если второй ответ всё ещё пустой → `safeErrorCode = "empty_response"` (триггерит §3, оверлей с Pro Max).
+- В `ai-demo-grade-situations`, `ai-demo-screen-resume`, `ai-demo-grade-checklist`: убрать «успех при пустом» — если `text` пустой и retry не помог, возвращать 502 с `request_id`, а не нулевую оценку.
 
-## 8. Frontend test setup
-- Add Vitest config + `src/test/setup.ts` per the standard guide (if not present; verify first).
-- New tests:
-  - `src/lib/__tests__/aiJobs.test.ts` — 13 cases: single request_id per start, active job blocks re-start, reload restores polling, focus/visibility immediate check, terminal clears LS, primary_failed keeps LS, orchestration_failed clears LS, reused-job no new request_id, polling cleanup, two mounts → one loop, token never in LS, answers never in LS, resume v2 still works.
-  - `src/lib/__tests__/feedbackAdapters.test.ts` — 7 cases: candidate adapters strip employer-only; legacy candidate strips risks/red_flags; employer keeps them; expected_answer never in candidate output; unknown JSON not rendered raw; success triggers refetch; failure does not advance stage; idempotent stage advance.
-  All tests use fake start/status clients (DI), no real network.
+## 5. Удалённый файл резюме
 
-## 9. Postflight
-- `supabase test edge-functions` — expect 155 + new project-isolation checklist test (≥1).
-- `bunx vitest run` — all new frontend tests.
-- `bunx tsc --noEmit` — 0 errors.
-- `bun run build` — OK.
+Backend `_shared/resume-screen-runner.ts` и `candidate-upload-file`:
+- При ошибке загрузки/чтения файла из storage (`404`/`object_not_found`) — возвращать `safeErrorCode = "file_deleted"`.
 
-## 10. Stop conditions honoured
-No real AI invoke. No balance touched. No ai_jobs inserts in prod (DI fakes only). No publish.
+Frontend `ResumeDropzone`, `CandidateDocsDossier`, корзина файлов:
+- На `file_deleted`: НЕ показывать AIFallbackGate. Показывать инлайн-баннер «Файл был удалён — загрузите его заново», удалить запись из UI и из корзины, открыть dropzone.
 
-## Out of scope (untouched)
-CRM, kanban, employer profile, companies, vacancies, training, общая AI-оценка, resume v2 runtime, Google OAuth, tariffs, widths.
+## 6. Поллинг через get_last_reply (опционально для длинных задач)
 
-Awaiting your "go" to execute.
+Для уже async-функций (`ai-generate-interview-resume-criteria` и т.п.) оставить текущий job-poll механизм. Документ протокола из задания (`send_message_async`+`get_last_reply`) — использовать только если timeout primary превышает 180с. Сейчас не критично.
+
+## 7. Демо: пошаговая сессия
+
+`src/lib/demoSession.ts`:
+- Сохранять `protalk_chat_id` + `protalk_social_id` после первого шага.
+- Все последующие шаги (`DemoInterviewPage` step → checklist → situations) передают тот же chatId/socialId в edge.
+
+## Тестирование
+
+- `bun run test:run`
+- `bunx tsc --noEmit`
+- Ручная проверка в Preview по каждому пункту (демо, редакторы, кандидатский флоу).
+
+## Риски / открытые вопросы
+
+1. Подтверждаешь имена секретов? Сейчас в коде `RR_PRO_MAX_BOT_ID`, `RR_PRO_MAX_API_TOKEN`. Хост у Pro Max тот же `api.pro-talk.ru` или `eu1.api.pro-talk.ru` (из твоего примера)?
+2. Маскот Pro Max — есть готовая картинка/URL, или взять стандартный RR-логотип с оверлеем «Pro Max»?
+3. Объём правок очень большой (≈25 файлов). OK делать одним заходом, или резать на 3 PR-волны: (a) §1+§2 ID+overlay, (b) §3+§4 fallback+пустые, (c) §5 удалённые файлы?
