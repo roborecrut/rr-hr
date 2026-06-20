@@ -24,6 +24,7 @@ import CacheResetGuard from "./components/CacheResetGuard";
 import AppVersionGuard from "./components/AppVersionGuard";
 import { AIWaitProvider } from "./components/AIWaitProvider";
 import { AIRestartGate } from "./components/AIRestartGate";
+import { AIFallbackGate } from "./components/AIFallbackGate";
 import { ConfirmProvider } from "./components/ConfirmDialog";
 
 export default function App() {
@@ -35,6 +36,7 @@ export default function App() {
         <CacheResetGuard />
         <AppVersionGuard />
         <AIRestartGate />
+        <AIFallbackGate />
         <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
