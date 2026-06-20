@@ -44,7 +44,15 @@ ${JSON.stringify(fullBatch)}
   try {
     const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 180_000 });
     aiText = r.text;
+    if (!aiText || !aiText.trim()) {
+      await logToDb({ user_message: msg.slice(0,5000), bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-demo:grade-checklist", server_name: "ai-demo-grade-checklist", function_error: "empty_response" });
+      return jsonResponse({ error: "empty_response" }, 502);
+    }
     aiObj = tryParseJson<any>(r.text) || null;
+    if (!aiObj || !Array.isArray(aiObj?.items)) {
+      await logToDb({ user_message: msg.slice(0,5000), bot_reply: aiText.slice(0,5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-demo:grade-checklist", server_name: "ai-demo-grade-checklist", function_error: "schema_invalid" });
+      return jsonResponse({ error: "schema_invalid" }, 502);
+    }
   } catch (e) {
     return jsonResponse({ error: String((e as Error).message) }, 500);
   }

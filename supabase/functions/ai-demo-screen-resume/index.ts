@@ -30,7 +30,15 @@ ${String(body.resume_text).slice(0, 10000)}
 
   try {
     const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 120_000 });
+    if (!r.text || !r.text.trim()) {
+      await logToDb({ user_message: msg.slice(0,5000), bot_reply: "", channel_id: chatId, user_social_id: socialId, channel_name: "ai-demo:screen-resume", server_name: "ai-demo-screen-resume", function_error: "empty_response" });
+      return jsonResponse({ error: "empty_response" }, 502);
+    }
     const obj = tryParseJson<any>(r.text) || {};
+    if (!obj || typeof obj !== "object" || obj.score === undefined) {
+      await logToDb({ user_message: msg.slice(0,5000), bot_reply: r.text.slice(0,5000), channel_id: chatId, user_social_id: socialId, channel_name: "ai-demo:screen-resume", server_name: "ai-demo-screen-resume", function_error: "schema_invalid" });
+      return jsonResponse({ error: "schema_invalid" }, 502);
+    }
     const score = Math.max(0, Math.min(100, Number(obj.score) || 0));
     const result = {
       score,
