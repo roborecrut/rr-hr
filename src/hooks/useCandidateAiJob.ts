@@ -24,6 +24,7 @@ import {
   startChecklistGradeV2, startSituationsGradeV2,
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
+import { isFallbackEligible, openAIFallback } from "@/lib/aiFallback";
 
 export type AiJobUiState =
   | "idle" | "starting" | "running" | "fallback_running"
@@ -147,6 +148,23 @@ export function useCandidateAiJob(opts: UseCandidateAiJobOptions): UseCandidateA
       setErrorCode(code); setErrorMessage(msg);
       deps.clearActive(opts.kind, opts.candidateId);
       opts.onFailure?.({ code, message: msg, jobId: row.job_id });
+      // Wave 2 §3 — offer RR Pro Max for primary-side terminal failures.
+      if (isFallbackEligible(code) && row.job_id) {
+        openAIFallback({
+          jobId: row.job_id,
+          triggerCode: code,
+          onSuccess: async () => {
+            // After fallback writes the result, poll once so the host UI
+            // sees the new terminal status without waiting for the next tick.
+            try {
+              const fresh = await deps.pollStatus(row.job_id);
+              if (fresh && isSuccess(fresh.status)) {
+                await handleTerminal(fresh);
+              }
+            } catch { /* host refetches independently */ }
+          },
+        });
+      }
     }
   }, [deps, opts]);
 
