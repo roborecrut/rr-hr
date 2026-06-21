@@ -201,7 +201,7 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
         try {
           const r = await callProTalkWithRetry({
             message: prompt, chatIdSeed: seed,
-            socialId: buildSocialId({ user_id: candidateId }),
+            socialId: buildSocialId({ candidate_id: candidateId }),
             timeoutMs: 120_000, attempts: 3,
             validate: (text) => {
               const obj = tryParseJson<unknown>(text);
@@ -220,7 +220,7 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
       },
       async callFallback({ jobId, candidateId, prompt, attempt }): Promise<ProviderResult> {
         const chat = `ai_${jobId}_fallback_a${attempt}`;
-        const social = buildSocialId({ user_id: candidateId });
+        const social = buildSocialId({ candidate_id: candidateId });
         const startedAt = Date.now();
         try {
           await RrProMaxProvider.restart(chat, social);
