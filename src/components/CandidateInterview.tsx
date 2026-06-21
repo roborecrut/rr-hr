@@ -471,7 +471,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       setResumeText(text);
       setUploadedResume(null);
     } catch (e: any) {
-      alert(formatUserError(toUserError(e, { kind: "ai_temporary", message: "Не удалось распознать файл. Попробуйте ещё раз." })));
+      // Файл уже удалён из Storage после попытки распознавания (cleanup на
+      // сервере), поэтому повторная «кнопка повторить» бессмысленна — нужно
+      // сбросить превью, показать баннер fileMissing в ResumeDropzone и
+      // дать пользователю загрузить новый файл (так же, как в /demo).
+      setUploadedResume(null);
+      setUploadError("Файл резюме недоступен — загрузите файл заново.");
     } finally {
       setParsing(false);
     }
