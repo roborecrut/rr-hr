@@ -502,6 +502,42 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               проверки профессионального теста. Повторные прохождения уже не списываются.
               Если на балансе работодателя нет лимитов — кандидат увидит окно «Услуга не подключена» с вашими контактами.
             </p>
+            {/* §4: Live RR calculator */}
+            {(() => {
+              const iExtra = Math.max(0, interviewLimit - interviewUsed);
+              const tExtra = Math.max(0, trainingLimit  - trainingUsed);
+              const iPrice = packTierPrice(Math.max(1, iExtra));
+              const tPrice = packTierPrice(Math.max(1, tExtra));
+              const iCost  = iExtra * iPrice;
+              const tCost  = tExtra * tPrice;
+              const total  = iCost + tCost;
+              const overdrawn = total > walletBalance;
+              const remaining = walletBalance - total;
+              return (
+                <div className="bg-black/30 border border-white/10 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-[#E7C768] shrink-0"/>
+                    <div>
+                      <div className="text-slate-400 uppercase font-bold tracking-wider">Баланс RR</div>
+                      <div className="text-white font-bold text-sm">{formatRR(walletBalance)}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">Бронируется по вакансии</div>
+                    <div className="text-white">
+                      Интервью: <b>{iExtra}</b> × {iPrice} RR = <b>{formatRR(iCost)}</b><br/>
+                      Обучение: <b>{tExtra}</b> × {tPrice} RR = <b>{formatRR(tCost)}</b>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">Итого / остаток</div>
+                    <div className={overdrawn ? "text-rose-300 font-bold" : "text-emerald-300 font-bold"}>
+                      {formatRR(total)} {overdrawn ? "— не хватает" : `· останется ${formatRR(Math.max(0, remaining))}`}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-[11px] text-slate-300 font-bold">Интервью (доступно: {Math.max(0, interviewLimit - interviewUsed)} из {interviewLimit}, использовано {interviewUsed})</span>
