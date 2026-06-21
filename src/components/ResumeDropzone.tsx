@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from "react";
-import { Upload, FileText, X, Loader, CheckCircle2, Send } from "lucide-react";
+import { Upload, FileText, X, Loader, CheckCircle2, Send, AlertTriangle } from "lucide-react";
 
 /**
  * Универсальная область загрузки резюме — поддерживает перетаскивание,
@@ -27,6 +27,12 @@ export interface ResumeDropzoneProps {
   onClear?: () => void;
   sendLabel?: string;
   sendDisabled?: boolean;
+  /**
+   * Wave §5 — резюме-файл удалён на сервере (terminal-код
+   * `file_deleted`/`file_missing`/`no_resume`). Рисуем выделенный баннер
+   * «загрузите файл снова», очищаем превью и разблокируем дропзону.
+   */
+  fileMissing?: boolean;
 }
 
 export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
@@ -40,11 +46,16 @@ export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
   onClear,
   sendLabel = "Распознать резюме",
   sendDisabled,
+  fileMissing,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  const disabled = uploading || parsing || !!busy;
+  // fileMissing — серверный отказ: дропзона должна оставаться активной,
+  // даже если родитель ещё держит busy/uploaded из прошлого прогона.
+  const disabled = !fileMissing && (uploading || parsing || !!busy);
+  // При fileMissing превью неактуально — игнорируем устаревшее значение.
+  const effectiveUploaded = fileMissing ? null : uploaded;
 
   const openPicker = useCallback(() => {
     if (disabled) return;
@@ -100,11 +111,13 @@ export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
         className={[
           "w-full rounded-2xl border-2 border-dashed transition-all p-5 md:p-6 text-center cursor-pointer select-none",
           "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#E7C768]",
-          dragOver
-            ? "border-[#E7C768] bg-[#E7C768]/15 scale-[1.01]"
-            : uploaded
-              ? "border-emerald-400/60 bg-emerald-500/10"
-              : "border-[#E7C768]/40 bg-white/5 hover:bg-white/10 hover:border-[#E7C768]/70",
+          fileMissing
+            ? "border-[#FF7B7B]/70 bg-[#FF4C4C]/10 hover:bg-[#FF4C4C]/15"
+            : dragOver
+              ? "border-[#E7C768] bg-[#E7C768]/15 scale-[1.01]"
+              : effectiveUploaded
+                ? "border-emerald-400/60 bg-emerald-500/10"
+                : "border-[#E7C768]/40 bg-white/5 hover:bg-white/10 hover:border-[#E7C768]/70",
           disabled ? "opacity-80 cursor-progress" : "",
         ].join(" ")}
       >
@@ -120,7 +133,20 @@ export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
         />
 
         <div className="flex flex-col items-center gap-2">
-          {uploading ? (
+          {fileMissing ? (
+            <>
+              <AlertTriangle className="w-7 h-7 text-[#FF7B7B]" />
+              <div className="text-sm font-bold text-white">
+                Файл резюме был удалён
+              </div>
+              <div className="text-[12px] text-white/80 max-w-sm">
+                Загрузите резюме заново — старый файл больше недоступен на сервере.
+              </div>
+              <div className="text-[11px] text-white/70 mt-1">
+                Нажмите, чтобы выбрать новый файл, или перетащите его сюда.
+              </div>
+            </>
+          ) : uploading ? (
             <>
               <Loader className="w-6 h-6 text-[#E7C768] animate-spin" />
               <div className="text-sm font-bold text-[#E7C768]">Загружаем файл…</div>
@@ -132,11 +158,11 @@ export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
               <div className="text-sm font-bold text-[#E7C768]">ИИ распознаёт резюме…</div>
               <div className="text-[11px] text-white/70">Не закрывайте страницу</div>
             </>
-          ) : uploaded ? (
+          ) : effectiveUploaded ? (
             <>
               <CheckCircle2 className="w-7 h-7 text-emerald-300" />
               <div className="text-sm font-bold text-white break-all">
-                {uploaded.filename}
+                {effectiveUploaded.filename}
               </div>
               <div className="text-[11px] text-emerald-200">Файл готов к распознаванию</div>
             </>
@@ -157,17 +183,17 @@ export const ResumeDropzone: React.FC<ResumeDropzoneProps> = ({
         </div>
       </div>
 
-      {error && (
+      {error && !fileMissing && (
         <div className="text-xs text-[#FF7B7B] bg-[#FF4C4C]/10 border border-[#FF4C4C]/30 rounded-lg px-3 py-2">
           {error}
         </div>
       )}
 
-      {uploaded && !uploading && !parsing && (
+      {effectiveUploaded && !uploading && !parsing && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs text-white bg-white/5 border border-[#E7C768]/30">
           <span className="flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-[#E7C768]" />
-            <span className="break-all">{uploaded.filename}</span>
+            <span className="break-all">{effectiveUploaded.filename}</span>
           </span>
           <div className="flex items-center gap-2">
             {onClear && (

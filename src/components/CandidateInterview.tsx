@@ -698,6 +698,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                 onSend={aiReady ? sendResumeToRR : undefined}
                 sendLabel={aiReady ? "Распознать резюме" : "Готовим ИИ…"}
                 sendDisabled={!aiReady}
+                fileMissing={/Файл резюме недоступен/i.test(uploadError) || /file[_ ](deleted|missing)|no_resume/i.test(uploadError)}
               />
               {resumeText && !resumeEditMode ? (
                 <div className="relative w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3">
