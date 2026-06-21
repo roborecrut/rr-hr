@@ -328,7 +328,13 @@ export default function DemoInterviewPage() {
         r?.reply ||
         r?.content ||
         ""
-      ).slice(0, 20000);
+      )
+        // Снимаем возможную обёртку ```markdown ... ``` (на случай, если
+        // сервер не успел почистить — UI должен показывать чистый markdown).
+        .replace(/^\s*```(?:markdown|md)?\s*\n?/i, "")
+        .replace(/\n?```\s*$/i, "")
+        .trim()
+        .slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setState(s => s ? { ...s, resumeText: text } : s);
       setUploadedResume(null);
