@@ -272,6 +272,12 @@ Deno.serve(async (req) => {
       ""
     );
     text = extracted.slice(0, Math.max(500, Math.min(body.max_chars || 10000, 10000)));
+    // ProTalk иногда оборачивает ответ в ```markdown ... ``` — снимаем обёртку,
+    // иначе UI показывает голый код вместо красивого форматирования.
+    text = text
+      .replace(/^\s*```(?:markdown|md)?\s*\n?/i, "")
+      .replace(/\n?```\s*$/i, "")
+      .trim();
     if (!text.trim()) { err = "ingest_empty_response"; }
   } catch (e) {
     err = String((e as Error).message);
