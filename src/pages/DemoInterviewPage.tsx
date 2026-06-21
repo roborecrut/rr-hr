@@ -552,6 +552,7 @@ export default function DemoInterviewPage() {
               onClear={() => setUploadedResume(null)}
               onSend={sendResumeToRR}
               sendLabel="Распознать в текст"
+              fileMissing={/Файл резюме недоступен/i.test(uploadError) || /file[_ ](deleted|missing)|no_resume/i.test(uploadError)}
             />
             <textarea
               value={state.resumeText}
