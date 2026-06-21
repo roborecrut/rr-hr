@@ -254,6 +254,10 @@ export default function CandidateStageTraining({
     try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch {}
   };
 
+  if (trainingLimitBlocked) {
+    return <LimitExhaustedOverlay kind="training" employer={trainingLimitBlocked} />;
+  }
+
   return (
     <div className="space-y-5">
       {/* Progress header */}
