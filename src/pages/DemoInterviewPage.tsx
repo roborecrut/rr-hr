@@ -306,20 +306,40 @@ export default function DemoInterviewPage() {
   const sendResumeToRR = async () => {
     if (!uploadedResume || !state) return;
     setParsing(true);
+    setUploadError("");
     try {
       const r = await aiWaitRun<any>({
         title: "Распознавание резюме",
         task: () => call("ai-ingest-document", {
           entity: "resume", bucket: uploadedResume.bucket, file_path: uploadedResume.path, filename: uploadedResume.filename,
+          demo_user_id: getDemoUserId(),
         }),
       });
       if (!r) return;
-      const text = String(r?.text || "").slice(0, 20000);
+      // На всякий случай поддерживаем несколько форматов ответа от edge-функции
+      // (text / result / data / reply / content) — серверный extractor шире,
+      // но клиентский fallback избавляет от регрессий, если форма ответа
+      // временно изменится.
+      const text = String(
+        r?.text ||
+        r?.result ||
+        r?.data?.text ||
+        r?.reply ||
+        r?.content ||
+        ""
+      ).slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setState(s => s ? { ...s, resumeText: text } : s);
       setUploadedResume(null);
     } catch (e: any) {
-      alert(e?.message || "Не удалось распознать файл");
+      // Файл из storage удалён после первой попытки распознавания, поэтому
+      // «Повторить» не сработает. Сбрасываем превью и просим загрузить заново
+      // через тот же дропзоун (показывается баннер fileMissing).
+      const msg = e?.message || "Не удалось распознать файл";
+      setUploadError("Файл резюме недоступен — загрузите файл заново.");
+      setUploadedResume(null);
+      // eslint-disable-next-line no-console
+      console.warn("[demo:ingest-resume]", msg);
     } finally {
       setParsing(false);
     }
