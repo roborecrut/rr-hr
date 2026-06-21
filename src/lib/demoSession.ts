@@ -39,6 +39,31 @@ export type DemoState = {
 
 const STATE_KEY = "demo:state";
 const TPL_PREFIX = "demo:tpl:";
+const DEMO_USER_KEY = "demo:user_id";
+
+/**
+ * Stable per-browser anonymous demo user id. Used as ProTalk chat_id /
+ * social_id seed across all 3 demo stages (situations → checklist → resume)
+ * so the conversation stays in ONE ProTalk dialog. Reset only when the user
+ * picks a different position (see `resetDemoUserId`).
+ */
+export function getDemoUserId(): string {
+  try {
+    const cur = localStorage.getItem(DEMO_USER_KEY);
+    if (cur && cur.length > 4) return cur;
+    const fresh = `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(DEMO_USER_KEY, fresh);
+    return fresh;
+  } catch {
+    // localStorage unavailable — fall back to per-tab id (won't survive reload,
+    // but keeps a single page session consistent).
+    return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  }
+}
+
+export function resetDemoUserId(): void {
+  try { localStorage.removeItem(DEMO_USER_KEY); } catch { /* ignore */ }
+}
 
 export function loadDemoState(): DemoState | null {
   try {
