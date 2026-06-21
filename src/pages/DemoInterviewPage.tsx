@@ -768,6 +768,52 @@ function DoneStage({ state, onRestart, onSignup }: { state: DemoState; onRestart
   );
 }
 
+function DemoResumeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [edit, setEdit] = useState(false);
+  const empty = !value.trim();
+  if (empty || edit) {
+    return (
+      <div className="space-y-2">
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={12}
+          maxLength={20000}
+          placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
+          className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+        />
+        {!empty && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setEdit(false)}
+              className="text-xs text-[#E7C768] hover:text-[#F4EE8E] underline underline-offset-2"
+            >
+              Готово · показать оформление
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 max-h-[520px] overflow-y-auto">
+        <RichMarkdown tone="resume">{value}</RichMarkdown>
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setEdit(true)}
+          className="text-xs text-[#E7C768] hover:text-[#F4EE8E] underline underline-offset-2"
+        >
+          Редактировать текст
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Tile({ label, score }: { label: string; score: number | null }) {
   const v = score ?? 0;
   const color = v >= 75 ? "text-emerald-300" : v >= 50 ? "text-amber-300" : "text-red-300";
