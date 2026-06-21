@@ -2,7 +2,7 @@
 // Text questions are scored by ProTalk with the expected_answer in the prompt.
 // Updates candidate_stage_progress (attempts++, best_score, passed_at).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveCandidatePublicId } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
 
@@ -33,8 +33,9 @@ Deno.serve(async (req) => {
   const questions = (test.questions as any[]) || [];
   const passScore = test.pass_score || 70;
 
-  const chatId = buildChatId({ candidateId });
-  const socialId = buildSocialId({ candidate_id: candidateId });
+  const candPid = await resolveCandidatePublicId(candidateId);
+  const chatId = buildChatId({ candidatePublicId: candPid, candidateId });
+  const socialId = buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId });
 
   let total = 0;
   const perQuestion: any[] = [];
