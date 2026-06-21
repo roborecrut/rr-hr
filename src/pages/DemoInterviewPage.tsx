@@ -17,6 +17,7 @@ import { MASCOT } from "@/lib/mascotImages";
 import { useAIWait } from "@/components/AIWaitProvider";
 import ResumeDropzone from "@/components/ResumeDropzone";
 import DisclosureBlock from "@/components/DisclosureBlock";
+import RichMarkdown from "@/components/RichMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import {
   loadDemoState, saveDemoState, clearDemoState,
@@ -327,7 +328,13 @@ export default function DemoInterviewPage() {
         r?.reply ||
         r?.content ||
         ""
-      ).slice(0, 20000);
+      )
+        // Снимаем возможную обёртку ```markdown ... ``` (на случай, если
+        // сервер не успел почистить — UI должен показывать чистый markdown).
+        .replace(/^\s*```(?:markdown|md)?\s*\n?/i, "")
+        .replace(/\n?```\s*$/i, "")
+        .trim()
+        .slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setState(s => s ? { ...s, resumeText: text } : s);
       setUploadedResume(null);
@@ -590,12 +597,9 @@ export default function DemoInterviewPage() {
               sendLabel="Распознать в текст"
               fileMissing={/Файл резюме недоступен/i.test(uploadError) || /file[_ ](deleted|missing)|no_resume/i.test(uploadError)}
             />
-            <textarea
+            <DemoResumeField
               value={state.resumeText}
-              onChange={e => setState(s => s ? { ...s, resumeText: e.target.value } : s)}
-              rows={12} maxLength={20000}
-              placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
-              className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+              onChange={(v) => setState(s => s ? { ...s, resumeText: v } : s)}
             />
             {busy && <LoadingPhrase entity="interview" />}
             <button disabled={busy} onClick={submitResume} className="btn-brand-gold inline-flex items-center gap-2 disabled:opacity-60">
@@ -761,6 +765,52 @@ function DoneStage({ state, onRestart, onSignup }: { state: DemoState; onRestart
         </div>
       </div>
     </section>
+  );
+}
+
+function DemoResumeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [edit, setEdit] = useState(false);
+  const empty = !value.trim();
+  if (empty || edit) {
+    return (
+      <div className="space-y-2">
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={12}
+          maxLength={20000}
+          placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
+          className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+        />
+        {!empty && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => setEdit(false)}
+              className="text-xs text-[#E7C768] hover:text-[#F4EE8E] underline underline-offset-2"
+            >
+              Готово · показать оформление
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 max-h-[520px] overflow-y-auto">
+        <RichMarkdown tone="resume">{value}</RichMarkdown>
+      </div>
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setEdit(true)}
+          className="text-xs text-[#E7C768] hover:text-[#F4EE8E] underline underline-offset-2"
+        >
+          Редактировать текст
+        </button>
+      </div>
+    </div>
   );
 }
 
