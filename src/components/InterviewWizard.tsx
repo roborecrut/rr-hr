@@ -70,6 +70,15 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [checklistShuffle, setChecklistShuffle] = useState(true);
   const [situations, setSituations] = useState<Situation[]>([]);
   const [passScore, setPassScore] = useState(75);
+  // Лимиты RR §4: сколько кандидатов могут пройти интервью/обучение по этой
+  // вакансии. Списываются из общего баланса работодателя по факту первого
+  // успешного скрининга резюме (интервью) и проверки профтеста (обучение).
+  const [interviewLimit, setInterviewLimit] = useState<number>(0);
+  const [trainingLimit,  setTrainingLimit]  = useState<number>(0);
+  const [interviewUsed,  setInterviewUsed]  = useState<number>(0);
+  const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
+  const [savingLimits,   setSavingLimits]   = useState(false);
+  const [savedLimits,    setSavedLimits]    = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState<null | Kind | "pass">(null);
   const [savedFlash, setSavedFlash] = useState<null | Kind | "pass">(null);
@@ -115,9 +124,13 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     (async () => {
       const [{ data: blocks }, { data: pr }] = await Promise.all([
         (supabase as any).from("interview_blocks").select("*").eq("project_id", projectId),
-        (supabase as any).from("projects").select("interview_pass_score,role_name").eq("id", projectId).maybeSingle(),
+        (supabase as any).from("projects").select("interview_pass_score,role_name,interview_limit,training_limit,interview_used,training_used").eq("id", projectId).maybeSingle(),
       ]);
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
+      setInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
+      setTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
+      setInterviewUsed(Number((pr as any)?.interview_used  ?? 0));
+      setTrainingUsed(Number((pr as any)?.training_used   ?? 0));
       const map: any = {};
       (blocks || []).forEach((b: any) => map[b.kind] = b.payload || {});
       setResumeMd(String(map.resume?.criteria_md || ""));
