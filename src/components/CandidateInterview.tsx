@@ -5,6 +5,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import { getCandidateSession } from "@/lib/candidateSession";
 import { useAIReady } from "@/lib/aiReady";
+import { aiRestart } from "@/lib/aiClient";
 import EmbeddedMarkdown from "@/components/EmbeddedMarkdown";
 import RichMarkdown from "@/components/RichMarkdown";
 import ResumeDropzone from "@/components/ResumeDropzone";
@@ -137,6 +138,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [pausedOpen, setPausedOpen] = useState(false);
   const [resumeTooShortOpen, setResumeTooShortOpen] = useState(false);
   const resumeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const restartFiredRef = useRef<string | null>(null);
 
   // checklist
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -279,6 +281,23 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     })();
     return () => { cancelled = true; ac.abort(); };
   }, [candidateId]);
+
+  // Resume stage entry — fire /restart with overlay so ProTalk drops any
+  // prior context for this candidate before file recognition. Runs once per
+  // (candidate × visit-to-stage) and re-runs on retake (resumeResult cleared).
+  useEffect(() => {
+    if (stage !== "resume") return;
+    if (resumeResult) return; // already scored — nothing to restart
+    const key = `${candidateId}:resume`;
+    if (restartFiredRef.current === key) return;
+    restartFiredRef.current = key;
+    // Clear the aiRestart dedup so retakes always trigger a fresh restart.
+    try { sessionStorage.removeItem(`ai_restart_dedup:cand:${candidateId}`); } catch { /* ignore */ }
+    void aiWaitRun({
+      title: "Сбрасываю контекст ИИ для нового интервью…",
+      task: () => aiRestart(undefined, { candidate_id: candidateId }),
+    }).catch(() => { /* non-fatal — recognition will still try */ });
+  }, [stage, resumeResult, candidateId, aiWaitRun]);
 
   // Reload-recovery for checklist v2 job. Resumes polling, never re-starts;
   // on terminal success refetches DB so candidate sees fresh score/feedback.
@@ -594,6 +613,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   };
 
   const reset = () => {
+    restartFiredRef.current = null; // ensure /restart fires again on retake
     setStage("resume"); setResumeResult(null); setResumeText(""); setAnswers({}); setChecklistScore(null);
     setSitAnswers({}); setSituationsScore(null); setSituationsFeedback([]); setFinalScore(null);
   };
