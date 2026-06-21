@@ -597,12 +597,9 @@ export default function DemoInterviewPage() {
               sendLabel="Распознать в текст"
               fileMissing={/Файл резюме недоступен/i.test(uploadError) || /file[_ ](deleted|missing)|no_resume/i.test(uploadError)}
             />
-            <textarea
+            <DemoResumeField
               value={state.resumeText}
-              onChange={e => setState(s => s ? { ...s, resumeText: e.target.value } : s)}
-              rows={12} maxLength={20000}
-              placeholder="Вставьте текст вашего резюме или загрузите файл — ИИ распознает и заполнит это поле автоматически."
-              className="w-full bg-black/30 text-white border border-white/10 rounded-xl px-3 py-2 text-sm font-mono"
+              onChange={(v) => setState(s => s ? { ...s, resumeText: v } : s)}
             />
             {busy && <LoadingPhrase entity="interview" />}
             <button disabled={busy} onClick={submitResume} className="btn-brand-gold inline-flex items-center gap-2 disabled:opacity-60">
