@@ -128,6 +128,16 @@ export async function aiGenerateOnboarding(opts: {
 }
 
 export async function aiRestart(employer_public_id?: string): Promise<void> {
+  // Dedup: don't fire /restart more often than once per 10 minutes for the
+  // same actor key. Repeated mounts/re-renders of editors must not spam the
+  // ProTalk channel.
+  try {
+    const key = `ai_restart_dedup:${employer_public_id || "anon"}`;
+    const now = Date.now();
+    const last = Number(sessionStorage.getItem(key) || "0");
+    if (last && now - last < 10 * 60 * 1000) return;
+    sessionStorage.setItem(key, String(now));
+  } catch { /* sessionStorage unavailable — fall through */ }
   beginAIRestart();
   try {
     await invoke("ai-restart", { employer_public_id });

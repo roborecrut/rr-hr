@@ -313,6 +313,40 @@ export async function getUserFromAuthHeader(authHeader: string | null): Promise<
   } catch { return null; }
 }
 
+/**
+ * Wave C / §1 — resolve employers.public_id from either a project_id or a
+ * Supabase auth user_id, so callers that don't receive `employer_public_id`
+ * in the request body can still produce a stable 100001+ ProTalk chat_id.
+ * Best-effort: returns undefined on any miss / error, callers fall back to
+ * the user/candidate-hash chat_id which is also stable.
+ */
+export async function resolveEmployerPublicId(opts: {
+  projectId?: string | null;
+  userId?: string | null;
+}): Promise<string | undefined> {
+  const admin = getAdminClient();
+  if (!admin) return undefined;
+  try {
+    let employerId: string | null = null;
+    if (opts.projectId) {
+      const { data } = await admin.from("projects").select("employer_id").eq("id", opts.projectId).maybeSingle();
+      employerId = (data as any)?.employer_id ?? null;
+    }
+    if (!employerId && opts.userId) {
+      const { data } = await admin.from("employers").select("id, public_id").eq("user_id", opts.userId).maybeSingle();
+      const pid = (data as any)?.public_id;
+      if (pid != null) return String(pid);
+      employerId = (data as any)?.id ?? null;
+    }
+    if (employerId) {
+      const { data } = await admin.from("employers").select("public_id").eq("id", employerId).maybeSingle();
+      const pid = (data as any)?.public_id;
+      if (pid != null) return String(pid);
+    }
+  } catch { /* ignore */ }
+  return undefined;
+}
+
 export async function logToDb(p: LogPayload): Promise<void> {
   const admin = getAdminClient();
   if (!admin) return;
