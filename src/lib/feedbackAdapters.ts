@@ -416,6 +416,10 @@ export function describeJobError(code: string | null | undefined): string {
       return "AI-сервис временно недоступен. Попробуйте повторить позже.";
     case "no_credits":
       return "Недостаточно интервью в тарифе для проведения AI-анализа.";
+    case "no_resume":
+    case "file_deleted":
+    case "file_missing":
+      return "Файл резюме недоступен. Загрузите резюме заново и повторите анализ.";
     default:
       return "Не удалось завершить AI-анализ. Попробуйте позже.";
   }
