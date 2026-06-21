@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   loadDemoState, saveDemoState, clearDemoState,
   loadCachedTemplate, saveCachedTemplate, makeInitialState,
+  getDemoUserId, resetDemoUserId,
   type DemoState, type DemoTemplate, type DemoStage,
 } from "@/lib/demoSession";
 
@@ -119,8 +120,18 @@ export default function DemoInterviewPage() {
 
     (async () => {
       try {
-        // Reset ProTalk dialog context once, so per-stage grading calls start fresh.
-        aiRestart().catch(() => {});
+        // Reset ProTalk dialog context for THIS browser's demo user, and wait
+        // for it before moving the user to the situations stage. The single
+        // demo_user_id (stable in localStorage) keeps situations/checklist/
+        // resume in ONE ProTalk dialog. AIWaitProvider / AIRestartGate render
+        // the mascot overlay while we wait.
+        const demoUserId = getDemoUserId();
+        try {
+          await aiWaitRun({
+            title: "Подготовка ИИ",
+            task: () => aiRestart(undefined, { demo_user_id: demoUserId }).then(() => ({ ok: true })),
+          });
+        } catch { /* overlay already surfaced the error; continue to template load */ }
 
         // Cached template?
         const cached = loadCachedTemplate(state.titleId);
@@ -198,6 +209,9 @@ export default function DemoInterviewPage() {
 
   const restartAll = () => {
     clearDemoState();
+    // New round = new ProTalk dialog. Drop the demo user id so the next pick
+    // mints a fresh one and re-sends /restart.
+    resetDemoUserId();
     setState(null);
     setPrepError("");
     preparingRef.current = false;
@@ -209,7 +223,7 @@ export default function DemoInterviewPage() {
     try {
       const r = await aiWaitRun<any>({
         title: "Оценка ролевых ответов",
-        task: () => call("ai-demo-grade-situations", { title: state.title, situations: state.template!.situations, answers: state.sitAnswers }),
+        task: () => call("ai-demo-grade-situations", { title: state.title, situations: state.template!.situations, answers: state.sitAnswers, demo_user_id: getDemoUserId() }),
       });
       if (!r) return;
       setState(s => s ? { ...s, sitResult: { score: r.score, items: r.items, advice: r.advice } } : s);
@@ -230,6 +244,7 @@ export default function DemoInterviewPage() {
           title: state.title,
           questions: state.template!.checklist,
           answers: state.checkAnswers,
+          demo_user_id: getDemoUserId(),
         }),
       });
       if (!r) return;
@@ -248,6 +263,7 @@ export default function DemoInterviewPage() {
         task: () => call("ai-demo-screen-resume", {
           title: state.title, vacancy_text: state.template!.vacancy_text || "",
           criteria_md: state.template!.resume_criteria, resume_text: state.resumeText,
+          demo_user_id: getDemoUserId(),
         }),
       });
       if (!r) return;
