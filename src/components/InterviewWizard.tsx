@@ -575,7 +575,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             </div>
             {/* §5: бесплатное демо-интервью для работодателя — без списаний */}
             <a
-              href={`#/employer/interview-preview/${projectId}`}
+              href={`/employer/interview-preview/${projectId}`}
               className="block bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/40 rounded-xl px-3 py-2 text-[11px] text-[#E7C768] font-bold flex items-center gap-2"
             >
               <PlayCircle className="w-4 h-4"/>
