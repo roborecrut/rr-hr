@@ -17,6 +17,7 @@ import { MASCOT } from "@/lib/mascotImages";
 import { useAIWait } from "@/components/AIWaitProvider";
 import ResumeDropzone from "@/components/ResumeDropzone";
 import DisclosureBlock from "@/components/DisclosureBlock";
+import RichMarkdown from "@/components/RichMarkdown";
 import { supabase } from "@/integrations/supabase/client";
 import {
   loadDemoState, saveDemoState, clearDemoState,
