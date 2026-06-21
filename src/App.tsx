@@ -11,6 +11,7 @@ import BlogListPage from "./pages/BlogListPage";
 import BlogPostPage from "./pages/BlogPostPage";
 import FaqPage from "./pages/FaqPage";
 import EmployerPanel from "./pages/EmployerPanel";
+import EmployerInterviewPreview from "./pages/EmployerInterviewPreview";
 import CandidateFlow from "./pages/CandidateFlow";
 import AdminPanel from "./pages/AdminPanel";
 import JobVacancyLanding from "./pages/JobVacancyLanding";
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="/job" element={<JobVacancyLanding />} />
         <Route path="/auth" element={<LandingPage />} />
         <Route path="/setup" element={<EmployerPanel />} />
+        <Route path="/employer/interview-preview/:projectId" element={<EmployerInterviewPreview />} />
         <Route path="/employer" element={<EmployerPanel />} />
         <Route path="/employer/*" element={<EmployerPanel />} />
         <Route path="/candidate" element={<CandidateFlow />} />
