@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
     file_url?: string; filename?: string;
     prompt_hint?: string;
     max_chars?: number;
+    demo_user_id?: string;
   };
   if (!body || !body.entity || (!body.file_path && !body.file_url)) {
     return jsonResponse({ error: "bad_body" }, 400);
@@ -189,6 +190,7 @@ Deno.serve(async (req) => {
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
+  const isDemo = body.entity === "resume" && (body.file_path || "").startsWith("demo/");
   let sourceUrl = body.file_url || "";
   if (body.bucket && body.file_path) {
     // Prefer a signed URL so private buckets (candidate-resumes) work too.
@@ -202,8 +204,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  // Для demo-флоу используем тот же стабильный demo_user_id, что и в
+  // ai-restart / ai-demo-grade-* — иначе ProTalk создаёт новую сессию и
+  // распознавание уезжает в чужой диалог.
+  const chatId = isDemo
+    ? buildChatId({ demoUserId: body.demo_user_id })
+    : buildChatId({ userId: user?.id });
+  const socialId = isDemo
+    ? buildSocialId({ demo_user_id: body.demo_user_id })
+    : buildSocialId({ user_id: user?.id });
   const userMsg = `${PROMPTS[body.entity]}${body.prompt_hint ? "\n\nКонтекст: " + body.prompt_hint : ""}\n\nИсточник: ${sourceUrl}${body.filename ? `\nИмя файла: ${body.filename}` : ""}\n\nВерни только готовый Markdown-текст без обёрток.`;
 
   // Регистрируем ai_jobs только для распознавания РЕЗЮМЕ кандидата —
@@ -247,7 +256,22 @@ Deno.serve(async (req) => {
       ],
       chatId, socialId, timeoutMs: 180_000,
     });
-    text = (r.text || "").slice(0, Math.max(500, Math.min(body.max_chars || 10000, 10000)));
+    // ProTalk обычно кладёт ответ в `done`, но иногда возвращает текст в других
+    // полях (reply/answer/content/result). Используем максимально широкий
+    // экстрактор, чтобы не терять корректно распознанное резюме.
+    const raw: any = r.raw || {};
+    const extracted = String(
+      r.text ||
+      raw?.reply ||
+      raw?.answer ||
+      raw?.content ||
+      raw?.result ||
+      raw?.data?.text ||
+      raw?.data?.done ||
+      raw?.data?.reply ||
+      ""
+    );
+    text = extracted.slice(0, Math.max(500, Math.min(body.max_chars || 10000, 10000)));
     if (!text.trim()) { err = "ingest_empty_response"; }
   } catch (e) {
     err = String((e as Error).message);
@@ -276,10 +300,22 @@ Deno.serve(async (req) => {
       await markJobStatus(jobId, "primary_failed");
       await markJobStatus(jobId, "fallback_available");
     }
-    return jsonResponse({ error: err, job_id: jobId, fallback_available: !!jobId }, 500);
+    return jsonResponse({
+      error: err,
+      job_id: jobId,
+      fallback_available: !!jobId,
+      // Файл уже удалён cleanup-ом выше (или будет удалён при следующем
+      // запросе) — клиент должен показать сценарий повторной загрузки.
+      file_deleted: isDemo ? true : undefined,
+    }, 500);
   }
   if (attemptId) await finishAttempt(attemptId, { status: "succeeded", result_reference: "ingest_resume:text_returned" });
   if (jobId) await markJobStatus(jobId, "primary_succeeded", true);
+  // Demo-резюме не имеет кандидата в БД — просто возвращаем распознанный
+  // текст, фронт сам кладёт его в локальное состояние.
+  if (isDemo) {
+    return jsonResponse({ ok: true, text, demo: true });
+  }
   // STRICT persistence (R2 Block 1): we MUST not return ok:true unless the
   // recognised text actually lives in candidates.resume_text. Otherwise
   // ai-interview-screen-resume-v2 later sees an empty DB row and returns
