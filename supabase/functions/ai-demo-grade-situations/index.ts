@@ -9,11 +9,12 @@ Deno.serve(async (req) => {
     title: string;
     situations: { id: string; title: string; brief: string; criteria?: string }[];
     answers: Record<string, string>;
+    demo_user_id?: string;
   };
   if (!body?.title || !Array.isArray(body?.situations) || !body?.answers) return jsonResponse({ error: "bad_body" }, 400);
 
-  const chatId = buildChatId({});
-  const socialId = buildSocialId({});
+  const chatId = buildChatId({ demoUserId: body.demo_user_id });
+  const socialId = buildSocialId({ demo_user_id: body.demo_user_id });
 
   const items = body.situations.map(s => ({
     id: s.id, title: s.title, brief: s.brief, criteria: s.criteria || "",
