@@ -2,6 +2,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   callProTalk, tryParseJson, getAdminClient, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
+  resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 
@@ -48,8 +49,11 @@ Deno.serve(async (req) => {
     }`;
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   try {
     const { text, raw } = await callProTalk({

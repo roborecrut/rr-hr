@@ -8,6 +8,7 @@ import {
   getUserFromAuthHeader,
   logToDb,
   tryParseJson,
+  resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import {
@@ -70,7 +71,9 @@ Deno.serve(async (req) => {
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const SCHEMA = `JSON-массив РОВНО из 3 элементов: {"id":"s1"|"s2"|"s3","title":string,"brief":string,"criteria":string}
 - title — короткая тема (3-6 слов)

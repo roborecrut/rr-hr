@@ -1,7 +1,8 @@
 // Generate a long-form training material (markdown) for a single block of a project.
 // Saves materials_md + ai_generated_at on training_blocks. Returns { text, block_id }.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
@@ -44,8 +45,11 @@ Deno.serve(async (req) => {
   ].filter(Boolean).join("\n");
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
   const msg = `Сгенерируй учебный материал в Markdown по блоку «${BLOCK_TITLES[body.block_key]}» для вакансии. Объём 1500–3000 слов. Структура: Цели обучения → Ключевые знания → Примеры/кейсы → Чек-лист. Используй заголовки H2/H3 и списки. Не более 20 000 символов.\n\nКонтекст:\n${ctx}`;
 
   const idem = `training_material:${body.project_id}:${body.block_key}`;

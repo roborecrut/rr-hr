@@ -1,7 +1,8 @@
 // Generate 20 quiz questions (10 choice + 10 text) from a training block's material.
 // Replaces existing training_questions for the block; updates total_score/pass_score.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
@@ -26,8 +27,11 @@ Deno.serve(async (req) => {
   if (!block.materials_md) return jsonResponse({ error: "no_material" }, 400);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: (block as any).project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const SCHEMA = `JSON-массив из ровно 20 элементов, без markdown, без обёрток. Каждый элемент:
 {"kind":"choice"|"text","question":string,"options":[{"text":string,"is_correct":boolean}]|null,"expected_answer":string|null,"points":number,"explanation":string}

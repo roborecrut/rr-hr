@@ -1,7 +1,8 @@
 // Generate a 20-question test for ONE stage from concatenated stage materials_md.
 // Stores in training_stage_tests with correct/expected_answer kept server-side.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
@@ -42,8 +43,11 @@ Deno.serve(async (req) => {
   const wishes = (body.wishes || "").trim().slice(0, 1000);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const SCHEMA = `JSON-массив из 20 элементов (можно до 30, но не больше), без markdown, без обёрток. Каждый элемент:
 {"id":string,"kind":"choice"|"text","question":string,"options":[{"text":string,"is_correct":boolean}]|null,"correct":string|null,"expected_answer":string|null,"points":5,"explanation":string}

@@ -8,7 +8,8 @@
 // фронт получает job_id + fallback_available=true и может перезапустить
 // задачу через резервный оверлей RR Pro Max (ai-fallback-rr-pro-max).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
@@ -126,8 +127,11 @@ Deno.serve(async (req) => {
   const vacancyUrl = buildVacancyUrl(companySlug, (proj as any).slug || null);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const msg = buildPrompt({
     roleName: (proj as any).role_name || "",

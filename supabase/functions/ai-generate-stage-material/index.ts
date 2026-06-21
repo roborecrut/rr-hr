@@ -2,7 +2,8 @@
 // Stage is one of: 'professional' | 'product' | 'system'.
 // Saves a single training_blocks row per (project_id, stage) with materials_md.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
 
@@ -79,8 +80,11 @@ Deno.serve(async (req) => {
   const wishes = (body.wishes || "").trim().slice(0, 1000);
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const msg = `Подготовь учебный материал в Markdown для этапа «${STAGE_TITLES[body.stage]}». Фокус: ${STAGE_FOCUS[body.stage]}.
 Объём 1500–3000 слов. Структура: вводный абзац, разделы H2 (минимум 3), внутри H3/списки/чек-листы, в конце «Контрольные точки». Не более 20 000 символов. Только Markdown, без преамбулы.
