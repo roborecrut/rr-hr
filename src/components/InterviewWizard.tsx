@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info } from "lucide-react";
+import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { packTierPrice, formatRR } from "@/lib/rr";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
@@ -79,6 +80,9 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
   const [savingLimits,   setSavingLimits]   = useState(false);
   const [savedLimits,    setSavedLimits]    = useState(false);
+  // §4: live RR calculator — кошелёк работодателя для расчёта стоимости лимитов.
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [showNoBalanceModal, setShowNoBalanceModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState<null | Kind | "pass">(null);
   const [savedFlash, setSavedFlash] = useState<null | Kind | "pass">(null);
@@ -94,8 +98,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await (supabase as any)
-        .from("employers").select("public_id").eq("user_id", user.id).maybeSingle();
+        .from("employers").select("public_id, wallets(units_balance)").eq("user_id", user.id).maybeSingle();
       setEmployerPublicId(String((data as any)?.public_id || ""));
+      const w = (data as any)?.wallets;
+      const bal = Number((Array.isArray(w) ? w[0]?.units_balance : w?.units_balance) ?? 0);
+      setWalletBalance(bal);
     })();
   }, []);
 
