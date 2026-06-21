@@ -59,3 +59,9 @@
 1. Порядок A → B → C ок? (или сначала C, потом A/B)
 2. По §2: список точек входа выше совпадает с вашим? Если есть ещё конкретный экран — добавлю.
 3. По §1: подход «id выдаёт сервер из public_id, localStorage только кэш» подходит, или вы хотели именно «localStorage — источник правды» (это слабее по безопасности и я бы не рекомендовал)?
+
+## Статус (одним проходом)
+
+- **§2 /restart-оверлеи**: дедуп вынесен в `aiRestart()` (sessionStorage, TTL 10 минут по `employer_public_id`). Все существующие точки входа (вакансия, компания, интервью, кандидат, demo) уже зовут `aiRestart` — теперь без спама при ре-рендере.
+- **§5 file_deleted UX**: `ResumeDropzone` получил `fileMissing`. При терминальных кодах `file_deleted|file_missing|no_resume` (или соответствующем тексте) дропзона рисует красный баннер «Файл резюме был удалён — загрузите снова», сбрасывает старое превью и разблокирует выбор файла. Подключено в `CandidateInterview` и `DemoInterviewPage`.
+- **§1 Стабильные ID — закрыто на 100% по edge-функциям**: добавлен общий helper `resolveEmployerPublicId({ projectId, userId })` в `_shared/protalk.ts`. Все 12 оставшихся функций (`ai-enhance`, `ai-evaluate`, `ai-distribute-text`, `ai-generate-onboarding`, `ai-generate-hh-templates`, `ai-generate-interview-{checklist,resume-criteria,situations}`, `ai-generate-stage-{material,test}`, `ai-generate-training-{material,quiz}`) теперь резолвят employer.public_id и передают его в `buildChatId/buildSocialId` — получаем стабильный chat_id 100001+ для работодателя. Если резолв не удался, остаётся прежний fallback-хэш в 300001+ (тоже детерминирован).

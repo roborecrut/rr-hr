@@ -3,7 +3,8 @@
 // vacancy → 15 canonical vacancy fields
 // training → returns a markdown material chunk (caller decides where to save it)
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb, resolveEmployerPublicId,
+} from "../_shared/protalk.ts";
 import { requireEmployerJwt } from "../_shared/auth.ts";
 
 type Entity = "company" | "vacancy" | "training";
@@ -34,8 +35,11 @@ Deno.serve(async (req) => {
   if (auth instanceof Response) return auth;
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
   const msg = `Исходный текст:\n${body.text.slice(0, 10000)}\n\nВерни СТРОГО ${SCHEMAS[body.entity]}\nБез комментариев. Никаких пояснений.`;
 
   try {

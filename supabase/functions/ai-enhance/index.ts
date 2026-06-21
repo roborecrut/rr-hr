@@ -3,6 +3,7 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { requireEmployerJwt } from "../_shared/auth.ts";
 import {
   callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb,
+  resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 
 // Server-side length limits per field (in chars). Mirrors the client constraints
@@ -260,8 +261,11 @@ Deno.serve(async (req) => {
   if (auth instanceof Response) return auth;
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
-  const socialId = buildSocialId({ user_id: user?.id });
+  const empPid = await resolveEmployerPublicId({ userId: user?.id });
+
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   try {
     if (body.mode === "single") {
