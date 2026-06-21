@@ -21,8 +21,8 @@ Deno.serve(async (req) => {
   if (qe || !q) return jsonResponse({ error: "no_question" }, 404);
   if (q.kind !== "text") return jsonResponse({ error: "not_text_question" }, 400);
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
   const maxPts = Number(q.points) || 5;
   const msg = `Оцени ответ кандидата от 0 до ${maxPts}. Верни СТРОГО JSON без markdown: {"score": number, "feedback": string}.\n\nВОПРОС: ${q.question}\nЭТАЛОН: ${q.expected_answer || ""}\nОТВЕТ КАНДИДАТА: ${String(body.answer).slice(0, 4000)}`;
 

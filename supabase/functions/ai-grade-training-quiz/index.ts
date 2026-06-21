@@ -90,8 +90,8 @@ Deno.serve(async (req) => {
     }
   }
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
   let aiText = "";
   let aiObj: any = null;
 
