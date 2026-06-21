@@ -11,6 +11,7 @@ import RichMarkdown from "@/components/RichMarkdown";
 import ResumeDropzone from "@/components/ResumeDropzone";
 import DisclosureBlock from "@/components/DisclosureBlock";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
+import LimitExhaustedOverlay from "@/components/LimitExhaustedOverlay";
 import { toUserError, formatUserError } from "@/lib/userError";
 import {
   startResumeScreenV2, pollJobUntilTerminal,
@@ -115,6 +116,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [passScore, setPassScore] = useState(75);
   // Vacancy paused (no employer funds)
   const [paused, setPaused] = useState<null | { email?: string|null; phone?: string|null; telegram?: string|null }>(null);
+  // Лимиты RR §1: блокировка кандидата, если у работодателя нет свободных
+  // лимитов на интервью по этой вакансии (и ещё не списано по этому
+  // кандидату — повторное прохождение не блокируем).
+  const [interviewLimitBlocked, setInterviewLimitBlocked] = useState<null | {
+    name?: string|null; email?: string|null; phone?: string|null;
+  }>(null);
   // Rich AI feedback restored from DB
   const [checklistFeedback, setChecklistFeedback] = useState<any>(null);
 
@@ -178,6 +185,16 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           return;
         }
       } catch {}
+      // Лимиты RR §1 — гейт перед стартом интервью.
+      try {
+        const { data: limit } = await (supabase as any).rpc("project_limit_status", {
+          _project: projectId, _candidate: candidateId, _kind: "interview",
+        });
+        if (limit && limit.has_capacity === false && limit.already_charged === false) {
+          setInterviewLimitBlocked(limit.employer || {});
+          return;
+        }
+      } catch { /* мягкая ошибка — не блокируем флоу */ }
 
       const { data: pr } = await (supabase as any).from("projects").select("interview_pass_score").eq("id", projectId).maybeSingle();
       setPassScore((pr as any)?.interview_pass_score ?? 75);
