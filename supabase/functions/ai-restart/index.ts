@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (auth instanceof Response) return auth;
   const body = await req.json().catch(() => null) as null | { employer_public_id?: string };
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id });
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: body?.employer_public_id });
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: body?.employer_public_id });
   try {
     const { text, raw } = await callProTalk({
