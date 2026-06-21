@@ -70,6 +70,15 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [checklistShuffle, setChecklistShuffle] = useState(true);
   const [situations, setSituations] = useState<Situation[]>([]);
   const [passScore, setPassScore] = useState(75);
+  // Лимиты RR §4: сколько кандидатов могут пройти интервью/обучение по этой
+  // вакансии. Списываются из общего баланса работодателя по факту первого
+  // успешного скрининга резюме (интервью) и проверки профтеста (обучение).
+  const [interviewLimit, setInterviewLimit] = useState<number>(0);
+  const [trainingLimit,  setTrainingLimit]  = useState<number>(0);
+  const [interviewUsed,  setInterviewUsed]  = useState<number>(0);
+  const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
+  const [savingLimits,   setSavingLimits]   = useState(false);
+  const [savedLimits,    setSavedLimits]    = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState<null | Kind | "pass">(null);
   const [savedFlash, setSavedFlash] = useState<null | Kind | "pass">(null);
@@ -115,9 +124,13 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     (async () => {
       const [{ data: blocks }, { data: pr }] = await Promise.all([
         (supabase as any).from("interview_blocks").select("*").eq("project_id", projectId),
-        (supabase as any).from("projects").select("interview_pass_score,role_name").eq("id", projectId).maybeSingle(),
+        (supabase as any).from("projects").select("interview_pass_score,role_name,interview_limit,training_limit,interview_used,training_used").eq("id", projectId).maybeSingle(),
       ]);
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
+      setInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
+      setTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
+      setInterviewUsed(Number((pr as any)?.interview_used  ?? 0));
+      setTrainingUsed(Number((pr as any)?.training_used   ?? 0));
       const map: any = {};
       (blocks || []).forEach((b: any) => map[b.kind] = b.payload || {});
       setResumeMd(String(map.resume?.criteria_md || ""));
@@ -193,6 +206,26 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       addAuditEvent("success", "Сохранено в БД", `Проходной балл интервью: ${passScore}`);
       flash("pass");
     } finally { setSaving(null); }
+  };
+
+  const saveLimits = async () => {
+    if (!projectId) return;
+    if (interviewLimit < interviewUsed || trainingLimit < trainingUsed) {
+      addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
+      return;
+    }
+    setSavingLimits(true);
+    try {
+      await (supabase as any).from("projects").update({
+        interview_limit: Math.max(0, Math.floor(interviewLimit)),
+        training_limit:  Math.max(0, Math.floor(trainingLimit)),
+      }).eq("id", projectId);
+      addAuditEvent("success", "Сохранено в БД", `Лимиты по вакансии: интервью ${interviewLimit}, обучение ${trainingLimit}`);
+      setSavedLimits(true);
+      setTimeout(() => setSavedLimits(false), 2200);
+    } catch (e: any) {
+      addAuditEvent("warning", "Ошибка", e?.message || "save_failed");
+    } finally { setSavingLimits(false); }
   };
 
   const generate = async () => {
@@ -433,6 +466,55 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               <button onClick={fillFromTemplate} className="bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-400/40 text-indigo-200 font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1">
                 <FileText className="w-3.5 h-3.5"/>Заполнить из шаблона должности
               </button>
+            </div>
+          </div>
+
+          <div className="bg-[#17344F]/60 border border-[#E7C768]/40 rounded-2xl p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <div className="text-[10px] uppercase tracking-wider font-bold text-[#E7C768]">
+                Лимиты RR по вакансии
+              </div>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Укажите, сколько кандидатов могут пройти <b>интервью</b> и <b>обучение</b> по этой вакансии.
+              Один лимит интервью списывается после успешного скрининга резюме у кандидата, один лимит обучения — после
+              проверки профессионального теста. Повторные прохождения уже не списываются.
+              Если на балансе работодателя нет лимитов — кандидат увидит окно «Услуга не подключена» с вашими контактами.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-[11px] text-slate-300 font-bold">Интервью (доступно: {Math.max(0, interviewLimit - interviewUsed)} из {interviewLimit}, использовано {interviewUsed})</span>
+                <input
+                  type="number" min={interviewUsed} max={100000} value={interviewLimit}
+                  onChange={e => setInterviewLimit(Math.max(interviewUsed, Math.min(100000, Number(e.target.value) || 0)))}
+                  className="mt-1 w-full bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] text-slate-300 font-bold">Обучение (доступно: {Math.max(0, trainingLimit - trainingUsed)} из {trainingLimit}, использовано {trainingUsed})</span>
+                <input
+                  type="number" min={trainingUsed} max={100000} value={trainingLimit}
+                  onChange={e => setTrainingLimit(Math.max(trainingUsed, Math.min(100000, Number(e.target.value) || 0)))}
+                  className="mt-1 w-full bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={saveLimits} disabled={savingLimits}
+                className="bg-[#E7C768]/20 hover:bg-[#E7C768]/30 border border-[#E7C768]/40 text-[#E7C768] font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1 disabled:opacity-60">
+                {savingLimits
+                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin"/> Сохраняем…</>
+                  : <><Save className="w-3.5 h-3.5"/> Сохранить лимиты</>}
+              </button>
+              {savedLimits && (
+                <span className="flex items-center gap-1 text-[11px] text-emerald-300 animate-fade-in">
+                  <CheckCircle2 className="w-3 h-3" /> Сохранено в БД
+                </span>
+              )}
+              <a href="#/account/billing"
+                 className="ml-auto text-[11px] text-[#E7C768] underline hover:text-amber-200">
+                Пополнить баланс RR →
+              </a>
             </div>
           </div>
 

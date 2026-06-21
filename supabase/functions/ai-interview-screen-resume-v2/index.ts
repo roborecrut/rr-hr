@@ -244,6 +244,12 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
           _assessment_summary: report.candidate.summary.slice(0, 4000),
         });
         if (r.error) return { ok: false, error: r.error.message };
+        // Лимиты RR §1: после успешного сохранения скоринга резюме списываем
+        // ОДИН лимит интервью у работодателя-владельца вакансии. Идемпотентно
+        // (повторный скрининг того же кандидата → already=true, не списывает).
+        try {
+          await admin.rpc("charge_project_limit", { _candidate: candidateId, _kind: "interview" });
+        } catch (_) { /* лимит уже исчерпан — клиент покажет оверлей */ }
         return { ok: true };
       },
     },
