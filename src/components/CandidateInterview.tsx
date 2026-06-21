@@ -430,7 +430,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         fallback: {
           viewerAllowed: true,
           onSuccess: async (data) => {
-            const text = String(data?.text || "").slice(0, 20000);
+            const text = String(data?.text || "")
+              .replace(/^\s*```(?:markdown|md)?\s*\n?/i, "")
+              .replace(/\n?```\s*$/i, "")
+              .trim()
+              .slice(0, 20000);
             if (text.trim()) {
               setResumeText(text);
               setUploadedResume(null);
@@ -439,7 +443,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         },
       });
       if (!r) return;
-      const text = String(r?.text || "").slice(0, 20000);
+      const text = String(r?.text || "")
+        .replace(/^\s*```(?:markdown|md)?\s*\n?/i, "")
+        .replace(/\n?```\s*$/i, "")
+        .trim()
+        .slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setResumeText(text);
       setUploadedResume(null);
