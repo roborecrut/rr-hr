@@ -22,7 +22,7 @@
 // =============================================================================
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
-  buildSocialId, callProTalkWithRetry, tryParseJson,
+  buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson, resolveCandidatePublicId,
   getAdminClient,
 } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertCandidateOwner } from "../_shared/auth.ts";
@@ -237,13 +237,14 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
   let report: OverallCandidateReport | null = null;
   let primaryFatalCode: string | null = null;
 
-  const seed = `ai_${jobId}_primary`;
+  const candPid = await resolveCandidatePublicId(candidateId);
+  const chat = buildChatId({ candidatePublicId: candPid, candidateId });
   const t0 = Date.now();
   try {
     const r = await callProTalkWithRetry({
       message: ctx.prompt,
-      chatIdSeed: seed,
-      socialId: buildSocialId({ candidate_id: candidateId }),
+      chatId: chat,
+      socialId: buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId }),
       timeoutMs: 150_000,
       attempts: 3,
       validate: (text) => {
@@ -256,7 +257,7 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
     if (v.ok) report = v.value;
     else primaryFatalCode = `schema_invalid:${v.code}`;
     await recordAttemptDiagnostics(primaryAttemptId, {
-      chatId: `${seed}_a${r.attempts}`, validationOk: v.ok,
+      chatId: chat, validationOk: v.ok,
       durationMs: Date.now() - t0, operationPart: "primary",
     });
     await ajFinishAttempt(primaryAttemptId, {
@@ -267,7 +268,7 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
     const msg = String((e as Error)?.message || "primary_failed").slice(0, 64);
     primaryFatalCode = msg;
     await recordAttemptDiagnostics(primaryAttemptId, {
-      chatId: seed, validationOk: false, durationMs: Date.now() - t0, operationPart: "primary",
+      chatId: chat, validationOk: false, durationMs: Date.now() - t0, operationPart: "primary",
     });
     await ajFinishAttempt(primaryAttemptId, { status: "failed", safe_error_code: msg });
   }
@@ -281,8 +282,7 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
     });
     if (fb) {
       const fbAttemptId = fb.attemptId;
-      const chat = `ai_${jobId}_fallback_a${fb.attemptNumber}`;
-      const social = buildSocialId({ candidate_id: candidateId });
+      const social = buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId });
       const t1 = Date.now();
       try {
         await RrProMaxProvider.restart(chat, social);

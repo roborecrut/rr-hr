@@ -353,6 +353,32 @@ export async function resolveEmployerPublicId(opts: {
   return undefined;
 }
 
+/**
+ * Resolve `candidates.public_id` for a given candidate UUID so callers can
+ * produce a stable `200000+N` ProTalk chat_id (e.g. `ask200016_<bot>`). All
+ * candidate-facing edge functions (resume ingest, screen, checklist grade,
+ * situations grade, training quiz check, overall evaluation) must share the
+ * SAME chat_id per candidate — that keeps the entire interview + training
+ * flow inside a single ProTalk dialog. Returns undefined on any miss.
+ */
+export async function resolveCandidatePublicId(
+  candidateId: string | null | undefined,
+): Promise<string | undefined> {
+  if (!candidateId) return undefined;
+  const admin = getAdminClient();
+  if (!admin) return undefined;
+  try {
+    const { data } = await admin
+      .from("candidates")
+      .select("public_id")
+      .eq("id", candidateId)
+      .maybeSingle();
+    const pid = (data as any)?.public_id;
+    if (pid != null) return String(pid);
+  } catch { /* ignore */ }
+  return undefined;
+}
+
 export async function logToDb(p: LogPayload): Promise<void> {
   const admin = getAdminClient();
   if (!admin) return;

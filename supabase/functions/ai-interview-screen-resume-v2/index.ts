@@ -32,7 +32,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson,
-  getAdminClient, logToDb,
+  getAdminClient, logToDb, resolveCandidatePublicId,
 } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 import {
@@ -196,12 +196,13 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
     provider: {
       fallbackConfigured: () => RrProMaxProvider.isConfigured(),
       async callPrimary({ jobId, candidateId, prompt }): Promise<ProviderResult> {
-        const seed = `ai_${jobId}_primary`;
         const startedAt = Date.now();
+        const candPid = await resolveCandidatePublicId(candidateId);
+        const chat = buildChatId({ candidatePublicId: candPid, candidateId });
         try {
           const r = await callProTalkWithRetry({
-            message: prompt, chatIdSeed: seed,
-            socialId: buildSocialId({ candidate_id: candidateId }),
+            message: prompt, chatId: chat,
+            socialId: buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId }),
             timeoutMs: 120_000, attempts: 3,
             validate: (text) => {
               const obj = tryParseJson<unknown>(text);
@@ -211,7 +212,7 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
           });
           return {
             ok: true, reportJson: tryParseJson<unknown>(r.text),
-            chatId: `${seed}_a${r.attempts}`, attempts: r.attempts,
+            chatId: chat, attempts: r.attempts,
             durationMs: Date.now() - startedAt,
           };
         } catch (e) {
@@ -219,8 +220,9 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
         }
       },
       async callFallback({ jobId, candidateId, prompt, attempt }): Promise<ProviderResult> {
-        const chat = `ai_${jobId}_fallback_a${attempt}`;
-        const social = buildSocialId({ candidate_id: candidateId });
+        const candPid = await resolveCandidatePublicId(candidateId);
+        const chat = buildChatId({ candidatePublicId: candPid, candidateId });
+        const social = buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId });
         const startedAt = Date.now();
         try {
           await RrProMaxProvider.restart(chat, social);

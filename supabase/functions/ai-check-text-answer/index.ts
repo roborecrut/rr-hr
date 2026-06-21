@@ -1,6 +1,6 @@
 // Score a candidate's free-form text answer against the expected reference via ProTalk.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, logToDb, resolveCandidatePublicId } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
 
 Deno.serve(async (req) => {
@@ -21,8 +21,9 @@ Deno.serve(async (req) => {
   if (qe || !q) return jsonResponse({ error: "no_question" }, 404);
   if (q.kind !== "text") return jsonResponse({ error: "not_text_question" }, 400);
 
-  const chatId = buildChatId({ candidateId });
-  const socialId = buildSocialId({ candidate_id: candidateId });
+  const candPid = await resolveCandidatePublicId(candidateId);
+  const chatId = buildChatId({ candidatePublicId: candPid, candidateId });
+  const socialId = buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId });
   const maxPts = Number(q.points) || 5;
   const msg = `Оцени ответ кандидата от 0 до ${maxPts}. Верни СТРОГО JSON без markdown: {"score": number, "feedback": string}.\n\nВОПРОС: ${q.question}\nЭТАЛОН: ${q.expected_answer || ""}\nОТВЕТ КАНДИДАТА: ${String(body.answer).slice(0, 4000)}`;
 

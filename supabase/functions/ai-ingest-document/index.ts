@@ -2,7 +2,7 @@
 // Asks ProTalk to read it and return a clean markdown summary (≤10k chars).
 // On success deletes the source file from storage to avoid wasting space.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveCandidatePublicId } from "../_shared/protalk.ts";
 import { requireEmployerJwt, getEmployerIdForUser, assertProjectOwner } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
@@ -191,6 +191,29 @@ Deno.serve(async (req) => {
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const isDemo = body.entity === "resume" && (body.file_path || "").startsWith("demo/");
+
+  // For real candidates we need a STABLE per-candidate ProTalk chat_id so
+  // the file-recognition step lives in the same dialog as the screen /
+  // checklist / situations / training stages. Without this the function
+  // falls through to the random `ask{ts}_{rand}` chat_id.
+  let candIdForChat: string | null = null;
+  if (body.entity === "resume" && !isDemo) {
+    const token = (
+      req.headers.get("x-candidate-token") ||
+      req.headers.get("X-Candidate-Token") ||
+      ""
+    ).trim();
+    if (token) {
+      const sess = await admin
+        .from("candidate_sessions")
+        .select("candidate_id")
+        .eq("token", token)
+        .maybeSingle();
+      candIdForChat = (sess.data as any)?.candidate_id || null;
+    }
+  }
+  const candPublicId = await resolveCandidatePublicId(candIdForChat);
+
   let sourceUrl = body.file_url || "";
   if (body.bucket && body.file_path) {
     // Prefer a signed URL so private buckets (candidate-resumes) work too.
@@ -209,10 +232,14 @@ Deno.serve(async (req) => {
   // распознавание уезжает в чужой диалог.
   const chatId = isDemo
     ? buildChatId({ demoUserId: body.demo_user_id })
-    : buildChatId({ userId: user?.id });
+    : (candIdForChat
+        ? buildChatId({ candidatePublicId: candPublicId, candidateId: candIdForChat })
+        : buildChatId({ userId: user?.id }));
   const socialId = isDemo
     ? buildSocialId({ demo_user_id: body.demo_user_id })
-    : buildSocialId({ user_id: user?.id });
+    : (candIdForChat
+        ? buildSocialId({ candidate_public_id: candPublicId, candidate_id: candIdForChat })
+        : buildSocialId({ user_id: user?.id }));
   const userMsg = `${PROMPTS[body.entity]}${body.prompt_hint ? "\n\nКонтекст: " + body.prompt_hint : ""}\n\nИсточник: ${sourceUrl}${body.filename ? `\nИмя файла: ${body.filename}` : ""}\n\nВерни только готовый Markdown-текст без обёрток.`;
 
   // Регистрируем ai_jobs только для распознавания РЕЗЮМЕ кандидата —
