@@ -38,8 +38,8 @@ Deno.serve(async (req) => {
   ]);
   const criteria = ((blk as any)?.payload?.criteria_md || "").toString();
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
 
   const msg = `Ты — старший HR-эксперт и рекрутер. Твоя задача — провести экспертный анализ соответствия резюме кандидата вакансии "${(proj as any)?.role_name || ""}" и дать развёрнутую оценку.
 

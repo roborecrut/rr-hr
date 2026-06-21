@@ -79,9 +79,12 @@ Deno.serve(async (req) => {
   } catch (_) { /* ignore */ }
 
   const snap: any = snapshot;
-  const owner = ownerUserId || ownerCandidateId || undefined;
-  const chatId = buildChatId({ userId: owner });
-  const socialId = buildSocialId({ user_id: owner });
+  const chatId = ownerCandidateId
+    ? buildChatId({ candidateId: ownerCandidateId })
+    : buildChatId({ userId: ownerUserId || undefined });
+  const socialId = ownerCandidateId
+    ? buildSocialId({ candidate_id: ownerCandidateId })
+    : buildSocialId({ user_id: ownerUserId || undefined });
 
   // Step 1: /restart. Without success we DO NOT send the prompt.
   const restart = await RrProMaxProvider.restart(chatId, socialId);

@@ -21,8 +21,8 @@ Deno.serve(async (req) => {
   const questions: any[] = (blk as any)?.payload?.questions || [];
   if (!questions.length) return jsonResponse({ error: "no_questions" }, 400);
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
 
   // Pre-split contentless / too-short text answers — they get a deterministic
   // 0 locally and are NOT forwarded to the LLM. Choice questions always go

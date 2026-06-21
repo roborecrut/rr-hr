@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ telegramId: body.userInfo?.telegram_id, userId: user?.id });
+  const chatId = buildChatId({ telegramId: body.userInfo?.telegram_id, userId: user?.id, employerPublicId: body.employer_public_id });
   const socialId = buildSocialId({ ...(body.userInfo || {}), user_id: user?.id, employer_public_id: body.employer_public_id });
 
   const system = SYSTEMS[body.kind] ?? SYSTEMS.employer;

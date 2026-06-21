@@ -208,18 +208,44 @@ export function extractJsonObjects<T = any>(s: string): T[] {
   return out;
 }
 
-// chat_id rules:
-// - if telegram_id present → `tb{tg_id}_{bot_id}`
-// - else if auth user → `u_{uid}_{bot_id}`
-// - else random `ask{ts}_{rand}`
+// Stable ProTalk chat_id rules (Wave C / §1).
+// We give ProTalk a deterministic numeric chat_id per logical actor so the
+// same dialog (and its restart history) is reused on every call:
+//   - employer (e.g. employers.public_id = 6)         → 100000 + N → "100006"
+//   - candidate (candidates.public_id when known)     → 200000 + N → "200006"
+//   - candidate UUID fallback (no public_id surfaced) → 200001..999999 via
+//     deterministic FNV-1a hash of the UUID.
+//   - generic Supabase user UUID (employer auth user) → 300001..999999 via
+//     the same hash; used only when no employer_public_id was passed.
+//   - telegram → "tb{tg_id}_{bot_id}" (kept for legacy webhook channel).
+//   - last resort → random "ask{ts}_{rand}" (unauthenticated demo).
+//
+// user_social_id mirrors the chat_id source so logs stay correlated.
+function fnvHashMod(input: string, mod: number, addBase: number): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return String(addBase + (h % mod));
+}
+
 export function buildChatId(opts: {
   telegramId?: number | string;
   userId?: string;
+  employerPublicId?: string | number;
+  candidatePublicId?: string | number;
+  candidateId?: string;
   botId?: string;
 }): string {
   const bot = opts.botId || Deno.env.get("PRO_TALK_BOT_ID") || "0";
   if (opts.telegramId) return `tb${opts.telegramId}_${bot}`;
-  if (opts.userId) return `u_${opts.userId}_${bot}`;
+  const empPid = opts.employerPublicId != null ? Number(opts.employerPublicId) : NaN;
+  if (Number.isFinite(empPid) && empPid > 0) return String(100000 + Math.floor(empPid));
+  const candPid = opts.candidatePublicId != null ? Number(opts.candidatePublicId) : NaN;
+  if (Number.isFinite(candPid) && candPid > 0) return String(200000 + Math.floor(candPid));
+  if (opts.candidateId) return fnvHashMod(`c:${opts.candidateId}`, 800_000, 200_001);
+  if (opts.userId) return fnvHashMod(`u:${opts.userId}`, 700_000, 300_001);
   return `ask${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -227,6 +253,8 @@ export function buildSocialId(info?: {
   telegram_id?: number | string;
   user_id?: string;
   employer_public_id?: string | number;
+  candidate_public_id?: string | number;
+  candidate_id?: string;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -236,8 +264,20 @@ export function buildSocialId(info?: {
     const u = info.username ? `(@${info.username})` : "(@unknown)";
     return `from_user_id:${info.telegram_id} ${name} ${u} message_id:${Date.now()}`;
   }
-  if (info?.employer_public_id) return `from_user_id:${info.employer_public_id} message_id:${Date.now()}`;
-  if (info?.user_id) return `from_user_id:${info.user_id} message_id:${Date.now()}`;
+  const empPid = info?.employer_public_id != null ? Number(info.employer_public_id) : NaN;
+  if (Number.isFinite(empPid) && empPid > 0) {
+    return `from_user_id:${100000 + Math.floor(empPid)} message_id:${Date.now()}`;
+  }
+  const candPid = info?.candidate_public_id != null ? Number(info.candidate_public_id) : NaN;
+  if (Number.isFinite(candPid) && candPid > 0) {
+    return `from_user_id:${200000 + Math.floor(candPid)} message_id:${Date.now()}`;
+  }
+  if (info?.candidate_id) {
+    return `from_user_id:${fnvHashMod(`c:${info.candidate_id}`, 800_000, 200_001)} message_id:${Date.now()}`;
+  }
+  if (info?.user_id) {
+    return `from_user_id:${fnvHashMod(`u:${info.user_id}`, 700_000, 300_001)} message_id:${Date.now()}`;
+  }
   return `from_user_id:anon message_id:${Date.now()}`;
 }
 

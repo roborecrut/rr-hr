@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
   const questions = (test.questions as any[]) || [];
   const passScore = test.pass_score || 70;
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
 
   let total = 0;
   const perQuestion: any[] = [];

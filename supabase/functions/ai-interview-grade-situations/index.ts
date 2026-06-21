@@ -22,8 +22,8 @@ Deno.serve(async (req) => {
   const situations: any[] = (blk as any)?.payload?.situations || [];
   if (!situations.length) return jsonResponse({ error: "no_situations" }, 400);
 
-  const chatId = buildChatId({ userId: candidateId });
-  const socialId = buildSocialId({ user_id: candidateId });
+  const chatId = buildChatId({ candidateId });
+  const socialId = buildSocialId({ candidate_id: candidateId });
 
   // Pre-filter contentless answers — situations are always open-ended, so
   // empty / one-word / random-character answers get a deterministic 0

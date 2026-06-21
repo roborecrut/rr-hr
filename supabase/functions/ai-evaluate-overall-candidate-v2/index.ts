@@ -243,7 +243,7 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
     const r = await callProTalkWithRetry({
       message: ctx.prompt,
       chatIdSeed: seed,
-      socialId: buildSocialId({ user_id: candidateId }),
+      socialId: buildSocialId({ candidate_id: candidateId }),
       timeoutMs: 150_000,
       attempts: 3,
       validate: (text) => {
@@ -282,7 +282,7 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
     if (fb) {
       const fbAttemptId = fb.attemptId;
       const chat = `ai_${jobId}_fallback_a${fb.attemptNumber}`;
-      const social = buildSocialId({ user_id: candidateId });
+      const social = buildSocialId({ candidate_id: candidateId });
       const t1 = Date.now();
       try {
         await RrProMaxProvider.restart(chat, social);
