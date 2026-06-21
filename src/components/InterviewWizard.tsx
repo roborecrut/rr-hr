@@ -208,6 +208,26 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     } finally { setSaving(null); }
   };
 
+  const saveLimits = async () => {
+    if (!projectId) return;
+    if (interviewLimit < interviewUsed || trainingLimit < trainingUsed) {
+      addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
+      return;
+    }
+    setSavingLimits(true);
+    try {
+      await (supabase as any).from("projects").update({
+        interview_limit: Math.max(0, Math.floor(interviewLimit)),
+        training_limit:  Math.max(0, Math.floor(trainingLimit)),
+      }).eq("id", projectId);
+      addAuditEvent("success", "Сохранено в БД", `Лимиты по вакансии: интервью ${interviewLimit}, обучение ${trainingLimit}`);
+      setSavedLimits(true);
+      setTimeout(() => setSavedLimits(false), 2200);
+    } catch (e: any) {
+      addAuditEvent("warning", "Ошибка", e?.message || "save_failed");
+    } finally { setSavingLimits(false); }
+  };
+
   const generate = async () => {
     if (!projectId) return;
     setBusy(true);
