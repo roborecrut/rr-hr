@@ -6,6 +6,7 @@ import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import Reveal from "@/components/Reveal";
 import { VacancyPausedDialog, isVacancyPausedError } from "@/components/VacancyPausedDialog";
+import LimitExhaustedOverlay from "@/components/LimitExhaustedOverlay";
 import { toUserError, formatUserError } from "@/lib/userError";
 import CandidateTrainingStageReport from "@/components/reports/CandidateTrainingStageReport";
 
@@ -50,6 +51,11 @@ export default function CandidateStageTraining({
   const [lastResult, setLastResult] = useState<{ score: number; passed: boolean; per_question: any[] } | null>(null);
   const [candidateSummary, setCandidateSummary] = useState<any>(null);
   const [pausedOpen, setPausedOpen] = useState(false);
+  // Лимиты RR §2: блокировка обучения, если у работодателя нет свободных
+  // лимитов на обучение (и ещё не списано по этому кандидату).
+  const [trainingLimitBlocked, setTrainingLimitBlocked] = useState<null | {
+    name?: string|null; email?: string|null; phone?: string|null;
+  }>(null);
 
   const callEdge = async <T,>(fn: string, body: any): Promise<T> => {
     // Кандидат не имеет Supabase Auth — передаём его сессионный токен в теле и в заголовке.
@@ -90,6 +96,16 @@ export default function CandidateStageTraining({
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Лимиты RR — единоразовая проверка при входе в систему обучения.
+      try {
+        const { data: limit } = await (supabase as any).rpc("project_limit_status", {
+          _project: projectId, _candidate: candidateId, _kind: "training",
+        });
+        if (!cancelled && limit && limit.has_capacity === false && limit.already_charged === false) {
+          setTrainingLimitBlocked(limit.employer || {});
+          return;
+        }
+      } catch { /* мягкая ошибка */ }
       const { data } = await supabase.from("candidate_stage_progress")
         .select("stage,best_score,attempts,passed_at").eq("candidate_id", candidateId);
       if (cancelled) return;
