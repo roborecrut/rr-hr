@@ -10,11 +10,12 @@ Deno.serve(async (req) => {
     vacancy_text?: string;
     criteria_md?: string;
     resume_text: string;
+    demo_user_id?: string;
   };
   if (!body?.title || !body?.resume_text) return jsonResponse({ error: "bad_body" }, 400);
 
-  const chatId = buildChatId({});
-  const socialId = buildSocialId({});
+  const chatId = buildChatId({ demoUserId: body.demo_user_id });
+  const socialId = buildSocialId({ demo_user_id: body.demo_user_id });
 
   const msg = `Ты HR-эксперт. Оцени резюме кандидата на должность "${body.title}".
 

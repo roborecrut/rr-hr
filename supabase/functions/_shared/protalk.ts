@@ -236,6 +236,7 @@ export function buildChatId(opts: {
   employerPublicId?: string | number;
   candidatePublicId?: string | number;
   candidateId?: string;
+  demoUserId?: string;
   botId?: string;
 }): string {
   const bot = opts.botId || Deno.env.get("PRO_TALK_BOT_ID") || "0";
@@ -246,6 +247,7 @@ export function buildChatId(opts: {
   if (Number.isFinite(candPid) && candPid > 0) return String(200000 + Math.floor(candPid));
   if (opts.candidateId) return fnvHashMod(`c:${opts.candidateId}`, 800_000, 200_001);
   if (opts.userId) return fnvHashMod(`u:${opts.userId}`, 700_000, 300_001);
+  if (opts.demoUserId) return fnvHashMod(`d:${opts.demoUserId}`, 600_000, 400_001);
   return `ask${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
@@ -255,6 +257,7 @@ export function buildSocialId(info?: {
   employer_public_id?: string | number;
   candidate_public_id?: string | number;
   candidate_id?: string;
+  demo_user_id?: string;
   first_name?: string;
   last_name?: string;
   username?: string;
@@ -277,6 +280,9 @@ export function buildSocialId(info?: {
   }
   if (info?.user_id) {
     return `from_user_id:${fnvHashMod(`u:${info.user_id}`, 700_000, 300_001)} message_id:${Date.now()}`;
+  }
+  if (info?.demo_user_id) {
+    return `from_user_id:${fnvHashMod(`d:${info.demo_user_id}`, 600_000, 400_001)} message_id:${Date.now()}`;
   }
   return `from_user_id:anon message_id:${Date.now()}`;
 }
