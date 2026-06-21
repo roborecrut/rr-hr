@@ -1,78 +1,61 @@
-# План: единая AI-оркестрация (overlay /restart + RR Pro Max + стабильные ID)
+## Цель
 
-Объём большой и затрагивает чувствительные edge-функции. Прошу подтверждение прежде, чем коммитить код.
+Закрыть отложенные пункты после §3 (RR Pro Max уже сделан): §1 стабильные ProTalk ID, §2 `/restart`-оверлеи на всех редакторах, §5 UX `file_deleted` для резюме. Без рефакторинга, без правок CRM/канбана/биллинга/тарифов/обучения/кандидатов как фич.
 
-## 1. Стабильные ProTalk ID (frontend)
+## Порядок волн
 
-Файл: новый `src/lib/protalkSession.ts`.
+Каждая волна — отдельный коммит и отдельная ручная проверка в Preview перед следующей. Внутри волны изменения сцеплены и не делятся.
 
-- `getProtalkChatId(role: "employer"|"candidate", userKey: string)` — формат `100001` / `200001` + хэш userKey, инкремент через `localStorage` ключ `rr.protalk.idmap`.
-- Значение живёт пока не очистится localStorage. Не меняется между шагами демо, редакторами и т.д.
-- Используется на всех точках входа в AI: VacancyEditor, CompanyEditor, InterviewWizard, TrainingWizard, CandidateInterview (скрининг/чеклист/ситуации/тесты), DemoInterviewPage.
-- Передаётся в edge через body как `chat_id` и `social_id`; edge перестаёт сам мутить ID, если поле пришло.
+### Wave A — §2 `/restart`-оверлеи (UI-only, наименьший риск)
 
-## 2. /restart оверлей на всех точках входа
+Бекенд `ai-restart` уже есть и шлёт `/restart` в ProTalk. Сейчас оверлей `AIRestartGate` дергается из `App.tsx` (глобально), `EmployerPanel.tsx`, `JobVacancyLanding.tsx`, `DemoInterviewPage.tsx`. Расширяем точки запуска ровно по списку пользователя:
 
-Использовать существующий `AIRestartGate` + `beginAIRestart/endAIRestart` + `waitForAIReady`.
+1. Демо-интервью — сразу после выбора должности (уже почти есть в `DemoInterviewPage`, добиваем гарантированный wait-overlay до первого AI-вызова).
+2. Вход в **редактор вакансии** и **создание вакансии** — `VacancyEditor.tsx` mount.
+3. Вход в **редактор компании** и **создание компании** — `CompanySections.tsx` / `VacancySections.tsx` (точку определить по реальному маршруту работодателя).
+4. Вход в **редактор системы интервью** и **создание интервью** — `InterviewWizard.tsx` / `InterviewList.tsx`.
+5. Создание кандидата работодателем — точка входа в форму создания.
 
-Добавить вызов `aiRestart()` (расширенный — см. §3) в `useEffect` при монтировании:
-- `VacancyEditor` (создание + редактор)
-- `CompanySections`/редактор компании
-- `InterviewWizard` (создание + редактор)
-- `TrainingWizard` (создание + редактор)
-- `CandidateInterview` — отдельные оверлеи на вход в скрининг резюме, чеклист, ситуации
-- `CandidateStageTraining` — оверлей на вход в тест профессионального/продуктового/системного обучения
-- `DemoInterviewPage` — оверлей сразу после выбора должности
+Правила:
+- Один общий хук `useAIRestartOnMount(employerPublicId, scope)` с дедупом по `scope+employerId` в `sessionStorage` (TTL 10 минут): не дёргать `/restart` повторно при перерисовке/переходе между вкладками внутри той же сущности.
+- Оверлей блокирует UI до ответа ProTalk (успех/ошибка/таймаут). При ошибке — кнопка «Продолжить без перезапуска».
+- Никаких изменений в edge-функциях кроме `ai-restart` (уже работает).
 
-Кнопки генерации AI блокируются через `useAIReady()` до завершения /restart (этот gate уже есть).
+### Wave B — §5 `file_deleted` UX для резюме
 
-## 3. Резервный RR Pro Max (готовые секреты: bot id 67370, токен, api key)
+Бекенд резюме-runner уже возвращает терминальные коды; сейчас UI этого не показывает. Изменения только во фронте:
 
-Backend:
-- Расширить `_shared/protalk.ts`: новая обёртка `callAI({ message, chatId, socialId, useFallback })`. По умолчанию primary; при `safeErrorCode` (timeout/server/empty-after-retry) поднимает `AIPrimaryFailedError` с `request_id`.
-- Frontend ловит ошибку → показывает оверлей «Ещё раз с RR Pro Max» (новый компонент `AIFallbackGate`) с пояснением.
-- По клику: edge `ai-fallback-rr-pro-max` (уже существует) дополняется тем же payload, что и primary вызов; сначала шлёт `/restart` через `RrProMaxProvider.restart`, затем повторяет исходный prompt автоматически (без второй кнопки), показывает оверлей ожидания.
-- При успехе: фоном вызывается `aiRestart()` для primary, чтобы вернуть основную модель.
-- При повторной неудаче: оверлей «Не удалось» с кнопкой-ссылкой `https://t.me/+Qr9hu55w7tEwNjZi`, без «повторить».
+1. `ResumeDropzone.tsx`: при job-статусе `file_deleted` (или `file_missing`) показать баннер «Файл недоступен, загрузите снова», очистить превью, разблокировать дропзону.
+2. Корзина/история резюме (компонент находится в `CandidateInterview.tsx`): пометить запись как «файл удалён», убрать кнопки «открыть/повторно прогнать».
+3. В `useCandidateAiJob.ts` — мапнуть `file_deleted` → отдельный non-fallback терминал (Pro Max тут не помогает: файла нет). Никаких изменений в edge-функциях.
 
-Frontend изменения:
-- Новый `src/lib/aiFallback.ts` — хранит «последний AI-вызов» в памяти (payload + edge fn name + retry callback) и оркестрирует UI.
-- Новый компонент `src/components/AIFallbackGate.tsx` (по аналогии с AIRestartGate, но с маскотом Pro Max и состояниями: error / pro-max-restart / pro-max-running / pro-max-error).
-- `src/lib/aiClient.ts.invoke()` после получения серверного `safeErrorCode in {timeout, server_error, empty_response, provider_unavailable}` НЕ кидает Error сразу, а регистрирует попытку в `aiFallback` и возвращает специальный reject.
+### Wave C — §1 Стабильные ProTalk ID 100001+/200001+
 
-## 4. Игнор пустых приветствий ProTalk
+Самый рискованный пункт. Логика:
 
-Уже частично сделано в `_shared/protalk.ts` (`allowEmptyReply`). Расширить:
-- Один авто-retry с тем же chat_id (есть).
-- Если второй ответ всё ещё пустой → `safeErrorCode = "empty_response"` (триггерит §3, оверлей с Pro Max).
-- В `ai-demo-grade-situations`, `ai-demo-screen-resume`, `ai-demo-grade-checklist`: убрать «успех при пустом» — если `text` пустой и retry не помог, возвращать 502 с `request_id`, а не нулевую оценку.
+- `chat_id`-нумератор: для работодателя `100001+` (по `employers.public_id`), для кандидата `200001+` (по `candidates.public_id` либо устойчивому `cand_session.token` → числовой хэш в той же диапазоне). Никакого `localStorage` источника правды — только сервер, `localStorage` лишь кэширует уже выданный id для скорости.
+- Новые хелперы в `_shared/protalk.ts`: `buildStableChatId({ scope: "employer"|"candidate", publicId })` и `buildStableSocialId(...)`. Старые `buildChatId/buildSocialId` остаются как fallback.
+- Все 15 точек вызова (`ai-chat`, `ai-enhance`, `ai-evaluate`, `ai-restart`, `ai-company-analyze`, `ai-generate-*`, `ai-interview-*`, `ai-demo-*`, `ai-fallback-rr-pro-max`) переключаются на новые хелперы в одном коммите, чтобы не было половинного состояния.
+- Бекенд-контракт тел запросов **не меняется** — только сборка id внутри функций. Это снимает риск «синхронно править ≥15 функций» по форме, остаются только числовые id.
+- Тесты: `_shared/protalk_test.ts` для новых хелперов + smoke-вызов `ai-restart` с employer_public_id через `supabase--curl_edge_functions`.
 
-## 5. Удалённый файл резюме
+## Чего НЕ делаю
 
-Backend `_shared/resume-screen-runner.ts` и `candidate-upload-file`:
-- При ошибке загрузки/чтения файла из storage (`404`/`object_not_found`) — возвращать `safeErrorCode = "file_deleted"`.
+- Не трогаю CRM, канбан, billing, тарифы, обучение, кандидатов-как-фичу.
+- Не меняю чек-листы и ситуации.
+- Не делаю авто-повтор Pro Max → primary (он уже отклонён в §3 как «transport-only»).
+- Не правлю `src/integrations/supabase/types.ts`.
+- Никаких миграций БД в этих трёх волнах.
 
-Frontend `ResumeDropzone`, `CandidateDocsDossier`, корзина файлов:
-- На `file_deleted`: НЕ показывать AIFallbackGate. Показывать инлайн-баннер «Файл был удалён — загрузите его заново», удалить запись из UI и из корзины, открыть dropzone.
+## Definition of Done (на каждую волну отдельно)
 
-## 6. Поллинг через get_last_reply (опционально для длинных задач)
+- Билд зелёный.
+- Я лично прогоняю Playwright по соответствующему сценарию на `localhost:8080` и прикладываю скриншот: оверлей появился, исчез, текст AI сохранился, F5 не сбрасывает.
+- Если runtime не прошёл — FAIL с точной причиной, фикс в той же волне, следующую волну не начинаю.
 
-Для уже async-функций (`ai-generate-interview-resume-criteria` и т.п.) оставить текущий job-poll механизм. Документ протокола из задания (`send_message_async`+`get_last_reply`) — использовать только если timeout primary превышает 180с. Сейчас не критично.
+## Подтверждение
 
-## 7. Демо: пошаговая сессия
-
-`src/lib/demoSession.ts`:
-- Сохранять `protalk_chat_id` + `protalk_social_id` после первого шага.
-- Все последующие шаги (`DemoInterviewPage` step → checklist → situations) передают тот же chatId/socialId в edge.
-
-## Тестирование
-
-- `bun run test:run`
-- `bunx tsc --noEmit`
-- Ручная проверка в Preview по каждому пункту (демо, редакторы, кандидатский флоу).
-
-## Риски / открытые вопросы
-
-1. Подтверждаешь имена секретов? Сейчас в коде `RR_PRO_MAX_BOT_ID`, `RR_PRO_MAX_API_TOKEN`. Хост у Pro Max тот же `api.pro-talk.ru` или `eu1.api.pro-talk.ru` (из твоего примера)?
-2. Маскот Pro Max — есть готовая картинка/URL, или взять стандартный RR-логотип с оверлеем «Pro Max»?
-3. Объём правок очень большой (≈25 файлов). OK делать одним заходом, или резать на 3 PR-волны: (a) §1+§2 ID+overlay, (b) §3+§4 fallback+пустые, (c) §5 удалённые файлы?
+Прежде чем начать Wave A, подтвердите:
+1. Порядок A → B → C ок? (или сначала C, потом A/B)
+2. По §2: список точек входа выше совпадает с вашим? Если есть ещё конкретный экран — добавлю.
+3. По §1: подход «id выдаёт сервер из public_id, localStorage только кэш» подходит, или вы хотели именно «localStorage — источник правды» (это слабее по безопасности и я бы не рекомендовал)?
