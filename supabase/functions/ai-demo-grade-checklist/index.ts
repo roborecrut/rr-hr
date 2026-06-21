@@ -12,11 +12,12 @@ Deno.serve(async (req) => {
     title: string;
     questions: { id: string; kind: "choice" | "text"; question: string; options?: string[] | null; correct?: string | null; expected_answer?: string | null }[];
     answers: Record<string, string>;
+    demo_user_id?: string;
   };
   if (!body?.title || !Array.isArray(body?.questions) || !body?.answers) return jsonResponse({ error: "bad_body" }, 400);
 
-  const chatId = buildChatId({});
-  const socialId = buildSocialId({});
+  const chatId = buildChatId({ demoUserId: body.demo_user_id });
+  const socialId = buildSocialId({ demo_user_id: body.demo_user_id });
 
   const fullBatch = body.questions.map((q) => ({
     id: q.id,
