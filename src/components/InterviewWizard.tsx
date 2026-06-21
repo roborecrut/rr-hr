@@ -221,6 +221,20 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
       return;
     }
+    // §4: проверка по балансу — нельзя «забронировать» больше, чем есть RR.
+    const interviewExtra = Math.max(0, interviewLimit - interviewUsed);
+    const trainingExtra  = Math.max(0, trainingLimit  - trainingUsed);
+    const totalReserve   = interviewExtra * packTierPrice(Math.max(1, interviewExtra)) +
+                           trainingExtra  * packTierPrice(Math.max(1, trainingExtra));
+    if (walletBalance <= 0 && (interviewExtra > 0 || trainingExtra > 0)) {
+      setShowNoBalanceModal(true);
+      return;
+    }
+    if (totalReserve > walletBalance) {
+      addAuditEvent("warning", "Недостаточно RR",
+        `Для брони нужно ${formatRR(totalReserve)}, на балансе ${formatRR(walletBalance)}. Пополните баланс или уменьшите лимиты.`);
+      return;
+    }
     setSavingLimits(true);
     try {
       await (supabase as any).from("projects").update({
