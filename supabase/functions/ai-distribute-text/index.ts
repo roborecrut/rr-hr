@@ -3,7 +3,7 @@
 // vacancy → 15 canonical vacancy fields
 // training → returns a markdown material chunk (caller decides where to save it)
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb, resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerJwt } from "../_shared/auth.ts";
 

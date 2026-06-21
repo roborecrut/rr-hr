@@ -1,7 +1,7 @@
 // Generate a long-form training material (markdown) for a single block of a project.
 // Saves materials_md + ai_generated_at on training_blocks. Returns { text, block_id }.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";

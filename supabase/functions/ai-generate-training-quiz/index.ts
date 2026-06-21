@@ -1,7 +1,7 @@
 // Generate 20 quiz questions (10 choice + 10 text) from a training block's material.
 // Replaces existing training_questions for the block; updates total_score/pass_score.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";

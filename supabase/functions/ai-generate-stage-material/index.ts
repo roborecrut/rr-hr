@@ -2,7 +2,7 @@
 // Stage is one of: 'professional' | 'product' | 'system'.
 // Saves a single training_blocks row per (project_id, stage) with materials_md.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb   resolveEmployerPublicId,
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveEmployerPublicId,
 } from "../_shared/protalk.ts";
 import { requireEmployerForProject } from "../_shared/auth.ts";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
