@@ -3,6 +3,9 @@ project_id = "rjhtauzookkvlipvqpvr"
 [functions.ai-chat]
 verify_jwt = false
 
+[functions.ai-restart]
+verify_jwt = false
+
 [functions.ai-enhance]
 verify_jwt = false
 
