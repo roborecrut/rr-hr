@@ -573,7 +573,32 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                 Пополнить баланс RR →
               </a>
             </div>
+            {/* §5: бесплатное демо-интервью для работодателя — без списаний */}
+            <a
+              href={`#/employer/interview-preview/${projectId}`}
+              className="block bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/40 rounded-xl px-3 py-2 text-[11px] text-[#E7C768] font-bold flex items-center gap-2"
+            >
+              <PlayCircle className="w-4 h-4"/>
+              Пройти интервью самому (бесплатно для работодателя) — поможет подобрать проходной балл
+            </a>
           </div>
+
+          {showNoBalanceModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowNoBalanceModal(false)}>
+              <div className="bg-[#17344F] border border-[#E7C768]/40 rounded-2xl max-w-md w-full p-5 space-y-3" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 text-[#E7C768] font-bold text-sm">
+                  <AlertTriangle className="w-5 h-5"/> На балансе нет RR
+                </div>
+                <p className="text-sm text-slate-200 leading-relaxed">
+                  Чтобы зарезервировать лимиты по этой вакансии, пополните баланс RR. Цена за единицу зависит от объёма пакета.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowNoBalanceModal(false)} className="px-3 py-2 text-xs text-slate-300 hover:text-white">Закрыть</button>
+                  <a href="#/account/billing" className="px-3 py-2 text-xs bg-[#E7C768] text-[#17344F] font-bold rounded-lg">Пополнить баланс</a>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2 flex-wrap">
             {KINDS.map(k => (
