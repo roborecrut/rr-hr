@@ -242,9 +242,17 @@ export function buildChatId(opts: {
   const bot = opts.botId || Deno.env.get("PRO_TALK_BOT_ID") || "0";
   if (opts.telegramId) return `tb${opts.telegramId}_${bot}`;
   const empPid = opts.employerPublicId != null ? Number(opts.employerPublicId) : NaN;
-  if (Number.isFinite(empPid) && empPid > 0) return String(100000 + Math.floor(empPid));
+  if (Number.isFinite(empPid) && empPid > 0) {
+    // employers.public_id stored as a small N (e.g. 6) → "100006"; but if
+    // legacy data already includes the full 100000+ form, use as-is.
+    return String(empPid >= 100000 ? Math.floor(empPid) : 100000 + Math.floor(empPid));
+  }
   const candPid = opts.candidatePublicId != null ? Number(opts.candidatePublicId) : NaN;
-  if (Number.isFinite(candPid) && candPid > 0) return String(200000 + Math.floor(candPid));
+  if (Number.isFinite(candPid) && candPid > 0) {
+    // candidates.public_id is stored as the FULL 6-digit form (e.g. "200016"),
+    // not a small N. Use it directly. For old short ids, add the 200000 base.
+    return String(candPid >= 200000 ? Math.floor(candPid) : 200000 + Math.floor(candPid));
+  }
   if (opts.candidateId) return fnvHashMod(`c:${opts.candidateId}`, 800_000, 200_001);
   if (opts.userId) return fnvHashMod(`u:${opts.userId}`, 700_000, 300_001);
   if (opts.demoUserId) return fnvHashMod(`d:${opts.demoUserId}`, 600_000, 400_001);
@@ -269,11 +277,13 @@ export function buildSocialId(info?: {
   }
   const empPid = info?.employer_public_id != null ? Number(info.employer_public_id) : NaN;
   if (Number.isFinite(empPid) && empPid > 0) {
-    return `from_user_id:${100000 + Math.floor(empPid)} message_id:${Date.now()}`;
+    const id = empPid >= 100000 ? Math.floor(empPid) : 100000 + Math.floor(empPid);
+    return `from_user_id:${id} message_id:${Date.now()}`;
   }
   const candPid = info?.candidate_public_id != null ? Number(info.candidate_public_id) : NaN;
   if (Number.isFinite(candPid) && candPid > 0) {
-    return `from_user_id:${200000 + Math.floor(candPid)} message_id:${Date.now()}`;
+    const id = candPid >= 200000 ? Math.floor(candPid) : 200000 + Math.floor(candPid);
+    return `from_user_id:${id} message_id:${Date.now()}`;
   }
   if (info?.candidate_id) {
     return `from_user_id:${fnvHashMod(`c:${info.candidate_id}`, 800_000, 200_001)} message_id:${Date.now()}`;
