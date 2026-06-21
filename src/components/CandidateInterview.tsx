@@ -686,6 +686,10 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     );
   }
 
+  if (interviewLimitBlocked) {
+    return <LimitExhaustedOverlay kind="interview" employer={interviewLimitBlocked} />;
+  }
+
   return (
     <div className="space-y-5">
       <div className="bg-[#1E4468]/80 border border-white/10 rounded-3xl p-5 shadow-xl">
