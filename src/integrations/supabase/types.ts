@@ -781,6 +781,7 @@ export type Database = {
           hire_decision: string | null
           hire_message: string | null
           id: string
+          interview_charged_at: string | null
           landing_slug: string | null
           last_login_at: string | null
           legacy_public_id: string | null
@@ -806,6 +807,7 @@ export type Database = {
           social_telegram: string | null
           social_vk: string | null
           social_whatsapp: string | null
+          training_charged_at: string | null
           updated_at: string
           user_id: string | null
         }
@@ -823,6 +825,7 @@ export type Database = {
           hire_decision?: string | null
           hire_message?: string | null
           id?: string
+          interview_charged_at?: string | null
           landing_slug?: string | null
           last_login_at?: string | null
           legacy_public_id?: string | null
@@ -848,6 +851,7 @@ export type Database = {
           social_telegram?: string | null
           social_vk?: string | null
           social_whatsapp?: string | null
+          training_charged_at?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -865,6 +869,7 @@ export type Database = {
           hire_decision?: string | null
           hire_message?: string | null
           id?: string
+          interview_charged_at?: string | null
           landing_slug?: string | null
           last_login_at?: string | null
           legacy_public_id?: string | null
@@ -890,6 +895,7 @@ export type Database = {
           social_telegram?: string | null
           social_vk?: string | null
           social_whatsapp?: string | null
+          training_charged_at?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -2089,7 +2095,9 @@ export type Database = {
           hh_invite_text: string | null
           hh_post_text: string | null
           id: string
+          interview_limit: number
           interview_pass_score: number
+          interview_used: number
           is_published: boolean
           legacy_public_id: string | null
           legacy_slug: string | null
@@ -2115,6 +2123,7 @@ export type Database = {
           tasks_activity_text: string | null
           team_text: string | null
           training_intro_text: string | null
+          training_limit: number
           training_product_text: string | null
           training_prof_text: string | null
           training_professional_text: string | null
@@ -2122,6 +2131,7 @@ export type Database = {
           training_regulations_text: string | null
           training_system_text: string | null
           training_systems_text: string | null
+          training_used: number
           training_wiki_text: string | null
           updated_at: string
           vacancy_text: string | null
@@ -2140,7 +2150,9 @@ export type Database = {
           hh_invite_text?: string | null
           hh_post_text?: string | null
           id?: string
+          interview_limit?: number
           interview_pass_score?: number
+          interview_used?: number
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
@@ -2166,6 +2178,7 @@ export type Database = {
           tasks_activity_text?: string | null
           team_text?: string | null
           training_intro_text?: string | null
+          training_limit?: number
           training_product_text?: string | null
           training_prof_text?: string | null
           training_professional_text?: string | null
@@ -2173,6 +2186,7 @@ export type Database = {
           training_regulations_text?: string | null
           training_system_text?: string | null
           training_systems_text?: string | null
+          training_used?: number
           training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
@@ -2191,7 +2205,9 @@ export type Database = {
           hh_invite_text?: string | null
           hh_post_text?: string | null
           id?: string
+          interview_limit?: number
           interview_pass_score?: number
+          interview_used?: number
           is_published?: boolean
           legacy_public_id?: string | null
           legacy_slug?: string | null
@@ -2217,6 +2233,7 @@ export type Database = {
           tasks_activity_text?: string | null
           team_text?: string | null
           training_intro_text?: string | null
+          training_limit?: number
           training_product_text?: string | null
           training_prof_text?: string | null
           training_professional_text?: string | null
@@ -2224,6 +2241,7 @@ export type Database = {
           training_regulations_text?: string | null
           training_system_text?: string | null
           training_systems_text?: string | null
+          training_used?: number
           training_wiki_text?: string | null
           updated_at?: string
           vacancy_text?: string | null
@@ -3026,6 +3044,10 @@ export type Database = {
         }
         Returns: Json
       }
+      charge_project_limit: {
+        Args: { _candidate: string; _kind: string }
+        Returns: Json
+      }
       company_archive: { Args: { _id: string }; Returns: Json }
       company_create_draft: { Args: never; Returns: Json }
       company_finalize: { Args: { _id: string }; Returns: Json }
@@ -3154,6 +3176,10 @@ export type Database = {
       pack_tier_price: { Args: { _qty: number }; Returns: number }
       project_archive: { Args: { _id: string }; Returns: Json }
       project_create_draft: { Args: { _company: string }; Returns: Json }
+      project_limit_status: {
+        Args: { _candidate: string; _kind: string; _project: string }
+        Returns: Json
+      }
       project_restore: { Args: { _id: string }; Returns: Json }
       project_soft_delete: { Args: { _id: string }; Returns: Json }
       purchase_fixed: { Args: { _item: string; _qty?: number }; Returns: Json }
