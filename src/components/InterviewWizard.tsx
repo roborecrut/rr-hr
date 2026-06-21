@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info } from "lucide-react";
+import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { packTierPrice, formatRR } from "@/lib/rr";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
 import { useAIWait } from "@/components/AIWaitProvider";
 import FullscreenTextarea from "@/components/FullscreenTextarea";
@@ -79,6 +80,9 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
   const [savingLimits,   setSavingLimits]   = useState(false);
   const [savedLimits,    setSavedLimits]    = useState(false);
+  // §4: live RR calculator — кошелёк работодателя для расчёта стоимости лимитов.
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [showNoBalanceModal, setShowNoBalanceModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState<null | Kind | "pass">(null);
   const [savedFlash, setSavedFlash] = useState<null | Kind | "pass">(null);
@@ -94,8 +98,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await (supabase as any)
-        .from("employers").select("public_id").eq("user_id", user.id).maybeSingle();
+        .from("employers").select("public_id, wallets(units_balance)").eq("user_id", user.id).maybeSingle();
       setEmployerPublicId(String((data as any)?.public_id || ""));
+      const w = (data as any)?.wallets;
+      const bal = Number((Array.isArray(w) ? w[0]?.units_balance : w?.units_balance) ?? 0);
+      setWalletBalance(bal);
     })();
   }, []);
 
@@ -212,6 +219,20 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     if (!projectId) return;
     if (interviewLimit < interviewUsed || trainingLimit < trainingUsed) {
       addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
+      return;
+    }
+    // §4: проверка по балансу — нельзя «забронировать» больше, чем есть RR.
+    const interviewExtra = Math.max(0, interviewLimit - interviewUsed);
+    const trainingExtra  = Math.max(0, trainingLimit  - trainingUsed);
+    const totalReserve   = interviewExtra * packTierPrice(Math.max(1, interviewExtra)) +
+                           trainingExtra  * packTierPrice(Math.max(1, trainingExtra));
+    if (walletBalance <= 0 && (interviewExtra > 0 || trainingExtra > 0)) {
+      setShowNoBalanceModal(true);
+      return;
+    }
+    if (totalReserve > walletBalance) {
+      addAuditEvent("warning", "Недостаточно RR",
+        `Для брони нужно ${formatRR(totalReserve)}, на балансе ${formatRR(walletBalance)}. Пополните баланс или уменьшите лимиты.`);
       return;
     }
     setSavingLimits(true);
@@ -481,6 +502,42 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               проверки профессионального теста. Повторные прохождения уже не списываются.
               Если на балансе работодателя нет лимитов — кандидат увидит окно «Услуга не подключена» с вашими контактами.
             </p>
+            {/* §4: Live RR calculator */}
+            {(() => {
+              const iExtra = Math.max(0, interviewLimit - interviewUsed);
+              const tExtra = Math.max(0, trainingLimit  - trainingUsed);
+              const iPrice = packTierPrice(Math.max(1, iExtra));
+              const tPrice = packTierPrice(Math.max(1, tExtra));
+              const iCost  = iExtra * iPrice;
+              const tCost  = tExtra * tPrice;
+              const total  = iCost + tCost;
+              const overdrawn = total > walletBalance;
+              const remaining = walletBalance - total;
+              return (
+                <div className="bg-black/30 border border-white/10 rounded-xl p-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                  <div className="flex items-center gap-2">
+                    <Wallet className="w-4 h-4 text-[#E7C768] shrink-0"/>
+                    <div>
+                      <div className="text-slate-400 uppercase font-bold tracking-wider">Баланс RR</div>
+                      <div className="text-white font-bold text-sm">{formatRR(walletBalance)}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">Бронируется по вакансии</div>
+                    <div className="text-white">
+                      Интервью: <b>{iExtra}</b> × {iPrice} RR = <b>{formatRR(iCost)}</b><br/>
+                      Обучение: <b>{tExtra}</b> × {tPrice} RR = <b>{formatRR(tCost)}</b>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">Итого / остаток</div>
+                    <div className={overdrawn ? "text-rose-300 font-bold" : "text-emerald-300 font-bold"}>
+                      {formatRR(total)} {overdrawn ? "— не хватает" : `· останется ${formatRR(Math.max(0, remaining))}`}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-[11px] text-slate-300 font-bold">Интервью (доступно: {Math.max(0, interviewLimit - interviewUsed)} из {interviewLimit}, использовано {interviewUsed})</span>
@@ -516,7 +573,32 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                 Пополнить баланс RR →
               </a>
             </div>
+            {/* §5: бесплатное демо-интервью для работодателя — без списаний */}
+            <a
+              href={`/employer/interview-preview/${projectId}`}
+              className="block bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/40 rounded-xl px-3 py-2 text-[11px] text-[#E7C768] font-bold flex items-center gap-2"
+            >
+              <PlayCircle className="w-4 h-4"/>
+              Пройти интервью самому (бесплатно для работодателя) — поможет подобрать проходной балл
+            </a>
           </div>
+
+          {showNoBalanceModal && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onClick={() => setShowNoBalanceModal(false)}>
+              <div className="bg-[#17344F] border border-[#E7C768]/40 rounded-2xl max-w-md w-full p-5 space-y-3" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 text-[#E7C768] font-bold text-sm">
+                  <AlertTriangle className="w-5 h-5"/> На балансе нет RR
+                </div>
+                <p className="text-sm text-slate-200 leading-relaxed">
+                  Чтобы зарезервировать лимиты по этой вакансии, пополните баланс RR. Цена за единицу зависит от объёма пакета.
+                </p>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowNoBalanceModal(false)} className="px-3 py-2 text-xs text-slate-300 hover:text-white">Закрыть</button>
+                  <a href="#/account/billing" className="px-3 py-2 text-xs bg-[#E7C768] text-[#17344F] font-bold rounded-lg">Пополнить баланс</a>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2 flex-wrap">
             {KINDS.map(k => (
