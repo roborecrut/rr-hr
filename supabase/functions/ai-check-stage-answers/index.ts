@@ -110,5 +110,15 @@ Deno.serve(async (req) => {
     server_name: "ai-check-stage-answers",
     function_call_params: JSON.stringify({ candidate_id: candidateId, project_id: body.project_id, stage: body.stage }) });
 
+  // Лимиты RR §2: после успешной проверки ПРОФЕССИОНАЛЬНОГО теста (первого
+  // этапа обучения) списываем один лимит обучения у работодателя-владельца
+  // вакансии. Идемпотентно — повторная сдача и последующие тесты (product,
+  // system) повторно не списывают.
+  if (body.stage === "professional") {
+    try {
+      await admin.rpc("charge_project_limit", { _candidate: candidateId, _kind: "training" });
+    } catch (_) { /* лимит исчерпан — клиент решит, как реагировать */ }
+  }
+
   return jsonResponse({ ok: true, score: total, total_score: test.total_score, pass_score: passScore, passed, attempts, per_question: perQuestion });
 });
