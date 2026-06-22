@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle } from "lucide-react";
+import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle, Users2, GraduationCap, Sparkles, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { packTierPrice, formatRR } from "@/lib/rr";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
