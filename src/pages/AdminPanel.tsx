@@ -1480,6 +1480,7 @@ function VacanciesAnalyticsSection() {
                     </div>
                   ))}
                 </div>
+                <VacancyLimitsEditor project={p} onSaved={load} />
               </div>
             );
           })}
