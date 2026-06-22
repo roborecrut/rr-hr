@@ -21,6 +21,10 @@ const REF_KEY = "rr_ref";
 const DONE_KEY = "rr_bootstrap_done";
 
 function shouldAutoRedirectFrom(pathname: string): boolean {
+  // Демо-страница интервью работодателя — НЕ редиректим её на /emp/profile.
+  // Она должна открываться поверх любой авторизованной сессии работодателя
+  // и полностью эмулировать поток кандидата.
+  if (pathname.startsWith("/employer/interview-preview")) return false;
   return (
     pathname === "/" ||
     pathname === "/main" ||

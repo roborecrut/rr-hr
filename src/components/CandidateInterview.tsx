@@ -15,7 +15,7 @@ import LimitExhaustedOverlay from "@/components/LimitExhaustedOverlay";
 import { toUserError, formatUserError } from "@/lib/userError";
 import {
   startResumeScreenV2, pollJobUntilTerminal,
-  getActiveJob, clearActiveJob, isSuccess, isTerminal,
+  getActiveJob, clearActiveJob, isSuccess, isTerminal, fetchJobStatus,
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
 import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
@@ -372,13 +372,45 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       return;
     }
     // Double-click guard: if an active job already exists for this candidate,
-    // simply resume polling instead of starting a new one (no duplicate debit).
+    // first verify it's still actually running on the server. Stale records
+    // from a previous interview attempt (already terminal, cancelled, or
+    // belonging to a different request) must NOT block a fresh submit.
     const existingActive = getActiveJob("screen_resume", candidateId);
     rrLog("active_job_found", { ok: !!existingActive });
     if (existingActive) {
-      // Active polling effect is already running; just give visual feedback.
-      alert("Анализ уже выполняется. Подождите, результат сохранится автоматически.");
-      return;
+      try {
+        const row = await fetchJobStatus(existingActive.job_id);
+        if (!row) {
+          // Unknown / inaccessible — treat as stale.
+          clearActiveJob("screen_resume", candidateId);
+        } else if (isSuccess(row.status)) {
+          // Already successfully scored — just refetch and exit.
+          clearActiveJob("screen_resume", candidateId);
+          await refetchCandidateScores();
+          return;
+        } else if (isTerminal(row.status)) {
+          // Terminal but not success — drop and allow a new attempt.
+          clearActiveJob("screen_resume", candidateId);
+        } else {
+          // Truly running on the server — resume polling, do not start a new one.
+          setBusy(true);
+          try {
+            await aiWaitRun<any>({
+              title: "Анализ резюме",
+              task: async () => {
+                const r = await pollJobUntilTerminal({ jobId: existingActive.job_id });
+                clearActiveJob("screen_resume", candidateId);
+                if (!isSuccess(r.status)) throw new Error(describeResumeSubmitError(r.status));
+                await refetchCandidateScores();
+                return { ok: true };
+              },
+            });
+          } finally { setBusy(false); }
+          return;
+        }
+      } catch {
+        clearActiveJob("screen_resume", candidateId);
+      }
     }
     setBusy(true);
     try {
@@ -636,6 +668,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const reset = () => {
     restartFiredRef.current = null; // ensure /restart fires again on retake
+    try {
+      clearActiveJob("screen_resume", candidateId);
+      clearActiveJob("checklist_grade", candidateId);
+      clearActiveJob("situations_grade", candidateId);
+    } catch { /* ignore */ }
     setStage("resume"); setResumeResult(null); setResumeText(""); setAnswers({}); setChecklistScore(null);
     setSitAnswers({}); setSituationsScore(null); setSituationsFeedback([]); setFinalScore(null);
   };
@@ -736,7 +773,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               )}
               <div className="flex gap-2">
                 <button onClick={() => setStage("checklist")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к чек-листу →</button>
-                <button onClick={() => { restartFiredRef.current = null; setResumeResult(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
+                <button onClick={() => { restartFiredRef.current = null; try { clearActiveJob("screen_resume", candidateId); } catch { /* ignore */ } setResumeResult(null); }} className="bg-white/5 hover:bg-white/10 text-slate-300 text-xs px-3 py-2 rounded-xl flex items-center gap-1"><RefreshCw className="w-3 h-3"/>Пересдать</button>
               </div>
             </div>
           ) : (
