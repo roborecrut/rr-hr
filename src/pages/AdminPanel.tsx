@@ -1368,7 +1368,7 @@ function VacanciesAnalyticsSection() {
   const load = async () => {
     setLoading(true);
     const [p, co, c, s, pr] = await Promise.all([
-      (supabase as any).from("projects").select("id, public_id, role_name, status, is_published, company_id, created_at, max_interviews, max_trainings").order("created_at", { ascending: false }).limit(500),
+      (supabase as any).from("projects").select("id, public_id, role_name, status, is_published, company_id, created_at, max_interviews, max_trainings, interview_limit, training_limit, interview_used, training_used").order("created_at", { ascending: false }).limit(500),
       (supabase as any).from("companies").select("id, name, public_id").limit(1000),
       (supabase as any).from("candidates").select("id, project_id, current_stage, created_at").limit(5000),
       (supabase as any).from("candidate_scores").select("candidate_id, resume_score, checklist_score, situations_score, overall_score").limit(5000),
