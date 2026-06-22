@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle } from "lucide-react";
+import { MessageSquare, RefreshCw, Save, Plus, Trash2, Wand2, FileText, ArrowLeft, CheckCircle2, Info, PlayCircle, Wallet, AlertTriangle, Users2, GraduationCap, Sparkles, Minus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { packTierPrice, formatRR } from "@/lib/rr";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
@@ -490,18 +490,59 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
             </div>
           </div>
 
-          <div className="bg-[#17344F]/60 border border-[#E7C768]/40 rounded-2xl p-4 space-y-3">
-            <div className="flex items-start gap-2">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-[#E7C768]">
-                Лимиты RR по вакансии
+          {/* §4: Лимиты RR — выведены вверх, оформлены ярко, со step-кнопками и подсказками */}
+          <div className="bg-gradient-to-br from-[#1E4468] to-[#17344F] border-2 border-[#E7C768]/50 rounded-2xl p-5 space-y-4 shadow-[0_0_24px_rgba(231,199,104,0.15)]">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#E7C768]/20 border border-[#E7C768]/40 flex items-center justify-center text-[#E7C768] shrink-0">
+                <Sparkles className="w-5 h-5"/>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-extrabold text-[#E7C768]">Сколько кандидатов сможет пройти эту вакансию?</h3>
+                  {(interviewLimit === 0 && trainingLimit === 0) ? (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-200 border border-rose-400/40 rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3"/> Лимиты не заданы — кандидаты не смогут начать
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-200 border border-emerald-400/40 rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3"/> Активно: ещё {Math.max(0, interviewLimit - interviewUsed)} интервью · {Math.max(0, trainingLimit - trainingUsed)} обучений
+                    </span>
+                  )}
+                </div>
+                <p className="text-[12px] text-slate-200 leading-relaxed mt-1.5">
+                  За каждого нового кандидата с вашего баланса RR списывается <b>1 «интервью»</b> (после успешного скрининга резюме)
+                  и <b>1 «обучение»</b> (после первого профтеста). Повторные пересдачи уже бесплатны.
+                  Если лимиты исчерпаны — кандидат увидит окно «Услуга временно недоступна» с вашими контактами.
+                </p>
               </div>
             </div>
-            <p className="text-[11px] text-slate-300 leading-relaxed">
-              Укажите, сколько кандидатов могут пройти <b>интервью</b> и <b>обучение</b> по этой вакансии.
-              Один лимит интервью списывается после успешного скрининга резюме у кандидата, один лимит обучения — после
-              проверки профессионального теста. Повторные прохождения уже не списываются.
-              Если на балансе работодателя нет лимитов — кандидат увидит окно «Услуга не подключена» с вашими контактами.
-            </p>
+
+            {/* Быстрые пресеты — главное, чтобы не было «всё по нулям» */}
+            {(interviewLimit === 0 && trainingLimit === 0) && walletBalance > 0 && (
+              <div className="bg-[#E7C768]/10 border border-[#E7C768]/40 rounded-xl p-3 space-y-2">
+                <div className="text-[11px] text-amber-100 font-bold inline-flex items-center gap-1">
+                  <Wand2 className="w-3.5 h-3.5"/> Быстрый старт — выберите готовый пакет:
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[5, 10, 25].map((n) => {
+                    const cost = n * packTierPrice(n) * 2; // интервью + обучение
+                    const affordable = cost <= walletBalance;
+                    return (
+                      <button key={n} disabled={!affordable}
+                        onClick={() => { setInterviewLimit(Math.max(interviewUsed, n)); setTrainingLimit(Math.max(trainingUsed, n)); }}
+                        className={`text-[11px] font-bold px-3 py-1.5 rounded-lg border transition ${
+                          affordable
+                            ? "bg-[#E7C768] text-[#17344F] border-[#E7C768] hover:brightness-110"
+                            : "bg-white/5 text-slate-500 border-white/10 cursor-not-allowed"
+                        }`}>
+                        {n}+{n} кандидатов · {formatRR(cost)}{!affordable && " (не хватает)"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* §4: Live RR calculator */}
             {(() => {
               const iExtra = Math.max(0, interviewLimit - interviewUsed);
@@ -539,29 +580,55 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               );
             })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-[11px] text-slate-300 font-bold">Интервью (доступно: {Math.max(0, interviewLimit - interviewUsed)} из {interviewLimit}, использовано {interviewUsed})</span>
-                <input
-                  type="number" min={interviewUsed} max={100000} value={interviewLimit}
-                  onChange={e => setInterviewLimit(Math.max(interviewUsed, Math.min(100000, Number(e.target.value) || 0)))}
-                  className="mt-1 w-full bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="text-[11px] text-slate-300 font-bold">Обучение (доступно: {Math.max(0, trainingLimit - trainingUsed)} из {trainingLimit}, использовано {trainingUsed})</span>
-                <input
-                  type="number" min={trainingUsed} max={100000} value={trainingLimit}
-                  onChange={e => setTrainingLimit(Math.max(trainingUsed, Math.min(100000, Number(e.target.value) || 0)))}
-                  className="mt-1 w-full bg-black/30 text-white border border-white/10 rounded-lg px-3 py-2 text-sm"
-                />
-              </label>
+              {([
+                { key: "interview" as const, label: "Интервью", sub: "резюме · чек-лист · ситуации", Icon: Users2,
+                  value: interviewLimit, used: interviewUsed,
+                  set: (n: number) => setInterviewLimit(Math.max(interviewUsed, Math.min(100000, n))) },
+                { key: "training" as const, label: "Обучение", sub: "профтест по продукту", Icon: GraduationCap,
+                  value: trainingLimit, used: trainingUsed,
+                  set: (n: number) => setTrainingLimit(Math.max(trainingUsed, Math.min(100000, n))) },
+              ]).map(({ key, label, sub, Icon, value, used, set }) => (
+                <div key={key} className="bg-black/30 border border-white/10 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-4 h-4 text-[#E7C768] shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-white">{label}</div>
+                      <div className="text-[10px] text-slate-400">{sub}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => set(value - 1)} disabled={value <= used}
+                      className="w-8 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white disabled:opacity-30 inline-flex items-center justify-center">
+                      <Minus className="w-3.5 h-3.5"/>
+                    </button>
+                    <input
+                      type="number" min={used} max={100000} value={value}
+                      onChange={e => set(Number(e.target.value) || 0)}
+                      className="flex-1 bg-black/40 text-white border border-white/10 rounded-lg px-3 py-2 text-base font-bold text-center"
+                    />
+                    <button onClick={() => set(value + 1)}
+                      className="w-8 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white inline-flex items-center justify-center">
+                      <Plus className="w-3.5 h-3.5"/>
+                    </button>
+                    {[5, 10].map(n => (
+                      <button key={n} onClick={() => set(value + n)}
+                        className="text-[10px] font-bold px-2 py-1.5 rounded-lg bg-[#E7C768]/10 hover:bg-[#E7C768]/20 border border-[#E7C768]/30 text-[#E7C768]">
+                        +{n}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Уже использовано: <b className="text-slate-200">{used}</b> · Осталось: <b className="text-emerald-300">{Math.max(0, value - used)}</b>
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={saveLimits} disabled={savingLimits}
-                className="bg-[#E7C768]/20 hover:bg-[#E7C768]/30 border border-[#E7C768]/40 text-[#E7C768] font-bold text-xs px-3 py-2 rounded-lg flex items-center gap-1 disabled:opacity-60">
+                className="bg-[#E7C768] hover:brightness-110 text-[#17344F] font-extrabold text-sm px-4 py-2.5 rounded-xl flex items-center gap-1.5 disabled:opacity-60 shadow-lg">
                 {savingLimits
-                  ? <><RefreshCw className="w-3.5 h-3.5 animate-spin"/> Сохраняем…</>
-                  : <><Save className="w-3.5 h-3.5"/> Сохранить лимиты</>}
+                  ? <><RefreshCw className="w-4 h-4 animate-spin"/> Сохраняем…</>
+                  : <><Save className="w-4 h-4"/> Сохранить лимиты</>}
               </button>
               {savedLimits && (
                 <span className="flex items-center gap-1 text-[11px] text-emerald-300 animate-fade-in">
