@@ -1496,6 +1496,92 @@ function VacanciesAnalyticsSection() {
 }
 
 function AISection() {
+  return <AISectionInner />;
+}
+
+function VacancyLimitsEditor({ project, onSaved }: { project: any; onSaved: () => void }) {
+  const [iLim, setILim] = useState<number>(Number(project.interview_limit ?? 0));
+  const [tLim, setTLim] = useState<number>(Number(project.training_limit ?? 0));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const iUsed = Number(project.interview_used ?? 0);
+  const tUsed = Number(project.training_used ?? 0);
+  // sync if parent refetches
+  useEffect(() => {
+    setILim(Number(project.interview_limit ?? 0));
+    setTLim(Number(project.training_limit ?? 0));
+  }, [project.id, project.interview_limit, project.training_limit]);
+
+  const dirty = iLim !== Number(project.interview_limit ?? 0) || tLim !== Number(project.training_limit ?? 0);
+
+  const save = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (iLim < iUsed || tLim < tUsed) { alert("Лимит не может быть меньше уже использованного"); return; }
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any).from("projects")
+        .update({ interview_limit: Math.max(0, Math.floor(iLim)), training_limit: Math.max(0, Math.floor(tLim)) })
+        .eq("id", project.id);
+      if (error) throw error;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1800);
+      onSaved();
+    } catch (err: any) {
+      alert(err?.message || "save_failed");
+    } finally { setSaving(false); }
+  };
+
+  const Row = ({ Icon, label, used, value, set, color }: any) => (
+    <div className="flex items-center gap-1.5">
+      <Icon className={`w-3.5 h-3.5 ${color} shrink-0`} />
+      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider w-16">{label}</span>
+      <button onClick={(e) => { e.stopPropagation(); set(Math.max(used, value - 1)); }}
+        disabled={value <= used}
+        className="w-6 h-6 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white disabled:opacity-30 inline-flex items-center justify-center">
+        <Minus className="w-3 h-3" />
+      </button>
+      <input
+        type="number" min={used} max={100000} value={value}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => set(Math.max(used, Math.min(100000, Number(e.target.value) || 0)))}
+        className="w-14 bg-black/40 text-white border border-white/10 rounded text-xs font-bold text-center py-1"
+      />
+      <button onClick={(e) => { e.stopPropagation(); set(value + 1); }}
+        className="w-6 h-6 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-white inline-flex items-center justify-center">
+        <Plus className="w-3 h-3" />
+      </button>
+      <span className="text-[10px] text-slate-400 ml-1">исп.&nbsp;<b className="text-slate-200">{used}</b></span>
+    </div>
+  );
+
+  return (
+    <div onClick={(e) => e.stopPropagation()} className="mt-3 bg-[#17344F]/60 border border-[#E7C768]/30 rounded-lg p-2.5 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#E7C768] inline-flex items-center gap-1">
+          <Sparkles className="w-3 h-3" /> Лимиты RR по вакансии
+        </span>
+        {(iLim === 0 && tLim === 0) && (
+          <span className="text-[9px] font-bold bg-rose-500/20 text-rose-200 border border-rose-400/40 rounded-full px-1.5 py-0.5">не заданы</span>
+        )}
+      </div>
+      <Row Icon={Users2} label="Интервью" used={iUsed} value={iLim} set={setILim} color="text-sky-300" />
+      <Row Icon={GraduationCap} label="Обучение" used={tUsed} value={tLim} set={setTLim} color="text-emerald-300" />
+      {dirty && (
+        <button onClick={save} disabled={saving}
+          className="w-full bg-[#E7C768] hover:brightness-110 text-[#17344F] text-[11px] font-bold px-3 py-1.5 rounded-md inline-flex items-center justify-center gap-1 disabled:opacity-60">
+          {saving ? <><RefreshCw className="w-3 h-3 animate-spin" /> Сохраняем…</> : <><Save className="w-3 h-3" /> Сохранить лимиты</>}
+        </button>
+      )}
+      {saved && (
+        <div className="text-[10px] text-emerald-300 inline-flex items-center gap-1">
+          <CheckCircle2 className="w-3 h-3" /> Сохранено
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AISectionInner() {
   const fns = [
     "ai-chat","ai-check-stage-answers","ai-check-text-answer","ai-company-analyze",
     "ai-distribute-text","ai-enhance","ai-evaluate","ai-generate-interview-checklist",
