@@ -15,7 +15,7 @@ import LimitExhaustedOverlay from "@/components/LimitExhaustedOverlay";
 import { toUserError, formatUserError } from "@/lib/userError";
 import {
   startResumeScreenV2, pollJobUntilTerminal,
-  getActiveJob, clearActiveJob, isSuccess, isTerminal,
+  getActiveJob, clearActiveJob, isSuccess, isTerminal, fetchJobStatus,
 } from "@/lib/aiJobs";
 import { describeJobError } from "@/lib/feedbackAdapters";
 import { useCandidateAiJob } from "@/hooks/useCandidateAiJob";
