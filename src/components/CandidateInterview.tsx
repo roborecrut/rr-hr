@@ -372,13 +372,45 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       return;
     }
     // Double-click guard: if an active job already exists for this candidate,
-    // simply resume polling instead of starting a new one (no duplicate debit).
+    // first verify it's still actually running on the server. Stale records
+    // from a previous interview attempt (already terminal, cancelled, or
+    // belonging to a different request) must NOT block a fresh submit.
     const existingActive = getActiveJob("screen_resume", candidateId);
     rrLog("active_job_found", { ok: !!existingActive });
     if (existingActive) {
-      // Active polling effect is already running; just give visual feedback.
-      alert("Анализ уже выполняется. Подождите, результат сохранится автоматически.");
-      return;
+      try {
+        const row = await fetchJobStatus(existingActive.job_id);
+        if (!row) {
+          // Unknown / inaccessible — treat as stale.
+          clearActiveJob("screen_resume", candidateId);
+        } else if (isSuccess(row.status)) {
+          // Already successfully scored — just refetch and exit.
+          clearActiveJob("screen_resume", candidateId);
+          await refetchCandidateScores();
+          return;
+        } else if (isTerminal(row.status)) {
+          // Terminal but not success — drop and allow a new attempt.
+          clearActiveJob("screen_resume", candidateId);
+        } else {
+          // Truly running on the server — resume polling, do not start a new one.
+          setBusy(true);
+          try {
+            await aiWaitRun<any>({
+              title: "Анализ резюме",
+              task: async () => {
+                const r = await pollJobUntilTerminal({ jobId: existingActive.job_id });
+                clearActiveJob("screen_resume", candidateId);
+                if (!isSuccess(r.status)) throw new Error(describeResumeSubmitError(r.status));
+                await refetchCandidateScores();
+                return { ok: true };
+              },
+            });
+          } finally { setBusy(false); }
+          return;
+        }
+      } catch {
+        clearActiveJob("screen_resume", candidateId);
+      }
     }
     setBusy(true);
     try {
