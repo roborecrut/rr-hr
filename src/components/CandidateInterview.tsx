@@ -214,7 +214,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           .eq("id", candidateId)
           .maybeSingle();
         const txt = String((candRow as any)?.resume_text || "");
-        if (txt.trim().length >= 1) setResumeText(txt);
+        if (txt.trim().length >= 1) {
+          setResumeText(txt);
+          // Текст загружен из БД (не вводится пользователем) — показываем
+          // предпросмотр, кнопка «Редактировать» доступна.
+          setResumeEditMode(false);
+        }
       } catch { /* ignore */ }
       const r = await call("ai-list-interview-checklist", { project_id: projectId });
       const qs: Question[] = r.questions || [];
