@@ -298,6 +298,26 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     const ac = new AbortController();
     (async () => {
       try {
+        // Stale-guard: if the saved active job has been quiet on the server
+        // for more than 3 minutes (no status change), it's almost certainly
+        // dead from a previous tab/session. Drop the localStorage pointer so
+        // the next click on "Отправить на оценку" starts a fresh job — the
+        // old behavior silently re-attached polling to a zombie record and
+        // the user never saw a new ProTalk request fire.
+        try {
+          const probe = await fetchJobStatus(rec.job_id);
+          if (!probe) { clearActiveJob("screen_resume", candidateId); return; }
+          const ageMs = Date.now() - new Date(probe.updated_at || probe.created_at).getTime();
+          if (!isTerminal(probe.status) && ageMs > 3 * 60_000) {
+            clearActiveJob("screen_resume", candidateId);
+            return;
+          }
+          if (isTerminal(probe.status)) {
+            if (isSuccess(probe.status)) await refetchCandidateScores();
+            clearActiveJob("screen_resume", candidateId);
+            return;
+          }
+        } catch { /* network — continue with poll, it has its own timeout */ }
         const row = await pollJobUntilTerminal({ jobId: rec.job_id, signal: ac.signal });
         if (cancelled) return;
         if (isSuccess(row.status)) {
