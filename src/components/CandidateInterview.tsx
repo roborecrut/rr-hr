@@ -422,6 +422,18 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           // Terminal but not success — drop and allow a new attempt.
           clearActiveJob("screen_resume", candidateId);
         } else {
+          // Possibly running, but verify it's not a zombie. If the server
+          // hasn't moved the status in >3 minutes the job is dead (background
+          // worker likely crashed or the previous tab was closed before
+          // EdgeRuntime.waitUntil finished). Drop the pointer so this click
+          // starts a fresh ProTalk request and re-charges nothing because
+          // request_id + idempotency are derived per attempt.
+          const ageMs = Date.now() - new Date(row.updated_at || row.created_at).getTime();
+          if (ageMs > 3 * 60_000) {
+            rrLog("active_job_stale_dropped", { ageMs });
+            clearActiveJob("screen_resume", candidateId);
+            // fall through to the fresh-start path below
+          } else {
           // Truly running on the server — resume polling, do not start a new one.
           setBusy(true);
           try {
@@ -437,6 +449,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             });
           } finally { setBusy(false); }
           return;
+          }
         }
       } catch {
         clearActiveJob("screen_resume", candidateId);
@@ -448,7 +461,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       // The HTTP request returns a job_id quickly; the wait overlay only
       // bridges the polling phase. Closing tab / reloading is safe — the
       // mount effect above re-attaches polling.
-      await aiWaitRun<any>({
+      const overlayResult = await aiWaitRun<any>({
         title: "Анализ резюме",
         task: async () => {
           rrLog("invoke_started");
@@ -470,6 +483,16 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           return { ok: true };
         },
       });
+      // User pressed «Отмена» on the wait overlay → aiWaitRun resolves with
+      // `undefined`. The background task keeps running on the server but the
+      // localStorage active-job pointer must be cleared so the NEXT click on
+      // «Отправить на оценку» starts a brand-new request rather than silently
+      // re-attaching to the cancelled job (which produced the «overlay opens
+      // but ProTalk never gets called» symptom).
+      if (overlayResult === undefined) {
+        rrLog("overlay_cancelled_clearing_active_job");
+        try { clearActiveJob("screen_resume", candidateId); } catch { /* ignore */ }
+      }
     } catch (e: any) {
       if (isVacancyPausedError(e)) { setPausedOpen(true); }
       else {
