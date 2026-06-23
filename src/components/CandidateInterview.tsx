@@ -685,7 +685,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       clearActiveJob("checklist_grade", candidateId);
       clearActiveJob("situations_grade", candidateId);
     } catch { /* ignore */ }
-    setStage("resume"); setResumeResult(null); setResumeText(""); setAnswers({}); setChecklistScore(null);
+    setStage("resume"); setResumeResult(null); setResumeText(""); setResumeEditMode(true); setAnswers({}); setChecklistScore(null);
     setSitAnswers({}); setSituationsScore(null); setSituationsFeedback([]); setFinalScore(null);
   };
 
