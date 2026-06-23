@@ -515,6 +515,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               .slice(0, 20000);
             if (text.trim()) {
               setResumeText(text);
+              setResumeEditMode(false);
               setUploadedResume(null);
             }
           },
@@ -528,6 +529,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         .slice(0, 20000);
       if (!text.trim()) throw new Error("ИИ не смог распознать резюме");
       setResumeText(text);
+      setResumeEditMode(false);
       setUploadedResume(null);
     } catch (e: any) {
       // Файл уже удалён из Storage после попытки распознавания (cleanup на
