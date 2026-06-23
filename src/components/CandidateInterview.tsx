@@ -141,7 +141,12 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const [uploadedResume, setUploadedResume] = useState<{ bucket: string; path: string; filename: string } | null>(null);
   const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
-  const [resumeEditMode, setResumeEditMode] = useState(false);
+  // По умолчанию открыто поле ввода. В режим «предпросмотра» переключаемся
+  // ТОЛЬКО когда текст пришёл не от пользователя (распознавание файла или
+  // ранее сохранённая оценка из БД). Иначе при первом нажатии клавиши
+  // resumeText становится непустым и условие `resumeText && !resumeEditMode`
+  // мгновенно сворачивало textarea — пользователь не мог печатать.
+  const [resumeEditMode, setResumeEditMode] = useState(true);
   const [pausedOpen, setPausedOpen] = useState(false);
   const [resumeTooShortOpen, setResumeTooShortOpen] = useState(false);
   const resumeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
