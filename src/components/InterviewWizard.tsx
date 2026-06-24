@@ -556,12 +556,17 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {/* §4: Live RR calculator */}
             {(() => {
-              const iExtra = Math.max(0, interviewLimit - interviewUsed);
-              const tExtra = Math.max(0, trainingLimit  - trainingUsed);
-              const iPrice = packTierPrice(Math.max(1, iExtra));
-              const tPrice = packTierPrice(Math.max(1, tExtra));
-              const iCost  = iExtra * iPrice;
-              const tCost  = tExtra * tPrice;
+              // §4: считаем стоимость только за ПРИРОСТ сверх уже сохранённого
+              // (= уже оплаченного) лимита. Остаток купленной ёмкости показываем
+              // отдельно, чтобы было понятно, за что не нужно платить ещё раз.
+              const iPaid  = Math.max(0, savedInterviewLimit - interviewUsed);
+              const tPaid  = Math.max(0, savedTrainingLimit  - trainingUsed);
+              const iDelta = Math.max(0, interviewLimit - savedInterviewLimit);
+              const tDelta = Math.max(0, trainingLimit  - savedTrainingLimit);
+              const iPrice = packTierPrice(Math.max(1, iDelta || 1));
+              const tPrice = packTierPrice(Math.max(1, tDelta || 1));
+              const iCost  = iDelta * iPrice;
+              const tCost  = tDelta * tPrice;
               const total  = iCost + tCost;
               const overdrawn = total > walletBalance;
               const remaining = walletBalance - total;
@@ -575,11 +580,16 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                     </div>
                   </div>
                   <div>
-                    <div className="text-slate-400 uppercase font-bold tracking-wider">Бронируется по вакансии</div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">К списанию (только прирост)</div>
                     <div className="text-white">
-                      Интервью: <b>{iExtra}</b> × {iPrice} RR = <b>{formatRR(iCost)}</b><br/>
-                      Обучение: <b>{tExtra}</b> × {tPrice} RR = <b>{formatRR(tCost)}</b>
+                      Интервью: <b>+{iDelta}</b>{iDelta > 0 && <> × {iPrice} RR = <b>{formatRR(iCost)}</b></>}<br/>
+                      Обучение: <b>+{tDelta}</b>{tDelta > 0 && <> × {tPrice} RR = <b>{formatRR(tCost)}</b></>}
                     </div>
+                    {(iPaid > 0 || tPaid > 0) && (
+                      <div className="text-emerald-300/90 mt-1 text-[10px]">
+                        Уже оплачено и доступно: интервью <b>{iPaid}</b>, обучение <b>{tPaid}</b>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-slate-400 uppercase font-bold tracking-wider">Итого / остаток</div>
