@@ -78,6 +78,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [trainingLimit,  setTrainingLimit]  = useState<number>(0);
   const [interviewUsed,  setInterviewUsed]  = useState<number>(0);
   const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
+  // §4: уже сохранённые (оплаченные) лимиты — нужны, чтобы при пересохранении
+  // НЕ списывать с RR-баланса повторно за уже купленную ёмкость, а считать
+  // только прирост сверх ранее сохранённого значения.
+  const [savedInterviewLimit, setSavedInterviewLimit] = useState<number>(0);
+  const [savedTrainingLimit,  setSavedTrainingLimit]  = useState<number>(0);
   const [savingLimits,   setSavingLimits]   = useState(false);
   const [savedLimits,    setSavedLimits]    = useState(false);
   // §4: live RR calculator — кошелёк работодателя для расчёта стоимости лимитов.
@@ -136,6 +141,8 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
       setInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
       setTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
+      setSavedInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
+      setSavedTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
       setInterviewUsed(Number((pr as any)?.interview_used  ?? 0));
       setTrainingUsed(Number((pr as any)?.training_used   ?? 0));
       const map: any = {};
@@ -221,12 +228,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
       return;
     }
-    // §4: проверка по балансу — нельзя «забронировать» больше, чем есть RR.
-    const interviewExtra = Math.max(0, interviewLimit - interviewUsed);
-    const trainingExtra  = Math.max(0, trainingLimit  - trainingUsed);
-    const totalReserve   = interviewExtra * packTierPrice(Math.max(1, interviewExtra)) +
-                           trainingExtra  * packTierPrice(Math.max(1, trainingExtra));
-    if (walletBalance <= 0 && (interviewExtra > 0 || trainingExtra > 0)) {
+    // §4: проверка по балансу — учитываем УЖЕ КУПЛЕННУЮ ёмкость (savedXxxLimit).
+    // С RR списывается только прирост сверх ранее сохранённого лимита,
+    // уменьшение лимита трактуется как 0 (возврат не делаем).
+    const interviewDelta = Math.max(0, interviewLimit - savedInterviewLimit);
+    const trainingDelta  = Math.max(0, trainingLimit  - savedTrainingLimit);
+    const totalReserve   = interviewDelta * packTierPrice(Math.max(1, interviewDelta)) +
+                           trainingDelta  * packTierPrice(Math.max(1, trainingDelta));
+    if (walletBalance <= 0 && (interviewDelta > 0 || trainingDelta > 0)) {
       setShowNoBalanceModal(true);
       return;
     }
@@ -241,6 +250,8 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
         interview_limit: Math.max(0, Math.floor(interviewLimit)),
         training_limit:  Math.max(0, Math.floor(trainingLimit)),
       }).eq("id", projectId);
+      setSavedInterviewLimit(Math.max(0, Math.floor(interviewLimit)));
+      setSavedTrainingLimit(Math.max(0, Math.floor(trainingLimit)));
       addAuditEvent("success", "Сохранено в БД", `Лимиты по вакансии: интервью ${interviewLimit}, обучение ${trainingLimit}`);
       setSavedLimits(true);
       setTimeout(() => setSavedLimits(false), 2200);
@@ -545,12 +556,17 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
 
             {/* §4: Live RR calculator */}
             {(() => {
-              const iExtra = Math.max(0, interviewLimit - interviewUsed);
-              const tExtra = Math.max(0, trainingLimit  - trainingUsed);
-              const iPrice = packTierPrice(Math.max(1, iExtra));
-              const tPrice = packTierPrice(Math.max(1, tExtra));
-              const iCost  = iExtra * iPrice;
-              const tCost  = tExtra * tPrice;
+              // §4: считаем стоимость только за ПРИРОСТ сверх уже сохранённого
+              // (= уже оплаченного) лимита. Остаток купленной ёмкости показываем
+              // отдельно, чтобы было понятно, за что не нужно платить ещё раз.
+              const iPaid  = Math.max(0, savedInterviewLimit - interviewUsed);
+              const tPaid  = Math.max(0, savedTrainingLimit  - trainingUsed);
+              const iDelta = Math.max(0, interviewLimit - savedInterviewLimit);
+              const tDelta = Math.max(0, trainingLimit  - savedTrainingLimit);
+              const iPrice = packTierPrice(Math.max(1, iDelta || 1));
+              const tPrice = packTierPrice(Math.max(1, tDelta || 1));
+              const iCost  = iDelta * iPrice;
+              const tCost  = tDelta * tPrice;
               const total  = iCost + tCost;
               const overdrawn = total > walletBalance;
               const remaining = walletBalance - total;
@@ -564,11 +580,16 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
                     </div>
                   </div>
                   <div>
-                    <div className="text-slate-400 uppercase font-bold tracking-wider">Бронируется по вакансии</div>
+                    <div className="text-slate-400 uppercase font-bold tracking-wider">К списанию (только прирост)</div>
                     <div className="text-white">
-                      Интервью: <b>{iExtra}</b> × {iPrice} RR = <b>{formatRR(iCost)}</b><br/>
-                      Обучение: <b>{tExtra}</b> × {tPrice} RR = <b>{formatRR(tCost)}</b>
+                      Интервью: <b>+{iDelta}</b>{iDelta > 0 && <> × {iPrice} RR = <b>{formatRR(iCost)}</b></>}<br/>
+                      Обучение: <b>+{tDelta}</b>{tDelta > 0 && <> × {tPrice} RR = <b>{formatRR(tCost)}</b></>}
                     </div>
+                    {(iPaid > 0 || tPaid > 0) && (
+                      <div className="text-emerald-300/90 mt-1 text-[10px]">
+                        Уже оплачено и доступно: интервью <b>{iPaid}</b>, обучение <b>{tPaid}</b>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="text-slate-400 uppercase font-bold tracking-wider">Итого / остаток</div>
