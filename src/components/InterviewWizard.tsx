@@ -228,12 +228,14 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       addAuditEvent("warning", "Ошибка", "Лимит не может быть меньше уже использованного");
       return;
     }
-    // §4: проверка по балансу — нельзя «забронировать» больше, чем есть RR.
-    const interviewExtra = Math.max(0, interviewLimit - interviewUsed);
-    const trainingExtra  = Math.max(0, trainingLimit  - trainingUsed);
-    const totalReserve   = interviewExtra * packTierPrice(Math.max(1, interviewExtra)) +
-                           trainingExtra  * packTierPrice(Math.max(1, trainingExtra));
-    if (walletBalance <= 0 && (interviewExtra > 0 || trainingExtra > 0)) {
+    // §4: проверка по балансу — учитываем УЖЕ КУПЛЕННУЮ ёмкость (savedXxxLimit).
+    // С RR списывается только прирост сверх ранее сохранённого лимита,
+    // уменьшение лимита трактуется как 0 (возврат не делаем).
+    const interviewDelta = Math.max(0, interviewLimit - savedInterviewLimit);
+    const trainingDelta  = Math.max(0, trainingLimit  - savedTrainingLimit);
+    const totalReserve   = interviewDelta * packTierPrice(Math.max(1, interviewDelta)) +
+                           trainingDelta  * packTierPrice(Math.max(1, trainingDelta));
+    if (walletBalance <= 0 && (interviewDelta > 0 || trainingDelta > 0)) {
       setShowNoBalanceModal(true);
       return;
     }
@@ -248,6 +250,8 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
         interview_limit: Math.max(0, Math.floor(interviewLimit)),
         training_limit:  Math.max(0, Math.floor(trainingLimit)),
       }).eq("id", projectId);
+      setSavedInterviewLimit(Math.max(0, Math.floor(interviewLimit)));
+      setSavedTrainingLimit(Math.max(0, Math.floor(trainingLimit)));
       addAuditEvent("success", "Сохранено в БД", `Лимиты по вакансии: интервью ${interviewLimit}, обучение ${trainingLimit}`);
       setSavedLimits(true);
       setTimeout(() => setSavedLimits(false), 2200);
