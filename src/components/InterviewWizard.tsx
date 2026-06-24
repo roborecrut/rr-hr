@@ -78,6 +78,11 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
   const [trainingLimit,  setTrainingLimit]  = useState<number>(0);
   const [interviewUsed,  setInterviewUsed]  = useState<number>(0);
   const [trainingUsed,   setTrainingUsed]   = useState<number>(0);
+  // §4: уже сохранённые (оплаченные) лимиты — нужны, чтобы при пересохранении
+  // НЕ списывать с RR-баланса повторно за уже купленную ёмкость, а считать
+  // только прирост сверх ранее сохранённого значения.
+  const [savedInterviewLimit, setSavedInterviewLimit] = useState<number>(0);
+  const [savedTrainingLimit,  setSavedTrainingLimit]  = useState<number>(0);
   const [savingLimits,   setSavingLimits]   = useState(false);
   const [savedLimits,    setSavedLimits]    = useState(false);
   // §4: live RR calculator — кошелёк работодателя для расчёта стоимости лимитов.
@@ -136,6 +141,8 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       setPassScore(((pr as any)?.interview_pass_score) ?? 75);
       setInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
       setTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
+      setSavedInterviewLimit(Number((pr as any)?.interview_limit ?? 0));
+      setSavedTrainingLimit(Number((pr as any)?.training_limit  ?? 0));
       setInterviewUsed(Number((pr as any)?.interview_used  ?? 0));
       setTrainingUsed(Number((pr as any)?.training_used   ?? 0));
       const map: any = {};
