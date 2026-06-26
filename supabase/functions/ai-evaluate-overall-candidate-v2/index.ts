@@ -231,7 +231,9 @@ async function runWorker(jobId: string, candidateId: string): Promise<void> {
 
   // Primary attempt.
   const primaryStart = await ajStartAttempt(jobId, "primary", { jobStatus: "primary_running" });
-  if (!primaryStart) { await markJobStatusStrict(jobId, "primary_failed", true); return; }
+  // `primary_failed` is non-terminal; if the attempt cannot even start,
+  // mark the job as `orchestration_failed` so the client stops polling.
+  if (!primaryStart) { await markJobStatusStrict(jobId, "orchestration_failed", true); return; }
   const primaryAttemptId = primaryStart.attemptId;
 
   let report: OverallCandidateReport | null = null;
