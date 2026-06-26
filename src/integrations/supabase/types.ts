@@ -3332,6 +3332,7 @@ export type Database = {
         | "save_failed"
         | "validation_failed"
         | "orchestration_failed"
+        | "fallback_unavailable"
       app_role: "admin" | "employer" | "candidate"
       candidate_stage:
         | "terms"
@@ -3518,6 +3519,7 @@ export const Constants = {
         "save_failed",
         "validation_failed",
         "orchestration_failed",
+        "fallback_unavailable",
       ],
       app_role: ["admin", "employer", "candidate"],
       candidate_stage: [
