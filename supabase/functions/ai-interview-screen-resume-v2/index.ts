@@ -382,7 +382,10 @@ Deno.serve(async (req) => {
       }
     } catch (e) {
       console.error("[screen-resume-v2] background crashed", (e as Error)?.message);
-      await markJobStatusStrict(jobId, "primary_failed", true);
+      // `primary_failed` is NOT terminal — using it here would leave the job
+      // stuck and force the client to poll until the 10-minute cap. Mark the
+      // job as `orchestration_failed` so the candidate sees the error fast.
+      await markJobStatusStrict(jobId, "orchestration_failed", true);
     }
   })());
 
