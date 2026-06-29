@@ -4,7 +4,8 @@ import {
   useAIFallbackGate, closeAIFallback, _runFallbackForGate,
   SUPPORT_TELEGRAM_URL,
 } from "@/lib/aiFallback";
-import proMaxMascot from "@/assets/rr-pro-max-mascot.png";
+
+const PRO_MAX_MASCOT_URL = "https://rjhtauzookkvlipvqpvr.supabase.co/storage/v1/object/public/Logos/RRproMax.png";
 
 /**
  * Global overlay that offers one retry on RR Pro Max after a primary AI-job
@@ -37,7 +38,7 @@ export const AIFallbackGate: React.FC = () => {
 
         <div className="flex justify-center mb-3">
           <img
-            src={proMaxMascot}
+            src={PRO_MAX_MASCOT_URL}
             alt="RR Pro Max"
             width={120}
             height={120}
@@ -66,7 +67,7 @@ export const AIFallbackGate: React.FC = () => {
                 onClick={() => { void _runFallbackForGate(); }}
                 className="w-full rounded-xl bg-gradient-to-r from-[#E7C768] to-[#C29A3A] px-4 py-3 text-sm font-bold text-[#17344F] shadow-lg hover:brightness-110 active:scale-[0.99] transition"
               >
-                Ещё раз с RR Pro Max
+                Используется RR Pro Max (доп. +120 секунд)
               </button>
               <button
                 type="button"
@@ -86,7 +87,7 @@ export const AIFallbackGate: React.FC = () => {
             </h2>
             <div className="flex items-center justify-center gap-2 text-sm text-slate-200/90 my-4">
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Это может занять до минуты…</span>
+              <span>Это может занять дополнительно до 120-180 секунд…</span>
             </div>
             <p className="text-center text-[11px] text-slate-300/70">
               Окно можно закрыть — результат сохранится автоматически.
