@@ -62,7 +62,9 @@ ${(input.vacancyText || "(не указано)").slice(0, 4000)}
 ПОЖЕЛАНИЯ РАБОТОДАТЕЛЯ:
 ${(input.employerWishes || "(не заданы)").slice(0, 2000)}
 
-ВОПРОСЫ И ОТВЕТЫ КАНДИДАТА:
+ПРАВИЛО РАСЧЕТА БАЛЛОВ: Всего вопросов: ${safeQs.length}. Общая сумма баллов на все вопросы строго 100 баллов. Распределяй максимальный балл поровну между всеми вопросами (например, если 20 вопросов — каждый максимум 5 баллов, в сумме ровно 100). Поле score в элементах items должно быть от 0 до максимального балла за вопрос. Поле total должно быть суммой баллов за все вопросы (максимум 100).
+
+ВОПРОСЫ И ОТВЕТЫ КАНДИДАТА (${safeQs.length} шт):
 ${JSON.stringify(safeQs)}
 
 Верни СТРОГО валидный JSON без markdown:
@@ -74,13 +76,13 @@ ${JSON.stringify(safeQs)}
     "gaps": [{"criterion":"...","finding":"...","impact":"..."}],
     "risks": [{"title":"...","evidence":"...","severity":"<низкий|средний|высокий>","how_to_verify":"..."}],
     "red_flags": [{"title":"...","evidence":"...","severity":"<средний|высокий>"}],
-    "items": [{"question_id":"qN","score":0..100,"employer_feedback":"...","evidence":"..."}]
+    "items": [{"question_id":"qN","score":<баллы от 0 до макс за этот вопрос>,"employer_feedback":"...","evidence":"..."}]
   },
   "candidate": {
     "summary": "<мягкий итог для кандидата>",
     "strengths": ["..."],
     "areas_to_improve": ["..."],
-    "items": [{"question_id":"qN","score":0..100,"feedback":"...","recommendation":"..."}]
+    "items": [{"question_id":"qN","score":<баллы от 0 до макс за этот вопрос>,"feedback":"...","recommendation":"..."}]
   }
 }`;
 }
