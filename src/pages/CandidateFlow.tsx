@@ -687,10 +687,15 @@ export default function CandidateFlow() {
       }
     }
 
+    // Alias: /interview/overall === /scoring — открываем таб «Итог» (scoring).
+    if (parsedTab === "interview" && parsedSubTab === "overall") {
+      if (activeTab !== "scoring") setActiveTabState("scoring");
+      return;
+    }
     if (parsedTab && parsedTab !== activeTab) {
       setActiveTabState(parsedTab);
     }
-    
+
     if (parsedTab === "terms") {
       const sub = parsedSubTab || "vacancy";
       if (sub !== termsSubTab) {
