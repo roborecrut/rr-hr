@@ -561,6 +561,22 @@ export default function CandidateFlow() {
     };
   }, [candidate?.id, activeTab, reloadScores]);
 
+  // Realtime: подписываемся на изменения строки candidate_scores для текущего
+  // кандидата, чтобы «Итог» обновлялся моментально при получении ответа от
+  // нейронки на любом этапе — без ручной перезагрузки страницы.
+  useEffect(() => {
+    if (!candidate?.id) return;
+    const ch = supabase
+      .channel(`cand_scores_${candidate.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "candidate_scores", filter: `candidate_id=eq.${candidate.id}` },
+        () => { void reloadScores(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [candidate?.id, reloadScores]);
+
   // Helper to build cohesive URLs
   const getDynamicPath = (tabId: string, subTabId?: string, forceProject?: any) => {
     const parts = path.split("/").filter(Boolean);
