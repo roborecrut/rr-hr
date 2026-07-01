@@ -2468,9 +2468,14 @@ export default function CandidateFlow() {
                 <span className="text-4xl font-black text-[#E7C768]">
                   {(() => {
                     const s = candidate?.scores || ({} as any);
-                    const vals = [s.resumeScore, s.checklistScore, s.situationsScore, s.interviewScore].filter((x: any) => typeof x === "number" && !isNaN(x));
+                    // Средний балл считается ТОЛЬКО по трём этапам интервью
+                    // (резюме, чек-лист, ситуации). Делим на количество
+                    // фактически пройденных (значение > 0). До 2 знаков после запятой.
+                    const vals = [s.resumeScore, s.checklistScore, s.situationsScore]
+                      .filter((x: any) => typeof x === "number" && !isNaN(x) && x > 0);
                     if (!vals.length) return "—";
-                    return Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length);
+                    const avg = vals.reduce((a: number, b: number) => a + b, 0) / vals.length;
+                    return (Math.round(avg * 100) / 100).toFixed(2);
                   })()}
                 </span>
                 <span className="text-[10px] font-bold uppercase text-gray-300 font-mono">Общий балл</span>
