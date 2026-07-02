@@ -1051,9 +1051,10 @@ export function validateChecklistGradeReport(
     if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_candidate_item_score_${qid}` };
     const fb = nonEmpty(it?.feedback);
     if (!fb) return { ok: false, code: `empty_candidate_feedback_${qid}` };
+    const clampedC = Math.max(0, Math.min(perQuestionMax, sc));
     candItems.push({
       question_id: qid,
-      score: Math.round(sc),
+      score: Math.round(clampedC),
       feedback: fb.slice(0, 1000),
       recommendation: nonEmpty(it?.recommendation).slice(0, 800),
     });
