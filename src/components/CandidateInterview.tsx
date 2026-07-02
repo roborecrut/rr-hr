@@ -78,6 +78,10 @@ type Props = {
   projectId: string;
   candidateId: string;
   onCompleted?: (passed: boolean, score: number) => void;
+  /** External URL-driven sub-tab: "resume" | "checklist" | "situations" | "overall". */
+  subTab?: string;
+  /** Called when the internal stage changes so parent can sync URL. */
+  onSubTabChange?: (sub: "resume" | "checklist" | "situations" | "overall") => void;
 };
 
 // FN импортируется из единого конфига — используется только для multipart/FormData запросов.
@@ -109,10 +113,29 @@ async function call(fn: string, body: any) {
   return data as any;
 }
 
-export default function CandidateInterview({ projectId, candidateId, onCompleted }: Props) {
+const stageToSub = (s: Stage): "resume" | "checklist" | "situations" | "overall" =>
+  s === "done" ? "overall" : (s as any);
+const subToStage = (s: string | undefined): Stage => {
+  if (s === "overall") return "done";
+  if (s === "checklist" || s === "situations" || s === "resume") return s;
+  return "resume";
+};
+
+export default function CandidateInterview({ projectId, candidateId, onCompleted, subTab, onSubTabChange }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
-  const [stage, setStage] = useState<Stage>("resume");
+  const [stage, _setStage] = useState<Stage>(subToStage(subTab));
+  const setStage = React.useCallback((s: Stage) => {
+    _setStage(s);
+    try { onSubTabChange?.(stageToSub(s)); } catch { /* ignore */ }
+  }, [onSubTabChange]);
+  // External URL → local stage
+  useEffect(() => {
+    if (!subTab) return;
+    const target = subToStage(subTab);
+    if (target !== stage) _setStage(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subTab]);
   const [passScore, setPassScore] = useState(75);
   // Vacancy paused (no employer funds)
   const [paused, setPaused] = useState<null | { email?: string|null; phone?: string|null; telegram?: string|null }>(null);
