@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader, FileText, CheckCircle, MessageSquare, Award, RefreshCw, Send, Upload, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LoadingPhrase } from "@/components/LoadingPhrase";
@@ -125,7 +125,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
   const [stage, _setStage] = useState<Stage>(subToStage(subTab));
-  const setStage = React.useCallback((s: Stage) => {
+  const setStage = useCallback((s: Stage) => {
     _setStage(s);
     try { onSubTabChange?.(stageToSub(s)); } catch { /* ignore */ }
   }, [onSubTabChange]);
