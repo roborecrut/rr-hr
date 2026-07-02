@@ -1051,24 +1051,69 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         </div>
       )}
 
-      {stage === "done" && finalScore != null && (
-        <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-6 space-y-3 text-center">
-          <Award className="w-12 h-12 text-[#E7C768] mx-auto" />
-          <div className="text-4xl font-extrabold text-white">{finalScore}/100</div>
-          <p className="text-sm text-slate-200">Средний балл по 3 этапам. Проходной: <b>{passScore}</b>.</p>
-          {finalScore >= passScore ? (
-            <p className="text-emerald-300 font-bold">✅ Интервью пройдено — переходите к обучению!</p>
-          ) : (
-            <>
-              <p className="text-amber-300 font-bold">Нужен более высокий балл. Можно пересдать все этапы.</p>
-              <button onClick={reset} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Начать заново</button>
-            </>
-          )}
-        </div>
-      )}
-      {stage === "done" && candOverallFeedback && (
-        <CandidateOverallReport feedback={candOverallFeedback} />
-      )}
+      {stage === "done" && (() => {
+        const vals: number[] = [
+          resumeResult?.score ?? null,
+          checklistScore,
+          situationsScore,
+        ].filter((x): x is number => typeof x === "number" && !isNaN(x) && x > 0);
+        const avg = vals.length
+          ? (Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100).toFixed(2)
+          : "—";
+        const passed = vals.length === 3 && Number(avg) >= passScore;
+        const stageSummary = (label: string, score: number | null | undefined, summary: string | undefined) => (
+          <div className="bg-black/25 border border-white/10 rounded-2xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-[#E7C768] uppercase tracking-wider">{label}</span>
+              <span className="text-lg font-extrabold text-emerald-300">
+                {typeof score === "number" ? `${score}/100` : "—"}
+              </span>
+            </div>
+            {summary ? (
+              <div className="text-sm text-slate-100 leading-relaxed">
+                <RichMarkdown tone="resume">{summary}</RichMarkdown>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">Этап ещё не пройден.</div>
+            )}
+          </div>
+        );
+        const chkSummary =
+          (checklistFeedback as any)?.summary ||
+          (checklistFeedback as any)?.candidate?.summary || "";
+        const sitSummary =
+          (situationsFeedbackRaw as any)?.summary ||
+          (situationsFeedbackRaw as any)?.advice || "";
+        return (
+          <div className="space-y-4">
+            <div className="bg-[#1E4468]/30 border border-white/10 rounded-2xl p-6 text-center space-y-3">
+              <Award className="w-12 h-12 text-[#E7C768] mx-auto" />
+              <div className="text-5xl font-extrabold text-white">{avg}<span className="text-2xl text-slate-300">/100</span></div>
+              <p className="text-sm text-slate-200">
+                Средний балл по {vals.length || 0} из 3 этапов. Проходной: <b>{passScore}</b>.
+              </p>
+              {vals.length < 3 ? (
+                <p className="text-amber-300 font-bold text-sm">
+                  Пройдите все три этапа, чтобы открыть обучение.
+                </p>
+              ) : passed ? (
+                <p className="text-emerald-300 font-bold">✅ Интервью пройдено — переходите к обучению!</p>
+              ) : (
+                <>
+                  <p className="text-amber-300 font-bold">Нужен более высокий балл. Можно пересдать все этапы.</p>
+                  <button onClick={reset} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Начать заново</button>
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {stageSummary("1. Резюме", resumeResult?.score ?? null, resumeResult?.summary || "")}
+              {stageSummary("2. Чек-лист", checklistScore, chkSummary)}
+              {stageSummary("3. Ситуации", situationsScore, sitSummary)}
+            </div>
+            {candOverallFeedback && <CandidateOverallReport feedback={candOverallFeedback} />}
+          </div>
+        );
+      })()}
       <VacancyPausedDialog open={pausedOpen} projectId={projectId} onClose={() => setPausedOpen(false)} />
     </div>
   );
