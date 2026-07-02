@@ -1678,7 +1678,6 @@ export default function CandidateFlow() {
     { id: "profile", title: "👤 Профиль", desc: "Мой кабинет" },
     { id: "terms", title: "📋 Условия", desc: "О вакансии" },
     { id: "interview", title: "💬 Собесед-ние", desc: "Блиц HR-ИИ" },
-    { id: "scoring", title: "🎯 Оценка", desc: "Анализ баллов" },
     { id: "training", title: "📚 ИИ обучение", desc: "Курс и тесты" },
     { id: "certified", title: "🏆 Сертификат", desc: "Мой диплом" }
   ];

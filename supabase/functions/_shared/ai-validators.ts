@@ -935,11 +935,12 @@ export function validateChecklistGradeReport(
   if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
   const o = raw as Record<string, any>;
 
-  const total = Number(o.total);
-  if (!Number.isFinite(total) || total < 0 || total > 100) {
+  // `total` is validated loosely; the authoritative value is recomputed
+  // below from employer.items so it never contradicts per-question scores.
+  const totalRaw = Number(o.total);
+  if (o.total != null && (!Number.isFinite(totalRaw) || totalRaw < 0 || totalRaw > 100)) {
     return { ok: false, code: "bad_total" };
   }
-  const totalInt = Math.round(total);
 
   const emp = o.employer;
   if (!emp || typeof emp !== "object") return { ok: false, code: "missing_employer" };
@@ -1003,6 +1004,7 @@ export function validateChecklistGradeReport(
   if (empItemsRaw.length === 0) return { ok: false, code: "empty_employer_items" };
   const empItems: ChecklistEmployerItem[] = [];
   const seenEmp = new Set<string>();
+  const perQuestionMax = allowed.size > 0 ? 100 / allowed.size : 100;
   for (const it of empItemsRaw) {
     const qid = nonEmpty(it?.question_id);
     if (!qid) return { ok: false, code: "bad_question_id" };
@@ -1013,13 +1015,18 @@ export function validateChecklistGradeReport(
     if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_item_score_${qid}` };
     const fb = nonEmpty(it?.employer_feedback);
     if (!fb) return { ok: false, code: `empty_employer_feedback_${qid}` };
+    // Clamp per-question score to even 100/N distribution.
+    const clamped = Math.max(0, Math.min(perQuestionMax, sc));
     empItems.push({
       question_id: qid,
-      score: Math.round(sc),
+      score: Math.round(clamped),
       employer_feedback: fb.slice(0, 1200),
       evidence: nonEmpty(it?.evidence).slice(0, 800),
     });
   }
+
+  // Recompute authoritative total from per-question scores.
+  const totalInt = Math.min(100, Math.round(empItems.reduce((a, it) => a + it.score, 0)));
 
   // candidate block
   const cand = o.candidate;
@@ -1044,9 +1051,10 @@ export function validateChecklistGradeReport(
     if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_candidate_item_score_${qid}` };
     const fb = nonEmpty(it?.feedback);
     if (!fb) return { ok: false, code: `empty_candidate_feedback_${qid}` };
+    const clampedC = Math.max(0, Math.min(perQuestionMax, sc));
     candItems.push({
       question_id: qid,
-      score: Math.round(sc),
+      score: Math.round(clampedC),
       feedback: fb.slice(0, 1000),
       recommendation: nonEmpty(it?.recommendation).slice(0, 800),
     });
