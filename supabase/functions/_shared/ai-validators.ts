@@ -1004,6 +1004,7 @@ export function validateChecklistGradeReport(
   if (empItemsRaw.length === 0) return { ok: false, code: "empty_employer_items" };
   const empItems: ChecklistEmployerItem[] = [];
   const seenEmp = new Set<string>();
+  const perQuestionMax = allowed.size > 0 ? 100 / allowed.size : 100;
   for (const it of empItemsRaw) {
     const qid = nonEmpty(it?.question_id);
     if (!qid) return { ok: false, code: "bad_question_id" };
@@ -1014,13 +1015,18 @@ export function validateChecklistGradeReport(
     if (!Number.isFinite(sc) || sc < 0 || sc > 100) return { ok: false, code: `bad_item_score_${qid}` };
     const fb = nonEmpty(it?.employer_feedback);
     if (!fb) return { ok: false, code: `empty_employer_feedback_${qid}` };
+    // Clamp per-question score to even 100/N distribution.
+    const clamped = Math.max(0, Math.min(perQuestionMax, sc));
     empItems.push({
       question_id: qid,
-      score: Math.round(sc),
+      score: Math.round(clamped),
       employer_feedback: fb.slice(0, 1200),
       evidence: nonEmpty(it?.evidence).slice(0, 800),
     });
   }
+
+  // Recompute authoritative total from per-question scores.
+  const totalInt = Math.min(100, Math.round(empItems.reduce((a, it) => a + it.score, 0)));
 
   // candidate block
   const cand = o.candidate;
