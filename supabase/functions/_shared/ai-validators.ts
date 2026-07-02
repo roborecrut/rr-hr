@@ -935,11 +935,12 @@ export function validateChecklistGradeReport(
   if (!raw || typeof raw !== "object") return { ok: false, code: "not_object" };
   const o = raw as Record<string, any>;
 
-  const total = Number(o.total);
-  if (!Number.isFinite(total) || total < 0 || total > 100) {
+  // `total` is validated loosely; the authoritative value is recomputed
+  // below from employer.items so it never contradicts per-question scores.
+  const totalRaw = Number(o.total);
+  if (o.total != null && (!Number.isFinite(totalRaw) || totalRaw < 0 || totalRaw > 100)) {
     return { ok: false, code: "bad_total" };
   }
-  const totalInt = Math.round(total);
 
   const emp = o.employer;
   if (!emp || typeof emp !== "object") return { ok: false, code: "missing_employer" };
