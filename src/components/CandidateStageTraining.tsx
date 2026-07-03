@@ -174,8 +174,12 @@ export default function CandidateStageTraining({
     setChecking(true);
     try {
       const payload = examQuestions.map(q => ({ question_id: q.id, value: answers[q.id] || "" }));
+      const stageTitle =
+        active === "professional" ? "Проверка профессионального теста"
+        : active === "product" ? "Проверка продуктового теста"
+        : "Проверка системного теста";
       const r = await aiWaitRun<any>({
-        title: "Проверка ответов",
+        title: stageTitle,
         task: () => callEdge<any>("ai-grade-training-quiz", {
           candidate_id: candidateId, project_id: projectId, stage: active, answers: payload,
         }),

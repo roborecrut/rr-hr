@@ -42,6 +42,9 @@ verify_jwt = false
 [functions.ai-list-stage-questions]
 verify_jwt = false
 
+[functions.ai-grade-training-quiz]
+verify_jwt = false
+
 [functions.ai-generate-interview-resume-criteria]
 verify_jwt = false
 
