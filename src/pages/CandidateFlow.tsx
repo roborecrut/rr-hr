@@ -463,6 +463,17 @@ export default function CandidateFlow() {
   // а не устаревшее значение `candidates.current_stage`.
   const [effectiveStage, setEffectiveStage] = useState<string>("terms");
 
+  const interviewPassScore = Number(projectFull?.interview_pass_score ?? 75);
+  const interviewStageScores = [
+    candidate?.scores?.resumeScore,
+    candidate?.scores?.checklistScore,
+    candidate?.scores?.situationsScore,
+  ].filter((x): x is number => typeof x === "number" && Number.isFinite(x) && x > 0);
+  const interviewAverageScore = interviewStageScores.length === 3
+    ? Math.round((interviewStageScores.reduce((a, b) => a + b, 0) / 3) * 100) / 100
+    : null;
+  const interviewPassedStrict = interviewStageScores.length === 3 && interviewAverageScore !== null && interviewAverageScore >= interviewPassScore;
+
   // Единая серверная машина состояний: RPC `candidate_flow_state()` —
   // единственный источник правды о текущем этапе кандидата. Считается из
   // реальных данных (оценки, прогресс обучения, сертификат) и защищена
@@ -477,10 +488,7 @@ export default function CandidateFlow() {
       setEffectiveStage(stage);
       // Подтягиваем серверную «подсказку» этапа (монотонно растущую),
       // чтобы UI после reload показывал актуальный шаг, а не устаревший.
-      const saved = (data?.saved_stage as string) || stage;
-      const order = ["terms","interview","scoring","training","certified"];
-      const best = order[Math.max(order.indexOf(stage), order.indexOf(saved))] || stage;
-      setCurrentStage(best);
+      setCurrentStage(stage);
       return data;
     } catch {
       setEffectiveStage(currentStage || "terms");
@@ -2124,22 +2132,15 @@ export default function CandidateFlow() {
                   <h3 className="font-bold text-xs text-[#E7C768] uppercase border-b border-white/5 pb-2">Степень прохождения</h3>
                   <div className="space-y-3.5 text-xs">
                     {[
-                      { id: "terms", title: "Желаемые условия изучены", stageVal: "terms" },
-                      { id: "interview", title: "ИИ Собеседование пройдено", stageVal: "interview" },
-                      { id: "scoring", title: "Анализ и оценка баллов", stageVal: "scoring" },
-                      { id: "training", title: "Корпоративное ИИ Обучение", stageVal: "training" },
-                      { id: "certified", title: "Выдан электронный сертификат", stageVal: "certified" }
+                      { id: "terms", title: "Желаемые условия изучены", stageVal: "terms", progress: "" },
+                      { id: "interview", title: "ИИ Собеседование", stageVal: "interview", progress: `${interviewStageScores.length}/3 этапа${interviewAverageScore !== null ? ` • ${interviewAverageScore}/100` : ""}` },
+                      { id: "training", title: "Корпоративное ИИ Обучение", stageVal: "training", progress: interviewPassedStrict ? "Интервью пройдено" : `Доступ после ${interviewPassScore}/100` },
+                      { id: "certified", title: "Выдан электронный сертификат", stageVal: "certified", progress: "После 3/3 этапов обучения" }
                     ].map((step, idx) => {
-                      const stagesList = ["terms", "interview", "scoring", "training", "certified"];
-                      // Берём максимальный из сохранённого `current_stage` и фактически
-                      // вычисленного `effectiveStage` — чтобы прогресс на профиле кандидата
-                      // соответствовал реально пройденным этапам по текущей вакансии.
-                      const idxA = stagesList.indexOf(currentStage);
-                      const idxB = stagesList.indexOf(effectiveStage);
-                      const currentIdx = Math.max(idxA, idxB);
-                      const effectiveCurrent = stagesList[Math.max(0, currentIdx)] || currentStage;
+                      const stagesList = ["terms", "interview", "training", "certified"];
+                      const currentIdx = Math.max(0, stagesList.indexOf(effectiveStage));
                       const isPast = currentIdx > idx;
-                      const isCurrent = effectiveCurrent === step.stageVal;
+                      const isCurrent = effectiveStage === step.stageVal;
                       return (
                         <div key={step.id} className="flex items-start gap-2.5 p-1">
                           <CheckCircle className={`w-4 h-4 shrink-0 mt-0.5 ${isPast ? "text-emerald-400" : isCurrent ? "text-[#E7C768] animate-pulse" : "text-gray-600"}`} />
@@ -2150,6 +2151,7 @@ export default function CandidateFlow() {
                             {isCurrent && (
                               <span className="block text-[9px] text-[#E7C768]/80 font-semibold mt-0.5 uppercase tracking-wider">Текущий шаг ИИ-отбора</span>
                             )}
+                            {step.progress && <span className="block text-[10px] text-slate-400 mt-0.5">{step.progress}</span>}
                           </div>
                         </div>
                       );
@@ -2564,9 +2566,7 @@ export default function CandidateFlow() {
           (() => {
             // Training is only unlocked after a successful interview.
             // Stages progress: terms → interview → scoring → training → certified.
-            const unlocked = ["training", "certified"].includes(effectiveStage)
-              || ["training", "certified"].includes(currentStage)
-              || (candidate?.scores?.overallScore ?? 0) >= 60;
+            const unlocked = interviewPassedStrict;
             if (!unlocked) {
               return (
                 <Reveal direction="scale" className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
