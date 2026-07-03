@@ -379,7 +379,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const refetchCandidateScores = async () => {
     const { data: sc } = await (supabase as any).from("candidate_scores")
-      .select("resume_score,assessment_summary,resume_feedback,candidate_resume_feedback")
+      .select("resume_score,checklist_score,situations_score,overall_score,assessment_summary,resume_feedback,checklist_feedback,situations_feedback,candidate_resume_feedback,candidate_checklist_feedback,candidate_situations_feedback,candidate_overall_feedback")
       .eq("candidate_id", candidateId).maybeSingle();
     if (!sc || sc.resume_score == null) return;
     const crf = (sc as any).candidate_resume_feedback;
@@ -401,7 +401,29 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
       });
     }
+    if (sc.checklist_score != null) setChecklistScore(Number(sc.checklist_score));
+    if (sc.situations_score != null) setSituationsScore(Number(sc.situations_score));
+    if ((sc as any).candidate_checklist_feedback) setChecklistFeedback((sc as any).candidate_checklist_feedback);
+    else if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
+    if ((sc as any).candidate_situations_feedback) setSituationsFeedbackRaw((sc as any).candidate_situations_feedback);
+    else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
+    if ((sc as any).candidate_overall_feedback) setCandOverallFeedback((sc as any).candidate_overall_feedback);
+    const vals = [sc.resume_score, sc.checklist_score, sc.situations_score]
+      .map((x: any) => Number(x))
+      .filter((x: number) => Number.isFinite(x) && x > 0);
+    if (vals.length === 3) setFinalScore(Math.round((vals.reduce((a: number, b: number) => a + b, 0) / 3) * 100) / 100);
   };
+
+  useEffect(() => {
+    if (!candidateId) return;
+    const ch = supabase
+      .channel(`candidate_interview_scores_${candidateId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "candidate_scores", filter: `candidate_id=eq.${candidateId}` }, () => {
+        void refetchCandidateScores();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [candidateId]);
 
   const submitResume = async () => {
     rrLog("submit_started", { len: resumeText.length });

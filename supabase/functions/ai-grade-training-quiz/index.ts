@@ -4,11 +4,10 @@
 // last_answers, passed_at).
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
-  callProTalk, tryParseJson, extractJsonObjects,
-  buildChatId, buildSocialId, getAdminClient, logToDb,
+  callProTalkWithRetry, tryParseJson, extractJsonObjects,
+  buildChatId, buildSocialId, getAdminClient, logToDb, resolveCandidatePublicId,
 } from "../_shared/protalk.ts";
 import { requireCandidateToken } from "../_shared/auth.ts";
-import { isContentlessAnswer, isTooShortForOpenEnded, CONTENTLESS_COMMENT } from "../_shared/answer-quality.ts";
 import { detectProtectedCharacteristic } from "../_shared/ai-validators.ts";
 
 type Answer = { question_id: string; value: string };
@@ -35,6 +34,14 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
+  const { data: cand } = await admin.from("candidates")
+    .select("project_id,public_id")
+    .eq("id", candidateId).maybeSingle();
+  if (!cand) return jsonResponse({ error: "candidate_not_found" }, 404);
+  if (String((cand as any).project_id || "") !== String(body.project_id)) {
+    return jsonResponse({ error: "project_mismatch" }, 403);
+  }
+
   const { data: test } = await admin.from("training_stage_tests")
     .select("questions,pass_score,total_score")
     .eq("project_id", body.project_id).eq("stage", body.stage).maybeSingle();
@@ -48,8 +55,9 @@ Deno.serve(async (req) => {
   const ansMap = new Map<string, string>();
   for (const a of body.answers) ansMap.set(String(a.question_id), (a.value || "").toString());
 
-  // Pre-resolve choice questions locally (deterministic) AND mark contentless
-  // text answers as 0 without involving the LLM.
+  // Every attempt goes through ProTalk. No local fast-path scoring is allowed:
+  // even choice questions are sent to the same ProTalk bot so logs, scoring and
+  // candidate identity are consistent for professional/product/system tests.
   type Item = {
     id: string; score: number; max: number; comment: string;
     verdict: "correct" | "partial" | "wrong";
@@ -62,41 +70,26 @@ Deno.serve(async (req) => {
     const id = String(q.id);
     const max = Number(q.points) || 5;
     const value = (ansMap.get(id) || "").trim();
-    if (q.kind === "choice") {
-      // Score locally — instant, no LLM call needed for choice questions.
-      const correct = String(q.correct || "").trim().toLowerCase();
-      const ok = !!value && value.toLowerCase() === correct;
-      itemsById.set(id, {
-        id, score: ok ? max : 0, max,
-        verdict: ok ? "correct" : "wrong",
-        comment: ok ? "Верно" : `Правильный ответ: ${q.correct || ""}`,
-        what_was_right: ok ? "Выбран правильный вариант" : "",
-        what_was_wrong: ok ? "" : "Выбран неправильный вариант",
-      });
-    } else {
-      if (isContentlessAnswer(value) || isTooShortForOpenEnded(value)) {
-        itemsById.set(id, {
-          id, score: 0, max, verdict: "wrong",
-          comment: CONTENTLESS_COMMENT,
-          what_was_right: "",
-          what_was_wrong: CONTENTLESS_COMMENT,
-        });
-      } else {
-        aiBatch.push({
-          id, question: q.question, expected: q.expected_answer || "",
-          points: max, answer: value,
-        });
-      }
-    }
+    aiBatch.push({
+      id,
+      kind: q.kind === "choice" ? "choice" : "text",
+      question: q.question,
+      options: Array.isArray(q.options) ? q.options : [],
+      correct: q.kind === "choice" ? (q.correct || "") : "",
+      expected: q.expected_answer || "",
+      points: max,
+      answer: value,
+    });
   }
 
-  const chatId = buildChatId({ candidateId });
-  const socialId = buildSocialId({ candidate_id: candidateId });
-  let aiText = "";
+  const candPid = await resolveCandidatePublicId(candidateId) || String((cand as any).public_id || "");
+  const chatId = buildChatId({ candidatePublicId: candPid, candidateId });
+  const socialId = buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId });
   let aiObj: any = null;
 
   if (aiBatch.length > 0) {
-    const prompt = `Ты — строгий, но справедливый экзаменатор. Для каждого текстового ответа кандидата на тест обучения оцени по СМЫСЛОВОМУ совпадению с эталоном.
+    const prompt = `Ты — строгий, но справедливый экзаменатор. Проверь ответы кандидата на тест обучения.
+Для choice-вопросов сверяй выбранный ответ с correct. Для text-вопросов оценивай смысловое совпадение с expected.
 Каждому вопросу дай score от 0 до max баллов (max указан в points), verdict ("correct"|"partial"|"wrong"), краткое объяснение, что было правильно (what_was_right) и что не хватает (what_was_wrong).
 
 ВОПРОСЫ:
@@ -105,14 +98,17 @@ ${JSON.stringify(aiBatch)}
 Верни СТРОГО JSON без markdown:
 {"items":[{"id":string,"score":number,"verdict":"correct|partial|wrong","explanation":string,"what_was_right":string,"what_was_wrong":string}]}`;
     try {
-      const r = await callProTalk({
+      const r = await callProTalkWithRetry({
         messages: [
           { role: "system", content: "Ты — экзаменатор. Отвечай строго JSON." },
           { role: "user", content: prompt },
         ],
-        chatId, socialId, timeoutMs: 180_000,
+        chatId, socialId, timeoutMs: 180_000, attempts: 3,
+        validate: (text) => {
+          const parsed = tryParseJson<any>(text);
+          return parsed?.items && Array.isArray(parsed.items) ? { ok: true } : { ok: false, code: "bad_training_json" };
+        },
       });
-      aiText = r.text;
       aiObj = tryParseJson<any>(r.text);
       if (!aiObj) {
         const objs = extractJsonObjects<any>(r.text);
@@ -121,6 +117,7 @@ ${JSON.stringify(aiBatch)}
       }
     } catch (e) {
       console.error("[ai-grade-training-quiz] LLM call failed", (e as Error).message);
+      return jsonResponse({ error: "protalk_failed" }, 502);
     }
   }
 

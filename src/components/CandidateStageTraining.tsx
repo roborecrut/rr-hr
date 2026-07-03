@@ -51,6 +51,7 @@ export default function CandidateStageTraining({
   const [lastResult, setLastResult] = useState<{ score: number; passed: boolean; per_question: any[] } | null>(null);
   const [candidateSummary, setCandidateSummary] = useState<any>(null);
   const [pausedOpen, setPausedOpen] = useState(false);
+  const [interviewGate, setInterviewGate] = useState<null | { avg: number | null; pass: number }>(null);
   // Лимиты RR §2: блокировка обучения, если у работодателя нет свободных
   // лимитов на обучение (и ещё не списано по этому кандидату).
   const [trainingLimitBlocked, setTrainingLimitBlocked] = useState<null | {
@@ -96,6 +97,33 @@ export default function CandidateStageTraining({
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Strict gate: обучение доступно только если пройдены все 3 этапа
+      // интервью и средний балл >= проходного по текущей вакансии.
+      try {
+        const [{ data: scores }, { data: project }] = await Promise.all([
+          (supabase as any).from("candidate_scores")
+            .select("resume_score,checklist_score,situations_score")
+            .eq("candidate_id", candidateId).maybeSingle(),
+          (supabase as any).from("projects")
+            .select("interview_pass_score")
+            .eq("id", projectId).maybeSingle(),
+        ]);
+        const pass = Number((project as any)?.interview_pass_score ?? 75);
+        const vals = [
+          Number((scores as any)?.resume_score),
+          Number((scores as any)?.checklist_score),
+          Number((scores as any)?.situations_score),
+        ].filter((x) => Number.isFinite(x) && x > 0);
+        const avg = vals.length === 3 ? Math.round((vals.reduce((a, b) => a + b, 0) / 3) * 100) / 100 : null;
+        if (!cancelled && (vals.length !== 3 || avg == null || avg < pass)) {
+          setInterviewGate({ avg, pass });
+          setLoading(false);
+          return;
+        }
+      } catch { /* если гейт не прочитан — блокируем безопасно */
+        if (!cancelled) { setInterviewGate({ avg: null, pass: 75 }); setLoading(false); }
+        return;
+      }
       // Лимиты RR — единоразовая проверка при входе в систему обучения.
       try {
         const { data: limit } = await (supabase as any).rpc("project_limit_status", {
@@ -119,7 +147,7 @@ export default function CandidateStageTraining({
       setActive(firstOpen);
     })();
     return () => { cancelled = true; };
-  }, [candidateId]);
+  }, [candidateId, projectId]);
 
   // Load material + questions for active stage
   useEffect(() => {
@@ -260,6 +288,19 @@ export default function CandidateStageTraining({
 
   if (trainingLimitBlocked) {
     return <LimitExhaustedOverlay kind="training" employer={trainingLimitBlocked} />;
+  }
+
+  if (interviewGate) {
+    return (
+      <Reveal direction="scale" className="bg-[#1E4468]/30 border border-amber-500/30 rounded-3xl p-10 text-center space-y-3">
+        <Lock className="w-10 h-10 text-[#E7C768] mx-auto" />
+        <h2 className="text-lg font-bold text-white">Курс обучения пока закрыт</h2>
+        <p className="text-xs text-slate-300 max-w-md mx-auto leading-relaxed">
+          Доступ откроется только после всех 3 этапов интервью и среднего балла не ниже {interviewGate.pass}/100.
+          {interviewGate.avg != null ? ` Сейчас средний балл: ${interviewGate.avg}/100.` : " Сейчас пройдены не все этапы интервью."}
+        </p>
+      </Reveal>
+    );
   }
 
   return (
