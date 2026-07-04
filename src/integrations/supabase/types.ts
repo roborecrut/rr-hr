@@ -712,6 +712,72 @@ export type Database = {
           },
         ]
       }
+      candidate_training_attempts: {
+        Row: {
+          answers: Json
+          attempt_no: number
+          candidate_id: string
+          created_at: string
+          feedback: Json
+          id: string
+          pass_score: number
+          passed: boolean
+          project_id: string
+          protalk_chat_id: string | null
+          protalk_social_id: string | null
+          score: number
+          stage: string
+          total_score: number
+        }
+        Insert: {
+          answers?: Json
+          attempt_no: number
+          candidate_id: string
+          created_at?: string
+          feedback?: Json
+          id?: string
+          pass_score?: number
+          passed?: boolean
+          project_id: string
+          protalk_chat_id?: string | null
+          protalk_social_id?: string | null
+          score?: number
+          stage: string
+          total_score?: number
+        }
+        Update: {
+          answers?: Json
+          attempt_no?: number
+          candidate_id?: string
+          created_at?: string
+          feedback?: Json
+          id?: string
+          pass_score?: number
+          passed?: boolean
+          project_id?: string
+          protalk_chat_id?: string | null
+          protalk_social_id?: string | null
+          score?: number
+          stage?: string
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_training_attempts_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_training_attempts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_training_progress: {
         Row: {
           answers: Json | null
