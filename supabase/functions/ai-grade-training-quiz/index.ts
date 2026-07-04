@@ -177,6 +177,25 @@ ${JSON.stringify(aiBatch)}
     });
   }
 
+  try {
+    await admin.from("candidate_training_attempts").insert({
+      candidate_id: candidateId,
+      project_id: body.project_id,
+      stage: body.stage,
+      attempt_no: attempts,
+      score: total,
+      total_score: totalMax,
+      pass_score: passScore,
+      passed,
+      answers: body.answers,
+      feedback: perQuestion,
+      protalk_chat_id: chatId,
+      protalk_social_id: socialId,
+    });
+  } catch (e) {
+    console.error("[ai-grade-training-quiz] attempt history insert failed", (e as Error).message);
+  }
+
   await logToDb({
     user_message: `grade training ${body.stage}`,
     bot_reply: `score ${total}/${totalMax} passed=${passed}`,
