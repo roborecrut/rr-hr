@@ -125,7 +125,7 @@ const subToStage = (s: string | undefined): Stage => {
   return "resume";
 };
 
-export default function CandidateInterview({ projectId, candidateId, onCompleted, subTab, onSubTabChange }: Props) {
+export default function CandidateInterview({ projectId, candidateId, onCompleted, subTab, onSubTabChange, onRefresh }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
   const [stage, _setStage] = useState<Stage>(subToStage(subTab));
