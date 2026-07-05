@@ -2438,6 +2438,10 @@ export default function CandidateFlow() {
                 candidateId={candidate.id}
                 subTab={interviewSubTab}
                 onSubTabChange={(s) => setInterviewSubTab(s)}
+                onRefresh={async () => {
+                  await reloadScores();
+                  await loadFlowState();
+                }}
                 onCompleted={(passed: boolean) => {
                   // Always pull the latest scores from the server before deciding
                   // what to show — passes the dashes-after-retake regression fix.
