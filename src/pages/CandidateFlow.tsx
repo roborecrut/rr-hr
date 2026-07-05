@@ -556,6 +556,17 @@ export default function CandidateFlow() {
     if (activeTab === "scoring") void reloadScores();
   }, [activeTab, reloadScores]);
 
+  // Force fresh DB read whenever the candidate lands on Итог, обучение, или
+  // сертификат — иначе гейт `interviewPassedStrict` может опираться на
+  // устаревший локальный state и не пустит на обучение сразу после сдачи
+  // ситуаций, требуя ручной F5. Также обновляем серверный flow_state.
+  useEffect(() => {
+    if (activeTab === "training" || activeTab === "certified" || activeTab === "interview") {
+      void reloadScores();
+      void loadFlowState();
+    }
+  }, [activeTab, reloadScores, loadFlowState]);
+
   // Re-fetch when the tab regains focus — covers the "interview done in
   // another tab / sub-flow, switched back to scoring" case.
   useEffect(() => {
