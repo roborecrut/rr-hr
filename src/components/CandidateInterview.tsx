@@ -82,6 +82,10 @@ type Props = {
   subTab?: string;
   /** Called when the internal stage changes so parent can sync URL. */
   onSubTabChange?: (sub: "resume" | "checklist" | "situations" | "overall") => void;
+  /** Called by the "Обновить балл" button on the Итог tab so parent can
+   *  re-hydrate candidate.scores + flow-state from the DB. Avoids waiting
+   *  for the Realtime subscription and eliminates the "надо F5" case. */
+  onRefresh?: () => void | Promise<void>;
 };
 
 // FN импортируется из единого конфига — используется только для multipart/FormData запросов.
