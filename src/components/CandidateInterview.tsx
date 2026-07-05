@@ -82,6 +82,10 @@ type Props = {
   subTab?: string;
   /** Called when the internal stage changes so parent can sync URL. */
   onSubTabChange?: (sub: "resume" | "checklist" | "situations" | "overall") => void;
+  /** Called by the "Обновить балл" button on the Итог tab so parent can
+   *  re-hydrate candidate.scores + flow-state from the DB. Avoids waiting
+   *  for the Realtime subscription and eliminates the "надо F5" case. */
+  onRefresh?: () => void | Promise<void>;
 };
 
 // FN импортируется из единого конфига — используется только для multipart/FormData запросов.
@@ -121,7 +125,7 @@ const subToStage = (s: string | undefined): Stage => {
   return "resume";
 };
 
-export default function CandidateInterview({ projectId, candidateId, onCompleted, subTab, onSubTabChange }: Props) {
+export default function CandidateInterview({ projectId, candidateId, onCompleted, subTab, onSubTabChange, onRefresh }: Props) {
   const { run: aiWaitRun } = useAIWait();
   const aiReady = useAIReady();
   const [stage, _setStage] = useState<Stage>(subToStage(subTab));
@@ -1114,12 +1118,37 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               <p className="text-sm text-slate-200">
                 Средний балл по {vals.length || 0} из 3 этапов. Проходной: <b>{passScore}</b>.
               </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await refetchCandidateScores();
+                    try { await Promise.resolve(onRefresh?.()); } catch { /* ignore */ }
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-2 rounded-xl inline-flex items-center gap-1"
+                  title="Подтянуть последние баллы из базы данных"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Обновить балл
+                </button>
+              </div>
               {vals.length < 3 ? (
                 <p className="text-amber-300 font-bold text-sm">
                   Пройдите все три этапа, чтобы открыть обучение.
                 </p>
               ) : passed ? (
-                <p className="text-emerald-300 font-bold">✅ Интервью пройдено — переходите к обучению!</p>
+                <div className="space-y-3">
+                  <p className="text-emerald-300 font-bold">✅ Интервью пройдено — доступ к обучению открыт!</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try { await Promise.resolve(onRefresh?.()); } catch { /* ignore */ }
+                      onCompleted?.(true, Number(avg));
+                    }}
+                    className="bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-sm px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow"
+                  >
+                    📚 Перейти к обучению
+                  </button>
+                </div>
               ) : (
                 <>
                   <p className="text-amber-300 font-bold">Нужен более высокий балл. Можно пересдать все этапы.</p>
