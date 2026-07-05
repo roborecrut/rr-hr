@@ -1118,12 +1118,37 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
               <p className="text-sm text-slate-200">
                 Средний балл по {vals.length || 0} из 3 этапов. Проходной: <b>{passScore}</b>.
               </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await refetchCandidateScores();
+                    try { await Promise.resolve(onRefresh?.()); } catch { /* ignore */ }
+                  }}
+                  className="bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold px-3 py-2 rounded-xl inline-flex items-center gap-1"
+                  title="Подтянуть последние баллы из базы данных"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Обновить балл
+                </button>
+              </div>
               {vals.length < 3 ? (
                 <p className="text-amber-300 font-bold text-sm">
                   Пройдите все три этапа, чтобы открыть обучение.
                 </p>
               ) : passed ? (
-                <p className="text-emerald-300 font-bold">✅ Интервью пройдено — переходите к обучению!</p>
+                <div className="space-y-3">
+                  <p className="text-emerald-300 font-bold">✅ Интервью пройдено — доступ к обучению открыт!</p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try { await Promise.resolve(onRefresh?.()); } catch { /* ignore */ }
+                      onCompleted?.(true, Number(avg));
+                    }}
+                    className="bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-sm px-5 py-2.5 rounded-xl inline-flex items-center gap-2 shadow"
+                  >
+                    📚 Перейти к обучению
+                  </button>
+                </div>
               ) : (
                 <>
                   <p className="text-amber-300 font-bold">Нужен более высокий балл. Можно пересдать все этапы.</p>
