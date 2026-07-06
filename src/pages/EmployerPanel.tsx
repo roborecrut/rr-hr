@@ -1774,10 +1774,17 @@ export default function EmployerPanel() {
       setSpendDialog({
         kind: "landing",
         projectId: newDraftId,
-        onConfirmed: async () => {
+        onConfirmed: async (_pid, result) => {
           setSpendDialog(null);
           setShowAddNewVacancy(true);
           await fetchBillingState();
+          if (result?.already) {
+            addAuditEvent("info", "ИИ-Лендинг: оплата уже была", "Повторное списание не выполнено");
+          } else if (result?.used_credit) {
+            addAuditEvent("success", "Списан 1 лимит «ИИ-Лендинг вакансии»", `Осталось: ${result.left ?? "?"} шт`);
+          } else if (result?.amount) {
+            addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Лендинг вакансии");
+          }
           try {
             const { aiRestart } = await import("@/lib/aiClient");
             aiRestart(employerId, { force: true }).catch(() => {});
