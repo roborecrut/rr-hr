@@ -213,6 +213,11 @@ Deno.serve(async (req) => {
     }
   }
   const candPublicId = await resolveCandidatePublicId(candIdForChat);
+  // Employer flow (company/vacancy/training/etc. uploads) — resolve stable
+  // employers.public_id so ProTalk uses `100000+N` chat_id вместо хэша UUID.
+  const empPidForChat = (!isDemo && !candIdForChat && user?.id)
+    ? await resolveEmployerPublicId({ userId: user.id })
+    : undefined;
 
   let sourceUrl = body.file_url || "";
   if (body.bucket && body.file_path) {
@@ -234,12 +239,12 @@ Deno.serve(async (req) => {
     ? buildChatId({ demoUserId: body.demo_user_id })
     : (candIdForChat
         ? buildChatId({ candidatePublicId: candPublicId, candidateId: candIdForChat })
-        : buildChatId({ userId: user?.id }));
+        : buildChatId({ userId: user?.id, employerPublicId: empPidForChat }));
   const socialId = isDemo
     ? buildSocialId({ demo_user_id: body.demo_user_id })
     : (candIdForChat
         ? buildSocialId({ candidate_public_id: candPublicId, candidate_id: candIdForChat })
-        : buildSocialId({ user_id: user?.id }));
+        : buildSocialId({ user_id: user?.id, employer_public_id: empPidForChat }));
   const userMsg = `${PROMPTS[body.entity]}${body.prompt_hint ? "\n\nКонтекст: " + body.prompt_hint : ""}\n\nИсточник: ${sourceUrl}${body.filename ? `\nИмя файла: ${body.filename}` : ""}\n\nВерни только готовый Markdown-текст без обёрток.`;
 
   // Регистрируем ai_jobs только для распознавания РЕЗЮМЕ кандидата —
