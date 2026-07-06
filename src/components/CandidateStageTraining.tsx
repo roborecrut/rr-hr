@@ -224,21 +224,9 @@ export default function CandidateStageTraining({
         },
       });
       if (!r) return;
-      // Списание лимита у работодателя — только после получения первой оценки от ИИ
-      // по первому профессиональному тесту. RPC spend_pack идемпотентен по idem_key,
-      // повторные тесты ничего не списывают.
-      if (active === "professional") {
-        try {
-          const { error: spErr } = await supabase.rpc("spend_pack", { _candidate: candidateId, _kind: "training" });
-          if (spErr && isVacancyPausedError(spErr)) {
-            setPausedOpen(true);
-            return;
-          }
-        } catch (e) {
-          if (isVacancyPausedError(e)) { setPausedOpen(true); return; }
-          console.warn("spend_pack(training) failed", e);
-        }
-      }
+      // Списание лимита обучения выполняется ТОЛЬКО на сервере в
+      // ai-check-stage-answers (RPC charge_project_limit) при stage=professional.
+      // Клиентского spend_pack здесь быть не должно — иначе двойное списание.
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
       // Refresh candidate-facing summary from DB (saved by edge function).
       try {

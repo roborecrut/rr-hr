@@ -3254,6 +3254,14 @@ export type Database = {
         Args: { _qty_int: number; _qty_train: number }
         Returns: Json
       }
+      reallocate_project_limits: {
+        Args: {
+          _new_interview_limit: number
+          _new_training_limit: number
+          _project: string
+        }
+        Returns: Json
+      }
       reap_stale_ai_job: { Args: { _job_id: string }; Returns: undefined }
       rl_hit: {
         Args: { _key: string; _limit: number; _window_sec: number }

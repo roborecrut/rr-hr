@@ -10,6 +10,7 @@ import Mascot from "../components/Mascot";
 import EmployerAIAssistant from "../components/EmployerAIAssistant";
 import OnboardingHost from "../components/OnboardingHost";
 import HiringCalculator from "../components/HiringCalculator";
+import VacancyLimitAllocator from "../components/VacancyLimitAllocator";
 import TrainingWizard from "../components/TrainingWizard";
 import TrainingList from "../components/TrainingList";
 import InterviewList from "../components/InterviewList";
@@ -4385,7 +4386,14 @@ export default function EmployerPanel() {
                   </div>
                 </div>
               </div>
-                  {/* 2. КАЛЬКУЛЯТОР ВЫГОДЫ — после баланса */}
+                  {/* 2. РАСПРЕДЕЛЕНИЕ ЛИМИТОВ ПО ВАКАНСИЯМ — перенесено сюда из редактора интервью */}
+                  <VacancyLimitAllocator
+                    projects={projects}
+                    interviewPool={interviewCredits}
+                    trainingPool={trainingCredits}
+                    onSaved={async () => { await Promise.all([fetchBillingState(), fetchData()]); }}
+                  />
+                  {/* 3. КАЛЬКУЛЯТОР ВЫГОДЫ — под аллокатором */}
                   <HiringCalculator />
                 </TabsContent>
 
