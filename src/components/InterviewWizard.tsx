@@ -281,6 +281,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               project_id: projectId,
               request_id: requestId,
               wishes: wishes.resume || undefined,
+              employer_public_id: employerPublicId || undefined,
             });
             diagLog("resume_criteria_generate", "invoke_success", {
               request_id: requestId,
@@ -344,6 +345,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               project_id: projectId,
               request_id: requestId,
               wishes: wishes.checklist || undefined,
+              employer_public_id: employerPublicId || undefined,
             });
             let finalStatus: string = resp?.status || "";
             if (resp?.job_id && !resp?.terminal) {
@@ -386,6 +388,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
               project_id: projectId,
               request_id: requestId,
               wishes: wishes.situations || undefined,
+              employer_public_id: employerPublicId || undefined,
             });
             let finalStatus: string = resp?.status || "";
             if (resp?.job_id && !resp?.terminal) {

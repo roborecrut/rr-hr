@@ -41,15 +41,19 @@ import {
 const KIND = "checklist";
 const JOB_TYPE = "interview_checklist";
 
-function buildChoicePrompt(ctx: { role: string; company: string; vacancy: string; products: string; wishes: string }): string {
+type Ctx = { role: string; company: string; vacancy: string; products: string; wishes: string; companyBlock: string; vacancyBlock: string };
+
+function buildChoicePrompt(ctx: Ctx): string {
   return `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
 
 Составь РОВНО 10 проверочных вопросов с выбором одного правильного ответа для собеседования на вакансию.
 ${ctx.wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${ctx.wishes}\n` : ""}
 Должность: ${ctx.role}
 Компания: ${ctx.company}
-Описание вакансии: ${ctx.vacancy}
-Продукты: ${ctx.products}
+${ctx.companyBlock ? `\n=== О КОМПАНИИ ===\n${ctx.companyBlock}\n` : ""}
+=== О ВАКАНСИИ ===
+${ctx.vacancyBlock}
+${ctx.products ? `\nПродукты/услуги:\n${ctx.products}` : ""}
 
 Формат — JSON-массив РОВНО из 10 элементов, без markdown, без обёрток:
 [{"id":"c1","type":"choice","question":string,"options":[string,string,string,string],"correct":string}, ...]
@@ -62,15 +66,17 @@ ${ctx.wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обяз
 - проверяй профессиональные знания и реальный опыт.`;
 }
 
-function buildTextPrompt(ctx: { role: string; company: string; vacancy: string; products: string; wishes: string }): string {
+function buildTextPrompt(ctx: Ctx): string {
   return `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
 
 Составь РОВНО 10 открытых вопросов (свободный текстовый ответ) для собеседования на вакансию.
 ${ctx.wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязательно):\n${ctx.wishes}\n` : ""}
 Должность: ${ctx.role}
 Компания: ${ctx.company}
-Описание вакансии: ${ctx.vacancy}
-Продукты: ${ctx.products}
+${ctx.companyBlock ? `\n=== О КОМПАНИИ ===\n${ctx.companyBlock}\n` : ""}
+=== О ВАКАНСИИ ===
+${ctx.vacancyBlock}
+${ctx.products ? `\nПродукты/услуги:\n${ctx.products}` : ""}
 
 Формат — JSON-массив РОВНО из 10 элементов, без markdown, без обёрток:
 [{"id":"t1","type":"text","question":string,"expected_answer":string}, ...]
@@ -141,6 +147,7 @@ Deno.serve(async (req) => {
     request_id?: string;
     force_new_generation?: boolean;
     wishes?: string;
+    employer_public_id?: string | number;
   };
   if (!body?.project_id) return jsonResponse({ error: "bad_body" }, 400);
   const requestId = (body.request_id || "").trim() || `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -153,34 +160,57 @@ Deno.serve(async (req) => {
 
   const projRes = await admin
     .from("projects")
-    .select("role_name,vacancy_text,company_text,custom_wiki,company_id")
+    .select("role_name,vacancy_text,company_text,custom_wiki,motivation_text,motivation_text_detail,tasks_activity_text,training_prof_text,salary_terms,schedule_terms,company_id")
     .eq("id", body.project_id)
     .maybeSingle();
   if (projRes.error) return jsonResponse({ error: "project_load_failed" }, 500);
   if (!projRes.data) return jsonResponse({ error: "no_project" }, 404);
   const proj = projRes.data;
-  let companyName = "", productsText = "";
+  let companyName = "", productsText = "", companyBlock = "";
   if ((proj as any).company_id) {
     const { data: co } = await admin
-      .from("companies").select("name,description_text,products_text").eq("id", (proj as any).company_id).maybeSingle();
+      .from("companies").select("name,description_text,products_text,mission_text,about_text,industry").eq("id", (proj as any).company_id).maybeSingle();
     companyName = (co as any)?.name || "";
     productsText = (co as any)?.products_text || "";
+    const c: any = co || {};
+    companyBlock = [
+      c.industry ? `Отрасль: ${c.industry}` : "",
+      c.description_text ? `О компании:\n${c.description_text}` : "",
+      c.mission_text ? `Миссия:\n${c.mission_text}` : "",
+      c.about_text ? `Дополнительно:\n${c.about_text}` : "",
+    ].filter(Boolean).join("\n\n");
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
+  const empPid =
+    (body.employer_public_id != null ? String(body.employer_public_id) : undefined) ||
+    (await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id }));
 
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
   // Single stable ProTalk dialog per employer — все генерации в одном чате.
   const chatId = buildChatId({ employerPublicId: empPid, userId: user?.id });
 
   const wishes = (body.wishes || "").trim().slice(0, 1000);
-  const ctx = {
-    role: (proj as any).role_name || "",
+  const p: any = proj;
+  const vacancyBlock = [
+    p.vacancy_text ? `Описание вакансии:\n${p.vacancy_text}` : "",
+    p.tasks_activity_text ? `Задачи и обязанности:\n${p.tasks_activity_text}` : "",
+    p.motivation_text ? `Мотивация (кратко):\n${p.motivation_text}` : "",
+    p.motivation_text_detail ? `Мотивация (подробно):\n${p.motivation_text_detail}` : "",
+    p.salary_terms ? `Условия оплаты: ${p.salary_terms}` : "",
+    p.schedule_terms ? `График: ${p.schedule_terms}` : "",
+    p.custom_wiki ? `Внутренние знания:\n${p.custom_wiki}` : "",
+    p.training_prof_text ? `Материалы проф. обучения:\n${p.training_prof_text}` : "",
+    p.company_text ? `Контекст компании (в вакансии):\n${p.company_text}` : "",
+  ].filter(Boolean).join("\n\n");
+  const ctx: Ctx = {
+    role: p.role_name || "",
     company: companyName,
-    vacancy: (proj as any).vacancy_text || "",
+    vacancy: p.vacancy_text || "",
     products: productsText,
     wishes,
+    companyBlock,
+    vacancyBlock,
   };
 
   const idempotencyKey = `${JOB_TYPE}:${body.project_id}:${requestId}`;
