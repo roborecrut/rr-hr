@@ -284,7 +284,7 @@ export default function EmployerPanel() {
     projectId?: string;
     pickProjects?: JobProject[];
     excludeProjectIds?: Set<string>;
-    onConfirmed: (projectId: string) => void;
+    onConfirmed: (projectId: string, result: import("@/components/SpendConfirmDialog").SpendResult) => void;
     onCancel?: () => void;
   };
   const [spendDialog, setSpendDialog] = useState<SpendDialogState | null>(null);
