@@ -1502,13 +1502,15 @@ export default function EmployerPanel() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: emp } = await supabase
+      let employerQuery = supabase
         .from("employers")
-        .select("id, public_id, interview_credits, training_credits, landing_credits, interview_setup_credits, training_setup_credits, wallets(units_balance, id)")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .select("id, user_id, public_id, interview_credits, training_credits, landing_credits, interview_setup_credits, training_setup_credits, wallets(units_balance, id)");
+      employerQuery = isEmployerPublicIdCandidate(employerId)
+        ? employerQuery.eq("public_id", employerId)
+        : employerQuery.eq("user_id", user.id);
+      const { data: emp } = await employerQuery.maybeSingle();
       if (!emp) return;
-      if (isEmployerPublicIdCandidate((emp as any).public_id)) {
+      if ((emp as any).user_id === user.id && isEmployerPublicIdCandidate((emp as any).public_id)) {
         cacheEmployerPublicId((emp as any).public_id, user.id);
         // Не переадресуем, если пользователь сознательно открыл другой кабинет
         // по прямому URL (/empXXXXX/...) — например, админ просматривает чужой кабинет.
