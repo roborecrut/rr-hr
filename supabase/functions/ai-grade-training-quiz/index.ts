@@ -205,6 +205,21 @@ ${JSON.stringify(aiBatch)}
     function_call_params: JSON.stringify({ candidate_id: candidateId, project_id: body.project_id, stage: body.stage }),
   });
 
+  // Лимиты по вакансии: первое прохождение ПРОФЕССИОНАЛЬНОГО теста списывает
+  // 1 обучение с projects.training_used. RPC идемпотентна per candidate — при
+  // повторных сдачах и последующих этапах (product, system) не спишет ещё раз.
+  if (body.stage === "professional") {
+    try {
+      const { data: chargeRes, error: chargeErr } = await admin.rpc("charge_project_limit", {
+        _candidate: candidateId, _kind: "training",
+      });
+      if (chargeErr) console.error("[ai-grade-training-quiz] charge_project_limit failed", chargeErr.message);
+      else console.log("[ai-grade-training-quiz] charge_project_limit ok", JSON.stringify(chargeRes));
+    } catch (e) {
+      console.error("[ai-grade-training-quiz] charge_project_limit threw", (e as Error).message);
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Stage-level structured summaries (employer / candidate). Best-effort:
   // computed deterministically from per-question results — no extra AI call
