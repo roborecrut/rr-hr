@@ -9,6 +9,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   buildSocialId,
+  buildChatId,
   callProTalkWithRetry,
   getAdminClient,
   getUserFromAuthHeader,
@@ -88,10 +89,7 @@ Deno.serve(async (req) => {
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
   // Single stable ProTalk dialog per employer — все генерации в одном чате,
   // а не под видом нового пользователя при каждом запросе.
-  const chatId = (await import("../_shared/protalk.ts")).buildChatId({
-    employerPublicId: empPid,
-    userId: user?.id,
-  });
+  const chatId = buildChatId({ employerPublicId: empPid, userId: user?.id });
 
   const wishes = (body.wishes || "").trim().slice(0, 1000);
   const prompt = `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
