@@ -3624,14 +3624,24 @@ export default function EmployerPanel() {
                           const tLeft = Math.max(0, tL - tU);
                           return (
                             <div className="mt-2 grid grid-cols-2 gap-1.5">
-                              <div className={`p-1.5 rounded-lg border font-mono text-center ${iLeft > 0 ? "bg-sky-500/10 border-sky-500/25 text-sky-200" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/emp${employerId}/tariff`)}
+                                title="Перейти к тарифам и распределить лимиты"
+                                className={`cursor-pointer p-1.5 rounded-lg border font-mono text-center transition hover:brightness-125 hover:scale-[1.02] ${iLeft > 0 ? "bg-sky-500/10 border-sky-500/25 text-sky-200 hover:border-sky-400/60" : "bg-red-500/10 border-red-500/30 text-red-300 hover:border-red-400/70"}`}
+                              >
                                 <div className="text-[9px] uppercase leading-none">Лимит интервью</div>
                                 <div className="text-[11px] font-bold mt-0.5">{iLeft} / {iL}</div>
-                              </div>
-                              <div className={`p-1.5 rounded-lg border font-mono text-center ${tLeft > 0 ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-200" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/emp${employerId}/tariff`)}
+                                title="Перейти к тарифам и распределить лимиты"
+                                className={`cursor-pointer p-1.5 rounded-lg border font-mono text-center transition hover:brightness-125 hover:scale-[1.02] ${tLeft > 0 ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-200 hover:border-emerald-400/60" : "bg-red-500/10 border-red-500/30 text-red-300 hover:border-red-400/70"}`}
+                              >
                                 <div className="text-[9px] uppercase leading-none">Лимит обучений</div>
                                 <div className="text-[11px] font-bold mt-0.5">{tLeft} / {tL}</div>
-                              </div>
+                              </button>
                             </div>
                           );
                         })()}
