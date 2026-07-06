@@ -3401,6 +3401,15 @@ export type Database = {
             Args: { _item: string; _prefer?: string; _project: string }
             Returns: Json
           }
+      spend_fixed_for_employer: {
+        Args: {
+          _employer_public_id: string
+          _item: string
+          _prefer?: string
+          _project: string
+        }
+        Returns: Json
+      }
       spend_pack: { Args: { _candidate: string; _kind: string }; Returns: Json }
       spend_unit: { Args: { _candidate: string; _kind: string }; Returns: Json }
       start_ai_job_attempt: {
