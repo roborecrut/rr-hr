@@ -124,7 +124,7 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
     (async () => {
       const ids = projects.map(p => p.id);
       if (!ids.length) return;
-      const { data } = await (supabase as any).from("interview_blocks").select("project_id").in("project_id", ids);
+      const { data } = await (supabase as any).from("interview_systems").select("project_id").in("project_id", ids);
       const set = new Set<string>();
       (data || []).forEach((r: any) => set.add(r.project_id));
       setExistingSystems(set);
