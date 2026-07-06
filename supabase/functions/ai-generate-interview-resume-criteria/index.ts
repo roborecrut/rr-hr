@@ -9,6 +9,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   buildSocialId,
+  buildChatId,
   callProTalkWithRetry,
   getAdminClient,
   getUserFromAuthHeader,
@@ -86,6 +87,9 @@ Deno.serve(async (req) => {
   const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
 
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
+  // Single stable ProTalk dialog per employer — все генерации в одном чате,
+  // а не под видом нового пользователя при каждом запросе.
+  const chatId = buildChatId({ employerPublicId: empPid, userId: user?.id });
 
   const wishes = (body.wishes || "").trim().slice(0, 1000);
   const prompt = `Ты — HR-эксперт. Пиши строго на русском языке. Избегай англицизмов, кроме общеупотребительных профессиональных терминов и тех, что явно указал пользователь.
@@ -144,7 +148,7 @@ ${(body.source || "").toString().slice(0, 4000)}
         tryAttempt(async () => {
           const r = await callProTalkWithRetry({
             messages: [{ role: "user", content: prompt }],
-            chatIdSeed: `ai_${jobId}_p`,
+            chatId,
             socialId,
             timeoutMs: 120_000,
             attempts: 3,
@@ -153,7 +157,7 @@ ${(body.source || "").toString().slice(0, 4000)}
           await logToDb({
             user_message: `[prompt:${prompt.length}b]`,
             bot_reply: `[reply:${r.text.length}b]`,
-            channel_id: `ai_${jobId}_p`,
+            channel_id: chatId,
             user_social_id: socialId,
             channel_name: "ai-interview:resume-criteria",
             server_name: "ai-generate-interview-resume-criteria",
@@ -171,7 +175,7 @@ ${(body.source || "").toString().slice(0, 4000)}
           // (no extra RR is charged because this function does not charge).
           const r = await callProTalkWithRetry({
             messages: [{ role: "user", content: prompt }],
-            chatIdSeed: `ai_${jobId}_fb`,
+            chatId,
             socialId,
             timeoutMs: 120_000,
             attempts: 2,

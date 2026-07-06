@@ -3,6 +3,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   buildSocialId,
+  buildChatId,
   callProTalkWithRetry,
   getAdminClient,
   getUserFromAuthHeader,
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
   const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
 
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
+  const chatId = buildChatId({ employerPublicId: empPid, userId: user?.id });
 
   const SCHEMA = `JSON-массив РОВНО из 3 элементов: {"id":"s1"|"s2"|"s3","title":string,"brief":string,"criteria":string}
 - title — короткая тема (3-6 слов)
@@ -119,7 +121,7 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
         tryAttempt(async () => {
           const r = await callProTalkWithRetry({
             messages: [{ role: "user", content: prompt }],
-            chatIdSeed: `ai_${jobId}_p`,
+            chatId,
             socialId,
             timeoutMs: 120_000,
             attempts: 3,
@@ -130,7 +132,7 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
           await logToDb({
             user_message: `[prompt:${prompt.length}b]`,
             bot_reply: `[reply:${r.text.length}b:${parsed.length}s]`,
-            channel_id: `ai_${jobId}_p`,
+            channel_id: chatId,
             user_social_id: socialId,
             channel_name: "ai-interview:situations",
             server_name: "ai-generate-interview-situations",
@@ -145,7 +147,7 @@ ${wishes ? `\nПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ (учти обязат
         tryAttempt(async () => {
           const r = await callProTalkWithRetry({
             messages: [{ role: "user", content: prompt }],
-            chatIdSeed: `ai_${jobId}_fb`,
+            chatId,
             socialId,
             timeoutMs: 120_000,
             attempts: 2,

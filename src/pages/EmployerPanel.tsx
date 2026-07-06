@@ -808,7 +808,7 @@ export default function EmployerPanel() {
       setShowAddCompany(true);
       try {
         const { aiRestart } = await import("@/lib/aiClient");
-        aiRestart(employerId).catch(() => {});
+        aiRestart(employerId, { force: true }).catch(() => {});
       } catch {}
     } catch (err: any) {
       console.error(err);
@@ -877,7 +877,7 @@ export default function EmployerPanel() {
     setShowAddCompany(true);
     try {
       const { aiRestart } = await import("@/lib/aiClient");
-      aiRestart(employerId).catch(() => {});
+      aiRestart(employerId, { force: true }).catch(() => {});
     } catch {}
     setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
   };
@@ -1780,7 +1780,7 @@ export default function EmployerPanel() {
           await fetchBillingState();
           try {
             const { aiRestart } = await import("@/lib/aiClient");
-            aiRestart(employerId).catch(() => {});
+            aiRestart(employerId, { force: true }).catch(() => {});
           } catch {}
         },
         onCancel: async () => {
@@ -3671,7 +3671,7 @@ export default function EmployerPanel() {
                               setEditingProject(proj);
                               try {
                                 const { aiRestart } = await import("@/lib/aiClient");
-                                aiRestart(employerId).catch(() => {});
+                                aiRestart(employerId, { force: true }).catch(() => {});
                               } catch {}
                             }}
                             className="cursor-pointer flex-1 bg-[#E7C768]/10 hover:bg-[#E7C768]/20 text-[#E7C768] text-[10px] font-bold py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 border border-[#E7C768]/25"
@@ -4986,7 +4986,7 @@ export default function EmployerPanel() {
                     setInterviewView({ mode: "edit", projectId });
                     try {
                       const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      aiRestart(employerId, { force: true }).catch(() => {});
                     } catch {}
                   }}
                   onCreate={async () => {
@@ -5013,7 +5013,7 @@ export default function EmployerPanel() {
                         await fetchBillingState();
                         try {
                           const { aiRestart } = await import("@/lib/aiClient");
-                          aiRestart(employerId).catch(() => {});
+                          aiRestart(employerId, { force: true }).catch(() => {});
                         } catch {}
                       },
                       onCancel: () => setSpendDialog(null),
@@ -5046,7 +5046,7 @@ export default function EmployerPanel() {
                     setTrainingView({ mode: "edit", projectId });
                     try {
                       const { aiRestart } = await import("@/lib/aiClient");
-                      aiRestart(employerId).catch(() => {});
+                      aiRestart(employerId, { force: true }).catch(() => {});
                     } catch {}
                   }}
                   onCreate={async () => {
@@ -5071,7 +5071,7 @@ export default function EmployerPanel() {
                         await fetchBillingState();
                         try {
                           const { aiRestart } = await import("@/lib/aiClient");
-                          aiRestart(employerId).catch(() => {});
+                          aiRestart(employerId, { force: true }).catch(() => {});
                         } catch {}
                       },
                       onCancel: () => setSpendDialog(null),
