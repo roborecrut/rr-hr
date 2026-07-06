@@ -2,7 +2,7 @@
 // Asks ProTalk to read it and return a clean markdown summary (≤10k chars).
 // On success deletes the source file from storage to avoid wasting space.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveCandidatePublicId } from "../_shared/protalk.ts";
+import { callProTalk, buildChatId, buildSocialId, getAdminClient, getUserFromAuthHeader, logToDb, resolveCandidatePublicId, resolveEmployerPublicId } from "../_shared/protalk.ts";
 import { requireEmployerJwt, getEmployerIdForUser, assertProjectOwner } from "../_shared/auth.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createOrReuseAiJob, startPrimaryAttempt, finishAttempt, markJobStatus } from "../_shared/ai-jobs.ts";
