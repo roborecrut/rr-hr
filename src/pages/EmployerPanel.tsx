@@ -4412,10 +4412,24 @@ export default function EmployerPanel() {
                   <div className="bg-[#1E4468]/85 border border-[#E7C768]/30 rounded-3xl p-6 shadow-xl">
                     <form onSubmit={handleTopupBalance} className="space-y-4">
                       <div>
-                        <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
+                         <h3 className="font-bold text-sm text-[#E7C768] flex items-center gap-1.5 uppercase tracking-wider font-mono text-[11px]">
                           💵 Пополнение баланса RR за рубли
                         </h3>
                         <p className="text-xs text-slate-300 mt-1">Курс <strong className="text-white">1 ₽ = 1 RR</strong>. Минимальный платёж 100 ₽.</p>
+                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                          <div className="rounded-xl border border-white/15 bg-gradient-to-br from-[#17344F]/60 to-[#265582]/40 px-3 py-2">
+                            <div className="text-[10px] uppercase tracking-wider text-slate-300">Сейчас на балансе</div>
+                            <div className="text-lg font-extrabold font-mono text-white">{Number(balance || 0).toLocaleString("ru-RU")} <span className="text-[#E7C768] text-xs">RR</span></div>
+                          </div>
+                          <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2">
+                            <div className="text-[10px] uppercase tracking-wider text-emerald-200">Будет начислено</div>
+                            <div className="text-lg font-extrabold font-mono text-emerald-300">+{Number(topupAmountRub || 0).toLocaleString("ru-RU")} <span className="text-[10px]">RR</span></div>
+                          </div>
+                          <div className="rounded-xl border border-[#E7C768]/40 bg-[#E7C768]/10 px-3 py-2">
+                            <div className="text-[10px] uppercase tracking-wider text-[#E7C768]">Станет после оплаты</div>
+                            <div className="text-lg font-extrabold font-mono text-[#E7C768]">{(Number(balance || 0) + Number(topupAmountRub || 0)).toLocaleString("ru-RU")} <span className="text-xs">RR</span></div>
+                          </div>
+                        </div>
                       </div>
                       {topupError && (
                         <div className="bg-red-950/40 border border-red-500/35 text-red-200 rounded-xl p-3 text-xs">
