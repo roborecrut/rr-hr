@@ -335,7 +335,31 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       } else if (kind === "checklist") {
         const r = await aiWaitRun({
           title: "Генерация чек-листа интервью",
-          task: () => callEdge("ai-generate-interview-checklist", { project_id: projectId, wishes: wishes.checklist || undefined }),
+          task: async () => {
+            const requestId =
+              (typeof crypto !== "undefined" && (crypto as any).randomUUID)
+                ? (crypto as any).randomUUID()
+                : `rq-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            const resp = await callEdge("ai-generate-interview-checklist", {
+              project_id: projectId,
+              request_id: requestId,
+              wishes: wishes.checklist || undefined,
+            });
+            let finalStatus: string = resp?.status || "";
+            if (resp?.job_id && !resp?.terminal) {
+              const row = await pollEmployerJobUntilTerminal({
+                jobId: resp.job_id,
+                maxMs: 6 * 60_000,
+              });
+              finalStatus = row.status;
+            }
+            if (!isSuccess(finalStatus)) {
+              const err: any = new Error(finalStatus || "ai_failed");
+              err.safeCode = finalStatus || "ai_failed";
+              throw err;
+            }
+            return { ok: true };
+          },
           fallback: {
             // Пилот резерва завершён — кнопка доступна всем работодателям
             // при технических сбоях основной нейросети.
@@ -353,7 +377,31 @@ export default function InterviewWizard({ projects, refreshProjects, addAuditEve
       } else {
         const r = await aiWaitRun({
           title: "Генерация ролевых ситуаций",
-          task: () => callEdge("ai-generate-interview-situations", { project_id: projectId, wishes: wishes.situations || undefined }),
+          task: async () => {
+            const requestId =
+              (typeof crypto !== "undefined" && (crypto as any).randomUUID)
+                ? (crypto as any).randomUUID()
+                : `rq-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            const resp = await callEdge("ai-generate-interview-situations", {
+              project_id: projectId,
+              request_id: requestId,
+              wishes: wishes.situations || undefined,
+            });
+            let finalStatus: string = resp?.status || "";
+            if (resp?.job_id && !resp?.terminal) {
+              const row = await pollEmployerJobUntilTerminal({
+                jobId: resp.job_id,
+                maxMs: 6 * 60_000,
+              });
+              finalStatus = row.status;
+            }
+            if (!isSuccess(finalStatus)) {
+              const err: any = new Error(finalStatus || "ai_failed");
+              err.safeCode = finalStatus || "ai_failed";
+              throw err;
+            }
+            return { ok: true };
+          },
         });
         if (!r) return;
         const { data } = await (supabase as any).from("interview_blocks").select("payload").eq("project_id", projectId).eq("kind","situations").maybeSingle();
