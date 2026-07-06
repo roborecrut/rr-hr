@@ -132,7 +132,7 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
       </div>
 
       <div className="grid grid-cols-2 gap-3 text-xs">
-        <div className={`rounded-2xl border p-3 ${overdrawI ? "bg-rose-500/15 border-rose-400/50" : "bg-black/25 border-white/10"}`}>
+        <div className={`rounded-2xl border p-3 ${overdrawI ? "bg-rose-500/15 border-rose-400/50" : "bg-gradient-to-br from-[#1E4468]/60 to-[#265582]/40 border-white/15"}`}>
           <div className="flex items-center gap-2 text-slate-300">
             <Users2 className="w-4 h-4 text-[#E7C768]"/>
             <span className="uppercase tracking-wider font-bold text-[10px]">Пакет интервью (осталось)</span>
@@ -143,7 +143,7 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
           </div>
           {overdrawI && <div className="text-[11px] text-rose-200 font-bold mt-1">Не хватает: понизьте лимит</div>}
         </div>
-        <div className={`rounded-2xl border p-3 ${overdrawT ? "bg-rose-500/15 border-rose-400/50" : "bg-black/25 border-white/10"}`}>
+        <div className={`rounded-2xl border p-3 ${overdrawT ? "bg-rose-500/15 border-rose-400/50" : "bg-gradient-to-br from-[#1E4468]/60 to-[#265582]/40 border-white/15"}`}>
           <div className="flex items-center gap-2 text-slate-300">
             <GraduationCap className="w-4 h-4 text-[#E7C768]"/>
             <span className="uppercase tracking-wider font-bold text-[10px]">Пакет обучений (осталось)</span>
@@ -163,7 +163,7 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
           {rows.map(r => {
             const dirty = r.interview !== r.interviewSaved || r.training !== r.trainingSaved;
             return (
-              <div key={r.id} className="bg-black/25 border border-white/10 rounded-2xl p-4 space-y-3">
+              <div key={r.id} className="bg-gradient-to-br from-[#17344F]/55 to-[#265582]/40 border border-white/15 rounded-2xl p-4 space-y-3">
                 <div className="flex items-baseline gap-2 flex-wrap">
                   <div className="text-sm font-bold text-white">{r.label}</div>
                   <div className="text-[11px] text-slate-400">🏢 {r.companyName}</div>
@@ -218,7 +218,7 @@ function LimitField({ label, icon, value, used, onChange }: {
   label: string; icon: React.ReactNode; value: number; used: number; onChange: (v: number) => void;
 }) {
   return (
-    <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-2">
+    <div className="bg-gradient-to-br from-[#17344F]/45 to-[#265582]/30 border border-white/15 rounded-xl p-3 space-y-2">
       <div className="flex items-center gap-2">
         {icon}
         <div className="text-xs font-bold text-white">{label}</div>
@@ -232,7 +232,7 @@ function LimitField({ label, icon, value, used, onChange }: {
         <input
           type="number" min={used} max={100000} value={value}
           onChange={e => onChange(Number(e.target.value) || 0)}
-          className="flex-1 bg-black/40 text-white border border-white/10 rounded-lg px-2 py-2 text-sm font-bold text-center"
+          className="flex-1 bg-[#17344F]/60 text-white border border-white/15 rounded-lg px-2 py-2 text-sm font-bold text-center"
         />
         <button type="button" onClick={() => onChange(value + 1)}
           className="w-8 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white inline-flex items-center justify-center">

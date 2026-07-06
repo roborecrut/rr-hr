@@ -225,8 +225,9 @@ export default function CandidateStageTraining({
       });
       if (!r) return;
       // Списание лимита обучения выполняется ТОЛЬКО на сервере в
-      // ai-check-stage-answers (RPC charge_project_limit) при stage=professional.
-      // Клиентского spend_pack здесь быть не должно — иначе двойное списание.
+      // ai-grade-training-quiz (RPC charge_project_limit) при stage=professional.
+      // Идемпотентно по (candidate, kind): повторные сдачи и последующие этапы
+      // (product, system) не приводят к повторному списанию.
       setLastResult({ score: r.score, passed: r.passed, per_question: r.per_question });
       // Refresh candidate-facing summary from DB (saved by edge function).
       try {
