@@ -1253,6 +1253,12 @@ export default function EmployerPanel() {
             // legacy aliases kept for older code paths
             trainingProfText: p.training_prof_text || p.training_professional_text || undefined,
             trainingSystemText: p.training_system_text || p.training_systems_text || undefined,
+            // Лимиты по вакансии (собственный баланс проекта, отдельно от
+            // общего баланса тарифа). Списываются один раз на кандидата.
+            interviewLimit: Number(p.interview_limit || 0),
+            interviewUsed: Number(p.interview_used || 0),
+            trainingLimit: Number(p.training_limit || 0),
+            trainingUsed: Number(p.training_used || 0),
           })) as any,
         );
       }
@@ -3607,6 +3613,27 @@ export default function EmployerPanel() {
                             https://hr-rr.online/com{proj.companySlug || ""}/vac{(proj as any).slug || proj.id}/vacancy
                           </a>
                         </div>
+                        {/* Лимиты по этой вакансии (отдельно от общего баланса) */}
+                        {(() => {
+                          const iL = Number((proj as any).interviewLimit || 0);
+                          const iU = Number((proj as any).interviewUsed || 0);
+                          const tL = Number((proj as any).trainingLimit || 0);
+                          const tU = Number((proj as any).trainingUsed || 0);
+                          const iLeft = Math.max(0, iL - iU);
+                          const tLeft = Math.max(0, tL - tU);
+                          return (
+                            <div className="mt-2 grid grid-cols-2 gap-1.5">
+                              <div className={`p-1.5 rounded-lg border font-mono text-center ${iLeft > 0 ? "bg-sky-500/10 border-sky-500/25 text-sky-200" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
+                                <div className="text-[9px] uppercase leading-none">Лимит интервью</div>
+                                <div className="text-[11px] font-bold mt-0.5">{iLeft} / {iL}</div>
+                              </div>
+                              <div className={`p-1.5 rounded-lg border font-mono text-center ${tLeft > 0 ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-200" : "bg-red-500/10 border-red-500/30 text-red-300"}`}>
+                                <div className="text-[9px] uppercase leading-none">Лимит обучений</div>
+                                <div className="text-[11px] font-bold mt-0.5">{tLeft} / {tL}</div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Lower Actions */}
