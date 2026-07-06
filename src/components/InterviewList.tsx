@@ -29,10 +29,16 @@ export default function InterviewList({ projects, onOpen, onCreate }: Props) {
       if (firstLoad.current) setLoading(true);
       const ids = idsKey ? idsKey.split(",").filter(Boolean) : [];
       if (!ids.length) { setSummaries({}); setLoading(false); firstLoad.current = false; return; }
-      const { data } = await (supabase as any).from("interview_blocks").select("project_id,kind,payload").in("project_id", ids);
+      const [{ data: systems }, { data: blocks }] = await Promise.all([
+        (supabase as any).from("interview_systems").select("project_id").in("project_id", ids),
+        (supabase as any).from("interview_blocks").select("project_id,kind,payload").in("project_id", ids),
+      ]);
       if (cancelled) return;
       const map: Record<string, Summary> = {};
-      (data || []).forEach((b: any) => {
+      (systems || []).forEach((s: any) => {
+        if (s.project_id) map[s.project_id] ||= { project_id: s.project_id, blocks: { resume: false, checklist: false, situations: false } };
+      });
+      (blocks || []).forEach((b: any) => {
         const s = map[b.project_id] ||= { project_id: b.project_id, blocks: { resume: false, checklist: false, situations: false } };
         const p = b.payload || {};
         if (b.kind === "resume" && String(p.criteria_md || "").trim()) s.blocks.resume = true;
@@ -68,7 +74,7 @@ export default function InterviewList({ projects, onOpen, onCreate }: Props) {
         <div className="text-center text-xs text-slate-400 py-8">Загружаем системы…</div>
       ) : existing.length === 0 ? (
         <div className="bg-[#17344F]/40 border border-white/10 rounded-3xl p-10 text-center text-sm text-slate-300">
-          Пока не создано ни одной системы интервью. Нажмите «Создать систему интервью», выберите вакансию и сгенерируйте блоки.
+          Пока не создано ни одной системы интервью. Нажмите «Создать систему интервью» и выберите вакансию.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

@@ -21,11 +21,16 @@ const PHRASES = [
  */
 export const AIRestartGate: React.FC = () => {
   const visible = useAIRestartOverlayVisible();
-  // Одна фраза за визит — без мигающей ротации.
-  const phrase = React.useMemo(
-    () => PHRASES[Math.floor(Math.random() * PHRASES.length)],
-    [visible],
-  );
+  const [phraseIndex, setPhraseIndex] = React.useState(0);
+  React.useEffect(() => {
+    if (!visible) return;
+    setPhraseIndex(0);
+    const id = window.setInterval(() => {
+      setPhraseIndex((i) => (i + 1) % PHRASES.length);
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, [visible]);
+  const phrase = PHRASES[phraseIndex] || PHRASES[0];
   const typed = useTypewriter(visible ? phrase : "", 40);
 
   if (!visible) return null;
@@ -65,6 +70,15 @@ export const AIRestartGate: React.FC = () => {
 
         <div className="mt-4 text-center text-[11px] text-slate-300/80">
           Можно закрыть это окно — ИИ продолжит готовиться в фоне.
+        </div>
+
+        <div className="mt-3 flex justify-center gap-1.5" aria-hidden="true">
+          {PHRASES.map((_, i) => (
+            <span
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === phraseIndex ? "w-6 bg-[#E7C768]" : "w-1.5 bg-white/25"}`}
+            />
+          ))}
         </div>
 
         <div className="mt-3 flex justify-center">

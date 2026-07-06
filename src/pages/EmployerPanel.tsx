@@ -1411,7 +1411,7 @@ export default function EmployerPanel() {
     return () => { cancelled = true; };
   }, [employerId, path, navigate, activeTab, authReady, authUserId]);
 
-  // Onboarding (#7): hasTrainingSetup / hasInterviewSetup на основе training_blocks / interview_blocks
+  // Onboarding (#7): hasTrainingSetup / hasInterviewSetup на основе training_blocks / interview_systems
   // по всем вакансиям работодателя.
   useEffect(() => {
     let cancelled = false;
@@ -1423,7 +1423,7 @@ export default function EmployerPanel() {
       }
       const [tr, iv] = await Promise.all([
         (supabase as any).from("training_blocks").select("id").in("project_id", projIds).limit(1),
-        (supabase as any).from("interview_blocks").select("id").in("project_id", projIds).limit(1),
+        (supabase as any).from("interview_systems").select("id").in("project_id", projIds).limit(1),
       ]);
       if (cancelled) return;
       setHasTrainingSetup((((tr as any).data as any[]) || []).length > 0);
@@ -5004,7 +5004,7 @@ export default function EmployerPanel() {
                       const ids = projects.map(p => p.id);
                       if (ids.length) {
                         const { data } = await (supabase as any)
-                          .from("interview_blocks")
+                          .from("interview_systems")
                           .select("project_id")
                           .in("project_id", ids);
                         (data || []).forEach((r: any) => existing.add(r.project_id));
