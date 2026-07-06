@@ -1358,29 +1358,13 @@ export default function CandidateFlow() {
     }
   }, [candidate, project]);
 
-  // Списать 1 лимит интервью/обучения работодателю — идемпотентно.
-  const spendStagePack = async (kind: "interview" | "training") => {
-    try {
-      const pubId = (candidate as any)?.publicId || (candidate?.id || "").replace(/^candidate/, "");
-      if (!pubId) return;
-      const { data: cand } = await supabase
-        .from("candidates")
-        .select("id")
-        .eq("public_id", pubId)
-        .maybeSingle();
-      if (!cand?.id) return;
-      const { error } = await supabase.rpc("spend_pack", { _candidate: cand.id, _kind: kind });
-      if (error) console.warn(`spend_pack(${kind}) failed`, error.message);
-    } catch (e) {
-      console.warn(`spend_pack(${kind}) failed`, e);
-    }
-  };
-
-  // Stage 1 -> Stage 2 (Interviewing)
+  // Stage 1 -> Stage 2 (Interviewing).
+  // Списание лимита интервью выполняется ТОЛЬКО на сервере в ai-interview-screen-resume-v2
+  // (RPC charge_project_limit) после успешного сохранения оценки резюме —
+  // клиентского spend_pack здесь быть не должно, иначе будет двойное списание.
   const handleStartInterview = () => {
     setInterviewSubTab("resume");
     updateStageOnBackend("interview");
-    spendStagePack("interview");
   };
 
   const handleEvaluateResume = async () => {
