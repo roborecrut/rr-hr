@@ -1,6 +1,6 @@
 // Analyze a company description (text or document URL) via ProTalk and return strict JSON.
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
-import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb } from "../_shared/protalk.ts";
+import { callProTalk, tryParseJson, buildChatId, buildSocialId, getUserFromAuthHeader, logToDb, resolveEmployerPublicId } from "../_shared/protalk.ts";
 import { requireEmployerJwt, assertProjectOwner } from "../_shared/auth.ts";
 
 const SCHEMA = `Верни СТРОГО один JSON-объект без markdown с такими ключами и ограничениями длины (символы):
@@ -40,8 +40,11 @@ Deno.serve(async (req) => {
   }
 
   const user = await getUserFromAuthHeader(req.headers.get("Authorization"));
-  const chatId = buildChatId({ userId: user?.id, employerPublicId: body.employer_public_id });
-  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: body.employer_public_id });
+  // Всегда используем стабильный employers.public_id для ProTalk. Если клиент
+  // не передал employer_public_id — резолвим сами по user_id.
+  const empPid = body.employer_public_id || await resolveEmployerPublicId({ userId: user?.id });
+  const chatId = buildChatId({ userId: user?.id, employerPublicId: empPid });
+  const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
 
   const userMsg = body.file_url
     ? `Проанализируй документ компании по ссылке: ${body.file_url}\n\n${SCHEMA}`
