@@ -284,7 +284,7 @@ export default function EmployerPanel() {
     projectId?: string;
     pickProjects?: JobProject[];
     excludeProjectIds?: Set<string>;
-    onConfirmed: (projectId: string) => void;
+    onConfirmed: (projectId: string, result: import("@/components/SpendConfirmDialog").SpendResult) => void;
     onCancel?: () => void;
   };
   const [spendDialog, setSpendDialog] = useState<SpendDialogState | null>(null);
@@ -1774,10 +1774,17 @@ export default function EmployerPanel() {
       setSpendDialog({
         kind: "landing",
         projectId: newDraftId,
-        onConfirmed: async () => {
+        onConfirmed: async (_pid, result) => {
           setSpendDialog(null);
           setShowAddNewVacancy(true);
           await fetchBillingState();
+          if (result?.already) {
+            addAuditEvent("info", "ИИ-Лендинг: оплата уже была", "Повторное списание не выполнено");
+          } else if (result?.used_credit) {
+            addAuditEvent("success", "Списан 1 лимит «ИИ-Лендинг вакансии»", `Осталось: ${result.left ?? "?"} шт`);
+          } else if (result?.amount) {
+            addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Лендинг вакансии");
+          }
           try {
             const { aiRestart } = await import("@/lib/aiClient");
             aiRestart(employerId, { force: true }).catch(() => {});
@@ -5007,10 +5014,17 @@ export default function EmployerPanel() {
                       kind: "interview_setup",
                       pickProjects: projects,
                       excludeProjectIds: existing,
-                      onConfirmed: async (projectId) => {
+                      onConfirmed: async (projectId, result) => {
                         setSpendDialog(null);
-                        setInterviewView({ mode: "create", projectId });
                         await fetchBillingState();
+                        if (result?.already) {
+                          addAuditEvent("info", "ИИ-Система интервью: уже оплачена", "Повторное списание не выполнено");
+                        } else if (result?.used_credit) {
+                          addAuditEvent("success", "Списан 1 лимит «ИИ-Система интервью»", `Осталось: ${result.left ?? "?"} шт`);
+                        } else if (result?.amount) {
+                          addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Система интервью");
+                        }
+                        setInterviewView({ mode: "create", projectId });
                         try {
                           const { aiRestart } = await import("@/lib/aiClient");
                           aiRestart(employerId, { force: true }).catch(() => {});
@@ -5065,10 +5079,17 @@ export default function EmployerPanel() {
                       kind: "training_setup",
                       pickProjects: projects,
                       excludeProjectIds: existing,
-                      onConfirmed: async (projectId) => {
+                      onConfirmed: async (projectId, result) => {
                         setSpendDialog(null);
-                        setTrainingView({ mode: "create", projectId });
                         await fetchBillingState();
+                        if (result?.already) {
+                          addAuditEvent("info", "ИИ-Система обучения: уже оплачена", "Повторное списание не выполнено");
+                        } else if (result?.used_credit) {
+                          addAuditEvent("success", "Списан 1 лимит «ИИ-Система обучения»", `Осталось: ${result.left ?? "?"} шт`);
+                        } else if (result?.amount) {
+                          addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Система обучения");
+                        }
+                        setTrainingView({ mode: "create", projectId });
                         try {
                           const { aiRestart } = await import("@/lib/aiClient");
                           aiRestart(employerId, { force: true }).catch(() => {});
@@ -5120,7 +5141,7 @@ export default function EmployerPanel() {
               ? interviewSetupCredits
               : trainingSetupCredits
           }
-          onConfirmed={(pid) => spendDialog.onConfirmed(pid)}
+          onConfirmed={(pid, result) => spendDialog.onConfirmed(pid, result)}
           onClose={() => (spendDialog.onCancel ? spendDialog.onCancel() : setSpendDialog(null))}
           onGoToBilling={() => {
             setSpendDialog(null);
