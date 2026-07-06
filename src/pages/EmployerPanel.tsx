@@ -5131,6 +5131,7 @@ export default function EmployerPanel() {
           open
           kind={spendDialog.kind}
           projectId={spendDialog.projectId}
+          employerPublicId={employerId}
           pickProjects={spendDialog.pickProjects}
           excludeProjectIds={spendDialog.excludeProjectIds}
           balance={balance}

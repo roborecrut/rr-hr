@@ -20,6 +20,8 @@ type Props = {
   kind: SpendKind;
   /** Pre-known project (vacancy flow). When omitted, a picker is shown. */
   projectId?: string;
+  /** Current employer cabinet public id from /emp{id}; used to verify project ownership in billing RPC. */
+  employerPublicId?: string;
   /** Projects to choose from when projectId is not pre-known. */
   pickProjects?: JobProject[];
   /** Optional set of project ids that already have this system (will be filtered out from picker). */
@@ -45,7 +47,7 @@ export type SpendResult = {
 };
 
 export default function SpendConfirmDialog({
-  open, kind, projectId, pickProjects, excludeProjectIds,
+  open, kind, projectId, employerPublicId, pickProjects, excludeProjectIds,
   balance, credits, onConfirmed, onClose, onGoToBilling,
 }: Props) {
   const price = FIXED_PRICES[kind];
@@ -70,13 +72,19 @@ export default function SpendConfirmDialog({
     if (!effectiveProjectId) { setErr("Выберите вакансию"); return; }
     setBusy(true); setErr("");
     try {
-      const { data, error } = await supabase.rpc("spend_fixed" as any, { _project: effectiveProjectId, _item: kind, _prefer: prefer });
+      const rpcName = employerPublicId ? "spend_fixed_for_employer" : "spend_fixed";
+      const rpcArgs = employerPublicId
+        ? { _employer_public_id: employerPublicId, _project: effectiveProjectId, _item: kind, _prefer: prefer }
+        : { _project: effectiveProjectId, _item: kind, _prefer: prefer };
+      const { data, error } = await supabase.rpc(rpcName as any, rpcArgs as any);
       if (error) throw new Error(error.message || "Ошибка списания");
       onConfirmed(effectiveProjectId, (data as any) || { ok: true });
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (/insufficient_funds/.test(msg)) {
         setErr("Недостаточно RR на балансе. Пополните счёт.");
+      } else if (/project_employer_mismatch|bad_employer/.test(msg)) {
+        setErr("Вакансия не относится к текущему кабинету работодателя. Обновите страницу и попробуйте снова.");
       } else {
         setErr(msg || "Не удалось выполнить списание");
       }
