@@ -8,6 +8,7 @@
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import {
   buildSocialId,
+  buildChatId,
   callProTalkWithRetry,
   getAdminClient,
   getUserFromAuthHeader,
@@ -170,6 +171,8 @@ Deno.serve(async (req) => {
   const empPid = await resolveEmployerPublicId({ projectId: body.project_id, userId: user?.id });
 
   const socialId = buildSocialId({ user_id: user?.id, employer_public_id: empPid });
+  // Single stable ProTalk dialog per employer — все генерации в одном чате.
+  const chatId = buildChatId({ employerPublicId: empPid, userId: user?.id });
 
   const wishes = (body.wishes || "").trim().slice(0, 1000);
   const ctx = {
@@ -219,7 +222,7 @@ Deno.serve(async (req) => {
       try {
         const r = await callProTalkWithRetry({
           messages: [{ role: "user", content: promptText }],
-          chatIdSeed: `ai_${jobId}_${chatPrefix}_${label}`,
+          chatId,
           socialId,
           timeoutMs: 120_000,
           attempts,
@@ -230,7 +233,7 @@ Deno.serve(async (req) => {
         await logToDb({
           user_message: `[prompt:${promptText.length}b:${label}]`,
           bot_reply: `[reply:${r.text.length}b:${parsed.length}q]`,
-          channel_id: `ai_${jobId}_${chatPrefix}_${label}`,
+          channel_id: chatId,
           user_social_id: socialId,
           channel_name: `ai-interview:checklist:${label}`,
           server_name: "ai-generate-interview-checklist",
