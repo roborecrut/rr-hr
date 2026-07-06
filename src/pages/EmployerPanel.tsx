@@ -5079,10 +5079,17 @@ export default function EmployerPanel() {
                       kind: "training_setup",
                       pickProjects: projects,
                       excludeProjectIds: existing,
-                      onConfirmed: async (projectId) => {
+                      onConfirmed: async (projectId, result) => {
                         setSpendDialog(null);
-                        setTrainingView({ mode: "create", projectId });
                         await fetchBillingState();
+                        if (result?.already) {
+                          addAuditEvent("info", "ИИ-Система обучения: уже оплачена", "Повторное списание не выполнено");
+                        } else if (result?.used_credit) {
+                          addAuditEvent("success", "Списан 1 лимит «ИИ-Система обучения»", `Осталось: ${result.left ?? "?"} шт`);
+                        } else if (result?.amount) {
+                          addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Система обучения");
+                        }
+                        setTrainingView({ mode: "create", projectId });
                         try {
                           const { aiRestart } = await import("@/lib/aiClient");
                           aiRestart(employerId, { force: true }).catch(() => {});
