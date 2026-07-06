@@ -15,6 +15,11 @@ type SystemSummary = {
 };
 
 export default function TrainingList({ projects, onOpen, onCreate }: Props) {
+  const employerPublicId = (projects[0] as any)?.employerPublicId
+    || (typeof window !== "undefined" ? (window.location.pathname.match(/\/emp(\w+)/)?.[1] || "") : "");
+  const openTariff = () => {
+    if (employerPublicId) window.location.href = `/emp${employerPublicId}/tariff`;
+  };
   const [summaries, setSummaries] = useState<Record<string, SystemSummary>>({});
   const [loading, setLoading] = useState(true);
   // Stable key so we only re-fetch when the actual set of project IDs changes,
@@ -95,6 +100,29 @@ export default function TrainingList({ projects, onOpen, onCreate }: Props) {
                   <div className="text-sm font-bold text-white">{p.roleName || "(без названия)"}</div>
                   <div className="text-[11px] text-slate-400">🏢 {p.companyName || "—"}</div>
                 </div>
+                {(() => {
+                  const tLim = Number((p as any).trainingLimit || 0);
+                  const tUsed = Number((p as any).trainingUsed || 0);
+                  const tLeft = Math.max(0, tLim - tUsed);
+                  const empty = tLim === 0;
+                  const low = !empty && tLeft === 0;
+                  return (
+                    <button
+                      type="button"
+                      onClick={openTariff}
+                      title="Перейти к тарифам"
+                      className={`w-full text-left text-[11px] px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition hover:brightness-110 ${
+                        empty || low
+                          ? "bg-rose-500/15 border-rose-400/40 text-rose-100"
+                          : "bg-emerald-500/15 border-emerald-400/40 text-emerald-100"
+                      }`}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5"/>
+                      Лимит обучений:&nbsp;<b>{tLeft}</b>&nbsp;из&nbsp;<b>{tLim}</b>
+                      <span className="ml-auto opacity-70 text-[10px]">использовано {tUsed}</span>
+                    </button>
+                  );
+                })()}
                 <div className="flex gap-2 flex-wrap">
                   {stages.map(st => {
                     const cell = s.stages[st] || { material: false, test: false };
