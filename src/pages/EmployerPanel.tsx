@@ -5127,7 +5127,7 @@ export default function EmployerPanel() {
               ? interviewSetupCredits
               : trainingSetupCredits
           }
-          onConfirmed={(pid) => spendDialog.onConfirmed(pid)}
+          onConfirmed={(pid, result) => spendDialog.onConfirmed(pid, result)}
           onClose={() => (spendDialog.onCancel ? spendDialog.onCancel() : setSpendDialog(null))}
           onGoToBilling={() => {
             setSpendDialog(null);
