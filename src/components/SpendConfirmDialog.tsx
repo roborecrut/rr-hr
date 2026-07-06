@@ -26,12 +26,22 @@ type Props = {
   excludeProjectIds?: Set<string>;
   balance: number;
   credits: number;
-  /** Called after a successful spend (or already-charged idempotent hit). */
-  onConfirmed: (projectId: string) => void;
+  /** Called after a successful spend (or already-charged idempotent hit).
+   *  Receives the RPC result so the caller can show a precise audit line
+   *  ("списан 1 лимит", "списано 200 RR", "уже оплачено ранее"). */
+  onConfirmed: (projectId: string, result: SpendResult) => void;
   /** Called when user closes or cancels. */
   onClose: () => void;
   /** Open the billing/top-up screen. */
   onGoToBilling: () => void;
+};
+
+export type SpendResult = {
+  ok: true;
+  already?: boolean;
+  used_credit?: boolean;
+  amount?: number;
+  left?: number;
 };
 
 export default function SpendConfirmDialog({
@@ -60,9 +70,9 @@ export default function SpendConfirmDialog({
     if (!effectiveProjectId) { setErr("Выберите вакансию"); return; }
     setBusy(true); setErr("");
     try {
-      const { error } = await supabase.rpc("spend_fixed" as any, { _project: effectiveProjectId, _item: kind, _prefer: prefer });
+      const { data, error } = await supabase.rpc("spend_fixed" as any, { _project: effectiveProjectId, _item: kind, _prefer: prefer });
       if (error) throw new Error(error.message || "Ошибка списания");
-      onConfirmed(effectiveProjectId);
+      onConfirmed(effectiveProjectId, (data as any) || { ok: true });
     } catch (e: any) {
       const msg = String(e?.message || "");
       if (/insufficient_funds/.test(msg)) {
