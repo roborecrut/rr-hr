@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Plus, Pencil, CheckCircle2, AlertCircle } from "lucide-react";
+import { MessageSquare, Plus, Pencil, CheckCircle2, AlertCircle, Users2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { JobProject } from "../types";
 
@@ -12,6 +12,12 @@ type Props = {
 type Summary = { project_id: string; blocks: { resume: boolean; checklist: boolean; situations: boolean } };
 
 export default function InterviewList({ projects, onOpen, onCreate }: Props) {
+  // employerPublicId для перехода на страницу тарифов при клике на плашку лимитов.
+  const employerPublicId = (projects[0] as any)?.employerPublicId
+    || (typeof window !== "undefined" ? (window.location.pathname.match(/\/emp(\w+)/)?.[1] || "") : "");
+  const openTariff = () => {
+    if (employerPublicId) window.location.href = `/emp${employerPublicId}/tariff`;
+  };
   const [summaries, setSummaries] = useState<Record<string, Summary>>({});
   const [loading, setLoading] = useState(true);
   const idsKey = useMemo(() => projects.map(p => p.id).slice().sort().join(","), [projects]);
@@ -79,6 +85,29 @@ export default function InterviewList({ projects, onOpen, onCreate }: Props) {
                   <div className="text-sm font-bold text-white">{p.roleName || "(без названия)"}</div>
                   <div className="text-[11px] text-slate-400">🏢 {p.companyName || "—"}</div>
                 </div>
+                {(() => {
+                  const iLim = Number((p as any).interviewLimit || 0);
+                  const iUsed = Number((p as any).interviewUsed || 0);
+                  const iLeft = Math.max(0, iLim - iUsed);
+                  const empty = iLim === 0;
+                  const low = !empty && iLeft === 0;
+                  return (
+                    <button
+                      type="button"
+                      onClick={openTariff}
+                      title="Перейти к тарифам"
+                      className={`w-full text-left text-[11px] px-2.5 py-1.5 rounded-lg border flex items-center gap-1.5 transition hover:brightness-110 ${
+                        empty || low
+                          ? "bg-rose-500/15 border-rose-400/40 text-rose-100"
+                          : "bg-emerald-500/15 border-emerald-400/40 text-emerald-100"
+                      }`}
+                    >
+                      <Users2 className="w-3.5 h-3.5"/>
+                      Лимит интервью:&nbsp;<b>{iLeft}</b>&nbsp;из&nbsp;<b>{iLim}</b>
+                      <span className="ml-auto opacity-70 text-[10px]">использовано {iUsed}</span>
+                    </button>
+                  );
+                })()}
                 <div className="flex gap-2 flex-wrap">
                   {cells.map(c => {
                     const ok = s.blocks[c.key];
