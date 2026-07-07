@@ -203,7 +203,7 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
           const r = await callProTalkWithRetry({
             message: prompt, chatId: chat,
             socialId: buildSocialId({ candidate_public_id: candPid, candidate_id: candidateId }),
-            timeoutMs: 120_000, attempts: 3,
+              timeoutMs: 180_000, attempts: 3,
             validate: (text) => {
               const obj = tryParseJson<unknown>(text);
               const v = validateResumeScreenReport(obj);
@@ -226,7 +226,7 @@ function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ResumeRunne
         const startedAt = Date.now();
         try {
           await RrProMaxProvider.restart(chat, social);
-          const r = await RrProMaxProvider.run(prompt, chat, social, 120_000);
+          const r = await RrProMaxProvider.run(prompt, chat, social, 180_000);
           if (!r.ok) return { ok: false, errorCode: r.safeErrorCode, chatId: chat, durationMs: Date.now() - startedAt };
           return { ok: true, reportJson: tryParseJson<unknown>(r.text), chatId: chat, durationMs: Date.now() - startedAt };
         } catch (e) {

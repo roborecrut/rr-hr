@@ -271,6 +271,7 @@ export default function EmployerPanel() {
   const [trainingView, setTrainingView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
   // Interview tab: list ↔ editor toggle (mirrors training)
   const [interviewView, setInterviewView] = useState<{ mode: "list" } | { mode: "edit"; projectId: string } | { mode: "create"; projectId?: string }>({ mode: "list" });
+  const [interviewListReloadKey, setInterviewListReloadKey] = useState(0);
   const [tgMsgLog, setTgMsgLog] = useState<{ id: string; chatId: string; message: string; timestamp: string }[]>([]);
   const [aiStatus, setAiStatus] = useState({ active: true, model: "" });
 
@@ -1293,20 +1294,7 @@ export default function EmployerPanel() {
             // manually moved the card in CRM (crm_stage_manual = true).
             crmStage: (c.crm_stage_manual && c.crm_stage)
               ? c.crm_stage
-              : (() => {
-                  // RPC даёт derived_stage in {registration, screening, checklist,
-                  // situations, final, certified}, но канбан использует расширенный
-                  // набор колонок (professional/product/systems после интервью).
-                  // Маппим «final» в самый дальний пройденный этап обучения,
-                  // иначе кандидаты после интервью теряются и канбан показывает
-                  // меньше карточек, чем счётчик CRM.
-                  if (c.certified) return "certified";
-                  const tp: string[] = Array.isArray(c.training_passed) ? c.training_passed : [];
-                  const order = ["systems", "product", "professional"];
-                  for (const s of order) if (tp.includes(s)) return s;
-                  if (c.derived_stage === "final") return "situations";
-                  return c.derived_stage || "registration";
-                })(),
+              : (c.derived_stage || "registration"),
             derivedStage: c.derived_stage,
             hasResume: !!c.has_resume,
             hasChecklist: !!c.has_checklist,
@@ -1693,7 +1681,7 @@ export default function EmployerPanel() {
   // disabling automatic recalculation from triggers.
   const handleUpdateCrmStage = async (
     candId: string,
-    newStage: "registration" | "screening" | "checklist" | "situations" | "professional" | "product" | "systems" | "certified",
+    newStage: "registration" | "screening" | "checklist" | "situations" | "interview_reject" | "interview_success" | "professional" | "product" | "systems" | "certified",
   ) => {
     try {
       const { supabase } = await import("@/integrations/supabase/client");
@@ -2993,10 +2981,12 @@ export default function EmployerPanel() {
                     <option value="screening">2. Скрининг</option>
                     <option value="checklist">3. Чеклист</option>
                     <option value="situations">4. Ситуации</option>
-                    <option value="professional">5. Профессия</option>
-                    <option value="product">6. Продукт</option>
-                    <option value="systems">7. Система</option>
-                    <option value="certified">8. Сертификат</option>
+                    <option value="interview_reject">5. Интервью Отказ</option>
+                    <option value="interview_success">6. Интервью Успех</option>
+                    <option value="professional">7. Профессия</option>
+                    <option value="product">8. Продукт</option>
+                    <option value="systems">9. Система</option>
+                    <option value="certified">10. Сертификат</option>
                   </select>
 
                   {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmSearch) && (
@@ -3019,10 +3009,12 @@ export default function EmployerPanel() {
                     { stage: "screening",    title: "2. Скрининг",    short: "Скрининг" },
                     { stage: "checklist",    title: "3. Чеклист",     short: "Чеклист" },
                     { stage: "situations",   title: "4. Ситуации",    short: "Ситуации" },
-                    { stage: "professional", title: "5. Профессия",   short: "Профессия" },
-                    { stage: "product",      title: "6. Продукт",     short: "Продукт" },
-                    { stage: "systems",      title: "7. Система",     short: "Система" },
-                    { stage: "certified",    title: "8. Сертификат 🎓", short: "Сертификат" },
+                    { stage: "interview_reject", title: "5. Интервью Отказ", short: "Инт. отказ" },
+                    { stage: "interview_success", title: "6. Интервью Успех", short: "Инт. успех" },
+                    { stage: "professional", title: "7. Профессия",   short: "Профессия" },
+                    { stage: "product",      title: "8. Продукт",     short: "Продукт" },
+                    { stage: "systems",      title: "9. Система",     short: "Система" },
+                    { stage: "certified",    title: "10. Сертификат 🎓", short: "Сертификат" },
                   ];
                   return (
                 <div className="crm-workspace rounded-3xl border border-white/10 bg-[#17344F]/35 shadow-xl flex flex-col overflow-hidden">
@@ -3205,10 +3197,12 @@ export default function EmployerPanel() {
                                     <option value="screening" className="bg-slate-900">2. Скрининг</option>
                                     <option value="checklist" className="bg-slate-900">3. Чеклист</option>
                                     <option value="situations" className="bg-slate-900">4. Ситуации</option>
-                                    <option value="professional" className="bg-slate-900">5. Профессия</option>
-                                    <option value="product" className="bg-slate-900">6. Продукт</option>
-                                    <option value="systems" className="bg-slate-900">7. Система</option>
-                                    <option value="certified" className="bg-slate-900">8. Сертификат 🎓</option>
+                                    <option value="interview_reject" className="bg-slate-900">5. Интервью Отказ</option>
+                                    <option value="interview_success" className="bg-slate-900">6. Интервью Успех</option>
+                                    <option value="professional" className="bg-slate-900">7. Профессия</option>
+                                    <option value="product" className="bg-slate-900">8. Продукт</option>
+                                    <option value="systems" className="bg-slate-900">9. Система</option>
+                                    <option value="certified" className="bg-slate-900">10. Сертификат 🎓</option>
                                   </select>
                                 </td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(rScore)}</td>
@@ -4990,6 +4984,7 @@ export default function EmployerPanel() {
             <>
               {interviewView.mode === "list" ? (
                 <InterviewList
+                  reloadKey={interviewListReloadKey}
                   projects={projects}
                   onOpen={async (projectId) => {
                     setInterviewView({ mode: "edit", projectId });
@@ -5026,11 +5021,8 @@ export default function EmployerPanel() {
                         } else if (result?.amount) {
                           addAuditEvent("success", `Списано ${result.amount} RR с баланса`, "ИИ-Система интервью");
                         }
-                        setInterviewView({ mode: "create", projectId });
-                        try {
-                          const { aiRestart } = await import("@/lib/aiClient");
-                          aiRestart(employerId, { force: true }).catch(() => {});
-                        } catch {}
+                        setInterviewView({ mode: "list" });
+                        setInterviewListReloadKey(k => k + 1);
                       },
                       onCancel: () => setSpendDialog(null),
                     });
