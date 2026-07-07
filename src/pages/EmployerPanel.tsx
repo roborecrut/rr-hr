@@ -489,6 +489,10 @@ export default function EmployerPanel() {
   const [telegramLastName, setTelegramLastName] = useState("");
   const [telegramUsernameState, setTelegramUsernameState] = useState("");
   const [telegramPhone, setTelegramPhone] = useState<string>("");
+  // Telegram chat ID for duplicating employer notifications into the bot.
+  const [telegramChatId, setTelegramChatId] = useState<string>("");
+  const [telegramChatSaved, setTelegramChatSaved] = useState<boolean>(false);
+  const [telegramChatSaving, setTelegramChatSaving] = useState<boolean>(false);
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
 
@@ -1489,12 +1493,13 @@ export default function EmployerPanel() {
       // Pull saved contact details from employers row
       const { data: emp } = await supabase
         .from("employers")
-        .select("contact_phone, contact_telegram")
+        .select("contact_phone, contact_telegram, telegram_chat_id")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!cancelled && emp) {
         if ((emp as any).contact_phone) setProfilePhone((emp as any).contact_phone);
         if ((emp as any).contact_telegram) setTelegramUsernameState((emp as any).contact_telegram.replace(/^@/, ""));
+        if ((emp as any).telegram_chat_id) setTelegramChatId(String((emp as any).telegram_chat_id));
       }
 
       const { data: prof } = await supabase
@@ -5089,6 +5094,80 @@ export default function EmployerPanel() {
                   >
                     {isProfileSaved ? "Сохранено ✓" : "Сохранить контакты"}
                   </button>
+                </div>
+              </div>
+
+              {/* Telegram notifications binding */}
+              <div className="brand-editor bg-[#17344F]/60 border border-[#E7C768]/30 rounded-3xl p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <h3 className="font-bold text-sm text-[#E7C768] uppercase font-mono tracking-wider flex items-center gap-2">
+                    🔔 Telegram-уведомления
+                  </h3>
+                  <span className="bg-sky-500/10 text-sky-300 border border-sky-500/25 text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                    дублирует уведомления в бот
+                  </span>
+                </div>
+
+                <div className="bg-sky-950/30 border border-sky-500/25 rounded-2xl p-3 text-[11px] text-sky-100 leading-relaxed space-y-2">
+                  <div className="font-bold text-sky-200">Как привязать бота:</div>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Откройте бота <a href="https://t.me/RoboRecrutBot" target="_blank" rel="noreferrer" className="underline text-sky-300 font-mono">@RoboRecrutBot</a> и нажмите <b>Start</b>.</li>
+                    <li>В меню бота нажмите кнопку с иконкой <b>🆕</b> — бот пришлёт ваш числовой Telegram ID.</li>
+                    <li>Скопируйте ID кликом по числу и вставьте в поле ниже, затем сохраните.</li>
+                  </ol>
+                  <a
+                    href="https://t.me/RoboRecrutBot"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-xl bg-sky-500/20 border border-sky-400/40 text-sky-100 font-bold text-[11px] hover:bg-sky-500/30 transition"
+                  >
+                    Открыть @RoboRecrutBot →
+                  </a>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-bold text-xs">Ваш Telegram ID:</label>
+                  <div className="flex gap-2 flex-wrap">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className="flex-1 min-w-[200px] bg-[#0F2438]/70 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-sky-400"
+                      placeholder="например: 123456789"
+                      value={telegramChatId}
+                      onChange={(e) => { setTelegramChatId(e.target.value.replace(/[^0-9]/g, "")); setTelegramChatSaved(false); }}
+                    />
+                    <button
+                      type="button"
+                      disabled={telegramChatSaving}
+                      onClick={async () => {
+                        try {
+                          setTelegramChatSaving(true);
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) return;
+                          const value = telegramChatId.trim();
+                          const upd = await supabase
+                            .from("employers")
+                            .update({ telegram_chat_id: value ? Number(value) : null } as any)
+                            .eq("user_id", user.id);
+                          if (!upd.error) {
+                            setTelegramChatSaved(true);
+                            setTimeout(() => setTelegramChatSaved(false), 2500);
+                          }
+                        } catch (e) {
+                          console.error("save telegram_chat_id failed", e);
+                        } finally {
+                          setTelegramChatSaving(false);
+                        }
+                      }}
+                      className="cursor-pointer bg-sky-500 hover:bg-sky-600 disabled:opacity-60 text-slate-900 font-black px-4 py-2 rounded-xl text-xs transition shadow-md"
+                    >
+                      {telegramChatSaving ? "Сохранение…" : telegramChatSaved ? "Сохранено ✓" : "Сохранить"}
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-mono">
+                    Оставьте поле пустым и сохраните, чтобы отключить дублирование уведомлений в Telegram.
+                  </div>
                 </div>
               </div>
 
