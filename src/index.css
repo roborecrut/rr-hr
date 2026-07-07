@@ -228,13 +228,13 @@ body {
 }
 @media (min-width: 1024px) {
   .crm-page {
-    height: calc(100dvh - 110px);
-    min-height: 0;
-    overflow: hidden;
+    min-height: calc(100dvh - 110px);
+    height: auto;
+    overflow: visible;
   }
   .crm-workspace {
     flex: 1 1 auto;
-    min-height: 360px;
+    min-height: min(1400px, calc(200dvh - 400px));
     height: auto;
     overflow: hidden;
   }

@@ -3079,13 +3079,16 @@ export default function EmployerPanel() {
                   </select>
 
                   {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmFilterDecision !== "all" || crmSearch) && (
-                    <button
-                      type="button"
-                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmFilterDecision("all"); setCrmSearch(""); }}
-                      className="text-[11px] font-bold text-[#E7C768] underline px-1"
-                    >
-                      Сбросить
-                    </button>
+                    <div className="flex items-center justify-start">
+                      <button
+                        type="button"
+                        onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmFilterDecision("all"); setCrmSearch(""); }}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#17344F] px-3 py-1.5 rounded-xl border border-[#E7C768] bg-gradient-to-r from-[#F4EE8E] via-[#E7C768] to-[#D99E41] shadow hover:brightness-105 active:brightness-95 transition"
+                        title="Сбросить фильтры"
+                      >
+                        Сбросить
+                      </button>
+                    </div>
                   )}
                 </div>
 
