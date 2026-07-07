@@ -83,6 +83,8 @@ export default function SpendConfirmDialog({
       const msg = String(e?.message || "");
       if (/insufficient_funds/.test(msg)) {
         setErr("Недостаточно RR на балансе. Пополните счёт.");
+      } else if (/insufficient_credits/.test(msg)) {
+        setErr("Лимит этой услуги уже закончился. Выберите списание с RR-баланса или пополните лимиты.");
       } else if (/project_employer_mismatch|bad_employer/.test(msg)) {
         setErr("Вакансия не относится к текущему кабинету работодателя. Обновите страницу и попробуйте снова.");
       } else {
