@@ -25,8 +25,8 @@ import { getAdminClient } from "../_shared/protalk.ts";
 import { runInBackground } from "../_shared/ai-runner.ts";
 import { runChecklistGradeJob } from "../_shared/checklist-grade-runner.ts";
 import { runSituationsGradeJob } from "../_shared/situations-grade-runner.ts";
-import { buildProdDeps as buildChecklistDeps } from "../ai-interview-grade-checklist-v2/index.ts";
-import { buildProdDeps as buildSituationsDeps } from "../ai-interview-grade-situations-v2/index.ts";
+import { buildChecklistProdDeps } from "../_shared/checklist-grade-prod-deps.ts";
+import { buildSituationsProdDeps } from "../_shared/situations-grade-prod-deps.ts";
 
 const STALE_MINUTES = 3;
 const MAX_JOBS_PER_TICK = 20;
@@ -101,13 +101,13 @@ Deno.serve(async (req) => {
 
       // 2) Re-invoke the appropriate runner in background.
       if (job.job_type === "grade_checklist_v2") {
-        const deps = buildChecklistDeps(admin);
+        const deps = buildChecklistProdDeps(admin);
         runInBackground((async () => {
           try { await runChecklistGradeJob(deps, { jobId: job.id }); }
           catch (e) { console.error("[watchdog] checklist run crashed", (e as Error).message); }
         })());
       } else {
-        const deps = buildSituationsDeps(admin);
+        const deps = buildSituationsProdDeps(admin);
         runInBackground((async () => {
           try { await runSituationsGradeJob(deps, { jobId: job.id }); }
           catch (e) { console.error("[watchdog] situations run crashed", (e as Error).message); }
