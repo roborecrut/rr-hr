@@ -233,6 +233,8 @@ export default function EmployerPanel() {
   const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
   const [crmFilterVerdict, setCrmFilterVerdict] = useState<string>("all");
+  const [crmFilterDecision, setCrmFilterDecision] = useState<string>("all");
+  const [hireDecisionMap, setHireDecisionMap] = useState<Record<string, string>>({});
 
   // Kanban refs + helpers (CRM hotfix v2)
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
