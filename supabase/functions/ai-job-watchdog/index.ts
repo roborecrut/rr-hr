@@ -146,6 +146,15 @@ Deno.serve(async (req) => {
         })());
         results.push({ id: job.id, type: job.job_type, action: "resumed_fallback" });
       } else if (LEGACY_FALLBACK_TYPES.has(job.job_type)) {
+        // begin_ai_fallback RPC only accepts primary_failed / fallback_available.
+        // Force the job into primary_failed when we found it in any earlier
+        // non-terminal state (created, primary_running already handled above,
+        // fallback_restarting where the previous fallback died mid-flight).
+        if (job.status !== "primary_failed" && job.status !== "fallback_available") {
+          await admin.from("ai_jobs")
+            .update({ status: "primary_failed", updated_at: new Date().toISOString() })
+            .eq("id", job.id);
+        }
         // Delegate to ai-fallback-rr-pro-max via HTTP with service_role bearer
         // so ownership check is bypassed. Fire-and-forget: the endpoint can
         // block on ProTalk for up to ~3 minutes and we don't want the cron
