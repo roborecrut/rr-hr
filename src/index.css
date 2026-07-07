@@ -228,21 +228,21 @@ body {
 }
 @media (min-width: 1024px) {
   .crm-page {
-    min-height: calc(100dvh - 110px);
+    min-height: 0;
     height: auto;
     overflow: visible;
   }
   .crm-workspace {
-    flex: 1 1 auto;
-    min-height: min(1400px, calc(200dvh - 400px));
+    flex: 0 0 auto;
+    min-height: 0;
     height: auto;
-    overflow: hidden;
+    overflow: visible;
   }
 }
 .crm-kanban-viewport {
   width: 100%;
   min-width: 0;
-  height: 100%;
+  height: auto;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
@@ -254,14 +254,14 @@ body {
   gap: 12px;
   width: max-content;
   min-width: 100%;
-  height: 100%;
+  height: auto;
   padding: 12px;
 }
 .crm-kanban-column {
   width: 260px;
   min-width: 260px;
   flex: 0 0 260px;
-  height: 100%;
+  height: auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -276,13 +276,25 @@ body {
 .crm-kanban-cards {
   flex: 1 1 auto;
   min-height: 0;
+  /* Ровно ~6 карточек по вертикали (карточка min-h 96px + gap 8px + отступы). */
+  max-height: calc(6 * 104px + 16px);
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
 }
 
 /* Kanban shell + floating arrows (CRM hotfix v2) */
-.crm-kanban-shell { position: relative; height: 100%; min-height: 0; overflow: hidden; }
+.crm-kanban-shell { position: relative; height: auto; min-height: 0; overflow: hidden; }
+
+/* Top horizontal scrollbar strip (mirrors kanban viewport) */
+.crm-kanban-topscroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.crm-kanban-topscroll > div { height: 1px; }
 .crm-kanban-arrow {
   position: absolute;
   top: 50%;
@@ -335,8 +347,10 @@ body {
   width: 100%;
   min-width: 0;
   height: auto;
+  /* ~10 строк таблицы + шапка */
+  max-height: calc(10 * 46px + 48px);
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: auto;
   overscroll-behavior-x: contain;
 }
 .crm-table-viewport thead th { background-color: #17344F; }
