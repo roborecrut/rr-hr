@@ -3277,6 +3277,16 @@ export type Database = {
       notifications_list: { Args: { _limit?: number }; Returns: Json }
       notifications_mark_read: { Args: { _ids?: string[] }; Returns: Json }
       notifications_run_reminders: { Args: never; Returns: Json }
+      notify_employer_stage_event: {
+        Args: {
+          _candidate_id: string
+          _dedup_key?: string
+          _kind: string
+          _score_text?: string
+          _stage_title: string
+        }
+        Returns: undefined
+      }
       pack_tier_price: { Args: { _qty: number }; Returns: number }
       project_archive: { Args: { _id: string }; Returns: Json }
       project_create_draft: { Args: { _company: string }; Returns: Json }
