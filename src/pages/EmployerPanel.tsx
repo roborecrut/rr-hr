@@ -239,6 +239,8 @@ export default function EmployerPanel() {
   // Kanban refs + helpers (CRM hotfix v2)
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
   const kanbanColumnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const kanbanTopScrollRef = useRef<HTMLDivElement | null>(null);
+  const kanbanTopSpacerRef = useRef<HTMLDivElement | null>(null);
   const [kanbanEdge, setKanbanEdge] = useState<{ left: boolean; right: boolean }>({ left: true, right: false });
   const updateKanbanEdges = () => {
     const v = kanbanViewportRef.current;
@@ -246,6 +248,13 @@ export default function EmployerPanel() {
     const atLeft = v.scrollLeft <= 2;
     const atRight = v.scrollLeft + v.clientWidth >= v.scrollWidth - 2;
     setKanbanEdge({ left: atLeft, right: atRight });
+    // Sync top scrollbar spacer width + position
+    const t = kanbanTopScrollRef.current;
+    const s = kanbanTopSpacerRef.current;
+    if (t && s) {
+      if (s.style.width !== `${v.scrollWidth}px`) s.style.width = `${v.scrollWidth}px`;
+      if (Math.abs(t.scrollLeft - v.scrollLeft) > 1) t.scrollLeft = v.scrollLeft;
+    }
   };
   const scrollKanban = (direction: "left" | "right") => {
     const v = kanbanViewportRef.current;
@@ -3150,6 +3159,23 @@ export default function EmployerPanel() {
                   </div>
 
                   <div className="crm-kanban-shell relative flex-1 min-h-0">
+                    {/* Top horizontal scrollbar (mirrors viewport) */}
+                    <div
+                      ref={(el) => {
+                        kanbanTopScrollRef.current = el;
+                        if (el && !(el as any).__topBound) {
+                          (el as any).__topBound = true;
+                          el.addEventListener("scroll", () => {
+                            const v = kanbanViewportRef.current;
+                            if (!v) return;
+                            if (Math.abs(v.scrollLeft - el.scrollLeft) > 1) v.scrollLeft = el.scrollLeft;
+                          }, { passive: true });
+                        }
+                      }}
+                      className="crm-kanban-topscroll crm-kanban-h-scroll"
+                    >
+                      <div ref={kanbanTopSpacerRef} />
+                    </div>
                     {/* Arrows */}
                     <button
                       type="button"
