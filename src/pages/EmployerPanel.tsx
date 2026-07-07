@@ -233,6 +233,8 @@ export default function EmployerPanel() {
   const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
   const [crmFilterVerdict, setCrmFilterVerdict] = useState<string>("all");
+  const [crmFilterDecision, setCrmFilterDecision] = useState<string>("all");
+  const [hireDecisionMap, setHireDecisionMap] = useState<Record<string, string>>({});
 
   // Kanban refs + helpers (CRM hotfix v2)
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
@@ -297,6 +299,30 @@ export default function EmployerPanel() {
   const [crmSearch, setCrmSearch] = useState("");
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+
+  // Listen for "open-candidate-card" (dispatched by NotificationsBell) and
+  // for a ?candidate=<id> URL param so notifications can deep-link into the
+  // CRM candidate card without a full navigation.
+  useEffect(() => {
+    const onOpen = (e: any) => {
+      const id = e?.detail?.id;
+      if (id) setSelectedCandidateId(String(id));
+    };
+    window.addEventListener("open-candidate-card", onOpen as any);
+    return () => window.removeEventListener("open-candidate-card", onOpen as any);
+  }, []);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const id = sp.get("candidate");
+      if (id) {
+        setSelectedCandidateId(id);
+        sp.delete("candidate");
+        const qs = sp.toString();
+        window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   // Mailing States
   const [mailingSegment, setMailingSegment] = useState<string>("all");
@@ -1331,6 +1357,25 @@ export default function EmployerPanel() {
     const interval = setInterval(fetchData, 4000);
     return () => clearInterval(interval);
   }, [employerId]);
+
+  // Side-fetch employer decisions for CRM cards/filter (RLS-safe: only rows
+  // this employer can see are returned).
+  useEffect(() => {
+    const ids = candidates.map((c: any) => c.uuid).filter(Boolean);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("candidates")
+        .select("id, hire_decision")
+        .in("id", ids as string[]);
+      if (cancelled || !Array.isArray(data)) return;
+      const m: Record<string, string> = {};
+      for (const r of data as any[]) if (r?.hire_decision) m[r.id] = r.hire_decision;
+      setHireDecisionMap(m);
+    })();
+    return () => { cancelled = true; };
+  }, [candidates]);
 
   // Refresh CRM / vacancies immediately on window focus or tab visibility
   // change so that completing a candidate stage in another tab is reflected
@@ -2560,6 +2605,11 @@ export default function EmployerPanel() {
       const label = scoreTone(cand.scores?.overallScore).label;
       if (label !== crmFilterVerdict) return false;
     }
+    if (crmFilterDecision !== "all") {
+      const d = hireDecisionMap[(cand as any).uuid] || "";
+      if (crmFilterDecision === "none") { if (d) return false; }
+      else if (d !== crmFilterDecision) return false;
+    }
     return true;
   });
 
@@ -3010,10 +3060,23 @@ export default function EmployerPanel() {
                     <option value="none">Без оценки</option>
                   </select>
 
-                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmSearch) && (
+                  <select
+                    value={crmFilterDecision}
+                    onChange={(e) => setCrmFilterDecision(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по решению работодателя"
+                  >
+                    <option value="all">Все решения</option>
+                    <option value="invited">✓ Приглашён</option>
+                    <option value="review">◔ На рассмотрении</option>
+                    <option value="rejected">✗ Отказ</option>
+                    <option value="none">Без решения</option>
+                  </select>
+
+                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmFilterDecision !== "all" || crmSearch) && (
                     <button
                       type="button"
-                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmSearch(""); }}
+                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmFilterDecision("all"); setCrmSearch(""); }}
                       className="text-[11px] font-bold text-[#E7C768] underline px-1"
                     >
                       Сбросить
@@ -3162,6 +3225,17 @@ export default function EmployerPanel() {
                                         return (
                                           <span className={`self-start mt-auto text-[9px] font-bold px-1.5 py-0.5 rounded ${tone.badge}`}>{txt}</span>
                                         );
+                                      })()}
+                                      {(() => {
+                                        const d = hireDecisionMap[(cand as any).uuid];
+                                        if (!d) return null;
+                                        const map: Record<string, {t: string; cls: string}> = {
+                                          invited:  { t: "✓ Приглашён",     cls: "bg-emerald-500/25 text-emerald-100 border border-emerald-400/40" },
+                                          review:   { t: "◔ Рассмотрение",   cls: "bg-amber-500/25 text-amber-100 border border-amber-400/40" },
+                                          rejected: { t: "✗ Отказ",          cls: "bg-rose-500/25 text-rose-100 border border-rose-400/40" },
+                                        };
+                                        const m = map[d]; if (!m) return null;
+                                        return <span className={`self-start text-[9px] font-bold px-1.5 py-0.5 rounded ${m.cls}`}>{m.t}</span>;
                                       })()}
                                     </div>
                                   ))
