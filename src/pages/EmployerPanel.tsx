@@ -2605,6 +2605,11 @@ export default function EmployerPanel() {
       const label = scoreTone(cand.scores?.overallScore).label;
       if (label !== crmFilterVerdict) return false;
     }
+    if (crmFilterDecision !== "all") {
+      const d = hireDecisionMap[(cand as any).uuid] || "";
+      if (crmFilterDecision === "none") { if (d) return false; }
+      else if (d !== crmFilterDecision) return false;
+    }
     return true;
   });
 
