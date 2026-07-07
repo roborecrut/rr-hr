@@ -310,7 +310,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           setFinalScore(Math.round(Number(scFull.overall_score)));
         }
         // Auto-jump to first incomplete stage
-        if (sc.situations_score == null && sc.checklist_score != null) setStage("situations");
+        if (sc.situations_score == null && sc.checklist_score != null && Number(sc.checklist_score) >= ((pr as any)?.interview_pass_score ?? 75)) setStage("situations");
         else if (sc.checklist_score == null && sc.resume_score != null) setStage("checklist");
       }
     })();
@@ -488,6 +488,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           try {
             await aiWaitRun<any>({
               title: "Анализ резюме",
+              timeoutMs: 180_000,
               task: async () => {
                 const r = await pollJobUntilTerminal({ jobId: existingActive.job_id });
                 clearActiveJob("screen_resume", candidateId);
@@ -512,6 +513,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       // mount effect above re-attaches polling.
       const overlayResult = await aiWaitRun<any>({
         title: "Анализ резюме",
+        timeoutMs: 180_000,
         task: async () => {
           rrLog("invoke_started");
           const start = await startResumeScreenV2({ candidateId, resumeText });
@@ -741,6 +743,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     try {
       await aiWaitRun<any>({
         title: "AI анализирует ответы анкеты. Можно продолжить работу — результат сохранится автоматически",
+        timeoutMs: 180_000,
         task: () => new Promise<boolean>((resolve) => {
           checklistPendingRef.current = resolve;
           void checklistJob.start({ kind: "checklist_grade", answers });
@@ -789,7 +792,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
 
   const stageLocked = (s: Stage) => {
     if (s === "checklist") return resumeResult?.score == null;
-    if (s === "situations") return checklistScore == null;
+    if (s === "situations") return checklistScore == null || checklistScore < passScore;
     if (s === "done") return finalScore == null;
     return false;
   };
@@ -993,7 +996,13 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
                 score={checklistScore}
               />
               <div className="flex gap-2">
-                <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
+                {checklistScore >= passScore ? (
+                  <button onClick={() => setStage("situations")} className="bg-[#E7C768] text-[#17344F] font-bold text-sm px-4 py-2 rounded-xl">Перейти к ситуациям →</button>
+                ) : (
+                  <div className="text-sm text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-2">
+                    Нужно набрать минимум {passScore}/100, чтобы открыть ситуации.
+                  </div>
+                )}
                 <button onClick={() => {
                   setChecklistScore(null);
                   setChecklistFeedback(null);
