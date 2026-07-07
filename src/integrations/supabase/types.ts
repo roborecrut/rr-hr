@@ -148,6 +148,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           vacancy_id: string | null
+          watchdog_resumed_at: string | null
         }
         Insert: {
           candidate_id?: string | null
@@ -174,6 +175,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vacancy_id?: string | null
+          watchdog_resumed_at?: string | null
         }
         Update: {
           candidate_id?: string | null
@@ -200,6 +202,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vacancy_id?: string | null
+          watchdog_resumed_at?: string | null
         }
         Relationships: [
           {

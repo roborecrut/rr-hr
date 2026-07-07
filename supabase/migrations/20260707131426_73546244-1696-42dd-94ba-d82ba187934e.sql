@@ -1,0 +1,2 @@
+ALTER TABLE public.ai_jobs ADD COLUMN IF NOT EXISTS watchdog_resumed_at timestamptz;
+CREATE INDEX IF NOT EXISTS ai_jobs_watchdog_idx ON public.ai_jobs (updated_at) WHERE completed_at IS NULL AND watchdog_resumed_at IS NULL;
