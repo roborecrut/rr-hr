@@ -3434,6 +3434,12 @@ export default function EmployerPanel() {
                                     <option value="certified" className="bg-slate-900">10. Сертификат 🎓</option>
                                   </select>
                                 </td>
+                                <td className="p-3 text-slate-300 text-[11px] whitespace-nowrap">
+                                  {(cand as any).createdAt ? new Date((cand as any).createdAt).toLocaleDateString("ru-RU") : "—"}
+                                </td>
+                                <td className="p-3 text-slate-300 text-[11px] whitespace-nowrap">
+                                  {(cand as any).updatedAt ? new Date((cand as any).updatedAt).toLocaleDateString("ru-RU") : "—"}
+                                </td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(rScore)}</td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(cScore)}</td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(sScore)}</td>
