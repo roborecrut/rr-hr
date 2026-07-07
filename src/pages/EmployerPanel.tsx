@@ -1346,6 +1346,7 @@ export default function EmployerPanel() {
             trainingPassed: c.training_passed || [],
             certified: !!c.certified,
             createdAt: c.created_at,
+            updatedAt: c.updated_at || c.created_at,
             registeredVia: c.registered_via,
             scores: {
               resumeScore: c.resume_score != null ? Number(c.resume_score) : undefined,
