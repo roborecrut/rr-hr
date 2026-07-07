@@ -36,6 +36,7 @@ import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import { DocumentUploader } from "../components/DocumentUploader";
 import { scoreTone, type ToneLabel } from "@/lib/scoreTone";
+import NotificationsBell from "@/components/NotificationsBell";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
@@ -2657,6 +2658,7 @@ export default function EmployerPanel() {
             <button onClick={handleLogout} className="cursor-pointer bg-white/10 hover:bg-white/20 text-white rounded-xl px-3 py-2 text-xs font-bold transition flex items-center gap-1 border border-white/10">
               <LogOut className="w-3.5 h-3.5" /> Выйти
             </button>
+            <NotificationsBell />
           </div>
         </div>
       </header>
