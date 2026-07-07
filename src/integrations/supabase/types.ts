@@ -1274,6 +1274,7 @@ export type Database = {
           public_id: string | null
           ref_by: string | null
           status: string | null
+          telegram_chat_id: number | null
           training_credits: number
           training_setup_credits: number
           updated_at: string
@@ -1299,6 +1300,7 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          telegram_chat_id?: number | null
           training_credits?: number
           training_setup_credits?: number
           updated_at?: string
@@ -1324,6 +1326,7 @@ export type Database = {
           public_id?: string | null
           ref_by?: string | null
           status?: string | null
+          telegram_chat_id?: number | null
           training_credits?: number
           training_setup_credits?: number
           updated_at?: string
