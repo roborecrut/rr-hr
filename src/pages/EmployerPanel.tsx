@@ -239,6 +239,8 @@ export default function EmployerPanel() {
   // Kanban refs + helpers (CRM hotfix v2)
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
   const kanbanColumnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const kanbanTopScrollRef = useRef<HTMLDivElement | null>(null);
+  const kanbanTopSpacerRef = useRef<HTMLDivElement | null>(null);
   const [kanbanEdge, setKanbanEdge] = useState<{ left: boolean; right: boolean }>({ left: true, right: false });
   const updateKanbanEdges = () => {
     const v = kanbanViewportRef.current;
@@ -246,6 +248,13 @@ export default function EmployerPanel() {
     const atLeft = v.scrollLeft <= 2;
     const atRight = v.scrollLeft + v.clientWidth >= v.scrollWidth - 2;
     setKanbanEdge({ left: atLeft, right: atRight });
+    // Sync top scrollbar spacer width + position
+    const t = kanbanTopScrollRef.current;
+    const s = kanbanTopSpacerRef.current;
+    if (t && s) {
+      if (s.style.width !== `${v.scrollWidth}px`) s.style.width = `${v.scrollWidth}px`;
+      if (Math.abs(t.scrollLeft - v.scrollLeft) > 1) t.scrollLeft = v.scrollLeft;
+    }
   };
   const scrollKanban = (direction: "left" | "right") => {
     const v = kanbanViewportRef.current;
