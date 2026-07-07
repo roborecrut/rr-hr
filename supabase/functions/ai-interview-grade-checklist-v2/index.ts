@@ -115,7 +115,7 @@ function normalizeQuestion(raw: any): ChecklistQuestion {
   };
 }
 
-function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ChecklistRunnerDeps {
+export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ChecklistRunnerDeps {
   const admin = adminAny!;
   return {
     jobs: {
