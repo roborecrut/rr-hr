@@ -488,6 +488,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           try {
             await aiWaitRun<any>({
               title: "Анализ резюме",
+              timeoutMs: 180_000,
               task: async () => {
                 const r = await pollJobUntilTerminal({ jobId: existingActive.job_id });
                 clearActiveJob("screen_resume", candidateId);
@@ -512,6 +513,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
       // mount effect above re-attaches polling.
       const overlayResult = await aiWaitRun<any>({
         title: "Анализ резюме",
+        timeoutMs: 180_000,
         task: async () => {
           rrLog("invoke_started");
           const start = await startResumeScreenV2({ candidateId, resumeText });
@@ -741,6 +743,7 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     try {
       await aiWaitRun<any>({
         title: "AI анализирует ответы анкеты. Можно продолжить работу — результат сохранится автоматически",
+        timeoutMs: 180_000,
         task: () => new Promise<boolean>((resolve) => {
           checklistPendingRef.current = resolve;
           void checklistJob.start({ kind: "checklist_grade", answers });
