@@ -3229,7 +3229,7 @@ export default function EmployerPanel() {
                     >
                       <div className="crm-kanban-track">
                         {columns.map(column => {
-                          const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
+                          const colCandidates = sortedCandidates.filter(c => (c.crmStage || "registration") === column.stage);
                           return (
                             <div
                               key={column.stage}
@@ -3339,12 +3339,12 @@ export default function EmployerPanel() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {filteredCandidates.length === 0 ? (
+                        {sortedCandidates.length === 0 ? (
                           <tr>
                             <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
                           </tr>
                         ) : (
-                          filteredCandidates.map(cand => {
+                          sortedCandidates.map(cand => {
                             const rScore = cand.scores?.resumeScore;
                             const cScore = cand.scores?.checklistScore;
                             const sScore = cand.scores?.situationsScore;
