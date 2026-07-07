@@ -16,6 +16,33 @@ function asArr(v: unknown): any[] { return Array.isArray(v) ? v : []; }
 function asStr(v: unknown): string { return typeof v === "string" ? v.trim() : v == null ? "" : String(v).trim(); }
 function asStrArr(v: unknown): string[] { return asArr(v).map(asStr).filter(Boolean); }
 
+/**
+ * Some backends return gaps/strengths as plain strings, others as structured
+ * objects (e.g. resume v2: {criterion, finding, impact}). This picks the most
+ * human-readable text out of either shape so the UI never renders
+ * "[object Object]".
+ */
+function textFromItem(v: unknown, keys: string[] = ["finding", "text", "title", "name", "criterion", "explanation", "detail", "description"]): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (typeof v === "object") {
+    const o = v as Record<string, any>;
+    // Prefer a rich "finding — impact" phrasing when available.
+    const finding = asStr(o.finding);
+    const impact = asStr(o.impact);
+    if (finding && impact) return `${finding} — ${impact}`;
+    for (const k of keys) {
+      const s = asStr(o[k]);
+      if (s) return s;
+    }
+  }
+  return "";
+}
+function itemsAsText(v: unknown): string[] {
+  return asArr(v).map((x) => textFromItem(x)).filter(Boolean);
+}
+
 function pct(n: number | null | undefined): number | null {
   if (n == null || !Number.isFinite(Number(n))) return null;
   return Math.max(0, Math.min(100, Math.round(Number(n))));
@@ -69,7 +96,7 @@ function StageCard({ icon, title, score, headline }: {
   const v = verdictFor(score);
   return (
     <div
-      className="rounded-2xl p-4 flex items-center gap-3 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)]"
+      className="rounded-2xl p-4 flex items-start gap-3 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)]"
       style={{
         background: "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))",
         backdropFilter: "blur(18px)",
@@ -83,7 +110,7 @@ function StageCard({ icon, title, score, headline }: {
         </div>
         <div className={`text-[13px] font-extrabold mt-0.5 ${v.cls}`}>{v.text}</div>
         {headline && (
-          <div className="text-[12px] text-white/80 mt-1 line-clamp-2 leading-snug">{headline}</div>
+          <div className="text-[12px] text-white/80 mt-1 leading-snug whitespace-pre-wrap break-words">{headline}</div>
         )}
       </div>
     </div>
@@ -181,17 +208,35 @@ export default function EmployerOverallSummary({
     const redFlags: TagItem[] = [];
 
     // ---- Resume ----
-    asStrArr(rf.strengths).forEach(t => strengths.push({ text: t, source: "Резюме" }));
-    asStrArr(rf.gaps).forEach(t => weak.push({ text: t, source: "Резюме" }));
+    itemsAsText(rf.strengths).forEach(t => strengths.push({ text: t, source: "Резюме" }));
+    itemsAsText(rf.gaps).forEach(t => weak.push({ text: t, source: "Резюме" }));
+    asArr(rf.risks).forEach((r: any) => {
+      const title = asStr(r?.title) || textFromItem(r);
+      if (!title) return;
+      const sev = asStr(r?.severity).toLowerCase();
+      if (sev.includes("высок") || sev.includes("critical") || sev.includes("high")) {
+        redFlags.push({ text: title, source: "Резюме" });
+      } else {
+        weak.push({ text: title, source: "Резюме" });
+      }
+    });
+    asArr(rf.red_flags).forEach((r: any) => {
+      const t = asStr(r?.title) || textFromItem(r);
+      if (t) redFlags.push({ text: t, source: "Резюме" });
+    });
+    // Resume "matches" with degree "полностью" — treat as green flags.
+    asArr(rf.matches).forEach((m: any) => {
+      const degree = asStr(m?.degree).toLowerCase();
+      if (!degree.includes("полност")) return;
+      const t = asStr(m?.criterion) || asStr(m?.evidence);
+      if (t) greenFlags.push({ text: t, source: "Резюме" });
+    });
 
     // ---- Checklist ----
-    asStrArr(cf.strengths).forEach(t => strengths.push({ text: t, source: "Анкета" }));
-    asArr(cf.gaps).forEach((g: any) => {
-      const t = asStr(g?.criterion || g?.finding || g);
-      if (t) weak.push({ text: t, source: "Анкета" });
-    });
+    itemsAsText(cf.strengths).forEach(t => strengths.push({ text: t, source: "Анкета" }));
+    itemsAsText(cf.gaps).forEach(t => weak.push({ text: t, source: "Анкета" }));
     asArr(cf.risks).forEach((r: any) => {
-      const title = asStr(r?.title);
+      const title = asStr(r?.title) || textFromItem(r);
       const sev = asStr(r?.severity).toLowerCase();
       if (!title) return;
       if (sev.includes("высок") || sev.includes("critical") || sev.includes("high")) {
@@ -201,17 +246,17 @@ export default function EmployerOverallSummary({
       }
     });
     asArr(cf.red_flags).forEach((r: any) => {
-      const t = asStr(r?.title);
+      const t = asStr(r?.title) || textFromItem(r);
       if (t) redFlags.push({ text: t, source: "Анкета" });
     });
 
     // ---- Situations ----
-    asStrArr(sf.strengths).forEach(t => strengths.push({ text: t, source: "Ситуации" }));
-    asStrArr(sf.competencies_demonstrated).forEach(t => strengths.push({ text: t, source: "Ситуации" }));
-    asStrArr(sf.areas_to_improve).forEach(t => weak.push({ text: t, source: "Ситуации" }));
-    asStrArr(sf.competencies_weak).forEach(t => weak.push({ text: t, source: "Ситуации" }));
+    itemsAsText(sf.strengths).forEach(t => strengths.push({ text: t, source: "Ситуации" }));
+    itemsAsText(sf.competencies_demonstrated).forEach(t => strengths.push({ text: t, source: "Ситуации" }));
+    itemsAsText(sf.areas_to_improve).forEach(t => weak.push({ text: t, source: "Ситуации" }));
+    itemsAsText(sf.competencies_weak).forEach(t => weak.push({ text: t, source: "Ситуации" }));
     asArr(sf.risks).forEach((r: any) => {
-      const title = asStr(r?.title);
+      const title = asStr(r?.title) || textFromItem(r);
       const sev = asStr(r?.severity).toLowerCase();
       if (!title) return;
       if (sev.includes("высок") || sev.includes("critical") || sev.includes("high")) {
@@ -221,7 +266,7 @@ export default function EmployerOverallSummary({
       }
     });
     asArr(sf.red_flags).forEach((r: any) => {
-      const t = asStr(r?.title);
+      const t = asStr(r?.title) || textFromItem(r);
       if (t) redFlags.push({ text: t, source: "Ситуации" });
     });
 
@@ -249,9 +294,9 @@ export default function EmployerOverallSummary({
       weak: dedupe(weak, 6),
       greenFlags: dedupe(greenFlags, 5),
       redFlags: dedupe(redFlags, 5),
-      resumeHead: asStr(rf.summary).slice(0, 160),
-      checklistHead: asStr(cf.summary).slice(0, 160),
-      situationsHead: (asStr(sf.summary) || asStr(sf.advice)).slice(0, 160),
+      resumeHead: asStr(rf.summary),
+      checklistHead: asStr(cf.summary),
+      situationsHead: asStr(sf.summary) || asStr(sf.advice),
     };
   }, [resumeFeedback, checklistFeedback, situationsFeedback]);
 
