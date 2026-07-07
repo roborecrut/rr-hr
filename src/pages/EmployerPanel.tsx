@@ -35,6 +35,7 @@ import { useAIReady } from "../lib/aiReady";
 import SitePreview from "../components/SitePreview";
 import VacancyEditor from "../components/VacancyEditor";
 import { DocumentUploader } from "../components/DocumentUploader";
+import { scoreTone, type ToneLabel } from "@/lib/scoreTone";
 import {
   VACANCY_FIELDS,
   VACANCY_FIELDS_BY_KEY,
@@ -230,6 +231,7 @@ export default function EmployerPanel() {
   const [crmFilterRole, setCrmFilterRole] = useState<string>("all");
   const [crmFilterCompany, setCrmFilterCompany] = useState<string>("all");
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
+  const [crmFilterVerdict, setCrmFilterVerdict] = useState<string>("all");
 
   // Kanban refs + helpers (CRM hotfix v2)
   const kanbanViewportRef = useRef<HTMLDivElement | null>(null);
@@ -2553,6 +2555,10 @@ export default function EmployerPanel() {
     if (crmFilterRole !== "all" && (cand.roleName || "") !== crmFilterRole) return false;
     if (crmFilterCompany !== "all" && (cand.companyName || "") !== crmFilterCompany) return false;
     if (crmFilterStage !== "all" && ((cand.crmStage || "registration") !== crmFilterStage)) return false;
+    if (crmFilterVerdict !== "all") {
+      const label = scoreTone(cand.scores?.overallScore).label;
+      if (label !== crmFilterVerdict) return false;
+    }
     return true;
   });
 
