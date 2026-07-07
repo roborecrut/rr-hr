@@ -3159,6 +3159,23 @@ export default function EmployerPanel() {
                   </div>
 
                   <div className="crm-kanban-shell relative flex-1 min-h-0">
+                    {/* Top horizontal scrollbar (mirrors viewport) */}
+                    <div
+                      ref={(el) => {
+                        kanbanTopScrollRef.current = el;
+                        if (el && !(el as any).__topBound) {
+                          (el as any).__topBound = true;
+                          el.addEventListener("scroll", () => {
+                            const v = kanbanViewportRef.current;
+                            if (!v) return;
+                            if (Math.abs(v.scrollLeft - el.scrollLeft) > 1) v.scrollLeft = el.scrollLeft;
+                          }, { passive: true });
+                        }
+                      }}
+                      className="crm-kanban-topscroll crm-kanban-h-scroll"
+                    >
+                      <div ref={kanbanTopSpacerRef} />
+                    </div>
                     {/* Arrows */}
                     <button
                       type="button"
