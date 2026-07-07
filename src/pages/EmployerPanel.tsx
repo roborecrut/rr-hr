@@ -1358,6 +1358,25 @@ export default function EmployerPanel() {
     return () => clearInterval(interval);
   }, [employerId]);
 
+  // Side-fetch employer decisions for CRM cards/filter (RLS-safe: only rows
+  // this employer can see are returned).
+  useEffect(() => {
+    const ids = candidates.map((c: any) => c.uuid).filter(Boolean);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("candidates")
+        .select("id, hire_decision")
+        .in("id", ids as string[]);
+      if (cancelled || !Array.isArray(data)) return;
+      const m: Record<string, string> = {};
+      for (const r of data as any[]) if (r?.hire_decision) m[r.id] = r.hire_decision;
+      setHireDecisionMap(m);
+    })();
+    return () => { cancelled = true; };
+  }, [candidates]);
+
   // Refresh CRM / vacancies immediately on window focus or tab visibility
   // change so that completing a candidate stage in another tab is reflected
   // without waiting for the 4-second polling cycle.
