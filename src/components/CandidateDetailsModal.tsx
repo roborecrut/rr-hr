@@ -14,6 +14,7 @@ import { adaptEmployerChecklist, adaptEmployerSituations } from "@/lib/feedbackA
 import EmployerChecklistReport from "@/components/reports/EmployerChecklistReport";
 import EmployerSituationsReport from "@/components/reports/EmployerSituationsReport";
 import EmployerOverallReport from "@/components/reports/EmployerOverallReport";
+import EmployerOverallSummary from "@/components/reports/EmployerOverallSummary";
 import EmployerTrainingStageReport from "@/components/reports/EmployerTrainingStageReport";
 import EmployerTrainingSummaryReport from "@/components/reports/EmployerTrainingSummaryReport";
 import { scoreTone as toneFor, formatScore as toneFormat, type Tone } from "@/lib/scoreTone";
