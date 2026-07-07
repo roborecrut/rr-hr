@@ -1493,12 +1493,13 @@ export default function EmployerPanel() {
       // Pull saved contact details from employers row
       const { data: emp } = await supabase
         .from("employers")
-        .select("contact_phone, contact_telegram")
+        .select("contact_phone, contact_telegram, telegram_chat_id")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!cancelled && emp) {
         if ((emp as any).contact_phone) setProfilePhone((emp as any).contact_phone);
         if ((emp as any).contact_telegram) setTelegramUsernameState((emp as any).contact_telegram.replace(/^@/, ""));
+        if ((emp as any).telegram_chat_id) setTelegramChatId(String((emp as any).telegram_chat_id));
       }
 
       const { data: prof } = await supabase
