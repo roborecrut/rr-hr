@@ -1230,41 +1230,15 @@ ${goal}
               </TabsContent>
 
               <TabsContent value="overall" className="space-y-6 mt-0">
-                <EmployerOverallReport
-                  fitScore={(s as any).ai_fit_score}
+                <EmployerOverallSummary
+                  resumeScore={s.resume_score}
+                  resumeFeedback={(s as any).resume_feedback}
+                  checklistScore={(s as any).checklist_score}
+                  checklistFeedback={(s as any).checklist_feedback}
+                  situationsScore={(s as any).situations_score}
+                  situationsFeedback={(s as any).situations_feedback}
                   overallScore={s.overall_score}
-                  employerFeedback={(s as any).employer_overall_feedback}
                 />
-
-                <div className="bg-black/20 border border-white/10 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-[#E7C768] uppercase tracking-wide flex items-center gap-2">
-                      <RefreshCw className="w-4 h-4" /> Совокупная AI-оценка соответствия
-                    </h3>
-                    <p className="text-[12px] text-slate-300 mt-1">
-                      ИИ перечитает резюме, анкету, ситуации, обучение и пожелания работодателя.
-                      Средний балл этапов и stage-feedback не перезаписываются.
-                    </p>
-                    {overallSaving && (
-                      <div className="text-[12px] text-slate-300 mt-2" data-testid="overall-status">
-                        Идёт анализ… {overallStatus ? `(${overallStatus})` : ""}
-                      </div>
-                    )}
-                    {overallErr && (
-                      <div className="text-rose-300 text-xs mt-2" data-testid="overall-error">{overallErr}</div>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="recalc-overall-btn"
-                    disabled={overallSaving}
-                    onClick={runOverallEvaluation}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-black text-xs shadow disabled:opacity-50"
-                  >
-                    {overallSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    Пересчитать AI-оценку
-                  </button>
-                </div>
               </TabsContent>
 
               <TabsContent value="training" className="space-y-4 mt-0">
