@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
     .in("job_type", ALL_TYPES)
     .in("status", NON_TERMINAL)
     .is("completed_at", null)
+    .is("watchdog_resumed_at", null)
     .lt("updated_at", cutoff)
     .order("updated_at", { ascending: true })
     .limit(MAX_JOBS_PER_TICK);
@@ -88,6 +89,13 @@ Deno.serve(async (req) => {
 
   for (const job of jobs) {
     try {
+      // Mark this job as "watchdog already tried" BEFORE doing anything, so
+      // even if the resume itself hangs, the next cron tick won't pick the
+      // same job again. One-shot per stuck job.
+      await admin.from("ai_jobs")
+        .update({ watchdog_resumed_at: new Date().toISOString() })
+        .eq("id", job.id);
+
       // 1) If primary is still marked running, finalize the stuck attempt so
       //    the diagnostics table doesn't grow open-ended.
       if (
