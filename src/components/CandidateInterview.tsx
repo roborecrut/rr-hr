@@ -286,14 +286,19 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
             });
           }
         }
-        if (sc.checklist_score != null) setChecklistScore(sc.checklist_score);
-        // Prefer candidate-facing feedback (v2). The adapter strips employer-only
-        // fields from the legacy column when used as a fallback.
+        // Safety net: score=0 без разбора трактуем как «оценка не сформирована»,
+        // иначе пользователь увидит пустую страницу «Подробный разбор ещё не
+        // сформирован» после сбоя AI и авто-переход на следующий этап.
         const candChk = (sc as any).candidate_checklist_feedback;
+        const chkFb = candChk || sc.checklist_feedback || null;
+        const chkScoreValid = sc.checklist_score != null && !(Number(sc.checklist_score) === 0 && !chkFb);
+        if (chkScoreValid) setChecklistScore(sc.checklist_score);
         if (candChk) setChecklistFeedback(candChk);
         else if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
-        if (sc.situations_score != null) setSituationsScore(sc.situations_score);
         const candSit = (sc as any).candidate_situations_feedback;
+        const sitFb = candSit || sc.situations_feedback || null;
+        const sitScoreValid = sc.situations_score != null && !(Number(sc.situations_score) === 0 && !sitFb);
+        if (sitScoreValid) setSituationsScore(sc.situations_score);
         if (candSit) setSituationsFeedbackRaw(candSit);
         else if (sc.situations_feedback) setSituationsFeedbackRaw(sc.situations_feedback);
         if (sc.situations_feedback?.items) setSituationsFeedback(sc.situations_feedback.items);
@@ -310,8 +315,8 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
           setFinalScore(Math.round(Number(scFull.overall_score)));
         }
         // Auto-jump to first incomplete stage
-        if (sc.situations_score == null && sc.checklist_score != null && Number(sc.checklist_score) >= ((pr as any)?.interview_pass_score ?? 75)) setStage("situations");
-        else if (sc.checklist_score == null && sc.resume_score != null) setStage("checklist");
+        if (!sitScoreValid && chkScoreValid && Number(sc.checklist_score) >= ((pr as any)?.interview_pass_score ?? 75)) setStage("situations");
+        else if (!chkScoreValid && sc.resume_score != null) setStage("checklist");
       }
     })();
   }, [projectId, candidateId]);
@@ -405,8 +410,16 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
         gaps: Array.isArray(rf.gaps) ? rf.gaps : [],
       });
     }
-    if (sc.checklist_score != null) setChecklistScore(Number(sc.checklist_score));
-    if (sc.situations_score != null) setSituationsScore(Number(sc.situations_score));
+    {
+      const chkFb = (sc as any).candidate_checklist_feedback || sc.checklist_feedback || null;
+      if (sc.checklist_score != null && !(Number(sc.checklist_score) === 0 && !chkFb)) {
+        setChecklistScore(Number(sc.checklist_score));
+      }
+      const sitFb = (sc as any).candidate_situations_feedback || sc.situations_feedback || null;
+      if (sc.situations_score != null && !(Number(sc.situations_score) === 0 && !sitFb)) {
+        setSituationsScore(Number(sc.situations_score));
+      }
+    }
     if ((sc as any).candidate_checklist_feedback) setChecklistFeedback((sc as any).candidate_checklist_feedback);
     else if (sc.checklist_feedback) setChecklistFeedback(sc.checklist_feedback);
     if ((sc as any).candidate_situations_feedback) setSituationsFeedbackRaw((sc as any).candidate_situations_feedback);
@@ -654,7 +667,11 @@ export default function CandidateInterview({ projectId, candidateId, onCompleted
     const { data: sc } = await (supabase as any).from("candidate_scores")
       .select("checklist_score,checklist_feedback,candidate_checklist_feedback")
       .eq("candidate_id", candidateId).maybeSingle();
-    if (sc?.checklist_score != null) setChecklistScore(sc.checklist_score);
+    const chkFb = (sc as any)?.candidate_checklist_feedback || sc?.checklist_feedback || null;
+    // Не показываем "0/100 + пустой разбор" — это следствие сбоя AI, а не оценка.
+    if (sc?.checklist_score != null && !(Number(sc.checklist_score) === 0 && !chkFb)) {
+      setChecklistScore(sc.checklist_score);
+    }
     if ((sc as any)?.candidate_checklist_feedback) {
       setChecklistFeedback((sc as any).candidate_checklist_feedback);
     } else if (sc?.checklist_feedback) {
