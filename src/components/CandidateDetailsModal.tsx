@@ -398,6 +398,8 @@ function CandidateDetailsModalInner({
   const [decisionMsg, setDecisionMsg] = useState("");
   const [decisionSaving, setDecisionSaving] = useState(false);
   const [decisionErr, setDecisionErr] = useState<string | null>(null);
+  const [decisionTone, setDecisionTone] = useState<"warm"|"formal"|"friendly"|"short">("warm");
+  const [decisionGenerating, setDecisionGenerating] = useState(false);
   const [reviewSaving, setReviewSaving] = useState(false);
   const [overallSaving, setOverallSaving] = useState(false);
   const [overallErr, setOverallErr] = useState<string | null>(null);
