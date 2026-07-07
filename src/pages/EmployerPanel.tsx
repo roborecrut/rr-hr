@@ -234,6 +234,7 @@ export default function EmployerPanel() {
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
   const [crmFilterVerdict, setCrmFilterVerdict] = useState<string>("all");
   const [crmFilterDecision, setCrmFilterDecision] = useState<string>("all");
+  const [crmSort, setCrmSort] = useState<{ field: "name" | "created" | "updated"; dir: "asc" | "desc" }>({ field: "created", dir: "desc" });
   const [hireDecisionMap, setHireDecisionMap] = useState<Record<string, string>>({});
 
   // Kanban refs + helpers (CRM hotfix v2)
