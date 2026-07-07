@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
             .update({
               status: "timed_out",
               safe_error_code: "worker_killed_watchdog",
-              finished_at: new Date().toISOString(),
+              completed_at: new Date().toISOString(),
             })
             .eq("id", att.id);
         }
