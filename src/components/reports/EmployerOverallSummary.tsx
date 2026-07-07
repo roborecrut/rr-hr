@@ -7,8 +7,8 @@
  * surfaces. Green (strengths / green flags), amber (weak sides), rose
  * (red flags). Fully tolerant to missing feedback payloads.
  */
-import React, { useMemo } from "react";
-import { FileText, ClipboardCheck, MessageSquare, Sparkles, AlertTriangle, ShieldAlert, TrendingUp } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { FileText, ClipboardCheck, MessageSquare, Sparkles, AlertTriangle, ShieldAlert, TrendingUp, X } from "lucide-react";
 
 type AnyObj = Record<string, any>;
 
@@ -94,26 +94,90 @@ function StageCard({ icon, title, score, headline }: {
   icon: React.ReactNode; title: string; score: number | null; headline: string;
 }) {
   const v = verdictFor(score);
+  const [open, setOpen] = useState(false);
+  const hasText = Boolean(headline);
   return (
-    <div
-      className="rounded-2xl p-4 flex items-start gap-3 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)]"
-      style={{
-        background: "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))",
-        backdropFilter: "blur(18px)",
-        WebkitBackdropFilter: "blur(18px)",
-      }}
-    >
-      <ScoreRing score={score} />
-      <div className="min-w-0 flex-1">
+    <>
+      <div
+        className={`rounded-2xl p-4 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)] ${hasText ? "cursor-pointer hover:border-white/40 transition" : ""}`}
+        style={{
+          background: "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))",
+          backdropFilter: "blur(18px)",
+          WebkitBackdropFilter: "blur(18px)",
+        }}
+        onClick={hasText ? () => setOpen(true) : undefined}
+        role={hasText ? "button" : undefined}
+        tabIndex={hasText ? 0 : undefined}
+        onKeyDown={hasText ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } } : undefined}
+      >
+        {/* Ring floats left so the text wraps around it. */}
+        <div className="float-left mr-3 mb-1">
+          <ScoreRing score={score} />
+        </div>
         <div className="flex items-center gap-1.5 text-white/90 text-[11px] font-bold uppercase tracking-wider">
           <span className="opacity-80">{icon}</span>{title}
         </div>
         <div className={`text-[13px] font-extrabold mt-0.5 ${v.cls}`}>{v.text}</div>
         {headline && (
-          <div className="text-[12px] text-white/80 mt-1 leading-snug whitespace-pre-wrap break-words">{headline}</div>
+          <div
+            className="text-[12px] text-white/80 mt-1 leading-snug break-words overflow-hidden"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 8,
+              WebkitBoxOrient: "vertical",
+            }}
+          >
+            {headline}
+          </div>
+        )}
+        <div className="clear-both" />
+        {hasText && (
+          <div className="mt-2 text-[10px] font-black uppercase tracking-wider text-[#E7C768]/90">
+            Читать полностью →
+          </div>
         )}
       </div>
-    </div>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-[10000] grid place-items-center p-4"
+          style={{ background: "rgba(23,52,79,0.55)", backdropFilter: "blur(6px)" }}
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 border border-white/30 text-white"
+            style={{
+              background: "linear-gradient(135deg, rgba(38,85,130,0.95), rgba(23,52,79,0.95))",
+              backdropFilter: "blur(22px)",
+              WebkitBackdropFilter: "blur(22px)",
+              boxShadow: "0 30px 80px -20px rgba(0,0,0,0.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute top-3 right-3 grid place-items-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/25 transition"
+              aria-label="Закрыть"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-3 mb-4 pr-10">
+              <ScoreRing score={score} />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 text-white/90 text-[11px] font-bold uppercase tracking-wider">
+                  <span className="opacity-80">{icon}</span>{title}
+                </div>
+                <div className={`text-sm font-extrabold mt-0.5 ${v.cls}`}>{v.text}</div>
+              </div>
+            </div>
+            <div className="text-[13.5px] text-white/90 leading-relaxed whitespace-pre-wrap break-words">
+              {headline}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
