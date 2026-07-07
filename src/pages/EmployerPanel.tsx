@@ -2995,15 +2995,48 @@ export default function EmployerPanel() {
                     <option value="certified">10. Сертификат</option>
                   </select>
 
-                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmSearch) && (
+                  <select
+                    value={crmFilterVerdict}
+                    onChange={(e) => setCrmFilterVerdict(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по вердикту ИИ"
+                  >
+                    <option value="all">Все вердикты ИИ</option>
+                    <option value="good">✓ Одобрен ИИ</option>
+                    <option value="mid">Подходит частично</option>
+                    <option value="bad">Не подходит</option>
+                    <option value="none">Без оценки</option>
+                  </select>
+
+                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmSearch) && (
                     <button
                       type="button"
-                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmSearch(""); }}
+                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmSearch(""); }}
                       className="text-[11px] font-bold text-[#E7C768] underline px-1"
                     >
                       Сбросить
                     </button>
                   )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
+                  <span className="font-mono px-2 py-0.5 rounded-full bg-[#E7C768]/15 border border-[#E7C768]/30 text-[#E7C768] font-bold">
+                    Всего: {filteredCandidates.length}
+                    {filteredCandidates.length !== candidates.length && (
+                      <span className="text-slate-400 font-normal"> из {candidates.length}</span>
+                    )}
+                  </span>
+                  {(["good","mid","bad","none"] as ToneLabel[]).map((lab) => {
+                    const cnt = filteredCandidates.filter((x: any) => scoreTone(x.scores?.overallScore).label === lab).length;
+                    if (!cnt) return null;
+                    const t = ({ good: { txt: "✓ Одобрен", cls: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
+                                 mid:  { txt: "Частично",  cls: "bg-amber-500/20 text-amber-200 border-amber-400/40" },
+                                 bad:  { txt: "Не подходит", cls: "bg-rose-500/20 text-rose-200 border-rose-400/40" },
+                                 none: { txt: "Без оценки",  cls: "bg-white/10 text-slate-300 border-white/20" } } as const)[lab];
+                    return (
+                      <span key={lab} className={`font-mono px-2 py-0.5 rounded-full border ${t.cls}`}>{t.txt}: {cnt}</span>
+                    );
+                  })}
                 </div>
               </div>
 
