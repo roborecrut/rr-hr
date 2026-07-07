@@ -298,6 +298,30 @@ export default function EmployerPanel() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
+  // Listen for "open-candidate-card" (dispatched by NotificationsBell) and
+  // for a ?candidate=<id> URL param so notifications can deep-link into the
+  // CRM candidate card without a full navigation.
+  useEffect(() => {
+    const onOpen = (e: any) => {
+      const id = e?.detail?.id;
+      if (id) setSelectedCandidateId(String(id));
+    };
+    window.addEventListener("open-candidate-card", onOpen as any);
+    return () => window.removeEventListener("open-candidate-card", onOpen as any);
+  }, []);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      const id = sp.get("candidate");
+      if (id) {
+        setSelectedCandidateId(id);
+        sp.delete("candidate");
+        const qs = sp.toString();
+        window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   // Mailing States
   const [mailingSegment, setMailingSegment] = useState<string>("all");
   const [mailingTemplate, setMailingTemplate] = useState<string>("welcome");
