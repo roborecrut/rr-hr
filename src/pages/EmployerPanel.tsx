@@ -3145,7 +3145,7 @@ export default function EmployerPanel() {
                                       draggable
                                       onDragStart={() => localStorage.setItem("dragged_candidate_id", cand.id)}
                                       onClick={() => setSelectedCandidateId((cand as any).uuid || null)}
-                                      className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm flex flex-col gap-1 h-[96px] overflow-hidden"
+                                      className="bg-[#17344F]/85 border border-white/10 hover:border-[#E7C768] p-2.5 rounded-xl transition cursor-pointer shadow-sm flex flex-col gap-1 min-h-[96px] overflow-hidden"
                                     >
                                       <div className="text-xs font-bold text-[#E7C768] hover:underline line-clamp-1">
                                         {cand.name}
@@ -3153,6 +3153,14 @@ export default function EmployerPanel() {
                                       <div className="text-[10px] text-slate-300 truncate">{cand.roleName}</div>
                                       {cand.email && <div className="text-[10px] text-slate-400 truncate">{cand.email}</div>}
                                       {(cand as any).phone && <div className="text-[10px] text-slate-500 truncate">{(cand as any).phone}</div>}
+                                      {(() => {
+                                        const tone = scoreTone((cand as any).scores?.overallScore);
+                                        if (tone.label === "none") return null;
+                                        const txt = tone.label === "good" ? "✓ Одобрен ИИ" : tone.label === "mid" ? "Подходит частично" : "Не подходит";
+                                        return (
+                                          <span className={`self-start mt-auto text-[9px] font-bold px-1.5 py-0.5 rounded ${tone.badge}`}>{txt}</span>
+                                        );
+                                      })()}
                                     </div>
                                   ))
                                 )}
