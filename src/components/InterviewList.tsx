@@ -7,11 +7,12 @@ type Props = {
   projects: JobProject[];
   onOpen: (projectId: string) => void;
   onCreate: () => void;
+  reloadKey?: number;
 };
 
 type Summary = { project_id: string; blocks: { resume: boolean; checklist: boolean; situations: boolean } };
 
-export default function InterviewList({ projects, onOpen, onCreate }: Props) {
+export default function InterviewList({ projects, onOpen, onCreate, reloadKey = 0 }: Props) {
   // employerPublicId для перехода на страницу тарифов при клике на плашку лимитов.
   const employerPublicId = (projects[0] as any)?.employerPublicId
     || (typeof window !== "undefined" ? (window.location.pathname.match(/\/emp(\w+)/)?.[1] || "") : "");
@@ -50,7 +51,7 @@ export default function InterviewList({ projects, onOpen, onCreate }: Props) {
       firstLoad.current = false;
     })();
     return () => { cancelled = true; };
-  }, [idsKey]);
+  }, [idsKey, reloadKey]);
 
   const existing = projects.filter(p => summaries[p.id]);
 

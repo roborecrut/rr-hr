@@ -73,7 +73,7 @@ export interface Candidate {
   projectId: string; // Attached to which Employer Onboarding system
   roleName: string;
   currentStage: "terms" | "interview" | "scoring" | "training" | "certified";
-  crmStage?: "registration" | "screening" | "checklist" | "situations" | "professional" | "product" | "systems" | "certified";
+  crmStage?: "registration" | "screening" | "checklist" | "situations" | "interview_reject" | "interview_success" | "professional" | "product" | "systems" | "certified";
   publicId?: string;
   companyId?: string;
   companySlug?: string;

@@ -80,7 +80,7 @@ ${body.resume_text.slice(0, 10000)}
   const attemptId = jobId ? await startPrimaryAttempt(jobId) : null;
 
   try {
-    const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 120_000 });
+    const r = await callProTalk({ messages: [{ role: "user", content: msg }], chatId, socialId, timeoutMs: 180_000 });
     const obj = tryParseJson<any>(r.text) || {};
     if (typeof obj !== "object" || obj === null || obj.score === undefined) {
       throw new Error("bad_json");
