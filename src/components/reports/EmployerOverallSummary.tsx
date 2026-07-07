@@ -96,7 +96,7 @@ function StageCard({ icon, title, score, headline }: {
   const v = verdictFor(score);
   return (
     <div
-      className="rounded-2xl p-4 flex items-center gap-3 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)]"
+      className="rounded-2xl p-4 flex items-start gap-3 min-w-0 border border-white/25 shadow-[0_10px_40px_-15px_rgba(255,255,255,0.15)]"
       style={{
         background: "linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.06))",
         backdropFilter: "blur(18px)",
@@ -110,7 +110,7 @@ function StageCard({ icon, title, score, headline }: {
         </div>
         <div className={`text-[13px] font-extrabold mt-0.5 ${v.cls}`}>{v.text}</div>
         {headline && (
-          <div className="text-[12px] text-white/80 mt-1 line-clamp-2 leading-snug">{headline}</div>
+          <div className="text-[12px] text-white/80 mt-1 leading-snug whitespace-pre-wrap break-words">{headline}</div>
         )}
       </div>
     </div>
