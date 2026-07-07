@@ -5,6 +5,7 @@
  * `notifications_list` auto-detects the viewer.
  */
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Bell, CheckCheck, Loader2, X, UserSquare2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
@@ -176,8 +177,8 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
         </div>
       )}
 
-      {detail && (
-        <div
+      {detail && createPortal(
+        (<div
           className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => setDetail(null)}
         >
@@ -239,7 +240,8 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
               </button>
             </div>
           </div>
-        </div>
+        </div>),
+        document.body
       )}
     </div>
   );
