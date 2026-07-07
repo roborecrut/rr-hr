@@ -3231,6 +3231,14 @@ export default function EmployerPanel() {
                                   <div>{cand.name}</div>
                                   <div className="text-[10px] text-slate-400 font-normal">{cand.email}</div>
                                   {(cand as any).phone && <div className="text-[10px] text-slate-500 font-normal">{(cand as any).phone}</div>}
+                                  {(() => {
+                                    const tone = scoreTone((cand as any).scores?.overallScore);
+                                    if (tone.label === "none") return null;
+                                    const txt = tone.label === "good" ? "✓ Одобрен ИИ" : tone.label === "mid" ? "Подходит частично" : "Не подходит";
+                                    return (
+                                      <span className={`inline-block mt-1 text-[9px] font-bold px-1.5 py-0.5 rounded ${tone.badge}`}>{txt}</span>
+                                    );
+                                  })()}
                                 </td>
                                 <td className="p-3 text-slate-200">{(cand as any).companyName || "—"}</td>
                                 <td className="p-3 text-slate-200">{cand.roleName || "—"}</td>
