@@ -228,7 +228,7 @@ body {
 }
 @media (min-width: 1024px) {
   .crm-page {
-    min-height: calc(200dvh - 220px);
+    min-height: calc(100dvh - 110px);
     height: auto;
     overflow: visible;
   }
