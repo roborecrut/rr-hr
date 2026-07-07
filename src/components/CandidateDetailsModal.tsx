@@ -917,22 +917,85 @@ function CandidateDetailsModalInner({
 
             {decisionOpen && (
               <div className="fixed inset-0 z-[80] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !decisionSaving && setDecisionOpen(null)}>
-                <div className="bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <div className="bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                   <h4 className="text-lg font-bold text-white mb-3">
                     {decisionOpen === "invited" ? "Пригласить на работу" : "Отказать кандидату"}
                   </h4>
                   <p className="text-xs text-slate-300 mb-3">
                     Кандидат увидит ваше сообщение в личном кабинете и получит уведомление.
                   </p>
+                  <div className="mb-3">
+                    <div className="text-[11px] text-slate-300 mb-1.5">Тон сообщения</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {([
+                        { k: "warm", label: "Тёплый" },
+                        { k: "formal", label: "Официальный" },
+                        { k: "friendly", label: "Дружелюбный" },
+                        { k: "short", label: "Краткий" },
+                      ] as const).map(t => (
+                        <button
+                          type="button"
+                          key={t.k}
+                          onClick={() => setDecisionTone(t.k)}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${
+                            decisionTone === t.k
+                              ? "bg-[#E7C768]/20 border-[#E7C768]/60 text-[#F4EE8E]"
+                              : "bg-white/5 border-white/15 text-slate-300 hover:bg-white/10"
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        disabled={decisionGenerating}
+                        onClick={async () => {
+                          setDecisionGenerating(true); setDecisionErr(null);
+                          try {
+                            const toneRu = { warm: "тёплый", formal: "официальный", friendly: "дружелюбный", short: "краткий" }[decisionTone];
+                            const candName = c.full_name || c.resume_name || "кандидат";
+                            const role = pr.role_name || "вакансия";
+                            const company = co.name || pr.company_name || "";
+                            const scoreLine = s?.overall_score ? `Средний балл интервью: ${Math.round(s.overall_score)}/100.` : "";
+                            const goal = decisionOpen === "invited"
+                              ? "Пригласи кандидата на работу. Сообщи, что решение положительное, попроси связаться для обсуждения выхода."
+                              : "Вежливо откажи кандидату. Поблагодари за интерес и потраченное время. Не указывай конкретных причин, если их нет.";
+                            const prompt = `Составь короткое сообщение (3–6 предложений) кандидату в ${toneRu} тоне.
+Компания: ${company}. Вакансия: ${role}. Имя кандидата: ${candName}. ${scoreLine}
+${goal}
+Напиши только текст сообщения без пояснений, приветствий типа «Вот текст», без хэштегов и подписей.`;
+                            const reply = await aiChat({
+                              kind: "employer",
+                              messages: [{ role: "user", content: prompt }],
+                              candidate_id: candidateId || undefined,
+                              project_id: (pr as any)?.id || undefined,
+                            });
+                            if (reply) setDecisionMsg(reply.trim());
+                          } catch (e: any) {
+                            setDecisionErr(e?.message || "Не удалось сгенерировать текст");
+                          } finally {
+                            setDecisionGenerating(false);
+                          }
+                        }}
+                        className="ml-auto px-3 py-1 rounded-lg text-[11px] font-bold bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] inline-flex items-center gap-1.5 disabled:opacity-50"
+                      >
+                        {decisionGenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        Сгенерировать ИИ
+                      </button>
+                    </div>
+                  </div>
                   <textarea
                     value={decisionMsg}
                     onChange={e => setDecisionMsg(e.target.value)}
                     placeholder={decisionOpen === "invited"
                       ? "Напишите кандидату: когда выйти, как связаться, какие шаги дальше…"
                       : "Кратко объясните причину отказа (по желанию)…"}
-                    rows={5}
+                    rows={8}
                     className="w-full bg-black/30 border border-white/15 rounded-xl p-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-[#E7C768]"
                   />
+                  <div className="text-[10px] text-slate-400 mt-1">
+                    Проверьте текст. После нажатия «{decisionOpen === "invited" ? "Пригласить" : "Отправить отказ"}» сообщение уйдёт кандидату в профиль и в уведомления.
+                  </div>
                   {decisionErr && <div className="text-rose-300 text-xs mt-2">{decisionErr}</div>}
                   <div className="flex gap-2 justify-end mt-4">
                     <button
