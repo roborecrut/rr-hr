@@ -2629,6 +2629,20 @@ export default function EmployerPanel() {
     return true;
   });
 
+  const sortedCandidates = (() => {
+    const arr = [...filteredCandidates];
+    const dir = crmSort.dir === "asc" ? 1 : -1;
+    const t = (v: any) => (v ? new Date(v).getTime() : 0);
+    arr.sort((a: any, b: any) => {
+      if (crmSort.field === "name") {
+        return (String(a.name || "").localeCompare(String(b.name || ""), "ru")) * dir;
+      }
+      if (crmSort.field === "updated") return (t(a.updatedAt) - t(b.updatedAt)) * dir;
+      return (t(a.createdAt) - t(b.createdAt)) * dir;
+    });
+    return arr;
+  })();
+
   const crmRoleOptions = Array.from(new Set(candidates.map((c: any) => c.roleName).filter(Boolean))) as string[];
   const crmCompanyOptions = Array.from(new Set(candidates.map((c: any) => c.companyName).filter(Boolean))) as string[];
 
