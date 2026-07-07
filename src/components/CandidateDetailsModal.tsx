@@ -24,6 +24,8 @@ import {
   isTerminal, isSuccess,
 } from "@/lib/aiJobs";
 import { diagLog, extractInvokeError, tail } from "@/lib/diagLog";
+import { aiChat } from "@/lib/aiClient";
+import { Sparkles } from "lucide-react";
 
 /**
  * Compact, non-PII diagnostics object passed into the Error Boundary.
