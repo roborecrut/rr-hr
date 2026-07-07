@@ -234,6 +234,7 @@ export default function EmployerPanel() {
   const [crmFilterStage, setCrmFilterStage] = useState<string>("all");
   const [crmFilterVerdict, setCrmFilterVerdict] = useState<string>("all");
   const [crmFilterDecision, setCrmFilterDecision] = useState<string>("all");
+  const [crmSort, setCrmSort] = useState<{ field: "name" | "created" | "updated"; dir: "asc" | "desc" }>({ field: "created", dir: "desc" });
   const [hireDecisionMap, setHireDecisionMap] = useState<Record<string, string>>({});
 
   // Kanban refs + helpers (CRM hotfix v2)
@@ -1345,6 +1346,7 @@ export default function EmployerPanel() {
             trainingPassed: c.training_passed || [],
             certified: !!c.certified,
             createdAt: c.created_at,
+            updatedAt: c.updated_at || c.created_at,
             registeredVia: c.registered_via,
             scores: {
               resumeScore: c.resume_score != null ? Number(c.resume_score) : undefined,
@@ -2627,6 +2629,20 @@ export default function EmployerPanel() {
     return true;
   });
 
+  const sortedCandidates = (() => {
+    const arr = [...filteredCandidates];
+    const dir = crmSort.dir === "asc" ? 1 : -1;
+    const t = (v: any) => (v ? new Date(v).getTime() : 0);
+    arr.sort((a: any, b: any) => {
+      if (crmSort.field === "name") {
+        return (String(a.name || "").localeCompare(String(b.name || ""), "ru")) * dir;
+      }
+      if (crmSort.field === "updated") return (t(a.updatedAt) - t(b.updatedAt)) * dir;
+      return (t(a.createdAt) - t(b.createdAt)) * dir;
+    });
+    return arr;
+  })();
+
   const crmRoleOptions = Array.from(new Set(candidates.map((c: any) => c.roleName).filter(Boolean))) as string[];
   const crmCompanyOptions = Array.from(new Set(candidates.map((c: any) => c.companyName).filter(Boolean))) as string[];
 
@@ -3101,6 +3117,36 @@ export default function EmployerPanel() {
                   )}
                 </div>
 
+                {/* Sort controls (shared by kanban and table) */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-1">Сортировка:</span>
+                  {([
+                    { field: "name",    label: "Имя" },
+                    { field: "created", label: "Дата создания" },
+                    { field: "updated", label: "Дата изменения" },
+                  ] as const).map((s) => {
+                    const active = crmSort.field === s.field;
+                    return (
+                      <button
+                        key={s.field}
+                        type="button"
+                        onClick={() => setCrmSort((prev) => prev.field === s.field
+                          ? { field: s.field, dir: prev.dir === "asc" ? "desc" : "asc" }
+                          : { field: s.field, dir: s.field === "name" ? "asc" : "desc" })}
+                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition ${active
+                          ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
+                          : "bg-[#17344F]/60 border-white/15 text-slate-200 hover:border-[#E7C768]/60 hover:text-[#E7C768]"}`}
+                        title={`Сортировать по: ${s.label}`}
+                      >
+                        {s.label}
+                        <span className="font-mono text-[10px] opacity-80">
+                          {active ? (crmSort.dir === "asc" ? "↑" : "↓") : "↕"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
                   <span className="font-mono px-2 py-0.5 rounded-full bg-[#E7C768]/15 border border-[#E7C768]/30 text-[#E7C768] font-bold">
                     Всего: {filteredCandidates.length}
@@ -3213,7 +3259,7 @@ export default function EmployerPanel() {
                     >
                       <div className="crm-kanban-track">
                         {columns.map(column => {
-                          const colCandidates = filteredCandidates.filter(c => (c.crmStage || "registration") === column.stage);
+                          const colCandidates = sortedCandidates.filter(c => (c.crmStage || "registration") === column.stage);
                           return (
                             <div
                               key={column.stage}
@@ -3294,10 +3340,12 @@ export default function EmployerPanel() {
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
-                            { label: "ФИО Кандидата", w: 240, align: "left" },
+                            { label: "ФИО Кандидата", w: 260, align: "left", sort: "name" as const },
                             { label: "Компания", w: 180, align: "left" },
                             { label: "Вакансия", w: 200, align: "left" },
                             { label: "Текущий Этап", w: 170, align: "left" },
+                            { label: "Создан",  w: 110, align: "left", sort: "created" as const },
+                            { label: "Изменён", w: 110, align: "left", sort: "updated" as const },
                             { label: "Резюме", w: 90, align: "center" },
                             { label: "Чек-лист", w: 90, align: "center" },
                             { label: "Ситуации", w: 90, align: "center" },
@@ -3310,25 +3358,41 @@ export default function EmployerPanel() {
                                 : h.align === "right"
                                   ? "text-right"
                                   : "text-left";
+                            const sortable = (h as any).sort as ("name" | "created" | "updated") | undefined;
+                            const isActive = sortable && crmSort.field === sortable;
+                            const onSort = sortable
+                              ? () => setCrmSort((prev) => prev.field === sortable
+                                  ? { field: sortable, dir: prev.dir === "asc" ? "desc" : "asc" }
+                                  : { field: sortable, dir: sortable === "name" ? "asc" : "desc" })
+                              : undefined;
                             return (
                               <th
                                 key={i}
-                                className={`p-3 ${alignClass} whitespace-nowrap bg-[#17344F]`}
+                                className={`p-3 ${alignClass} whitespace-nowrap bg-[#17344F] ${sortable ? "cursor-pointer select-none hover:text-white transition" : ""}`}
                                 style={{ minWidth: h.w, width: h.w }}
+                                onClick={onSort}
+                                title={sortable ? "Сортировать" : undefined}
                               >
-                                {h.label}
+                                <span className="inline-flex items-center gap-1">
+                                  {h.label}
+                                  {sortable && (
+                                    <span className={`font-mono text-[10px] ${isActive ? "text-[#E7C768]" : "text-white/40"}`}>
+                                      {isActive ? (crmSort.dir === "asc" ? "↑" : "↓") : "↕"}
+                                    </span>
+                                  )}
+                                </span>
                               </th>
                             );
                           })}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {filteredCandidates.length === 0 ? (
+                        {sortedCandidates.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
+                            <td colSpan={11} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
                           </tr>
                         ) : (
-                          filteredCandidates.map(cand => {
+                          sortedCandidates.map(cand => {
                             const rScore = cand.scores?.resumeScore;
                             const cScore = cand.scores?.checklistScore;
                             const sScore = cand.scores?.situationsScore;
@@ -3369,6 +3433,12 @@ export default function EmployerPanel() {
                                     <option value="systems" className="bg-slate-900">9. Система</option>
                                     <option value="certified" className="bg-slate-900">10. Сертификат 🎓</option>
                                   </select>
+                                </td>
+                                <td className="p-3 text-slate-300 text-[11px] whitespace-nowrap">
+                                  {(cand as any).createdAt ? new Date((cand as any).createdAt).toLocaleDateString("ru-RU") : "—"}
+                                </td>
+                                <td className="p-3 text-slate-300 text-[11px] whitespace-nowrap">
+                                  {(cand as any).updatedAt ? new Date((cand as any).updatedAt).toLocaleDateString("ru-RU") : "—"}
                                 </td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(rScore)}</td>
                                 <td className="p-3 text-center font-mono font-bold text-sky-300">{fmt(cScore)}</td>
