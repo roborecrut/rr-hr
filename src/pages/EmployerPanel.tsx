@@ -3340,10 +3340,12 @@ export default function EmployerPanel() {
                       <thead className="sticky top-0 z-10">
                         <tr className="bg-[#17344F] text-[#E7C768] font-bold border-b border-white/10 uppercase tracking-wider text-[10px] font-mono">
                           {[
-                            { label: "ФИО Кандидата", w: 240, align: "left" },
+                            { label: "ФИО Кандидата", w: 260, align: "left", sort: "name" as const },
                             { label: "Компания", w: 180, align: "left" },
                             { label: "Вакансия", w: 200, align: "left" },
                             { label: "Текущий Этап", w: 170, align: "left" },
+                            { label: "Создан",  w: 110, align: "left", sort: "created" as const },
+                            { label: "Изменён", w: 110, align: "left", sort: "updated" as const },
                             { label: "Резюме", w: 90, align: "center" },
                             { label: "Чек-лист", w: 90, align: "center" },
                             { label: "Ситуации", w: 90, align: "center" },
@@ -3356,13 +3358,29 @@ export default function EmployerPanel() {
                                 : h.align === "right"
                                   ? "text-right"
                                   : "text-left";
+                            const sortable = (h as any).sort as ("name" | "created" | "updated") | undefined;
+                            const isActive = sortable && crmSort.field === sortable;
+                            const onSort = sortable
+                              ? () => setCrmSort((prev) => prev.field === sortable
+                                  ? { field: sortable, dir: prev.dir === "asc" ? "desc" : "asc" }
+                                  : { field: sortable, dir: sortable === "name" ? "asc" : "desc" })
+                              : undefined;
                             return (
                               <th
                                 key={i}
-                                className={`p-3 ${alignClass} whitespace-nowrap bg-[#17344F]`}
+                                className={`p-3 ${alignClass} whitespace-nowrap bg-[#17344F] ${sortable ? "cursor-pointer select-none hover:text-white transition" : ""}`}
                                 style={{ minWidth: h.w, width: h.w }}
+                                onClick={onSort}
+                                title={sortable ? "Сортировать" : undefined}
                               >
-                                {h.label}
+                                <span className="inline-flex items-center gap-1">
+                                  {h.label}
+                                  {sortable && (
+                                    <span className={`font-mono text-[10px] ${isActive ? "text-[#E7C768]" : "text-white/40"}`}>
+                                      {isActive ? (crmSort.dir === "asc" ? "↑" : "↓") : "↕"}
+                                    </span>
+                                  )}
+                                </span>
                               </th>
                             );
                           })}
@@ -3371,7 +3389,7 @@ export default function EmployerPanel() {
                       <tbody className="divide-y divide-white/5">
                         {sortedCandidates.length === 0 ? (
                           <tr>
-                            <td colSpan={9} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
+                            <td colSpan={11} className="p-8 text-center text-slate-400 font-semibold">Соискатели отсутствуют.</td>
                           </tr>
                         ) : (
                           sortedCandidates.map(cand => {
