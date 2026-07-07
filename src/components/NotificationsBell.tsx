@@ -5,7 +5,7 @@
  * `notifications_list` auto-detects the viewer.
  */
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { Bell, CheckCheck, Loader2 } from "lucide-react";
+import { Bell, CheckCheck, Loader2, X, UserSquare2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRouter } from "@/components/RouterContext";
 
@@ -39,6 +39,7 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
   const [items, setItems] = useState<NotifItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [viewer, setViewer] = useState<string | null>(null);
+  const [detail, setDetail] = useState<NotifItem | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -84,10 +85,8 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
       setItems(prev => prev.map(x => x.id === n.id ? { ...x, read_at: new Date().toISOString() } : x));
       setUnread(u => Math.max(0, u - 1));
     }
-    if (n.link) {
-      setOpen(false);
-      navigate(n.link);
-    }
+    setOpen(false);
+    setDetail({ ...n, read_at: n.read_at || new Date().toISOString() });
   };
 
   const markAll = async () => {
@@ -173,6 +172,72 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+      )}
+
+      {detail && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setDetail(null)}
+        >
+          <div
+            className="bg-gradient-to-b from-[#1E4468] to-[#17344F] border border-[#E7C768]/40 rounded-3xl shadow-2xl p-6 w-full max-w-lg text-white"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h4 className="text-lg font-bold bg-gradient-to-r from-[#F4EE8E] to-[#E7C768] bg-clip-text text-transparent">
+                {detail.title}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="p-1 rounded-lg hover:bg-white/10"
+                aria-label="Закрыть"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="text-[11px] text-slate-400 mb-3">{new Date(detail.created_at).toLocaleString("ru-RU")}</div>
+            {detail.body && (
+              <div className="bg-black/25 border border-white/10 rounded-xl p-3 text-[13px] whitespace-pre-wrap leading-relaxed">
+                {detail.body}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 justify-end mt-5">
+              {detail?.meta?.candidate_id && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = detail.meta.candidate_id;
+                    setDetail(null);
+                    // Try in-panel event first; fall back to CRM URL.
+                    const ev = new CustomEvent("open-candidate-card", { detail: { id } });
+                    window.dispatchEvent(ev);
+                    if (detail.link) navigate(`${detail.link}?candidate=${id}`);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#E7C768] to-[#D99E41] text-[#17344F] font-bold text-sm hover:opacity-90"
+                >
+                  <UserSquare2 className="w-4 h-4" /> Открыть карточку кандидата
+                </button>
+              )}
+              {detail.link && !detail?.meta?.candidate_id && (
+                <button
+                  type="button"
+                  onClick={() => { const l = detail.link!; setDetail(null); navigate(l); }}
+                  className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-sm font-semibold"
+                >
+                  Перейти
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setDetail(null)}
+                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-sm font-semibold"
+              >
+                Закрыть
+              </button>
+            </div>
           </div>
         </div>
       )}
