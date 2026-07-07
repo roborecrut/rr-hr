@@ -3117,6 +3117,36 @@ export default function EmployerPanel() {
                   )}
                 </div>
 
+                {/* Sort controls (shared by kanban and table) */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-1">Сортировка:</span>
+                  {([
+                    { field: "name",    label: "Имя" },
+                    { field: "created", label: "Дата создания" },
+                    { field: "updated", label: "Дата изменения" },
+                  ] as const).map((s) => {
+                    const active = crmSort.field === s.field;
+                    return (
+                      <button
+                        key={s.field}
+                        type="button"
+                        onClick={() => setCrmSort((prev) => prev.field === s.field
+                          ? { field: s.field, dir: prev.dir === "asc" ? "desc" : "asc" }
+                          : { field: s.field, dir: s.field === "name" ? "asc" : "desc" })}
+                        className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-lg border transition ${active
+                          ? "bg-[#E7C768]/20 border-[#E7C768] text-[#E7C768]"
+                          : "bg-[#17344F]/60 border-white/15 text-slate-200 hover:border-[#E7C768]/60 hover:text-[#E7C768]"}`}
+                        title={`Сортировать по: ${s.label}`}
+                      >
+                        {s.label}
+                        <span className="font-mono text-[10px] opacity-80">
+                          {active ? (crmSort.dir === "asc" ? "↑" : "↓") : "↕"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-300 pt-1">
                   <span className="font-mono px-2 py-0.5 rounded-full bg-[#E7C768]/15 border border-[#E7C768]/30 text-[#E7C768] font-bold">
                     Всего: {filteredCandidates.length}
