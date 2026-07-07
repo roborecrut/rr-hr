@@ -489,6 +489,10 @@ export default function EmployerPanel() {
   const [telegramLastName, setTelegramLastName] = useState("");
   const [telegramUsernameState, setTelegramUsernameState] = useState("");
   const [telegramPhone, setTelegramPhone] = useState<string>("");
+  // Telegram chat ID for duplicating employer notifications into the bot.
+  const [telegramChatId, setTelegramChatId] = useState<string>("");
+  const [telegramChatSaved, setTelegramChatSaved] = useState<boolean>(false);
+  const [telegramChatSaving, setTelegramChatSaving] = useState<boolean>(false);
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [referralStats, setReferralStats] = useState<{ count: number; rr: number }>({ count: 0, rr: 0 });
 
