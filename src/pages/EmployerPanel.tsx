@@ -3060,10 +3060,23 @@ export default function EmployerPanel() {
                     <option value="none">Без оценки</option>
                   </select>
 
-                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmSearch) && (
+                  <select
+                    value={crmFilterDecision}
+                    onChange={(e) => setCrmFilterDecision(e.target.value)}
+                    className="bg-[#17344F] text-white border border-white/15 rounded-xl text-[11px] px-2 py-1 focus:outline-none focus:border-[#E7C768]"
+                    title="Фильтр по решению работодателя"
+                  >
+                    <option value="all">Все решения</option>
+                    <option value="invited">✓ Приглашён</option>
+                    <option value="review">◔ На рассмотрении</option>
+                    <option value="rejected">✗ Отказ</option>
+                    <option value="none">Без решения</option>
+                  </select>
+
+                  {(crmFilterCompany !== "all" || crmFilterRole !== "all" || crmFilterStage !== "all" || crmFilterVerdict !== "all" || crmFilterDecision !== "all" || crmSearch) && (
                     <button
                       type="button"
-                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmSearch(""); }}
+                      onClick={() => { setCrmFilterCompany("all"); setCrmFilterRole("all"); setCrmFilterStage("all"); setCrmFilterVerdict("all"); setCrmFilterDecision("all"); setCrmSearch(""); }}
                       className="text-[11px] font-bold text-[#E7C768] underline px-1"
                     >
                       Сбросить
