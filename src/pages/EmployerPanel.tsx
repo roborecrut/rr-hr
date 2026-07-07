@@ -3226,6 +3226,17 @@ export default function EmployerPanel() {
                                           <span className={`self-start mt-auto text-[9px] font-bold px-1.5 py-0.5 rounded ${tone.badge}`}>{txt}</span>
                                         );
                                       })()}
+                                      {(() => {
+                                        const d = hireDecisionMap[(cand as any).uuid];
+                                        if (!d) return null;
+                                        const map: Record<string, {t: string; cls: string}> = {
+                                          invited:  { t: "✓ Приглашён",     cls: "bg-emerald-500/25 text-emerald-100 border border-emerald-400/40" },
+                                          review:   { t: "◔ Рассмотрение",   cls: "bg-amber-500/25 text-amber-100 border border-amber-400/40" },
+                                          rejected: { t: "✗ Отказ",          cls: "bg-rose-500/25 text-rose-100 border border-rose-400/40" },
+                                        };
+                                        const m = map[d]; if (!m) return null;
+                                        return <span className={`self-start text-[9px] font-bold px-1.5 py-0.5 rounded ${m.cls}`}>{m.t}</span>;
+                                      })()}
                                     </div>
                                   ))
                                 )}
