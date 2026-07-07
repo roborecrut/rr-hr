@@ -3470,6 +3470,8 @@ export type Database = {
         | "product"
         | "systems"
         | "certified"
+        | "interview_reject"
+        | "interview_success"
       entity_status: "active" | "archived" | "deleted"
       message_sender: "candidate" | "recruiter" | "ai"
       question_category:
@@ -3659,6 +3661,8 @@ export const Constants = {
         "product",
         "systems",
         "certified",
+        "interview_reject",
+        "interview_success",
       ],
       entity_status: ["active", "archived", "deleted"],
       message_sender: ["candidate", "recruiter", "ai"],
