@@ -30,10 +30,10 @@ function buildRows(projects: JobProject[]): Row[] {
     id: p.id,
     label: p.roleName || "(без названия)",
     companyName: p.companyName || "—",
-    interview: Number(p.interviewLimit || 0),
-    training: Number(p.trainingLimit || 0),
-    interviewSaved: Number(p.interviewLimit || 0),
-    trainingSaved: Number(p.trainingLimit || 0),
+    interview: Math.max(0, Number(p.interviewLimit || 0) - Number(p.interviewUsed || 0)),
+    training: Math.max(0, Number(p.trainingLimit || 0) - Number(p.trainingUsed || 0)),
+    interviewSaved: Math.max(0, Number(p.interviewLimit || 0) - Number(p.interviewUsed || 0)),
+    trainingSaved: Math.max(0, Number(p.trainingLimit || 0) - Number(p.trainingUsed || 0)),
     interviewUsed: Number(p.interviewUsed || 0),
     trainingUsed: Number(p.trainingUsed || 0),
     saving: false,
@@ -85,8 +85,8 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
     setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
   };
 
-  const clampI = (r: Row, v: number) => Math.max(r.interviewUsed, Math.min(100000, Math.floor(v)));
-  const clampT = (r: Row, v: number) => Math.max(r.trainingUsed,  Math.min(100000, Math.floor(v)));
+  const clampI = (_r: Row, v: number) => Math.max(0, Math.min(100000, Math.floor(v)));
+  const clampT = (_r: Row, v: number) => Math.max(0, Math.min(100000, Math.floor(v)));
 
   const save = async (r: Row) => {
     if (r.interview === r.interviewSaved && r.training === r.trainingSaved) return;
@@ -94,8 +94,8 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
     try {
       const { data, error } = await (supabase as any).rpc("reallocate_project_limits", {
         _project: r.id,
-        _new_interview_limit: r.interview,
-        _new_training_limit: r.training,
+        _new_interview_limit: r.interview + r.interviewUsed,
+        _new_training_limit: r.training + r.trainingUsed,
       });
       if (error) throw error;
       const res = (data || {}) as { ok?: boolean };
