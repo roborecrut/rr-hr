@@ -30,10 +30,10 @@ function buildRows(projects: JobProject[]): Row[] {
     id: p.id,
     label: p.roleName || "(без названия)",
     companyName: p.companyName || "—",
-    interview: Number(p.interviewLimit || 0),
-    training: Number(p.trainingLimit || 0),
-    interviewSaved: Number(p.interviewLimit || 0),
-    trainingSaved: Number(p.trainingLimit || 0),
+    interview: Math.max(0, Number(p.interviewLimit || 0) - Number(p.interviewUsed || 0)),
+    training: Math.max(0, Number(p.trainingLimit || 0) - Number(p.trainingUsed || 0)),
+    interviewSaved: Math.max(0, Number(p.interviewLimit || 0) - Number(p.interviewUsed || 0)),
+    trainingSaved: Math.max(0, Number(p.trainingLimit || 0) - Number(p.trainingUsed || 0)),
     interviewUsed: Number(p.interviewUsed || 0),
     trainingUsed: Number(p.trainingUsed || 0),
     saving: false,
@@ -85,8 +85,8 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
     setRows(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
   };
 
-  const clampI = (r: Row, v: number) => Math.max(r.interviewUsed, Math.min(100000, Math.floor(v)));
-  const clampT = (r: Row, v: number) => Math.max(r.trainingUsed,  Math.min(100000, Math.floor(v)));
+  const clampI = (_r: Row, v: number) => Math.max(0, Math.min(100000, Math.floor(v)));
+  const clampT = (_r: Row, v: number) => Math.max(0, Math.min(100000, Math.floor(v)));
 
   const save = async (r: Row) => {
     if (r.interview === r.interviewSaved && r.training === r.trainingSaved) return;
@@ -94,8 +94,8 @@ export default function VacancyLimitAllocator({ projects, interviewPool, trainin
     try {
       const { data, error } = await (supabase as any).rpc("reallocate_project_limits", {
         _project: r.id,
-        _new_interview_limit: r.interview,
-        _new_training_limit: r.training,
+        _new_interview_limit: r.interview + r.interviewUsed,
+        _new_training_limit: r.training + r.trainingUsed,
       });
       if (error) throw error;
       const res = (data || {}) as { ok?: boolean };
@@ -221,16 +221,16 @@ function LimitField({ label, icon, value, used, onChange }: {
     <div className="bg-gradient-to-br from-[#17344F]/45 to-[#265582]/30 border border-white/15 rounded-xl p-3 space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <div className="text-xs font-bold text-white">{label}</div>
+        <div className="text-xs font-bold text-white">{label} <span className="text-[10px] text-slate-400 font-normal">(осталось)</span></div>
         <div className="ml-auto text-[10px] text-slate-400">Использовано <b className="text-slate-200">{used}</b></div>
       </div>
       <div className="flex items-center gap-1">
-        <button type="button" onClick={() => onChange(value - 1)} disabled={value <= used}
+        <button type="button" onClick={() => onChange(value - 1)} disabled={value <= 0}
           className="w-8 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white disabled:opacity-30 inline-flex items-center justify-center">
           <Minus className="w-3.5 h-3.5"/>
         </button>
         <input
-          type="number" min={used} max={100000} value={value}
+          type="number" min={0} max={100000} value={value}
           onChange={e => onChange(Number(e.target.value) || 0)}
           className="flex-1 bg-[#17344F]/60 text-white border border-white/15 rounded-lg px-2 py-2 text-sm font-bold text-center"
         />
