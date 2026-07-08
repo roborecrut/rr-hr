@@ -12,8 +12,24 @@
 
 const env = import.meta.env;
 
-export const SUPABASE_URL: string =
-  (env.VITE_SUPABASE_URL as string) || "https://rjhtauzookkvlipvqpvr.supabase.co";
+/**
+ * Supabase project ref. Все запросы к Supabase (REST/Auth/Storage/Realtime/Functions)
+ * маршрутизируются через наш собственный обратный прокси
+ * `https://lovable.proxy.atiks.org/<ref>/...`, поэтому здесь и хранится
+ * канонический ref, а не прямой домен `<ref>.supabase.co`.
+ */
+const SUPABASE_REF = "rjhtauzookkvlipvqpvr";
+
+/** Базовый URL нашего reverse-proxy для Supabase. */
+export const SUPABASE_PROXY_ORIGIN = "https://lovable.proxy.atiks.org";
+
+/**
+ * SUPABASE_URL теперь всегда указывает на прокси. Прокси на своей стороне
+ * подставляет `https://<ref>.supabase.co` по первому сегменту пути. env-переменную
+ * `VITE_SUPABASE_URL` намеренно игнорируем — она в `.env` авто-заполняется
+ * прямым Supabase-доменом и обошла бы прокси.
+ */
+export const SUPABASE_URL: string = `${SUPABASE_PROXY_ORIGIN}/${SUPABASE_REF}`;
 
 export const SUPABASE_PUBLISHABLE_KEY: string =
   (env.VITE_SUPABASE_PUBLISHABLE_KEY as string) ||

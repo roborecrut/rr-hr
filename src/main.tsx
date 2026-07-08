@@ -2,6 +2,11 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { installProxyLog } from './lib/proxyLog';
+
+// Ставим перехват fetch ДО первого запроса supabase-клиента, чтобы в журнал
+// попал даже самый первый вызов (getSession/bootstrap).
+installProxyLog();
 
 // R2 Block 8: build marker — proves the running JS bundle matches the latest
 // build. The build_id is injected by Vite (`__APP_VERSION__` in vite.config.ts)
