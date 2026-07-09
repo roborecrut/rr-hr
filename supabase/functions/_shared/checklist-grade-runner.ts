@@ -232,20 +232,34 @@ export async function runChecklistGradeJob(
     return { kind: "no_credits" };
   }
 
-  // 5) Primary attempt
+  // 5) Primary attempt — skipped when watchdog resumes a stuck job
+  // (status ∈ {primary_running, primary_failed, fallback_available,
+  // fallback_running}). Those states mean primary either was killed
+  // mid-flight or already failed; jump straight to fallback.
   const prompt = deps.buildPrompt(input);
   let report: ChecklistGradeReport | null = null;
   let primaryDone = false;
+  const resumeFromFallback =
+    job.status === "primary_running" ||
+    job.status === "primary_failed" ||
+    job.status === "fallback_available" ||
+    job.status === "fallback_running";
 
   const pStart = deps.clock.now();
-  const primaryAttemptId = await deps.attempts.startAttempt(args.jobId, "primary");
-  if (!primaryAttemptId) {
+  const primaryAttemptId = resumeFromFallback
+    ? null
+    : await deps.attempts.startAttempt(args.jobId, "primary");
+  if (!resumeFromFallback && !primaryAttemptId) {
     await deps.jobs.markStatus(args.jobId, "orchestration_failed", true);
     return { kind: "orchestration_failed", code: "attempt_start_failed" };
   }
-  await deps.jobs.markStatus(args.jobId, "primary_running", false);
-  const pRes = await deps.provider.callPrimary({ jobId: args.jobId, candidateId: job.candidateId, prompt });
-  if (pRes.ok) {
+  if (!resumeFromFallback) {
+    await deps.jobs.markStatus(args.jobId, "primary_running", false);
+  }
+  const pRes: ProviderResult = resumeFromFallback
+    ? { ok: false, errorCode: "primary_skipped_watchdog" }
+    : await deps.provider.callPrimary({ jobId: args.jobId, candidateId: job.candidateId, prompt });
+  if (pRes.ok && primaryAttemptId) {
     const v = deps.validator.validate(pRes.reportJson, input);
     await deps.attempts.saveDiagnostics(primaryAttemptId, {
       chatId: pRes.chatId ?? null,
@@ -261,7 +275,7 @@ export async function runChecklistGradeJob(
     } else {
       await deps.attempts.finishAttempt(primaryAttemptId, { status: "failed", safe_error_code: safe(`schema:${v.code}`) });
     }
-  } else {
+  } else if (!pRes.ok && primaryAttemptId) {
     await deps.attempts.saveDiagnostics(primaryAttemptId, {
       chatId: pRes.chatId ?? null,
       operationPart: "checklist_grade",

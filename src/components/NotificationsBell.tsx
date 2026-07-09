@@ -222,7 +222,7 @@ export default function NotificationsBell({ tone = "dark" }: { tone?: "dark" | "
                   <UserSquare2 className="w-4 h-4" /> Открыть карточку кандидата
                 </button>
               )}
-              {detail.link && !detail?.meta?.candidate_id && (
+              {detail.link && !detail?.meta?.candidate_id && !detail?.meta?.decision && (
                 <button
                   type="button"
                   onClick={() => { const l = detail.link!; setDetail(null); navigate(l); }}

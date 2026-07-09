@@ -1,44 +1,20 @@
-// =============================================================================
-// ai-interview-grade-situations-v2  (Phase 3B-2B Step C)
-//
-// Crash-safe v2 variant of role-play situations grading. Same architecture
-// as ai-interview-grade-checklist-v2:
-//   1. validates the candidate token and request_id
-//   2. resolves project_id, situations block server-side
-//   3. atomically saves the answers + answers_hash + updated_at via
-//      save_situations_answers_v2 RPC (composite PK candidate_id,
-//      project_id)
-//   4. computes situations_hash from the current interview_blocks payload
-//   5. creates or reuses an ai_jobs row (idempotency:
-//      situations_grade_v2:${candidate_id}:${request_id})
-//   6. spawns the background worker with ONLY {jobId}; worker reloads
-//      everything from DB and refuses to call the provider on any drift.
-//
-// Live rollback: ai-interview-grade-situations (v1) is untouched.
-// =============================================================================
-import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+// Prod deps for runSituationsGradeJob, shared between
+// ai-interview-grade-situations-v2 and ai-job-watchdog.
 import {
-  buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson, resolveCandidatePublicId,
-  getAdminClient, logToDb,
-} from "../_shared/protalk.ts";
-import { requireCandidateToken } from "../_shared/auth.ts";
+  buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson,
+  resolveCandidatePublicId, getAdminClient,
+} from "./protalk.ts";
 import {
-  canonicalJsonStringify, createOrReuseAiJob, debitAiJobOnce,
-  finishAttempt as ajFinishAttempt, isTerminalStatus, markJobStatusStrict,
-  recordAttemptDiagnostics, sha256Hex, startAttempt as ajStartAttempt,
-} from "../_shared/ai-jobs.ts";
-import { runInBackground } from "../_shared/ai-runner.ts";
-import { RrProMaxProvider } from "../_shared/rr-pro-max.ts";
-import {
-  validateSituationsGradeReport,
-} from "../_shared/ai-validators.ts";
-import {
-  runSituationsGradeJob,
-  type SituationsRunnerDeps, type SituationsJob, type SituationsInput,
-  type ProviderResult, type JobStatus, type SituationItem,
-} from "../_shared/situations-grade-runner.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  canonicalJsonStringify, debitAiJobOnce, finishAttempt as ajFinishAttempt,
+  markJobStatusStrict, recordAttemptDiagnostics, sha256Hex,
+  startAttempt as ajStartAttempt,
+} from "./ai-jobs.ts";
+import { RrProMaxProvider } from "./rr-pro-max.ts";
+import { validateSituationsGradeReport } from "./ai-validators.ts";
+import type {
+  SituationsRunnerDeps, SituationsJob, SituationsInput, ProviderResult,
+  JobStatus, SituationItem,
+} from "./situations-grade-runner.ts";
 
 function buildPrompt(input: SituationsInput): string {
   const safeS = input.situations.map((s) => ({
@@ -86,20 +62,20 @@ ${JSON.stringify(safeS)}
 }`;
 }
 
-async function answersHash(answers: Record<string, string>): Promise<string> {
+export async function answersHash(answers: Record<string, string>): Promise<string> {
   const normalized: Record<string, string> = {};
   for (const k of Object.keys(answers).sort()) {
     normalized[k] = String(answers[k] ?? "").trim();
   }
   return await sha256Hex(canonicalJsonStringify(normalized));
 }
-async function situationsHash(items: SituationItem[]): Promise<string> {
+export async function situationsHash(items: SituationItem[]): Promise<string> {
   const norm = items.map((s) => ({
     id: s.id, title: s.title, brief: s.brief, criteria: s.criteria || null,
   }));
   return await sha256Hex(canonicalJsonStringify(norm));
 }
-function normalizeSituation(raw: any): SituationItem {
+export function normalizeSituation(raw: any): SituationItem {
   return {
     id: String(raw?.id || ""),
     title: String(raw?.title || ""),
@@ -108,7 +84,7 @@ function normalizeSituation(raw: any): SituationItem {
   };
 }
 
-export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): SituationsRunnerDeps {
+export function buildSituationsProdDeps(adminAny: ReturnType<typeof getAdminClient>): SituationsRunnerDeps {
   const admin = adminAny!;
   return {
     jobs: {
@@ -276,138 +252,3 @@ export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): Situ
     fallbackAttempts: 2,
   };
 }
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-
-  const body = await req.json().catch(() => null) as null | {
-    request_id?: string;
-    candidate_token?: string;
-    answers?: Record<string, string>;
-    async_version?: number;
-  };
-  if (!body) return jsonResponse({ error: "bad_body" }, 400);
-  const requestId = String(body.request_id || "").trim();
-  if (!UUID_RE.test(requestId)) return jsonResponse({ error: "bad_request_id" }, 400);
-  if (body.async_version !== 2) return jsonResponse({ error: "bad_async_version" }, 400);
-
-  const authz = await requireCandidateToken(req, body.candidate_token);
-  if (authz instanceof Response) return authz;
-  const candidateId = authz.candidateId;
-
-  const admin = getAdminClient();
-  if (!admin) return jsonResponse({ error: "internal" }, 500);
-
-  const er = (globalThis as any).EdgeRuntime;
-  if (!er || typeof er.waitUntil !== "function") {
-    return jsonResponse({ error: "runtime_no_background" }, 500);
-  }
-
-  // Resolve project + situations server-side; never trust client.
-  const { data: cand } = await admin
-    .from("candidates").select("id, project_id").eq("id", candidateId).maybeSingle();
-  if (!cand?.project_id) return jsonResponse({ error: "no_project" }, 400);
-  const projectId = (cand as any).project_id as string;
-
-  const { data: blk } = await admin
-    .from("interview_blocks").select("payload")
-    .eq("project_id", projectId).eq("kind", "situations").maybeSingle();
-  const rawSs: any[] = (blk as any)?.payload?.situations || [];
-  if (!rawSs.length) return jsonResponse({ error: "no_situations" }, 400);
-  const situations = rawSs.map(normalizeSituation);
-
-  // Resolve answers. Prefer body.answers (caller-sent), fall back to stored.
-  const incoming = (body.answers && typeof body.answers === "object") ? body.answers : null;
-  let answers: Record<string, string> | null = null;
-  if (incoming) {
-    const normalized: Record<string, string> = {};
-    for (const s of situations) {
-      const v = (incoming as any)[s.id];
-      if (v != null) normalized[s.id] = String(v);
-    }
-    answers = normalized;
-  } else {
-    const { data: ansRow } = await admin
-      .from("candidate_situations_answers_v2")
-      .select("answers")
-      .eq("candidate_id", candidateId)
-      .eq("project_id", projectId)
-      .maybeSingle();
-    answers = ((ansRow as any)?.answers || null) as Record<string, string> | null;
-  }
-  if (!answers || Object.keys(answers).length === 0) {
-    return jsonResponse({ error: "no_answers" }, 400);
-  }
-  for (const s of situations) {
-    if (!(answers[s.id] || "").toString().trim()) {
-      return jsonResponse({ error: "answers_incomplete", missing: s.id }, 400);
-    }
-  }
-
-  // Atomically save answers + hash + updated_at via server-only RPC.
-  const aHash = await answersHash(answers);
-  const saved = await admin.rpc("save_situations_answers_v2", {
-    _candidate: candidateId,
-    _project: projectId,
-    _answers: answers as unknown as Record<string, unknown>,
-    _answers_hash: aHash,
-  });
-  if (saved.error) {
-    return jsonResponse({ error: "answers_save_failed", detail: saved.error.message.slice(0, 80) }, 500);
-  }
-  const answersUpdatedAt = String((saved.data as any)?.updated_at || "");
-  const sHash = await situationsHash(situations);
-
-  const idem = `situations_grade_v2:${candidateId}:${requestId}`;
-  const created = await createOrReuseAiJob({
-    userId: null,
-    candidateId,
-    jobType: "grade_situations_v2",
-    idempotencyKey: idem,
-    requestSnapshot: {
-      candidate_id: candidateId,
-      project_id: projectId,
-      answers_hash: aHash,
-      answers_updated_at: answersUpdatedAt,
-      situations_hash: sHash,
-      requested_at: new Date().toISOString(),
-    },
-    fallbackAllowed: true,
-  });
-  if ("error" in created) return jsonResponse({ error: "job_create_failed", detail: created.error }, 500);
-
-  if (created.reused) {
-    return jsonResponse({
-      ok: true, job_id: created.id, status: created.status,
-      reused: true, terminal: isTerminalStatus(created.status),
-    });
-  }
-
-  const jobId = created.id;
-  const prodDeps = buildProdDeps(admin);
-  runInBackground((async () => {
-    try {
-      const outcome = await runSituationsGradeJob(prodDeps, { jobId });
-      if (outcome.kind === "save_failed") {
-        try { await logToDb({
-          user_message: "[v2 situations save failed]",
-          bot_reply: outcome.code,
-          channel_id: `job_${jobId}`,
-          user_social_id: candidateId,
-          channel_name: "ai-interview:grade-situations-v2",
-          server_name: "ai-interview-grade-situations-v2",
-          function_error: outcome.code,
-        }); } catch { /* ignore */ }
-      }
-    } catch (e) {
-      console.error("[grade-situations-v2] background crashed", (e as Error)?.message);
-      await markJobStatusStrict(jobId, "orchestration_failed", true);
-    }
-  })());
-
-  return jsonResponse({
-    ok: true, job_id: jobId, status: "primary_running",
-    reused: false, terminal: false,
-  });
-});

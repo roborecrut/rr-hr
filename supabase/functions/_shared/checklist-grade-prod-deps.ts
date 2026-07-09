@@ -1,41 +1,22 @@
-// =============================================================================
-// ai-interview-grade-checklist-v2  (Phase 3B-2B Step B)
-//
-// Crash-safe v2 variant of checklist grading. The HTTP handler:
-//   1. validates the candidate token and request_id
-//   2. atomically saves the answers (project_id, hash, updated_at) via
-//      save_checklist_answers_v2 RPC
-//   3. computes questions_hash from the current interview_blocks payload
-//   4. creates or reuses an ai_jobs row (idempotency: checklist_grade_v2:
-//      ${candidate_id}:${request_id})
-//   5. spawns the background worker with ONLY {jobId}; worker reloads
-//      everything from DB and refuses to call the provider on any drift.
-//
-// Live rollback: ai-interview-grade-checklist (v1) is untouched.
-// =============================================================================
-import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+// Prod deps for runChecklistGradeJob, shared between
+// ai-interview-grade-checklist-v2 (candidate-triggered entry) and
+// ai-job-watchdog (scheduler-triggered resume). Edge functions cannot
+// import from each other's directories, so this must live under _shared.
 import {
-  buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson, resolveCandidatePublicId,
-  getAdminClient, logToDb,
-} from "../_shared/protalk.ts";
-import { requireCandidateToken } from "../_shared/auth.ts";
+  buildChatId, buildSocialId, callProTalkWithRetry, tryParseJson,
+  resolveCandidatePublicId, getAdminClient,
+} from "./protalk.ts";
 import {
-  canonicalJsonStringify, createOrReuseAiJob, debitAiJobOnce,
-  finishAttempt as ajFinishAttempt, isTerminalStatus, markJobStatusStrict,
-  recordAttemptDiagnostics, sha256Hex, startAttempt as ajStartAttempt,
-} from "../_shared/ai-jobs.ts";
-import { runInBackground } from "../_shared/ai-runner.ts";
-import { RrProMaxProvider } from "../_shared/rr-pro-max.ts";
-import {
-  validateChecklistGradeReport, type ChecklistGradeReport,
-} from "../_shared/ai-validators.ts";
-import {
-  runChecklistGradeJob,
-  type ChecklistRunnerDeps, type ChecklistJob, type ChecklistInput,
-  type ProviderResult, type JobStatus, type ChecklistQuestion,
-} from "../_shared/checklist-grade-runner.ts";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  canonicalJsonStringify, debitAiJobOnce, finishAttempt as ajFinishAttempt,
+  markJobStatusStrict, recordAttemptDiagnostics, sha256Hex,
+  startAttempt as ajStartAttempt,
+} from "./ai-jobs.ts";
+import { RrProMaxProvider } from "./rr-pro-max.ts";
+import { validateChecklistGradeReport } from "./ai-validators.ts";
+import type {
+  ChecklistRunnerDeps, ChecklistJob, ChecklistInput, ProviderResult,
+  JobStatus, ChecklistQuestion,
+} from "./checklist-grade-runner.ts";
 
 function buildPrompt(input: ChecklistInput): string {
   const safeQs = input.questions.map((q) => ({
@@ -87,15 +68,14 @@ ${JSON.stringify(safeQs)}
 }`;
 }
 
-// Stable canonical hash for answers (sorted keys, trimmed values).
-async function answersHash(answers: Record<string, string>): Promise<string> {
+export async function answersHash(answers: Record<string, string>): Promise<string> {
   const normalized: Record<string, string> = {};
   for (const k of Object.keys(answers).sort()) {
     normalized[k] = String(answers[k] ?? "").trim();
   }
   return await sha256Hex(canonicalJsonStringify(normalized));
 }
-async function questionsHash(qs: ChecklistQuestion[]): Promise<string> {
+export async function questionsHash(qs: ChecklistQuestion[]): Promise<string> {
   const norm = qs.map((q) => ({
     id: q.id, kind: q.kind, question: q.question,
     options: q.options || null,
@@ -103,7 +83,7 @@ async function questionsHash(qs: ChecklistQuestion[]): Promise<string> {
   }));
   return await sha256Hex(canonicalJsonStringify(norm));
 }
-function normalizeQuestion(raw: any): ChecklistQuestion {
+export function normalizeQuestion(raw: any): ChecklistQuestion {
   const kind = (raw?.kind === "choice") ? "choice" : "text";
   return {
     id: String(raw?.id || ""),
@@ -115,7 +95,7 @@ function normalizeQuestion(raw: any): ChecklistQuestion {
   };
 }
 
-export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): ChecklistRunnerDeps {
+export function buildChecklistProdDeps(adminAny: ReturnType<typeof getAdminClient>): ChecklistRunnerDeps {
   const admin = adminAny!;
   return {
     jobs: {
@@ -230,7 +210,6 @@ export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): Chec
             timeoutMs: 180_000, attempts: 3,
             validate: (text) => {
               const obj = tryParseJson<unknown>(text);
-              // Light schema check (full validation runs in the runner).
               if (!obj || typeof obj !== "object") return { ok: false, code: "not_object" };
               if (!(obj as any).employer || !(obj as any).candidate) return { ok: false, code: "missing_blocks" };
               return { ok: true };
@@ -290,138 +269,3 @@ export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): Chec
     fallbackAttempts: 2,
   };
 }
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
-
-  const body = await req.json().catch(() => null) as null | {
-    request_id?: string;
-    candidate_token?: string;
-    answers?: Record<string, string>;
-    async_version?: number;
-  };
-  if (!body) return jsonResponse({ error: "bad_body" }, 400);
-  const requestId = String(body.request_id || "").trim();
-  if (!UUID_RE.test(requestId)) return jsonResponse({ error: "bad_request_id" }, 400);
-  if (body.async_version !== 2) return jsonResponse({ error: "bad_async_version" }, 400);
-
-  const authz = await requireCandidateToken(req, body.candidate_token);
-  if (authz instanceof Response) return authz;
-  const candidateId = authz.candidateId;
-
-  const admin = getAdminClient();
-  if (!admin) return jsonResponse({ error: "internal" }, 500);
-
-  const er = (globalThis as any).EdgeRuntime;
-  if (!er || typeof er.waitUntil !== "function") {
-    return jsonResponse({ error: "runtime_no_background" }, 500);
-  }
-
-  // Resolve project + checklist questions server-side; never trust client.
-  const { data: cand } = await admin
-    .from("candidates").select("id, project_id").eq("id", candidateId).maybeSingle();
-  if (!cand?.project_id) return jsonResponse({ error: "no_project" }, 400);
-
-  const { data: blk } = await admin
-    .from("interview_blocks").select("payload")
-    .eq("project_id", cand.project_id).eq("kind", "checklist").maybeSingle();
-  const rawQs: any[] = (blk as any)?.payload?.questions || [];
-  if (!rawQs.length) return jsonResponse({ error: "no_questions" }, 400);
-  const questions = rawQs.map(normalizeQuestion);
-
-  // Resolve answers. Prefer body.answers (caller-sent), fall back to stored.
-  const incoming = (body.answers && typeof body.answers === "object") ? body.answers : null;
-  let answers: Record<string, string> | null = null;
-  if (incoming) {
-    const normalized: Record<string, string> = {};
-    for (const q of questions) {
-      const v = (incoming as any)[q.id];
-      if (v != null) normalized[q.id] = String(v);
-    }
-    answers = normalized;
-  } else {
-    const { data: ansRow } = await admin
-      .from("candidate_checklist_answers_v2")
-      .select("answers")
-      .eq("candidate_id", candidateId)
-      .eq("project_id", cand.project_id)
-      .maybeSingle();
-    answers = ((ansRow as any)?.answers || null) as Record<string, string> | null;
-  }
-  if (!answers || Object.keys(answers).length === 0) {
-    return jsonResponse({ error: "no_answers" }, 400);
-  }
-  // Ensure every required question has a non-empty answer.
-  for (const q of questions) {
-    if (!(answers[q.id] || "").toString().trim()) {
-      return jsonResponse({ error: "answers_incomplete", missing: q.id }, 400);
-    }
-  }
-
-  // Atomically save answers + hash + updated_at via server-only RPC.
-  const aHash = await answersHash(answers);
-  const saved = await admin.rpc("save_checklist_answers_v2", {
-    _candidate: candidateId,
-    _project: cand.project_id,
-    _answers: answers as unknown as Record<string, unknown>,
-    _answers_hash: aHash,
-  });
-  if (saved.error) {
-    return jsonResponse({ error: "answers_save_failed", detail: saved.error.message.slice(0, 80) }, 500);
-  }
-  const answersUpdatedAt = String((saved.data as any)?.updated_at || "");
-  const qHash = await questionsHash(questions);
-
-  const idem = `checklist_grade_v2:${candidateId}:${requestId}`;
-  const created = await createOrReuseAiJob({
-    userId: null,
-    candidateId,
-    jobType: "grade_checklist_v2",
-    idempotencyKey: idem,
-    requestSnapshot: {
-      candidate_id: candidateId,
-      project_id: cand.project_id,
-      answers_hash: aHash,
-      answers_updated_at: answersUpdatedAt,
-      questions_hash: qHash,
-      requested_at: new Date().toISOString(),
-    },
-    fallbackAllowed: true,
-  });
-  if ("error" in created) return jsonResponse({ error: "job_create_failed", detail: created.error }, 500);
-
-  if (created.reused) {
-    return jsonResponse({
-      ok: true, job_id: created.id, status: created.status,
-      reused: true, terminal: isTerminalStatus(created.status),
-    });
-  }
-
-  const jobId = created.id;
-  const prodDeps = buildProdDeps(admin);
-  runInBackground((async () => {
-    try {
-      const outcome = await runChecklistGradeJob(prodDeps, { jobId });
-      if (outcome.kind === "save_failed") {
-        try { await logToDb({
-          user_message: "[v2 checklist save failed]",
-          bot_reply: outcome.code,
-          channel_id: `job_${jobId}`,
-          user_social_id: candidateId,
-          channel_name: "ai-interview:grade-checklist-v2",
-          server_name: "ai-interview-grade-checklist-v2",
-          function_error: outcome.code,
-        }); } catch { /* ignore */ }
-      }
-    } catch (e) {
-      console.error("[grade-checklist-v2] background crashed", (e as Error)?.message);
-      await markJobStatusStrict(jobId, "orchestration_failed", true);
-    }
-  })());
-
-  return jsonResponse({
-    ok: true, job_id: jobId, status: "primary_running",
-    reused: false, terminal: false,
-  });
-});
