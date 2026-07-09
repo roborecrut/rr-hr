@@ -108,7 +108,7 @@ function normalizeSituation(raw: any): SituationItem {
   };
 }
 
-export function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): SituationsRunnerDeps {
+function buildProdDeps(adminAny: ReturnType<typeof getAdminClient>): SituationsRunnerDeps {
   const admin = adminAny!;
   return {
     jobs: {

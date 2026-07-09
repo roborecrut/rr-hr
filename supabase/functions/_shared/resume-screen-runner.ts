@@ -227,31 +227,24 @@ export async function runResumeScreenJob(
     return { kind: "no_credits" };
   }
 
-  // 5) Primary attempt — skipped on watchdog resume (see checklist runner).
+  // 5) Primary attempt
   const prompt = deps.buildPrompt(input);
   let report: ResumeScreenReport | null = null;
   let primaryDone = false;
-  const resumeFromFallback =
-    job.status === "primary_running" ||
-    job.status === "primary_failed" ||
-    job.status === "fallback_available" ||
-    job.status === "fallback_running";
 
   const pStart = deps.clock.now();
-  const primaryAttemptId = resumeFromFallback
-    ? null
-    : await deps.attempts.startAttempt(args.jobId, "primary");
-  if (!resumeFromFallback && !primaryAttemptId) {
+  const primaryAttemptId = await deps.attempts.startAttempt(args.jobId, "primary");
+  if (!primaryAttemptId) {
+    // We could not even start an attempt (RPC/DB failure). Provider was
+    // NEVER called → this must be a terminal orchestration_failed so the
+    // frontend stops polling, clears localStorage, and can start a new
+    // job with a new request_id.
     await deps.jobs.markStatus(args.jobId, "orchestration_failed", true);
     return { kind: "orchestration_failed", code: "attempt_start_failed" };
   }
-  if (!resumeFromFallback) {
-    await deps.jobs.markStatus(args.jobId, "primary_running", false);
-  }
-  const pRes: ProviderResult = resumeFromFallback
-    ? { ok: false, errorCode: "primary_skipped_watchdog" }
-    : await deps.provider.callPrimary({ jobId: args.jobId, candidateId: job.candidateId, prompt });
-  if (pRes.ok && primaryAttemptId) {
+  await deps.jobs.markStatus(args.jobId, "primary_running", false);
+  const pRes = await deps.provider.callPrimary({ jobId: args.jobId, candidateId: job.candidateId, prompt });
+  if (pRes.ok) {
     const v = deps.validator.validate(pRes.reportJson);
     await deps.attempts.saveDiagnostics(primaryAttemptId, {
       chatId: pRes.chatId ?? null,
@@ -267,7 +260,7 @@ export async function runResumeScreenJob(
     } else {
       await deps.attempts.finishAttempt(primaryAttemptId, { status: "failed", safe_error_code: safe(`schema:${v.code}`) });
     }
-  } else if (!pRes.ok && primaryAttemptId) {
+  } else {
     await deps.attempts.saveDiagnostics(primaryAttemptId, {
       chatId: pRes.chatId ?? null,
       operationPart: "resume_screen",

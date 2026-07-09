@@ -17,20 +17,12 @@ Deno.serve(async (req) => {
   const admin = getAdminClient();
   if (!admin) return jsonResponse({ error: "no_admin_client" }, 500);
 
-  // Internal invocation (ai-job-watchdog): Authorization: Bearer <service_role_key>
-  // bypasses ownership entirely so the watchdog can push stuck jobs into fallback
-  // without a candidate/employer session. RPC begin_ai_fallback already checks
-  // for service_role and skips its own forbidden check.
-  const rawAuth = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "").trim();
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const isInternal = !!serviceKey && rawAuth === serviceKey;
-
-  // Auth: employer JWT or candidate token (skipped for internal watchdog).
-  const auth = isInternal ? null : await getUserFromAuthHeader(req.headers.get("Authorization"));
+  // Auth: employer JWT or candidate token.
+  const auth = await getUserFromAuthHeader(req.headers.get("Authorization"));
   const candidateToken = req.headers.get("x-candidate-token") || "";
   let ownerUserId: string | null = auth?.id || null;
   let ownerCandidateId: string | null = null;
-  if (!isInternal && !ownerUserId) {
+  if (!ownerUserId) {
     if (!candidateToken) return jsonResponse({ error: "unauthorized" }, 401);
     const sess = await admin.from("candidate_sessions").select("candidate_id").eq("token", candidateToken).maybeSingle();
     if (!sess.data?.candidate_id) return jsonResponse({ error: "unauthorized" }, 401);
@@ -41,14 +33,8 @@ Deno.serve(async (req) => {
   const j = await admin.from("ai_jobs").select("*").eq("id", body.job_id).maybeSingle();
   if (!j.data) return jsonResponse({ error: "not_found" }, 404);
   const job: any = j.data;
-  if (!isInternal && ownerUserId && job.user_id !== ownerUserId) return jsonResponse({ error: "forbidden" }, 403);
-  if (!isInternal && ownerCandidateId && job.candidate_id !== ownerCandidateId) return jsonResponse({ error: "forbidden" }, 403);
-  // Internal path: derive chat/social ids from the job itself so ProTalk sees
-  // the same conversation as the original primary call.
-  if (isInternal) {
-    ownerCandidateId = job.candidate_id || null;
-    ownerUserId = job.user_id || null;
-  }
+  if (ownerUserId && job.user_id !== ownerUserId) return jsonResponse({ error: "forbidden" }, 403);
+  if (ownerCandidateId && job.candidate_id !== ownerCandidateId) return jsonResponse({ error: "forbidden" }, 403);
 
   // Pilot завершён успешно — резервная модель доступна как работодателям,
   // так и кандидатам после подтверждённого технического сбоя основной нейросети.

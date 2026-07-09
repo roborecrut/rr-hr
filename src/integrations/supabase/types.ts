@@ -148,7 +148,6 @@ export type Database = {
           updated_at: string
           user_id: string | null
           vacancy_id: string | null
-          watchdog_resumed_at: string | null
         }
         Insert: {
           candidate_id?: string | null
@@ -175,7 +174,6 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vacancy_id?: string | null
-          watchdog_resumed_at?: string | null
         }
         Update: {
           candidate_id?: string | null
@@ -202,7 +200,6 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           vacancy_id?: string | null
-          watchdog_resumed_at?: string | null
         }
         Relationships: [
           {
@@ -3097,17 +3094,37 @@ export type Database = {
         Args: { _email: string; _password: string; _project?: string }
         Returns: Json
       }
-      candidate_email_signup: {
-        Args: {
-          _company?: string
-          _email: string
-          _full_name?: string
-          _password: string
-          _phone?: string
-          _project: string
-        }
-        Returns: Json
-      }
+      candidate_email_signup:
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _password: string
+              _project: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _password: string
+              _phone?: string
+              _project: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _company?: string
+              _email: string
+              _full_name?: string
+              _password: string
+              _phone?: string
+              _project: string
+            }
+            Returns: Json
+          }
       candidate_flow_state: { Args: never; Returns: Json }
       candidate_full_details: { Args: { _candidate: string }; Returns: Json }
       candidate_invite_decision: {
