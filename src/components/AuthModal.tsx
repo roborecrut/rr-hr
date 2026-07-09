@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useRouter } from "./RouterContext";
 import { supabase } from "@/integrations/supabase/client";
 import { readCachedEmployerPublicIdForUser, resolveProfilePathForUser } from "@/lib/links";
+import { FN } from "@/config";
 import Mascot from "./Mascot";
 import { X, Chrome, Gift } from "lucide-react";
 import OfferConsent from "./OfferConsent";
@@ -17,7 +18,10 @@ interface AuthModalProps {
   intent?: "employer" | "candidate";
 }
 
-const FN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+// Все edge-функции идут через наш прокси, а не напрямую на supabase.co.
+// Значение оставлено на случай обращения по URL (FormData/multipart) — обычные
+// JSON-вызовы должны использовать supabase.functions.invoke().
+const FN_URL = FN("").replace(/\/$/, "");
 
 export default function AuthModal({ isOpen, onClose, intent = "employer" }: AuthModalProps) {
   const { navigate } = useRouter();
