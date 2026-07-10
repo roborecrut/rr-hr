@@ -27,6 +27,7 @@ import { AIWaitProvider } from "./components/AIWaitProvider";
 import { AIRestartGate } from "./components/AIRestartGate";
 import { AIFallbackGate } from "./components/AIFallbackGate";
 import { ConfirmProvider } from "./components/ConfirmDialog";
+import ProxyLogViewer from "./components/ProxyLogViewer";
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <AppVersionGuard />
         <AIRestartGate />
         <AIFallbackGate />
+        <ProxyLogViewer />
         <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/main" element={<LandingPage />} />
