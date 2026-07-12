@@ -594,7 +594,8 @@ export default function TrainingWizard({ projects, refreshProjects, addAuditEven
               value={source}
               onChange={setSource}
               showDistribute={false}
-              label="Загрузить материал (PDF / DOC / Markdown) или вставить ссылку"
+              showUrl={false}
+              label="Загрузить материал (PDF / DOC / Markdown)"
               placeholder="ИИ извлечёт текст и оформит его в учебный материал"
               maxLength={20000}
             />
