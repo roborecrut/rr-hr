@@ -33,6 +33,7 @@ export function DocumentIngestField({
   label,
   placeholder,
   showDistribute = true,
+  showUrl = true,
 }: {
   entity: Entity;
   entityId: string;
@@ -43,6 +44,7 @@ export function DocumentIngestField({
   label?: string;
   placeholder?: string;
   showDistribute?: boolean;
+  showUrl?: boolean;
 }) {
   const { run: aiWaitRun } = useAIWait();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -164,15 +166,17 @@ export function DocumentIngestField({
           {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
           {uploading ? "Загружаем в Supabase…" : "Загрузить файл"}
         </Button>
-        <Button type="button" size="sm" className="btn-brand-secondary" disabled={busy} onClick={() => setUrlOpen((v) => !v)}>
-          <Link2 className="h-4 w-4" /> Вставить ссылку
-        </Button>
+        {showUrl ? (
+          <Button type="button" size="sm" className="btn-brand-secondary" disabled={busy} onClick={() => setUrlOpen((v) => !v)}>
+            <Link2 className="h-4 w-4" /> Вставить ссылку
+          </Button>
+        ) : null}
         <input ref={fileRef} type="file" className="hidden"
           accept=".pdf,.doc,.docx,.txt,.md,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
           onClick={(e) => { (e.currentTarget as HTMLInputElement).value = ""; setUploaded(null); setUploadError(""); }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
       </div>
-      {urlOpen ? (
+      {showUrl && urlOpen ? (
         <div className="flex gap-2">
           <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" />
           <Button type="button" size="sm" className="btn-brand-primary" disabled={busy || !url.trim()} onClick={handleUrl}>
